@@ -737,7 +737,8 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 <!-- ════ PLANOS ANALÍTICOS ════ -->
 <div class="view" id="v-curr-planos">
-  <div class="ph"><div><div class="bc"><span>Gest. Curricular</span><span>›</span><span class="cr">Planos Analíticos</span></div><div class="ph-title">Planos Analíticos e Temáticos</div><div class="ph-sub">Conteúdos organizados por disciplina e trimestre</div></div><div class="ph-right"><button class="btn btn-p btn-sm" id="btn-novo-plano" onclick="toast('Novo plano')"><i class="ti ti-plus"></i> Novo Plano</button></div></div>
+  <div class="ph"><div><div class="bc"><span>Gest. Curricular</span><span>›</span><span class="cr">Planos Analíticos</span></div><div class="ph-title">Planos Analíticos e Temáticos</div><div class="ph-sub">Conteúdos organizados por disciplina e trimestre</div></div><div class="ph-right"><button class="btn btn-p btn-sm" id="btn-novo-plano" onclick="abrirNovoPlanoTematico()"><i class="ti ti-plus"></i> Novo Plano</button>
+      <button class="btn btn-g btn-sm" onclick="abrirUploadPlano('tematico')"><i class="ti ti-upload"></i> Importar Plano</button></div></div>
   <div id="curr-planos-c"></div>
 </div>
 
@@ -3646,7 +3647,7 @@ function rDash(){
       chips:[{l:'Alunos',ic:'ti-users',fn:"go('alunos')"},{l:'Propinas',ic:'ti-credit-card',fn:"go('propinas')"},{l:'Despesas',ic:'ti-receipt',fn:"go('despesas')"},{l:'Faltas',ic:'ti-alert-circle',fn:"go('faltas')"}],
       stats:[{v:String(ALUNOS.length),l:'Alunos matriculados',s:'Total matriculados',cl:'bl',ic:'ti-users',fn:"go('alunos')"},{v:String(PROFS.length),l:'Professores activos',s:'Tempo inteiro + parcial',cl:'pu',ic:'ti-chalkboard',fn:"go('professores')"},
         {v:'0',l:'Receita MZM (mês)',s:'Sem dados ainda',cl:'gr',ic:'ti-coin',fn:"go('propinas')"},{v:'0',l:'Despesas MZM',s:'Sem dados ainda',cl:'am',ic:'ti-receipt',fn:"go('despesas')"},
-        {v:'23',l:'Propinas em atraso',s:'Requer atenção urgente',cl:'re',ic:'ti-alert-circle',fn:"go('propinas')",dt:'!',up:false},{v:'3',l:'Alunos em risco faltas',s:'Acima de 75% do limite',cl:'tl',ic:'ti-alert-triangle',fn:"go('faltas')",dt:'!',up:false}],
+        {v:String(ALUNOS.filter(a=>a.propina?.st==='pendente'||a.propina?.st==='atraso').length||0),l:'Propinas em atraso',s:'Requer atenção',cl:'re',ic:'ti-alert-circle',fn:"go('propinas')",dt:'!',up:false},{v:String(ALUNOS.filter(a=>a.faltas&&a.faltas>10).length||0),l:'Alunos em risco faltas',s:'Acima do limite',cl:'tl',ic:'ti-alert-triangle',fn:"go('faltas')",dt:'!',up:false}],
       qa:[{ic:'ti-user-plus',l:'Novo Aluno',bg:'rgba(79,142,247,.12)',c:'var(--a)',fn:'openM("m-naluno")'},{ic:'ti-chalkboard',l:'Novo Professor',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:'openM("m-nprof")'},{ic:'ti-credit-card',l:'Propinas',bg:'rgba(34,197,94,.12)',c:'var(--g)',fn:"go('propinas')"},{ic:'ti-receipt',l:'Despesas',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:"go('despesas')"},{ic:'ti-alert-circle',l:'Faltas',bg:'rgba(239,68,68,.12)',c:'var(--r)',fn:"go('faltas')"},{ic:'ti-chart-pie',l:'Executivo',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:"go('exec')"}]},
     secretario:{lbl:'Painel do Secretário',title:'Gestão académica e financeira',desc:'Registo de alunos, professores, horários, pagamentos e recibos.',
       chips:[{l:'Novo Aluno',ic:'ti-user-plus',fn:'openM("m-naluno")'},{l:'Novo Professor',ic:'ti-chalkboard',fn:'openM("m-nprof")'},{l:'Registar Pagamento',ic:'ti-credit-card',fn:'openM("m-pag")'},{l:'Alocação',ic:'ti-calendar-event',fn:"go('alocacao')"}],
@@ -3808,25 +3809,143 @@ function toggleCC(bid,aid){const b=document.getElementById(bid),a=document.getEl
 function openDiscPlano(ci,di){go('curr-planos');rCurrPlanos(CLASSES[ci].disc[di],CLASSES[ci])}
 
 let _cpDisc=null,_cpCl=null;
-function rCurrPlanos(disc,cl){
+async function rCurrPlanos(disc,cl){
   _cpDisc=disc;_cpCl=cl;
   const canEdit=['gestor','director','dir-pedagogico'].includes(curRole);
-  document.getElementById('curr-planos-c').innerHTML=`
+  const el = document.getElementById('curr-planos-c');
+  if (!el) return;
+
+  // Carregar disciplinas do Supabase se ainda não estiverem carregadas
+  let discs = window._DISCIPLINAS_DB || [];
+  if (!discs.length && window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+    const { data } = await window._supabase.from('disciplinas').select('*').eq('escola_id', window._escolaId);
+    if (data) { window._DISCIPLINAS_DB = data; discs = data; }
+  }
+
+  // Carregar planos temáticos do Supabase
+  let planos = [];
+  if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+    const { data } = await window._supabase
+      .from('planos_tematicos').select('*, disciplinas(nome), turmas(nome)')
+      .eq('escola_id', window._escolaId)
+      .order('semana');
+    if (data) planos = data;
+  }
+
+  const discOpts = discs.map(d =>
+    `<option value="${d.id}" ${disc&&disc.id===d.id?'selected':''}>${d.nome} — ${d.classe}ª Classe</option>`
+  ).join('');
+
+  el.innerHTML = `
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-      <select class="ffi" style="max-width:360px" onchange="selPlano(this.value)">
+      <select class="ffi" style="max-width:360px" onchange="selPlanoDisc(this.value)">
         <option value="">— Seleccionar disciplina —</option>
-        ${CLASSES.map((c,ci)=>c.disc.map((d,di)=>`<option value="${ci}_${di}" ${disc&&disc.nome===d.nome&&cl&&cl.nome===c.nome?'selected':''}>${c.nome} — ${d.nome}</option>`).join('')).join('')}
+        ${discOpts}
       </select>
-      ${disc?`<span class="badge bin">${cl?.nome||''}</span><span class="badge bne">${disc.horas}h/sem</span>`:''}
+      ${canEdit?`<button class="btn btn-p btn-sm" onclick="abrirNovoPlanoTematico()"><i class="ti ti-plus"></i> Novo Plano</button>`:''}
     </div>
-    ${disc?`
-    <div class="trimestre-tabs">
-      <button class="ttab on" onclick="swTrimPlano(1,this)">1º Trimestre</button>
-      <button class="ttab" onclick="swTrimPlano(2,this)">2º Trimestre</button>
-      <button class="ttab" onclick="swTrimPlano(3,this)">3º Trimestre</button>
-    </div>
-    <div id="plano-body">${renderTrimPlano(disc,1)}</div>`
-    :`<div class="card"><div class="cb" style="text-align:center;padding:52px;color:var(--t2)"><i class="ti ti-book" style="font-size:48px;display:block;margin-bottom:14px;color:var(--t3)"></i><div style="font-size:17px;font-weight:800;color:var(--t);margin-bottom:6px">Planos Analíticos</div>Seleccione uma disciplina acima ou clique numa disciplina em Classes / Cursos.</div></div>`}`;
+    ${disc ? renderPlanosDisc(planos, disc) :
+    `<div class="card"><div class="cb" style="text-align:center;padding:52px;color:var(--t2)">
+      <i class="ti ti-book" style="font-size:48px;display:block;margin-bottom:14px;color:var(--t3)"></i>
+      <div style="font-size:17px;font-weight:800;color:var(--t);margin-bottom:6px">Planos Temáticos</div>
+      ${discs.length ? 'Seleccione uma disciplina acima.' : 'Ainda não há disciplinas criadas. Adicione em <strong>Configurações</strong>.'}
+    </div></div>`}`;
+}
+
+function renderPlanosDisc(planos, disc) {
+  const p = planos.filter(p => p.disciplina_id === disc.id);
+  if (!p.length) return `<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem planos para esta disciplina. <button class="btn btn-p btn-sm" onclick="abrirNovoPlanoTematico('${disc.id}')"><i class="ti ti-plus"></i> Adicionar</button></div>`;
+  return p.map(pl => `
+    <div style="background:var(--bg3);border:1px solid var(--b);border-radius:var(--rads);padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:700">${pl.unidade||'—'} · ${pl.tema||'—'}</div>
+          <div style="font-size:12px;color:var(--t2)">Semana ${pl.semana||'—'} · ${pl.carga_horaria||0}h · ${pl.turmas?.nome||'—'}</div>
+        </div>
+        <span class="badge ${pl.executado?'bsuc':'bin'}">${pl.executado?'Executado':'Previsto'}</span>
+      </div>
+      ${pl.objectivos?`<div style="font-size:12px;color:var(--t2);margin-bottom:6px"><strong>Objectivos:</strong> ${pl.objectivos}</div>`:''}
+      ${pl.conteudos?`<div style="font-size:12px;color:var(--t2)"><strong>Conteúdos:</strong> ${pl.conteudos}</div>`:''}
+    </div>`).join('');
+}
+
+async function selPlanoDisc(discId) {
+  if (!discId) { rCurrPlanos(null, null); return; }
+  const disc = (window._DISCIPLINAS_DB||[]).find(d=>d.id===discId);
+  if (disc) rCurrPlanos(disc, null);
+}
+
+function abrirNovoPlanoTematico(discId) {
+  const discs = window._DISCIPLINAS_DB || [];
+  const turmas = TURMAS;
+  if (!discs.length) { toast('Adicione disciplinas primeiro em Configurações'); return; }
+
+  const discOpts = discs.map(d=>`<option value="${d.id}" ${discId===d.id?'selected':''}>${d.nome} — ${d.classe}ª Classe</option>`).join('');
+  const turmaOpts = turmas.map(t=>`<option value="${t._dbId||t.id}">${t.id}</option>`).join('');
+
+  openM('m-novo-plano-tematico');
+  const body = document.getElementById('m-novo-plano-tematico-body');
+  if (!body) {
+    // Criar modal se não existir
+    const modal = document.createElement('div');
+    modal.id = 'm-novo-plano-tematico';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-box" style="max-width:560px">
+        <div class="modal-hdr"><span>Novo Plano Temático</span><button class="cls-btn" onclick="closeM('m-novo-plano-tematico')">×</button></div>
+        <div class="modal-body" id="m-novo-plano-tematico-body">
+          <div class="fg"><label class="fl">Disciplina *</label><select class="ffi" id="npt-disc">${discOpts}</select></div>
+          <div class="fg"><label class="fl">Turma *</label><select class="ffi" id="npt-turma">${turmaOpts}</select></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="fg"><label class="fl">Unidade *</label><input class="ffi" id="npt-unidade" placeholder="Ex: Unidade 1"></div>
+            <div class="fg"><label class="fl">Semana</label><input class="ffi" type="number" id="npt-semana" placeholder="Ex: 1"></div>
+          </div>
+          <div class="fg"><label class="fl">Tema *</label><input class="ffi" id="npt-tema" placeholder="Ex: Introdução à Álgebra"></div>
+          <div class="fg"><label class="fl">Objectivos</label><textarea class="ffi" id="npt-obj" rows="2" placeholder="O aluno deve ser capaz de..."></textarea></div>
+          <div class="fg"><label class="fl">Conteúdos</label><textarea class="ffi" id="npt-cont" rows="2"></textarea></div>
+          <div class="fg"><label class="fl">Carga Horária (horas)</label><input class="ffi" type="number" id="npt-carga" value="2"></div>
+        </div>
+        <div class="modal-ftr"><button class="btn btn-p" onclick="guardarNovoPlanoTematico()"><i class="ti ti-device-floppy"></i> Guardar</button></div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.style.display = 'flex';
+  }
+}
+
+async function guardarNovoPlanoTematico() {
+  const discId   = document.getElementById('npt-disc')?.value;
+  const turmaId  = document.getElementById('npt-turma')?.value;
+  const unidade  = document.getElementById('npt-unidade')?.value.trim();
+  const tema     = document.getElementById('npt-tema')?.value.trim();
+  const semana   = parseInt(document.getElementById('npt-semana')?.value) || null;
+  const obj      = document.getElementById('npt-obj')?.value.trim();
+  const cont     = document.getElementById('npt-cont')?.value.trim();
+  const carga    = parseInt(document.getElementById('npt-carga')?.value) || 2;
+
+  if (!discId || !turmaId || !unidade || !tema) { toast('Preencha os campos obrigatórios'); return; }
+
+  if (!window._supabase || window._escolaId === 'escola_demo') {
+    toast('Sem ligação à base de dados'); return;
+  }
+
+  const { error } = await window._supabase.from('planos_tematicos').insert({
+    escola_id:      window._escolaId,
+    disciplina_id:  discId,
+    turma_id:       turmaId,
+    ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
+    unidade, tema, semana,
+    carga_horaria:  carga,
+    objectivos:     obj,
+    conteudos:      cont,
+    executado:      false,
+  });
+
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast('✅ Plano guardado!');
+  closeM('m-novo-plano-tematico');
+  const modal = document.getElementById('m-novo-plano-tematico');
+  if (modal) modal.remove();
+  rCurrPlanos(null, null);
 }
 
 function renderTrimPlano(disc,t){
@@ -4907,13 +5026,146 @@ function _entrarNaApp(userData) {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   setupRole();
-  loadEscolaConfig();
-  const startView = {
-    aluno:'portal', professor:'portal-prof',
-    encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao'
-  }[curRole] || 'dash';
-  go(startView);
-  toast('<i class="ti ti-circle-check" style="color:#22c55e"></i> Bem-vindo, ' + curUser.nome + '!');
+  // Carregar dados da escola do Supabase
+  loadDadosEscola().then(() => {
+    const startView = {
+      aluno:'portal', professor:'portal-prof',
+      encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao'
+    }[curRole] || 'dash';
+    go(startView);
+    toast('<i class="ti ti-circle-check" style="color:#22c55e"></i> Bem-vindo, ' + curUser.nome + '!');
+  });
+}
+
+async function loadDadosEscola() {
+  if (!window._supabase || !window._escolaId || window._escolaId === 'escola_demo') return;
+  try {
+    const eid = window._escolaId;
+
+    // 1. Carregar settings da escola
+    const { data: escola } = await window._supabase
+      .from('escolas').select('*').eq('id', eid).single();
+    if (escola) {
+      ESCOLA_SETTINGS.nome      = escola.nome      || ESCOLA_SETTINGS.nome;
+      ESCOLA_SETTINGS.morada    = escola.endereco  || ESCOLA_SETTINGS.morada;
+      ESCOLA_SETTINGS.telefone  = escola.telefone  || ESCOLA_SETTINGS.telefone;
+      ESCOLA_SETTINGS.email     = escola.email     || ESCOLA_SETTINGS.email;
+      // Actualizar topbar
+      const tb = document.querySelector('.logo-name');
+      if (tb) tb.textContent = escola.nome || 'Scholaris';
+      const sb = document.getElementById('sb-school');
+      if (sb) sb.textContent = escola.nome || 'Scholaris';
+    }
+
+    // 2. Carregar turmas
+    const { data: turmasDB } = await window._supabase
+      .from('turmas').select('*').eq('escola_id', eid);
+    if (turmasDB?.length) {
+      TURMAS.length = 0;
+      turmasDB.forEach(t => {
+        TURMAS.push({
+          id: t.nome || String(t.classe) + (t.letra||''),
+          classe: String(t.classe),
+          letra: t.letra || '',
+          regime: t.turno || 'Manhã',
+          max: t.capacidade || 35,
+          propina: CONFIG.valorPropina || 4500,
+          _dbId: t.id,
+        });
+        if (typeof fixTurmaCompat === 'function') fixTurmaCompat(TURMAS[TURMAS.length-1]);
+      });
+      console.log('[Scholaris] Turmas carregadas:', TURMAS.length);
+    }
+
+    // 3. Carregar professores (perfis com perfil=professor)
+    const { data: profsDB } = await window._supabase
+      .from('perfis').select('*')
+      .eq('escola_id', eid)
+      .in('perfil', ['professor', 'director', 'subdirector', 'secretaria']);
+    if (profsDB?.length) {
+      PROFS.length = 0;
+      profsDB.forEach((p, i) => {
+        PROFS.push({
+          id: i + 1,
+          num: 'PRF' + String(i+1).padStart(6,'0'),
+          nome: p.nome_completo || 'Professor',
+          perfil: p.perfil,
+          email: '',
+          ativo: p.ativo !== false,
+          _dbId: p.id,
+        });
+      });
+      console.log('[Scholaris] Professores carregados:', PROFS.length);
+    }
+
+    // 4. Carregar disciplinas
+    const { data: discDB } = await window._supabase
+      .from('disciplinas').select('*').eq('escola_id', eid);
+    if (discDB?.length) {
+      window._DISCIPLINAS_DB = discDB;
+      console.log('[Scholaris] Disciplinas carregadas:', discDB.length);
+    }
+
+    // 5. Carregar alunos com matrículas
+    const { data: alunosDB } = await window._supabase
+      .from('alunos')
+      .select('*, matriculas(turma_id, ano_lectivo_id)')
+      .eq('escola_id', eid)
+      .eq('ativo', true);
+    if (alunosDB?.length) {
+      ALUNOS.length = 0;
+      alunosDB.forEach((a, i) => {
+        const matricula = a.matriculas?.[0];
+        const turmaDB = matricula ? (turmasDB||[]).find(t=>t.id===matricula.turma_id) : null;
+        ALUNOS.push({
+          id: i + 1,
+          num: a.numero_aluno || 'ALU' + String(i+1).padStart(6,'0'),
+          nome: a.nome_completo || 'Aluno',
+          turma: turmaDB?.nome || '',
+          genero: a.genero || 'M',
+          nasc: a.data_nascimento || '',
+          bi: a.bi_numero || '',
+          enc: a.encarregado_nome || '',
+          encTel: a.encarregado_tel || '',
+          encEmail: a.encarregado_email || '',
+          _dbId: a.id,
+          _turmaDbId: matricula?.turma_id || null,
+        });
+      });
+      console.log('[Scholaris] Alunos carregados:', ALUNOS.length);
+    }
+
+    // 6. Carregar atribuições (professor → turma → disciplina)
+    const { data: atribDB } = await window._supabase
+      .from('atribuicoes').select('*').eq('escola_id', eid);
+    if (atribDB?.length) {
+      window._ATRIBUICOES_DB = atribDB;
+      // Mapear para o formato ALOCACOES da app
+      ALOCACOES.length = 0;
+      atribDB.forEach(at => {
+        const prof = PROFS.find(p=>p._dbId===at.professor_id);
+        const turma = TURMAS.find(t=>t._dbId===at.turma_id);
+        const disc = (window._DISCIPLINAS_DB||[]).find(d=>d.id===at.disciplina_id);
+        if (prof && turma && disc) {
+          ALOCACOES.push({
+            prof: prof.num,
+            turma: turma.id,
+            disc: disc.nome,
+            _dbId: at.id,
+          });
+        }
+      });
+      console.log('[Scholaris] Alocações carregadas:', ALOCACOES.length);
+    }
+
+    // 7. Actualizar dashboard
+    if (typeof rDash === 'function') {
+      try { rDash(); } catch(e) {}
+    }
+
+  } catch(e) {
+    console.warn('[Scholaris] Erro ao carregar dados:', e.message);
+  }
 }
 
 function _checkLocalCredentials(email, pass) {
@@ -27144,6 +27396,158 @@ const WIZARD_STEPS = [
 let _wizStep = 0;
 let _wizData = {};
 let _wizTurmas = [];
+
+
+
+// ════ IMPORTAÇÃO DE PLANOS COM IA ════════════════════════════
+
+function abrirUploadPlano(tipo) {
+  var existente = document.getElementById('m-upload-plano');
+  if (existente) existente.remove();
+  var discs = window._DISCIPLINAS_DB || [];
+  var discOpts = discs.map(function(d) {
+    return '<option value="' + d.id + '">' + d.nome + ' — ' + d.classe + 'ª Classe</option>';
+  }).join('');
+  var turmaOpts = TURMAS.map(function(t) {
+    return '<option value="' + (t._dbId || t.id) + '">' + t.id + '</option>';
+  }).join('');
+  var tipoLabel = tipo === 'tematico' ? 'Temático' : 'Analítico';
+  var modal = document.createElement('div');
+  modal.id = 'm-upload-plano';
+  modal.className = 'modal';
+  modal.style.display = 'flex';
+  modal.innerHTML =
+    '<div class="modal-box" style="max-width:520px">' +
+    '<div class="modal-hdr"><span><i class="ti ti-robot"></i> Importar Plano ' + tipoLabel + ' com IA</span>' +
+    '<button class="cls-btn" onclick="document.getElementById(\'m-upload-plano\').remove()">×</button></div>' +
+    '<div class="modal-body">' +
+    '<div style="background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--t2)">' +
+    '<i class="ti ti-sparkles" style="color:#4f8ef7"></i> A IA vai ler o seu documento e extrair automaticamente os planos.' +
+    '</div>' +
+    '<div class="fg"><label class="fl">Disciplina *</label>' +
+    '<select class="ffi" id="upl-disc"><option value="">— Seleccionar —</option>' + discOpts + '</select></div>' +
+    '<div class="fg"><label class="fl">Turma *</label>' +
+    '<select class="ffi" id="upl-turma">' + turmaOpts + '</select></div>' +
+    '<div class="fg"><label class="fl">Ficheiro (PDF ou TXT) *</label>' +
+    '<input type="file" class="ffi" id="upl-ficheiro" accept=".pdf,.txt" style="padding:8px"></div>' +
+    '<div id="upl-progress" style="display:none;margin-top:12px;font-size:13px;color:var(--t2)">' +
+    '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> ' +
+    '<span id="upl-msg">A analisar...</span></div>' +
+    '<div id="upl-preview" style="display:none;margin-top:10px;background:var(--bg3);border-radius:8px;padding:10px;font-size:12px;max-height:160px;overflow-y:auto"></div>' +
+    '</div>' +
+    '<div class="modal-ftr">' +
+    '<button class="btn btn-p" id="upl-btn" onclick="processarUploadPlano(\'' + tipo + '\')">' +
+    '<i class="ti ti-sparkles"></i> Analisar e Importar</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+}
+
+async function processarUploadPlano(tipo) {
+  var discId  = document.getElementById('upl-disc') ? document.getElementById('upl-disc').value : '';
+  var turmaId = document.getElementById('upl-turma') ? document.getElementById('upl-turma').value : '';
+  var fileEl  = document.getElementById('upl-ficheiro');
+  var file    = fileEl && fileEl.files[0];
+
+  if (!discId)  { toast('Seleccione a disciplina'); return; }
+  if (!turmaId) { toast('Seleccione a turma'); return; }
+  if (!file)    { toast('Seleccione um ficheiro'); return; }
+
+  var btn        = document.getElementById('upl-btn');
+  var progressEl = document.getElementById('upl-progress');
+  var msgEl      = document.getElementById('upl-msg');
+  var previewEl  = document.getElementById('upl-preview');
+
+  if (btn) btn.disabled = true;
+  if (progressEl) progressEl.style.display = 'block';
+  if (msgEl) msgEl.textContent = 'A ler o documento...';
+
+  var disc = (window._DISCIPLINAS_DB || []).find(function(d) { return d.id === discId; });
+
+  try {
+    var ext = file.name.split('.').pop().toLowerCase();
+    var messages;
+    var instrucao = 'Analisa este plano da disciplina "' + (disc ? disc.nome : '') + '" e extrai todos os planos. Retorna APENAS JSON sem markdown: {"planos":[{"unidade":"","tema":"","semana":1,"carga_horaria":2,"objectivos":"","conteudos":"","metodologia":"","recursos":""}]}';
+
+    if (ext === 'txt') {
+      var texto = await file.text();
+      messages = [{ role: 'user', content: instrucao + '\n\nDOCUMENTO:\n' + texto.substring(0, 8000) }];
+    } else if (ext === 'pdf') {
+      var base64 = await new Promise(function(res, rej) {
+        var r = new FileReader();
+        r.onload = function() { res(r.result.split(',')[1]); };
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      messages = [{ role: 'user', content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+        { type: 'text', text: instrucao }
+      ]}];
+    } else {
+      toast('Use PDF ou TXT'); if (btn) btn.disabled = false; return;
+    }
+
+    if (msgEl) msgEl.textContent = 'A analisar com IA...';
+
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: messages })
+    });
+
+    var apiData = await resp.json();
+    var text = (apiData.content || []).map(function(c) { return c.text || ''; }).join('');
+
+    var planos = [];
+    try {
+      var clean = text.replace(/```json|```/g, '').trim();
+      planos = JSON.parse(clean).planos || [];
+    } catch(e) {
+      toast('Erro ao interpretar IA. Tente com ficheiro .txt');
+      if (btn) btn.disabled = false; return;
+    }
+
+    if (!planos.length) { toast('Nenhum plano encontrado'); if (btn) btn.disabled = false; return; }
+
+    if (msgEl) msgEl.textContent = planos.length + ' planos encontrados. A guardar...';
+    if (previewEl) {
+      previewEl.style.display = 'block';
+      previewEl.innerHTML = '<strong>' + planos.length + ' planos detectados:</strong><br>' +
+        planos.slice(0, 3).map(function(p) { return '• ' + (p.unidade || '—') + ' — ' + (p.tema || '—'); }).join('<br>') +
+        (planos.length > 3 ? '<br><em>...e mais ' + (planos.length - 3) + '</em>' : '');
+    }
+
+    var rows = planos.map(function(p) {
+      return {
+        escola_id: window._escolaId,
+        disciplina_id: discId,
+        turma_id: turmaId,
+        ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
+        unidade: p.unidade || '',
+        tema: p.tema || '',
+        semana: parseInt(p.semana) || null,
+        carga_horaria: parseInt(p.carga_horaria) || 2,
+        objectivos: p.objectivos || '',
+        conteudos: p.conteudos || '',
+        metodologia: p.metodologia || '',
+        recursos: p.recursos || '',
+        executado: false
+      };
+    });
+
+    var result = await window._supabase.from('planos_tematicos').insert(rows);
+    if (result.error) { toast('Erro: ' + result.error.message); if (btn) btn.disabled = false; return; }
+
+    toast('✅ ' + planos.length + ' planos importados!');
+    document.getElementById('m-upload-plano').remove();
+    rCurrPlanos(disc, null);
+
+  } catch(e) {
+    console.error('[Upload]', e);
+    toast('Erro: ' + e.message);
+    if (btn) btn.disabled = false;
+  }
+}
+
 
 function initWizard() {
   if (ESCOLA_SETTINGS.setupDone) return;
