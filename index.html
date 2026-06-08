@@ -4903,10 +4903,55 @@ async function fbLogin() {
   }
   if (window._fbAuth) {
     window._fbAuth.signInWithEmailAndPassword(null, email, pass)
-      .then((result) => {
-        // onAuthStateChange vai tratar do login — não fazer nada aqui
-        // resetBtn será chamado quando o dashboard abrir
-        console.log('[Login] Supabase OK:', result?.user?.email);
+      .then(async (result) => {
+        const user = result?.user;
+        if (!user) { showLoginError('Erro ao autenticar.'); resetBtn(); return; }
+
+        // Carregar perfil directamente
+        try {
+          const { data: perfil } = await window._supabase
+            .from('perfis')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          const perfilMap = {
+            'admin_sistema':'gestor','director':'director',
+            'subdirector':'secretario','professor':'professor',
+            'secretaria':'secretario','encarregado':'encarregado',
+          };
+
+          const savedEscolaId = localStorage.getItem('scholaris-escola-id');
+          const userData = perfil
+            ? { uid: user.id, email: user.email,
+                nome: perfil.nome_completo || user.email.split('@')[0],
+                role: perfilMap[perfil.perfil] || 'gestor',
+                escolaId: perfil.escola_id || savedEscolaId || 'escola_demo' }
+            : { uid: user.id, email: user.email,
+                nome: user.email.split('@')[0],
+                role: 'gestor',
+                escolaId: savedEscolaId || 'escola_demo' };
+
+          window._currentUser = userData;
+          window._escolaId = userData.escolaId;
+          resetBtn();
+          if (typeof window.onFirebaseLogin === 'function') {
+            window.onFirebaseLogin(userData);
+          }
+        } catch(e) {
+          console.error('[Login] Erro perfil:', e);
+          // Entrar mesmo sem perfil
+          const savedEscolaId = localStorage.getItem('scholaris-escola-id');
+          const userData = { uid: user.id, email: user.email,
+            nome: user.email.split('@')[0], role: 'gestor',
+            escolaId: savedEscolaId || 'escola_demo' };
+          window._currentUser = userData;
+          window._escolaId = userData.escolaId;
+          resetBtn();
+          if (typeof window.onFirebaseLogin === 'function') {
+            window.onFirebaseLogin(userData);
+          }
+        }
       })
       .catch(e => {
         console.error('[Login error]', e.code, e.message);
@@ -9706,9 +9751,12 @@ function renderDashCartao() {
   const corP    = ESCOLA_SETTINGS?.corPrimaria || '#0D1526';
 
   if (curRole === 'aluno') {
-    const a    = ALUNOS[0]; // demo
-    const foto = FOTOS_ALUNOS[a.id] || null;
-    cardHTML = gerarCartaoHTML(a, foto, escola, logoB64, corP, false);
+    const a = ALUNOS[0];
+    if (!a) { cardHTML = '<div style="padding:20px;color:var(--t3)">Nenhum aluno registado</div>'; }
+    else {
+      const foto = FOTOS_ALUNOS[a.id] || null;
+      cardHTML = gerarCartaoHTML(a, foto, escola, logoB64, corP, false);
+    }
   } else {
     // Find staff member matching current user
     const p = PROFS.find(x =>
