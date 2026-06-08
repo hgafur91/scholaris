@@ -526,7 +526,6 @@ const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 window._supabase    = _supa;
 window._db          = _supa;   // alias para não partir os guards existentes
 window._firebaseReady = true;
-window._wizardActive = false;  // flag para bloquear login automático durante wizard
 
 // ─── Auth helpers (compatíveis com _fbAuth anterior) ─────────
 window._fbAuth = {
@@ -567,61 +566,6 @@ function _mapAuthError(msg) {
 window._fs = {
   // Mantido vazio — as funções que usavam _fs foram reescritas
 };
-
-// ─── Auth state listener ─────────────────────────────────────
-_supa.auth.onAuthStateChange(async (event, session) => {
-  // Não processar login automático enquanto o wizard estiver activo
-  if (window._wizardActive) return;
-  if (session?.user) {
-    const user = session.user;
-    try {
-      // Carregar perfil da tabela perfis
-      const { data: perfil } = await _supa
-        .from('perfis')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      // Mapear perfil do Supabase para o formato esperado pelo app
-      const perfilMap = {
-        'admin_sistema': 'gestor',
-        'director': 'director',
-        'subdirector': 'secretario',
-        'professor': 'professor',
-        'secretaria': 'secretario',
-        'encarregado': 'encarregado',
-      };
-      const userData = perfil
-        ? { uid: user.id, email: user.email,
-            nome: perfil.nome_completo || user.email.split('@')[0],
-            role: perfilMap[perfil.perfil] || 'gestor',
-            escolaId: perfil.escola_id }
-        : { uid: user.id, email: user.email,
-            nome: user.email.split('@')[0], role: 'gestor',
-            escolaId: 'escola_demo' };
-
-      window._currentUser = userData;
-      // Tentar carregar escolaId do localStorage se não veio do perfil
-      const savedEscolaId = localStorage.getItem('scholaris-escola-id');
-      window._escolaId = userData.escolaId || savedEscolaId || 'escola_demo';
-      window._currentUser.escolaId = window._escolaId;
-
-      if (typeof window.onFirebaseLogin === 'function') {
-        window.onFirebaseLogin(window._currentUser);
-      }
-    } catch(e) {
-      console.warn('[Supabase] Erro a carregar perfil:', e.message);
-      window._currentUser = { uid: user.id, email: user.email,
-        nome: user.email.split('@')[0], role: 'gestor', escolaId: 'escola_demo' };
-      window._escolaId = 'escola_demo';
-      if (typeof window.onFirebaseLogin === 'function') {
-        window.onFirebaseLogin(window._currentUser);
-      }
-    }
-  } else {
-    window._currentUser = null;
-  }
-});
 
 console.log('[Scholaris] Supabase v2 inicializado');
 </script>
@@ -4872,89 +4816,104 @@ function calcValorComMulta(base, aid) {
 
 // Firebase Login
 async function fbLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  if (!email || !pass) { showLoginError('Preencha email e palavra-passe.'); return; }
-  hideLoginError();
-  document.getElementById('login-btn-text').style.display = 'none';
-  document.getElementById('login-btn-spin').style.display = '';
-  document.getElementById('login-btn-submit').disabled = true;
+  const email = document.getElementById('login-email')?.value.trim();
+  const pass  = document.getElementById('login-pass')?.value;
+
+  if (!email || !pass) {
+    showLoginError('Preencha email e palavra-passe.');
+    return;
+  }
+
+  // Mostrar spinner
+  const btnText = document.getElementById('login-btn-text');
+  const btnSpin = document.getElementById('login-btn-spin');
+  const btnSubmit = document.getElementById('login-btn-submit');
+  if (btnText) btnText.style.display = 'none';
+  if (btnSpin) btnSpin.style.display = '';
+  if (btnSubmit) btnSubmit.disabled = true;
+
   const resetBtn = () => {
-    document.getElementById('login-btn-text').style.display = '';
-    document.getElementById('login-btn-spin').style.display = 'none';
-    document.getElementById('login-btn-submit').disabled = false;
+    if (btnText) btnText.style.display = '';
+    if (btnSpin) btnSpin.style.display = 'none';
+    if (btnSubmit) btnSubmit.disabled = false;
   };
-  // Credenciais locais desactivadas — usar sempre Supabase Auth
-  if (window._fbAuth) {
-    window._fbAuth.signInWithEmailAndPassword(null, email, pass)
-      .then(async (result) => {
-        const user = result?.user;
-        if (!user) { showLoginError('Erro ao autenticar.'); resetBtn(); return; }
 
-        // Carregar perfil directamente
-        try {
-          const { data: perfil } = await window._supabase
-            .from('perfis')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+  try {
+    // 1. Autenticar no Supabase
+    const { data, error } = await window._supabase.auth.signInWithPassword({
+      email, password: pass
+    });
 
-          const perfilMap = {
-            'admin_sistema':'gestor','director':'director',
-            'subdirector':'secretario','professor':'professor',
-            'secretaria':'secretario','encarregado':'encarregado',
-          };
+    if (error) {
+      const msgs = {
+        'Invalid login credentials': 'Email ou palavra-passe incorrectos.',
+        'Email not confirmed': 'Confirme o email antes de entrar.',
+        'Too many requests': 'Demasiadas tentativas. Aguarde.',
+      };
+      const msg = Object.entries(msgs).find(([k]) => error.message.includes(k));
+      showLoginError(msg ? msg[1] : error.message);
+      resetBtn();
+      return;
+    }
 
-          const savedEscolaId = localStorage.getItem('scholaris-escola-id');
-          const userData = perfil
-            ? { uid: user.id, email: user.email,
-                nome: perfil.nome_completo || user.email.split('@')[0],
-                role: perfilMap[perfil.perfil] || 'gestor',
-                escolaId: perfil.escola_id || savedEscolaId || 'escola_demo' }
-            : { uid: user.id, email: user.email,
-                nome: user.email.split('@')[0],
-                role: 'gestor',
-                escolaId: savedEscolaId || 'escola_demo' };
+    const user = data.user;
+    if (!user) { showLoginError('Erro ao autenticar.'); resetBtn(); return; }
 
-          window._currentUser = userData;
-          window._escolaId = userData.escolaId;
-          resetBtn();
-          if (typeof window.onFirebaseLogin === 'function') {
-            window.onFirebaseLogin(userData);
-          }
-        } catch(e) {
-          console.error('[Login] Erro perfil:', e);
-          // Entrar mesmo sem perfil
-          const savedEscolaId = localStorage.getItem('scholaris-escola-id');
-          const userData = { uid: user.id, email: user.email,
-            nome: user.email.split('@')[0], role: 'gestor',
-            escolaId: savedEscolaId || 'escola_demo' };
-          window._currentUser = userData;
-          window._escolaId = userData.escolaId;
-          resetBtn();
-          if (typeof window.onFirebaseLogin === 'function') {
-            window.onFirebaseLogin(userData);
-          }
-        }
-      })
-      .catch(e => {
-        console.error('[Login error]', e.code, e.message);
-        const msgs = {
-          'auth/user-not-found':'Utilizador não encontrado.',
-          'auth/wrong-password':'Palavra-passe incorrecta.',
-          'auth/invalid-email':'Email inválido.',
-          'auth/too-many-requests':'Demasiadas tentativas. Aguarde.',
-          'auth/invalid-credential':'Email ou palavra-passe incorrectos.',
-          'auth/network-request-failed':'Sem ligação à internet.',
-          'auth/email-not-confirmed':'Confirme o email antes de entrar.',
-        };
-        showLoginError(msgs[e.code] || e.message || 'Erro ao fazer login.');
-        resetBtn();
-      });
-  } else {
-    showLoginError('Sem ligação ao servidor.');
+    // 2. Carregar perfil
+    const perfilMap = {
+      'admin_sistema':'gestor', 'director':'director',
+      'subdirector':'secretario', 'professor':'professor',
+      'secretaria':'secretario', 'encarregado':'encarregado',
+    };
+
+    let userData = {
+      uid: user.id, email: user.email,
+      nome: user.email.split('@')[0],
+      role: 'gestor',
+      escolaId: localStorage.getItem('scholaris-escola-id') || 'escola_demo'
+    };
+
+    try {
+      const { data: perfil } = await window._supabase
+        .from('perfis').select('*').eq('id', user.id).single();
+      if (perfil) {
+        userData.nome = perfil.nome_completo || userData.nome;
+        userData.role = perfilMap[perfil.perfil] || 'gestor';
+        userData.escolaId = perfil.escola_id || userData.escolaId;
+      }
+    } catch(pe) {
+      console.warn('[Login] Sem perfil na BD — a usar defaults');
+    }
+
+    // 3. Entrar na app
+    window._currentUser = userData;
+    window._escolaId = userData.escolaId;
+    resetBtn();
+    _entrarNaApp(userData);
+
+  } catch(e) {
+    console.error('[Login] Erro inesperado:', e);
+    showLoginError('Erro de ligação. Tente novamente.');
     resetBtn();
   }
+}
+
+function _entrarNaApp(userData) {
+  curRole = userData.role || 'gestor';
+  curUser = Object.assign({}, ROLES[curRole] || ROLES.gestor || {});
+  curUser.nome  = userData.nome  || curUser.nome  || 'Utilizador';
+  curUser.email = userData.email || '';
+  hideLoginError();
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  setupRole();
+  loadEscolaConfig();
+  const startView = {
+    aluno:'portal', professor:'portal-prof',
+    encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao'
+  }[curRole] || 'dash';
+  go(startView);
+  toast('<i class="ti ti-circle-check" style="color:#22c55e"></i> Bem-vindo, ' + curUser.nome + '!');
 }
 
 function _checkLocalCredentials(email, pass) {
@@ -5030,18 +4989,9 @@ function doLoginDemo() {
 }
 
 // Called when Firebase Auth confirms login
+// onFirebaseLogin mantido para compatibilidade — delega para _entrarNaApp
 window.onFirebaseLogin = function(userData) {
-  curRole = userData.role || 'gestor';
-  curUser = ROLES[curRole] || ROLES.gestor;
-  curUser.nome = userData.nome || curUser.nome;
-  curUser.email = userData.email;
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').classList.add('visible');
-  setupRole();
-  // Load escola data from Firestore
-  loadEscolaConfig();
-  go('dash');
-  toast(`<i class="ti ti-circle-check" style="color:#22c55e"></i> Bem-vindo, ${curUser.nome}!`);
+  if (typeof _entrarNaApp === 'function') _entrarNaApp(userData);
 };
 
 // Load escola config from Supabase
@@ -19422,7 +19372,6 @@ fbLogin = async function() {
       // Username login — try multiple email patterns
       await tryLoginCandidates(rawInput, pass);
     }
-    // onAuthStateChanged handles the rest
 
   } catch(e) {
     const msgs = {
@@ -27249,7 +27198,6 @@ let _wizTurmas = [];
 
 function initWizard() {
   if (ESCOLA_SETTINGS.setupDone) return;
-  window._wizardActive = true;  // bloquear login automático
   // Limpar qualquer dado anterior no localStorage
   localStorage.removeItem('educare-escola-settings');
   localStorage.removeItem('educare-calendario-escolar-2026');
@@ -27871,12 +27819,11 @@ async function finishWizard() {
     }
   }
 
-  // Mostrar login
-  window._wizardActive = false;  // permitir login a partir de agora
-  // Fazer signOut para garantir sessão limpa
-  await _supa.auth.signOut();
+  // Guardar setupDone PRIMEIRO
   ESCOLA_SETTINGS.setupDone = true;
   localStorage.setItem('educare-escola-settings', JSON.stringify(ESCOLA_SETTINGS));
+  // Desactivar wizard e mostrar login
+  await _supa.auth.signOut();
   document.getElementById('setup-wizard').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   toast('✅ Escola configurada! Faça login para continuar.');
