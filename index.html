@@ -4884,23 +4884,7 @@ async function fbLogin() {
     document.getElementById('login-btn-spin').style.display = 'none';
     document.getElementById('login-btn-submit').disabled = false;
   };
-  const localMatch = _checkLocalCredentials(email, pass);
-  if (localMatch) {
-    curRole = localMatch.role;
-    curUser = Object.assign({}, ROLES[localMatch.role] || {});
-    curUser.nome  = localMatch.nome || curUser.nome;
-    curUser.email = email;
-    window._currentUser = { nome: curUser.nome, role: curRole, email, escolaId: 'local' };
-    window._escolaId = 'local';
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').classList.add('visible');
-    setupRole();
-    const start = { aluno:'portal', professor:'portal-prof',
-      encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao' }[curRole] || 'dash';
-    go(start);
-    toast('Bem-vindo, ' + curUser.nome + '!');
-    return;
-  }
+  // Credenciais locais desactivadas — usar sempre Supabase Auth
   if (window._fbAuth) {
     window._fbAuth.signInWithEmailAndPassword(null, email, pass)
       .then(async (result) => {
