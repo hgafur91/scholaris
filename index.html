@@ -3700,13 +3700,13 @@ function rDash(){
   const cfgs={
     gestor:{lbl:'Painel Administrativo',title:'Visão geral da operação',desc:'Controlo total — académico, financeiro e RH em tempo real.',
       chips:[{l:'Alunos',ic:'ti-users',fn:"go('alunos')"},{l:'Propinas',ic:'ti-credit-card',fn:"go('propinas')"},{l:'Despesas',ic:'ti-receipt',fn:"go('despesas')"},{l:'Faltas',ic:'ti-alert-circle',fn:"go('faltas')"}],
-      stats:[{v:'251',l:'Alunos matriculados',s:'3 aguardam verificação',cl:'bl',ic:'ti-users',fn:"go('alunos')",dt:'+12%',up:true},{v:'48',l:'Professores activos',s:'Tempo inteiro + parcial',cl:'pu',ic:'ti-chalkboard',fn:"go('professores')"},
-        {v:'367K',l:'Receita MZM (mês)',s:'367,430 MZM cobrados',cl:'gr',ic:'ti-coin',fn:"go('propinas')",dt:'+8%',up:true},{v:'218K',l:'Despesas MZM',s:'Salários e operacionais',cl:'am',ic:'ti-receipt',fn:"go('despesas')"},
+      stats:[{v:String(ALUNOS.length),l:'Alunos matriculados',s:'Total matriculados',cl:'bl',ic:'ti-users',fn:"go('alunos')"},{v:String(PROFS.length),l:'Professores activos',s:'Tempo inteiro + parcial',cl:'pu',ic:'ti-chalkboard',fn:"go('professores')"},
+        {v:'0',l:'Receita MZM (mês)',s:'Sem dados ainda',cl:'gr',ic:'ti-coin',fn:"go('propinas')"},{v:'0',l:'Despesas MZM',s:'Sem dados ainda',cl:'am',ic:'ti-receipt',fn:"go('despesas')"},
         {v:'23',l:'Propinas em atraso',s:'Requer atenção urgente',cl:'re',ic:'ti-alert-circle',fn:"go('propinas')",dt:'!',up:false},{v:'3',l:'Alunos em risco faltas',s:'Acima de 75% do limite',cl:'tl',ic:'ti-alert-triangle',fn:"go('faltas')",dt:'!',up:false}],
       qa:[{ic:'ti-user-plus',l:'Novo Aluno',bg:'rgba(79,142,247,.12)',c:'var(--a)',fn:'openM("m-naluno")'},{ic:'ti-chalkboard',l:'Novo Professor',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:'openM("m-nprof")'},{ic:'ti-credit-card',l:'Propinas',bg:'rgba(34,197,94,.12)',c:'var(--g)',fn:"go('propinas')"},{ic:'ti-receipt',l:'Despesas',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:"go('despesas')"},{ic:'ti-alert-circle',l:'Faltas',bg:'rgba(239,68,68,.12)',c:'var(--r)',fn:"go('faltas')"},{ic:'ti-chart-pie',l:'Executivo',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:"go('exec')"}]},
     secretario:{lbl:'Painel do Secretário',title:'Gestão académica e financeira',desc:'Registo de alunos, professores, horários, pagamentos e recibos.',
       chips:[{l:'Novo Aluno',ic:'ti-user-plus',fn:'openM("m-naluno")'},{l:'Novo Professor',ic:'ti-chalkboard',fn:'openM("m-nprof")'},{l:'Registar Pagamento',ic:'ti-credit-card',fn:'openM("m-pag")'},{l:'Alocação',ic:'ti-calendar-event',fn:"go('alocacao')"}],
-      stats:[{v:'251',l:'Total Alunos',s:'3 aguardam verificação',cl:'bl',ic:'ti-users',fn:"go('alunos')"},{v:'48',l:'Professores',s:'Inteiro + Parcial',cl:'pu',ic:'ti-chalkboard',fn:"go('professores')"},{v:'23',l:'Propinas em atraso',s:'Requer contacto',cl:'re',ic:'ti-alert-circle',fn:"go('propinas')",dt:'!',up:false},{v:'3',l:'Recibos emitidos hoje',s:'Esta sessão',cl:'gr',ic:'ti-file-text',fn:"go('propinas')"}],
+      stats:[{v:String(ALUNOS.length),l:'Total Alunos',s:'Matriculados',cl:'bl',ic:'ti-users',fn:"go('alunos')"},{v:String(PROFS.length),l:'Professores',s:'Inteiro + Parcial',cl:'pu',ic:'ti-chalkboard',fn:"go('professores')"},{v:'0',l:'Propinas em atraso',s:'Sem dados ainda',cl:'re',ic:'ti-alert-circle',fn:"go('propinas')",dt:'!',up:false},{v:'0',l:'Recibos emitidos hoje',s:'Esta sessão',cl:'gr',ic:'ti-file-text',fn:"go('propinas')"}],
       qa:[{ic:'ti-user-plus',l:'Novo Aluno',bg:'rgba(79,142,247,.12)',c:'var(--a)',fn:'openM("m-naluno")'},{ic:'ti-chalkboard',l:'Novo Professor',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:'openM("m-nprof")'},{ic:'ti-credit-card',l:'Registar Pag.',bg:'rgba(34,197,94,.12)',c:'var(--g)',fn:'openM("m-pag")'},{ic:'ti-calendar-event',l:'Alocação',bg:'rgba(6,182,212,.12)',c:'var(--tl)',fn:"go('alocacao')"},{ic:'ti-calendar',l:'Horário',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:"go('horario')"},{ic:'ti-alert-circle',l:'Faltas',bg:'rgba(239,68,68,.12)',c:'var(--r)',fn:"go('faltas')"}]},
   };
   // dir-pedagogico: academic only, no financials
@@ -4903,7 +4903,11 @@ async function fbLogin() {
   }
   if (window._fbAuth) {
     window._fbAuth.signInWithEmailAndPassword(null, email, pass)
-      .then(() => toast('Login efectuado!'))
+      .then((result) => {
+        // onAuthStateChange vai tratar do login — não fazer nada aqui
+        // resetBtn será chamado quando o dashboard abrir
+        console.log('[Login] Supabase OK:', result?.user?.email);
+      })
       .catch(e => {
         console.error('[Login error]', e.code, e.message);
         const msgs = {
@@ -4919,7 +4923,7 @@ async function fbLogin() {
         resetBtn();
       });
   } else {
-    showLoginError('Email ou palavra-passe incorrectos.');
+    showLoginError('Sem ligação ao servidor.');
     resetBtn();
   }
 }
