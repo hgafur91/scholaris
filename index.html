@@ -19336,58 +19336,7 @@ async function tryLoginCandidates(username, pass) {
   throw { code: 'auth/user-not-found', message: 'Utilizador não encontrado.' };
 }
 
-// ── Override fbLogin to handle username resolution ─────────────
-const _origFbLogin = fbLogin;
-fbLogin = async function() {
-  const rawInput = document.getElementById('login-email')?.value.trim();
-  const pass     = document.getElementById('login-pass')?.value;
-  if (!rawInput || !pass) {
-    if (typeof showLoginError === 'function') showLoginError('Preencha o utilizador/email e a palavra-passe.');
-    return;
-  }
-
-  const btn     = document.getElementById('login-btn-submit');
-  const btnText = document.getElementById('login-btn-text');
-  const btnSpin = document.getElementById('login-btn-spin');
-  if (btnText) btnText.style.display = 'none';
-  if (btnSpin) btnSpin.style.display = '';
-  if (btn)     btn.disabled = true;
-  if (typeof hideLoginError === 'function') hideLoginError();
-
-  const resetBtn = () => {
-    if (btnText) btnText.style.display = '';
-    if (btnSpin) btnSpin.style.display = 'none';
-    if (btn)     btn.disabled = false;
-  };
-
-  try {
-    if (!window._fbAuth || !window._auth) {
-      setTimeout(fbLogin, 1000); return;
-    }
-
-    if (rawInput.includes('@')) {
-      // Direct email login (gestor, director, dp)
-      await window._fbAuth.signInWithEmailAndPassword(window._auth, rawInput, pass);
-    } else {
-      // Username login — try multiple email patterns
-      await tryLoginCandidates(rawInput, pass);
-    }
-
-  } catch(e) {
-    const msgs = {
-      'auth/user-not-found':     'Utilizador não encontrado. Verifique o nome de utilizador.',
-      'auth/wrong-password':     'Palavra-passe incorrecta. Tente novamente.',
-      'auth/invalid-email':      'Formato de email inválido.',
-      'auth/too-many-requests':  'Demasiadas tentativas. Aguarde alguns minutos.',
-      'auth/invalid-credential': 'Utilizador ou palavra-passe incorrectos.',
-      'auth/network-request-failed': 'Sem ligação à internet.',
-      'auth/user-disabled':      'Esta conta foi desactivada. Contacte o administrador.',
-    };
-    if (typeof showLoginError === 'function')
-      showLoginError(msgs[e.code] || 'Erro: ' + (e.message || e.code));
-    resetBtn();
-  }
-};
+// fbLogin override removido — usar versão principal
 
 // ════════════════════════════════════════════════════════════
 //  GESTÃO DE UTILIZADORES — Regras completas
