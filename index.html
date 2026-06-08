@@ -526,6 +526,7 @@ const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 window._supabase    = _supa;
 window._db          = _supa;   // alias para não partir os guards existentes
 window._firebaseReady = true;
+window._wizardActive = false;  // flag para bloquear login automático durante wizard
 
 // ─── Auth helpers (compatíveis com _fbAuth anterior) ─────────
 window._fbAuth = {
@@ -569,6 +570,8 @@ window._fs = {
 
 // ─── Auth state listener ─────────────────────────────────────
 _supa.auth.onAuthStateChange(async (event, session) => {
+  // Não processar login automático enquanto o wizard estiver activo
+  if (window._wizardActive) return;
   if (session?.user) {
     const user = session.user;
     try {
@@ -27210,6 +27213,7 @@ let _wizTurmas = [];
 
 function initWizard() {
   if (ESCOLA_SETTINGS.setupDone) return;
+  window._wizardActive = true;  // bloquear login automático
   // Limpar qualquer dado anterior no localStorage
   localStorage.removeItem('educare-escola-settings');
   localStorage.removeItem('educare-calendario-escolar-2026');
@@ -27832,9 +27836,14 @@ async function finishWizard() {
   }
 
   // Mostrar login
+  window._wizardActive = false;  // permitir login a partir de agora
+  // Fazer signOut para garantir sessão limpa
+  await _supa.auth.signOut();
+  ESCOLA_SETTINGS.setupDone = true;
+  localStorage.setItem('educare-escola-settings', JSON.stringify(ESCOLA_SETTINGS));
   document.getElementById('setup-wizard').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
-  toast('Bem-vindo à Scholaris, ' + (ESCOLA_SETTINGS.nome||'') + '!');
+  toast('✅ Escola configurada! Faça login para continuar.');
 }
 
 // Wizard trigger tratado em initEduCare()
