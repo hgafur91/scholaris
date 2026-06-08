@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"  content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scholaris v1.2 — Sistema de Gestão Escolar</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -579,15 +579,29 @@ _supa.auth.onAuthStateChange(async (event, session) => {
         .eq('id', user.id)
         .single();
 
+      // Mapear perfil do Supabase para o formato esperado pelo app
+      const perfilMap = {
+        'admin_sistema': 'gestor',
+        'director': 'director',
+        'subdirector': 'secretario',
+        'professor': 'professor',
+        'secretaria': 'secretario',
+        'encarregado': 'encarregado',
+      };
       const userData = perfil
-        ? { uid: user.id, email: user.email, nome: perfil.nome,
-            role: perfil.perfil, escolaId: perfil.escola_id }
+        ? { uid: user.id, email: user.email,
+            nome: perfil.nome_completo || user.email.split('@')[0],
+            role: perfilMap[perfil.perfil] || 'gestor',
+            escolaId: perfil.escola_id }
         : { uid: user.id, email: user.email,
             nome: user.email.split('@')[0], role: 'gestor',
             escolaId: 'escola_demo' };
 
       window._currentUser = userData;
-      window._escolaId    = userData.escolaId || 'escola_demo';
+      // Tentar carregar escolaId do localStorage se não veio do perfil
+      const savedEscolaId = localStorage.getItem('scholaris-escola-id');
+      window._escolaId = userData.escolaId || savedEscolaId || 'escola_demo';
+      window._currentUser.escolaId = window._escolaId;
 
       if (typeof window.onFirebaseLogin === 'function') {
         window.onFirebaseLogin(window._currentUser);
