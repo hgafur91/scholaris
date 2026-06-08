@@ -3784,28 +3784,229 @@ function rConfig(){
 }
 
 // ══ CLASSES / PLANOS TRIMESTRAIS ══
-function rCurrClasses(){
-  const canEdit=['gestor','director','dir-pedagogico'].includes(curRole);
-  document.getElementById('curr-classes-c').innerHTML=CLASSES.map((cl,ci)=>`
-    <div class="curr-node">
-      <div class="curr-head" onclick="toggleCC('cc-${ci}','ca-${ci}')">
-        <div style="width:40px;height:40px;border-radius:11px;background:${gc(ci)}18;color:${gc(ci)};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">${cl.nome.split(' ')[0]}</div>
-        <div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--t)">${cl.nome}</div><div style="font-size:12px;color:var(--t2)">${cl.ciclo} · ${cl.disc.length} disciplinas · Sistema Trimestral</div></div>
-        <div style="display:flex;gap:8px;align-items:center"><span class="badge bin">Escola</span>${canEdit?`<button class="btn btn-g btn-sm" onclick="event.stopPropagation();toast('Editar ${cl.nome}')"><i class="ti ti-edit"></i></button>`:''}<i class="ti ti-chevron-down" style="color:var(--t3);transition:transform .2s" id="ca-${ci}"></i></div>
-      </div>
-      <div class="curr-body" id="cc-${ci}">
-        <div class="disc-grid">
-          ${cl.disc.map((d,di)=>`<div class="disc-card" onclick="openDiscPlano(${ci},${di})">
-            <div style="display:flex;justify-content:space-between;margin-bottom:5px"><div style="font-size:12px;font-weight:700;color:var(--t)">${d.nome}</div><span class="badge bne" style="font-size:8px">${d.horas}h/sem</span></div>
-            <div style="font-size:11px;color:var(--t3)">${d.prof?(PROFS.find(p=>p.num===d.prof)||{nome:'—'}).nome.split(' ')[0]:'Sem prof.'}</div>
-            <div style="display:flex;gap:4px;margin-top:6px"><span class="badge btl" style="font-size:8px">T1</span><span class="badge bwn" style="font-size:8px">T2</span><span class="badge bok" style="font-size:8px">T3</span></div>
-          </div>`).join('')}
-          ${canEdit?`<div class="disc-card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--t3)" onclick="toast('Adicionar disciplina')"><i class="ti ti-plus"></i> Adicionar</div>`:''}
-        </div>
-      </div>
-    </div>`).join('');
+async function rCurrClasses(){
+  var canEdit = ['gestor','director','dir-pedagogico'].includes(curRole);
+  var el = document.getElementById('curr-classes-c');
+  if (!el) return;
+
+  var discs = window._DISCIPLINAS_DB || [];
+  if (!discs.length && window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+    var res = await window._supabase.from('disciplinas').select('*').eq('escola_id', window._escolaId).order('classe').order('nome');
+    if (res.data) { window._DISCIPLINAS_DB = res.data; discs = res.data; }
+  }
+
+  if (!discs.length) {
+    el.innerHTML = '<div class="card"><div class="cb" style="text-align:center;padding:52px;color:var(--t2)">' +
+      '<i class="ti ti-books" style="font-size:48px;display:block;margin-bottom:14px;color:var(--t3)"></i>' +
+      '<div style="font-size:17px;font-weight:800;color:var(--t);margin-bottom:8px">Sem disciplinas</div>' +
+      (canEdit ? '<button class="btn btn-p" onclick="abrirNovaDisc()"><i class="ti ti-plus"></i> Adicionar Disciplina</button>' : 'Contacte o administrador.') +
+      '</div></div>';
+    return;
+  }
+
+  var porClasse = {};
+  discs.forEach(function(d) {
+    var key = d.classe;
+    if (!porClasse[key]) porClasse[key] = [];
+    porClasse[key].push(d);
+  });
+
+  var colors = ['#4f8ef7','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+  var html = [];
+  var ci = 0;
+  var classes = Object.keys(porClasse).sort(function(a,b){return a-b;});
+
+  classes.forEach(function(classe) {
+    var disciplinas = porClasse[classe];
+    var cor = colors[ci % colors.length];
+    var bid = 'cc-' + ci;
+    var aid = 'ca-' + ci;
+    ci++;
+
+    var discCards = disciplinas.map(function(d) {
+      var prof = PROFS.find(function(p){ return p._dbId === d.professor_id; });
+      var profNome = prof ? prof.nome.split(' ')[0] : 'Sem prof.';
+      return '<div class="disc-card" style="cursor:pointer" data-discid="' + d.id + '" onclick="abrirPlanoDisc(this.dataset.discid)">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:5px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--t)">' + d.nome + '</div>' +
+        '<span class="badge bne" style="font-size:8px">' + (d.carga_semanal||0) + 'h/sem</span></div>' +
+        '<div style="font-size:11px;color:var(--t3)">' + profNome + '</div>' +
+        '<div style="display:flex;gap:4px;margin-top:6px">' +
+        '<span class="badge btl" style="font-size:8px">T1</span>' +
+        '<span class="badge bwn" style="font-size:8px">T2</span>' +
+        '<span class="badge bok" style="font-size:8px">T3</span></div></div>';
+    }).join('');
+
+    var addBtn = canEdit ? '<div class="disc-card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--t3);cursor:pointer" onclick="abrirNovaDisc(' + classe + ')"><i class="ti ti-plus"></i> Adicionar</div>' : '';
+
+    html.push(
+      '<div class="curr-node">' +
+      '<div class="curr-head" onclick="toggleCC(this)" data-bid="' + bid + '" data-aid="' + aid + '">' +
+      '<div style="width:40px;height:40px;border-radius:11px;background:' + cor + '18;color:' + cor + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">' + classe + 'ª</div>' +
+      '<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--t)">' + classe + 'ª Classe</div>' +
+      '<div style="font-size:12px;color:var(--t2)">' + disciplinas.length + ' disciplinas · Sistema Trimestral</div></div>' +
+      '<div style="display:flex;gap:8px;align-items:center">' +
+      (canEdit ? '<button class="btn btn-g btn-sm" onclick="event.stopPropagation();abrirNovaDisc(' + classe + ')"><i class="ti ti-plus"></i></button>' : '') +
+      '<i class="ti ti-chevron-down" style="color:var(--t3);transition:transform .2s" id="' + aid + '"></i></div></div>' +
+      '<div class="curr-body op" id="' + bid + '">' +
+      '<div class="disc-grid">' + discCards + addBtn + '</div></div></div>'
+    );
+  });
+
+  el.innerHTML = html.join('');
 }
-function toggleCC(bid,aid){const b=document.getElementById(bid),a=document.getElementById(aid);const op=b.classList.contains('op');b.classList.toggle('op',!op);if(a)a.style.transform=op?'':'rotate(180deg)'}
+
+function abrirPlanoDisc(discId) {
+  var disc = (window._DISCIPLINAS_DB||[]).find(function(d){ return d.id === discId; });
+  if (disc) { go('curr-planos'); rCurrPlanos(disc, null); }
+}
+
+
+function _fecharModal(id){var m=document.getElementById(id);if(m)m.remove();}
+function abrirNovaDisc(classe) {
+  var profOpts = PROFS.map(function(p) {
+    return '<option value="' + (p._dbId||'') + '">' + p.nome + '</option>';
+  }).join('');
+  var classePre = classe || '';
+
+  var existente = document.getElementById('m-nova-disc');
+  if (existente) existente.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'm-nova-disc';
+  modal.className = 'modal';
+  modal.style.display = 'flex';
+  modal.innerHTML =
+    '<div class="modal-box" style="max-width:480px">' +
+    '<div class="modal-hdr"><span><i class="ti ti-books"></i> Nova Disciplina</span>' +
+    '<button class="cls-btn" onclick="_fecharModal(this.closest(\'.modal\').id)">×</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="fg"><label class="fl">Nome *</label><input class="ffi" id="nd-nome" placeholder="Ex: Matemática"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+    '<div class="fg"><label class="fl">Classe *</label><input class="ffi" type="number" id="nd-classe" value="' + classePre + '" min="7" max="12"></div>' +
+    '<div class="fg"><label class="fl">Carga Semanal (h)</label><input class="ffi" type="number" id="nd-carga" value="3" min="1" max="10"></div>' +
+    '</div>' +
+    '<div class="fg"><label class="fl">Professor</label><select class="ffi" id="nd-prof"><option value="">— Seleccionar —</option>' + profOpts + '</select></div>' +
+    '</div>' +
+    '<div class="modal-ftr"><button class="btn btn-p" onclick="guardarNovaDisc()"><i class="ti ti-device-floppy"></i> Guardar</button></div>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+async function guardarNovaDisc() {
+  var nome   = document.getElementById('nd-nome') ? document.getElementById('nd-nome').value.trim() : '';
+  var classe = parseInt(document.getElementById('nd-classe') ? document.getElementById('nd-classe').value : 0);
+  var carga  = parseInt(document.getElementById('nd-carga') ? document.getElementById('nd-carga').value : 3) || 3;
+  var profId = document.getElementById('nd-prof') ? document.getElementById('nd-prof').value : '';
+
+  if (!nome)   { toast('Introduza o nome da disciplina'); return; }
+  if (!classe) { toast('Introduza a classe'); return; }
+
+  var ins = await window._supabase.from('disciplinas').insert({
+    escola_id: window._escolaId, nome: nome, classe: classe, carga_semanal: carga
+  }).select().single();
+
+  if (ins.error) { toast('Erro: ' + ins.error.message); return; }
+
+  if (profId && ins.data) {
+    await window._supabase.from('atribuicoes').insert({
+      escola_id: window._escolaId,
+      professor_id: profId,
+      disciplina_id: ins.data.id,
+      ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001'
+    });
+  }
+
+  toast('✅ Disciplina criada!');
+  document.getElementById('m-nova-disc').remove();
+  window._DISCIPLINAS_DB = null;
+  rCurrClasses();
+}
+
+
+function abrirPlanoDisc_btn(el) {
+  var id = el.getAttribute('data-id');
+  var nome = el.getAttribute('data-nome');
+  abrirPlanoDisc(id, nome);
+}
+function abrirPlanoDisc(discId, discNome) {
+  go('curr-planos');
+  const disc = (window._DISCIPLINAS_DB||[]).find(d=>d.id===discId);
+  if (disc) rCurrPlanos(disc, null);
+}
+
+
+function _fecharModal(id){var m=document.getElementById(id);if(m)m.remove();}
+function abrirNovaDisc(classe) {
+  const turmaOpts = TURMAS.map(t => '<option value="' + (t._dbId||t.id) + '">' + t.id + '</option>').join('');
+  const profOpts = PROFS.map(p => '<option value="' + p._dbId + '">' + p.nome + '</option>').join('');
+  const classePre = classe || '';
+
+  const existente = document.getElementById('m-nova-disc');
+  if (existente) existente.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'm-nova-disc';
+  modal.className = 'modal';
+  modal.style.display = 'flex';
+  modal.innerHTML =
+    '<div class="modal-box" style="max-width:480px">' +
+    '<div class="modal-hdr"><span><i class="ti ti-books"></i> Nova Disciplina</span>' +
+    '<button class="cls-btn" onclick="_fecharModal(this.closest(\'.modal\').id)">×</button></div>' +
+    '<div class="modal-body">' +
+    '<div class="fg"><label class="fl">Nome da Disciplina *</label><input class="ffi" id="nd-nome" placeholder="Ex: Matemática"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+    '<div class="fg"><label class="fl">Classe *</label><input class="ffi" type="number" id="nd-classe" value="' + classePre + '" min="7" max="12" placeholder="Ex: 8"></div>' +
+    '<div class="fg"><label class="fl">Carga Semanal (h)</label><input class="ffi" type="number" id="nd-carga" value="3" min="1" max="10"></div>' +
+    '</div>' +
+    '<div class="fg"><label class="fl">Professor</label><select class="ffi" id="nd-prof"><option value="">— Seleccionar —</option>' + profOpts + '</select></div>' +
+    '</div>' +
+    '<div class="modal-ftr"><button class="btn btn-p" onclick="guardarNovaDisc()"><i class="ti ti-device-floppy"></i> Guardar</button></div>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+async function guardarNovaDisc() {
+  const nome   = document.getElementById('nd-nome')?.value.trim();
+  const classe = parseInt(document.getElementById('nd-classe')?.value);
+  const carga  = parseInt(document.getElementById('nd-carga')?.value) || 3;
+  const profId = document.getElementById('nd-prof')?.value || null;
+
+  if (!nome)   { toast('Introduza o nome da disciplina'); return; }
+  if (!classe) { toast('Introduza a classe'); return; }
+
+  const { data, error } = await window._supabase.from('disciplinas').insert({
+    escola_id: window._escolaId,
+    nome, classe, carga_semanal: carga,
+  }).select().single();
+
+  if (error) { toast('Erro: ' + error.message); return; }
+
+  // Se professor seleccionado, criar atribuição
+  if (profId && data) {
+    await window._supabase.from('atribuicoes').insert({
+      escola_id: window._escolaId,
+      professor_id: profId,
+      disciplina_id: data.id,
+      ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
+    });
+  }
+
+  toast('✅ Disciplina criada!');
+  document.getElementById('m-nova-disc')?.remove();
+  window._DISCIPLINAS_DB = null; // forçar reload
+  rCurrClasses();
+}
+function toggleCC(elOrId,aid) {
+  var bid, aidId;
+  if (typeof elOrId === 'string') { bid = elOrId; aidId = aid; }
+  else { bid = elOrId.getAttribute('data-bid'); aidId = elOrId.getAttribute('data-aid'); }
+  var b = document.getElementById(bid), a = document.getElementById(aidId);
+  if (!b) return;
+  var op = b.classList.contains('op');
+  b.classList.toggle('op', !op);
+  if (a) a.style.transform = op ? '' : 'rotate(180deg)';
+}
 function openDiscPlano(ci,di){go('curr-planos');rCurrPlanos(CLASSES[ci].disc[di],CLASSES[ci])}
 
 let _cpDisc=null,_cpCl=null;
