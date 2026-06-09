@@ -10361,7 +10361,7 @@ function renderDashCartao() {
       <span class="ct"><i class="ti ti-id" style="margin-right:6px"></i>O Meu Cartão</span>
       <div style="display:flex;gap:6px">
         ${curRole==='aluno'
-          ? `<button class="btn btn-tl btn-sm" onclick="abrirCartaoAluno(${ALUNOS[0]?.id||\'\'})"><i class="ti ti-printer"></i> Imprimir</button>`
+          ? `<button class="btn btn-tl btn-sm" onclick="abrirCartaoAluno(${ALUNOS[0]?.id||''})"><i class="ti ti-printer"></i> Imprimir</button>`
           : `<button class="btn btn-tl btn-sm" onclick="abrirCartaoProf(${PROFS.find(p=>p.nome===curUser.nome)?.id||1})"><i class="ti ti-printer"></i> Imprimir</button>`}
       </div>
     </div>
