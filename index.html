@@ -1575,7 +1575,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
       <div class="fgr"><label class="fl">Classe</label><select class="ffi" id="n-al-classe"><option>7ª</option><option>8ª</option><option>9ª</option><option>10ª</option><option>11ª</option><option>12ª</option></select></div>
       <div class="fgr"><label class="fl">Turma</label><select class="ffi" id="n-al-turma"><option>7A</option><option>10A</option><option>11B</option></select></div>
       <div class="fgr"><label class="fl">Regime</label><select class="ffi"><option>Manhã</option><option>Tarde</option><option>Noite</option></select></div>
-      <div class="fgr"><label class="fl">Encarregado</label><select class="ffi" id="n-al-enc"><option value="">— Seleccionar Encarregado —</option></select></div>
+      <div class="fgr"><label class="fl">Encarregado</label><select class="ffi" id="n-al-enc"><option>ENC000001 — Egídio Chaimite</option><option>ENC000002 — Telly Diallo</option><option>ENC000003 — António Tajú</option><option>+ Novo Encarregado</option></select></div>
       <div class="fgr"><label class="fl">Ano de Ingresso</label><input class="ffi" type="number" value="2026"></div>
       <div class="fgr"><label class="fl">Bolseiro</label><select class="ffi"><option>Não</option><option>Sim</option></select></div>
     </div>
@@ -4337,13 +4337,13 @@ function openAluno(id){
   avt.style.cssText=`width:72px;height:72px;border-radius:16px;background:${c}18;color:${c};font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative`;
   avt.innerHTML=`${ini(a.nome)}<div class="pverif" style="background:${a.verif?'var(--g)':'var(--am)'}"><i class="ti ti-${a.verif?'check':'clock'}" style="font-size:9px"></i></div>`;
   document.getElementById('ap-nome').textContent=a.nome;
-  document.getElementById('ap-num').textContent=`${a.num}${a.enc?' · '+a.enc:''}`;
+  document.getElementById('ap-num').textContent=`${a.num} · ${a.enc} — ${a.enome}`;
   const f=calcFaltas(id),pend=a.propinas.filter(p=>p.st==='npago').length;
   document.getElementById('ap-badges').innerHTML=`<span class="badge ${a.verif?'bok':'bwn'}">${a.verif?'<i class="ti ti-check"></i> Verificado':'Pendente'}</span>${pend?`<span class="badge ber">${pend} prop. em atraso</span>`:''} ${f.excluido?`<span class="badge ber"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Excluído (${f.pct}% faltas)</span>`:f.emRisco?`<span class="badge bwn"><i class="ti ti-bolt" style="color:#f59e0b"></i> Em risco (${f.pct}% faltas)</span>`:''}`;
   const med1=a.notas.t1.reduce((s,n)=>s+(n.n||0),0)/a.notas.t1.length;
   document.getElementById('ap-kpis').innerHTML=[{l:'Nº Aluno',v:a.num,c:'var(--a)'},{l:'Turma',v:a.turma,c:'var(--t)'},{l:'Média T1',v:med1.toFixed(1),c:med1>=CONFIG.mediaAprovacao?'var(--g)':'var(--am)'},{l:'Faltas',v:`${f.total} (${f.pct}%)`,c:f.excluido?'var(--r)':f.emRisco?'var(--am)':'var(--g)'}].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
   rIR('ap-id-r',[['Nome',a.nome],['Data Nasc.',a.nasc],['Género',a.genero==='M'?'Masculino':'Feminino'],['BI',a.bi],['Naturalidade',a.nat],['Ano de Adesão',a.ingresso]]);
-  rIR('ap-ct-r',[['Telefone',a.tel],['Email',a.email||'N/A'],['Encarregado',a.enome],['Nº Encarregado',a.enc]]);
+  rIR('ap-ct-r',[['Telefone',a.tel],['Email',a.email||'N/A'],['Encarregado',a.enc||a.enome]]);
   rIR('ap-ac-r',[['Classe',a.classe],['Turma',a.turma],['Regime','Manhã'],['Campus','Sede'],['Ano Lectivo','2026']]);
   rIR('ap-td-r',[['Director Turma','Prof. António Cuna'],['Disciplinas',a.notas.t1.length+''],['Inscrições','Activas']]);
   // Financeiro
@@ -5537,7 +5537,7 @@ async function loadDadosEscola() {
           num: a.numero_aluno || 'ALU' + String(i+1).padStart(6,'0'),
           nome: a.nome_completo || 'Aluno',
           turma: turmaDB?.nome || '',
-          genero: (a.genero==='Masculino'?'M':a.genero==='Feminino'?'F':a.genero)||'M',
+          genero: a.genero || 'M',
           nasc: a.data_nascimento || '',
           bi: a.bi_numero || '',
           enc: a.encarregado_nome || '',
@@ -17348,7 +17348,7 @@ function guardarNovoAluno() {
     id: newId, num: newNum, nome, genero,
     nasc, bi, nat: nat||'Maputo', morada: morada||'',
     tel: tel||'', email: email||'N/A',
-    enome, erel: erel||'Pai/Mãe', etel, ebi: ebi||'',
+    enome, enc: enome, erel: erel||'Pai/Mãe', etel, ebi: ebi||'',
     eprof: eprof||'', eender: eender||'',
     turma: turma||null,
     classe: turma ? (TURMAS.find(t=>t.id===turma)?.classe+'ª Classe') : '',
@@ -17380,7 +17380,7 @@ function guardarNovoAluno() {
             escola_id:        window._escolaId,
             nome_completo:    nome,
             data_nascimento:  nasc || null,
-            genero:           (genero==='Masculino'?'M':genero==='Feminino'?'F':genero)||'M',
+            genero:           genero || 'M',
             bi_numero:        bi || null,
             naturalidade:     nat || 'Maputo',
             encarregado_nome: enome || null,
@@ -17404,7 +17404,7 @@ function guardarNovoAluno() {
               turma_id:       turmaObj._dbId,
               ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
               escola_id:      window._escolaId,
-              estado:         'activa',
+              estado:         'activo',
             });
           }
         }
