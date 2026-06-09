@@ -14332,13 +14332,10 @@ function abrirAlocarTurma(turmaId) {
 let _alocTurmaId = null;
 
 function abrirAlocarDisciplinas(turmaId) {
-  _alocTurmaId = turmaId;
-  openM('m-alocacao');
-  // Pre-select turma in alocacao modal
-  setTimeout(() => {
-    const sel = document.getElementById('al-turma');
-    if (sel) { sel.value=turmaId; updateAlDiscs(); }
-  }, 100);
+  // Encontrar a turma pelo id local
+  var turma = TURMAS.find(function(t){ return t.id === turmaId || t._dbId === turmaId; });
+  if (!turma) { toast('Turma não encontrada'); return; }
+  abrirNovaDiscTurma(turma._dbId || turma.id, turma.id, parseInt(turma.classe));
 }
 
 function removerAlocacaoDisc(turmaId, disc) {
