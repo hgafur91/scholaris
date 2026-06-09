@@ -3839,7 +3839,7 @@ async function rCurrClasses(){
       var nDiscs = discsT.length;
       var nAlunos = ALUNOS.filter(function(a){ return a.turma === t.id; }).length;
 
-      return '<div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rads);padding:16px;cursor:pointer" data-tid="' + t.id + '" onclick="openTurma(this.dataset.tid)">' +
+      return '<div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rads);padding:16px;cursor:pointer" data-tid="' + t.id + '" onclick="openTurmaSync(this.dataset.tid)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
         '<div style="font-size:16px;font-weight:800;color:' + ciclo.cor + '">' + t.id + '</div>' +
         '<div style="display:flex;gap:6px">' +
@@ -5641,12 +5641,14 @@ async function loadEscolaConfig() {
   try {
     const { data } = await window._supabase
       .from('escolas')
-      .select('config')
+      .select('nome, endereco, telefone, email, director_nome')
       .eq('id', window._escolaId)
       .single();
-    if (data?.config) {
-      Object.assign(CONFIG, data.config);
-      if (data.config.escaloesMulta) CONFIG.escaloesMulta = data.config.escaloesMulta;
+    if (data) {
+      if (data.nome) ESCOLA_SETTINGS.nome = data.nome;
+      if (data.endereco) ESCOLA_SETTINGS.morada = data.endereco;
+      if (data.telefone) ESCOLA_SETTINGS.telefone = data.telefone;
+      if (data.email) ESCOLA_SETTINGS.email = data.email;
     }
   } catch(e) { console.warn('[Supabase] Could not load escola config:', e); }
 }
@@ -14026,7 +14028,7 @@ rTurmas = function() {
               const dt  = t.dirTurma ? PROFS.find(p=>p.num===t.dirTurma) : null;
               const alocs = ALOCACOES.filter(a=>a.turma===t.id);
               const nDiscs = [...new Set(alocs.map(a=>a.disc))].length;
-              return `<div class="tc" onclick="openTurma('${t.id}')" style="cursor:pointer;transition:all .2s;border:2px solid var(--b)" onmouseover="this.style.borderColor='${ciclo.cor}';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--b)';this.style.transform=''">
+              return `<div class="tc" onclick="openTurmaSync('${t.id}')" style="cursor:pointer;transition:all .2s;border:2px solid var(--b)" onmouseover="this.style.borderColor='${ciclo.cor}';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--b)';this.style.transform=''">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
                   <div style="width:8px;height:8px;border-radius:50%;background:${ciclo.cor};flex-shrink:0"></div>
                   <div class="tc-num" style="margin:0">${t.classe}ª${t.letra}</div>
@@ -14058,7 +14060,7 @@ rTurmas = function() {
     html += `<div style="margin-bottom:16px">
       <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Sem ciclo atribuído</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
-        ${semCiclo.map(t=>`<div class="tc" onclick="openTurma('${t.id}')" style="cursor:pointer;opacity:.7">
+        ${semCiclo.map(t=>`<div class="tc" onclick="openTurmaSync('${t.id}')" style="cursor:pointer;opacity:.7">
           <div class="tc-num">${t.id}</div>
         </div>`).join('')}
       </div>
@@ -14071,6 +14073,11 @@ rTurmas = function() {
 // ════════════════════════════════════════════════════════════
 //  PERFIL DA TURMA
 // ════════════════════════════════════════════════════════════
+
+// Wrapper síncrono para openTurma (para uso em onclick)
+function openTurmaSync(turmaId) {
+  openTurma(turmaId).catch(function(e){ console.error('[openTurma]', e); });
+}
 async function openTurma(turmaId) {
   const t = TURMAS.find(x=>x.id===turmaId);
   if (!t) return;
@@ -20599,7 +20606,7 @@ function rCicloTurmas() {
             <span style="color:${ciclo?.cor||'var(--am)'}">Turma ${t.id}</span>
             <span style="font-size:12px;font-weight:400;color:var(--t2);margin-left:8px">${t.classe}ª · ${t.curso||'—'} · ${t.regime||'Manhã'}</span>
           </span>
-          <button class="btn btn-p btn-sm" onclick="openTurma('${t.id}')">
+          <button class="btn btn-p btn-sm" onclick="openTurmaSync('${t.id}')">
             <i class="ti ti-external-link"></i> Abrir Turma
           </button>
         </div>
