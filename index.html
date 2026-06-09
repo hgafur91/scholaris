@@ -14085,7 +14085,13 @@ function openTurma(turmaId) {
   const dt    = t.dirTurma ? PROFS.find(p=>p.num===t.dirTurma) : null;
   const alunos = ALUNOS.filter(a=>a.turma===turmaId);
   const alocs  = ALOCACOES.filter(a=>a.turma===turmaId);
-  const discs  = [...new Set(alocs.map(a=>a.disc))];
+  // Também incluir disciplinas do Supabase
+  const atribs = (window._ATRIBUICOES_DB||[]).filter(function(a){ return a.turma_id === t._dbId; });
+  const discsDB = atribs.map(function(a){
+    var d = (window._DISCIPLINAS_DB||[]).find(function(x){ return x.id === a.disciplina_id; });
+    return d ? d.nome : null;
+  }).filter(Boolean);
+  const discs = [...new Set([...alocs.map(a=>a.disc), ...discsDB])];
   const canEdit = ['gestor','director','dir-pedagogico'].includes(curRole);
 
   // Header
@@ -14095,9 +14101,7 @@ function openTurma(turmaId) {
     <button class="btn btn-tl btn-sm" onclick="abrirAlocarTurma('${turmaId}')">
       <i class="ti ti-users-group"></i> Alocar Alunos
     </button>
-    <button class="btn btn-p btn-sm" onclick="_addDiscBtn('${turmaId}')">
-      <i class="ti ti-plus"></i> Adicionar Disciplina
-    </button>
+
   ` : '';
 
   // Stats row
@@ -14344,7 +14348,7 @@ function _addDiscBtn(turmaId) {
   var modal = document.createElement('div');
   modal.id = 'm-add-disc-turma';
   modal.className = 'modal-ov';
-  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+  modal.style.display = 'flex';
 
   var box = document.createElement('div');
   box.className = 'modal-box';
@@ -14440,7 +14444,11 @@ async function _criarDiscNaTurma(turmaId) {
 
   toast('✅ ' + nome + ' adicionada à turma ' + turmaId);
   if (modal) modal.remove();
-  if (typeof openTurma === 'function') openTurma(turmaId);
+  // Recarregar perfil da turma para mostrar nova disciplina
+  window._ATRIBUICOES_DB = null;
+  setTimeout(function(){
+    if (typeof openTurma === 'function') openTurma(turmaId);
+  }, 300);
 }
 
 function abrirAlocarDisciplinas(turmaId) {
