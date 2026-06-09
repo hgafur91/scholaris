@@ -1019,10 +1019,10 @@ console.log('[Scholaris] Supabase v2 inicializado');
 <div class="view" id="v-staff">
   <div class="ph"><div><div class="ph-title">Staff — Departamentos</div></div><div class="ph-right"><button class="btn btn-p btn-sm" onclick="abrirNovoStaff()"><i class="ti ti-plus"></i> Novo Membro</button></div></div>
   <div style="display:flex;gap:0;border-bottom:1px solid var(--b);margin-bottom:16px" id="staff-tabs">
-    <button class="tab on" onclick="fStaff('todos',this)">Todos (6)</button>
-    <button class="tab" onclick="fStaff('academico',this)"><i class="ti ti-school"></i> Académico (3)</button>
-    <button class="tab" onclick="fStaff('gestao',this)"><i class="ti ti-building"></i> Gestão (2)</button>
-    <button class="tab" onclick="fStaff('financeiro',this)"><i class="ti ti-currency-dollar"></i> Financeiro (1)</button>
+    <button class="tab on" onclick="fStaff('todos',this)" id="staff-tab-todos">Todos (<span id="staff-count-todos">0</span>)</button>
+    <button class="tab" onclick="fStaff('academico',this)" id="staff-tab-academico"><i class="ti ti-school"></i> Académico (<span id="staff-count-academico">0</span>)</button>
+    <button class="tab" onclick="fStaff('gestao',this)" id="staff-tab-gestao"><i class="ti ti-building"></i> Gestão (<span id="staff-count-gestao">0</span>)</button>
+    <button class="tab" onclick="fStaff('financeiro',this)" id="staff-tab-financeiro"><i class="ti ti-currency-dollar"></i> Financeiro (<span id="staff-count-financeiro">0</span>)</button>
   </div>
   <div class="card"><div class="tw"><table><thead><tr><th></th><th>Nº</th><th>Nome</th><th>Cargo</th><th>Dep.</th><th>Regime</th><th>Salário</th><th>Avaliação</th><th></th></tr></thead><tbody id="tb-staff"></tbody></table></div></div>
 </div>
@@ -3238,14 +3238,13 @@ let ALOCACOES=[];
 
 const DESP_CAT=[
 {id:'salarios',nome:'Salários',icon:'ti-users',cor:'#4f8ef7',fixo:true},
-{id:'agua',nome:'Água',icon:'ti-droplet',cor:'#14b8a6',v:3200,dt:'05/05/2026'},
-{id:'luz',nome:'Luz / Electricidade',icon:'ti-bolt',cor:'#f59e0b',v:7800,dt:'08/05/2026'},
-{id:'manutencao',nome:'Manutenção',icon:'ti-tool',cor:'#f97316',v:12500,dt:'10/05/2026'},
-{id:'caixa',nome:'Caixa Semanal',icon:'ti-cash',cor:'#7c6af7',v:4500,dt:'20/05/2026'},
-{id:'outros',nome:'Outras Despesas',icon:'ti-dots-circle-horizontal',cor:'#8b949e',v:10450,dt:'15/05/2026'},
+{id:'agua',nome:'Água',icon:'ti-droplet',cor:'#14b8a6'},
+{id:'luz',nome:'Luz / Electricidade',icon:'ti-bolt',cor:'#f59e0b'},
+{id:'manutencao',nome:'Manutenção',icon:'ti-tool',cor:'#f97316'},
+{id:'caixa',nome:'Caixa Semanal',icon:'ti-cash',cor:'#7c6af7'},
+{id:'outros',nome:'Outras Despesas',icon:'ti-dots-circle-horizontal',cor:'#8b949e'},
 ];
-const LIVROS=[{titulo:'Matemática 10ª Classe',autor:'INDE',area:'Matemática',ex:8,disp:5},{titulo:'Português — Língua e Comunicação',autor:'Porto Editora',area:'Português',ex:6,disp:4},{titulo:'Biologia e Ciências Naturais',autor:'INDE/MEC',area:'Biologia',ex:5,disp:3},{titulo:'Física 11ª e 12ª Classe',autor:'INDE',area:'Física',ex:7,disp:6}];
-const EMPR=[{anom:'Aaron Chaimite',aluno:'ALU000001',livro:'Matemática 10ª Classe',data:'10/05/2026',prazo:'24/05/2026',atrasado:false},{anom:'Yasmin Tajú',aluno:'ALU000003',livro:'Português — Língua e Comunicação',data:'05/05/2026',prazo:'19/05/2026',atrasado:true}];
+const LIVROS=[]const EMPR=[]
 const IND_PROF=[{k:'Cumprimento do plano analítico',p:25},{k:'Taxa de aprovação dos alunos',p:20},{k:'Pontualidade e assiduidade',p:15},{k:'Qualidade dos materiais',p:15},{k:'Relação pedagógica',p:15},{k:'Participação em reuniões',p:10}];
 const IND_GEST=[{k:'Cumprimento de tarefas',p:30},{k:'Qualidade do trabalho',p:25},{k:'Trabalho em equipa',p:20},{k:'Pontualidade',p:15},{k:'Iniciativa',p:10}];
 
@@ -5172,6 +5171,15 @@ function rFaltas(){
 // ══ STAFF / RH ══
 function rStaff(dep){
   document.querySelectorAll('#staff-tabs .tab').forEach(t=>t.classList.remove('on'));
+  // Update dynamic counts
+  const _ct = document.getElementById('staff-count-todos');
+  const _ca = document.getElementById('staff-count-academico');
+  const _cg = document.getElementById('staff-count-gestao');
+  const _cf = document.getElementById('staff-count-financeiro');
+  if(_ct) _ct.textContent = PROFS.length;
+  if(_ca) _ca.textContent = PROFS.filter(p=>p.dep==='academico').length;
+  if(_cg) _cg.textContent = PROFS.filter(p=>p.dep==='gestao').length;
+  if(_cf) _cf.textContent = PROFS.filter(p=>p.dep==='financeiro').length;
   const btns=document.querySelectorAll('#staff-tabs .tab');
   const idx={todos:0,academico:1,gestao:2,financeiro:3}[dep]||0;
   if(btns[idx])btns[idx].classList.add('on');
@@ -5466,25 +5474,42 @@ async function loadDadosEscola() {
       console.log('[Scholaris] Turmas carregadas:', TURMAS.length);
     }
 
-    // 3. Carregar professores (perfis com perfil=professor)
+    // 3. Carregar staff (tabela staff)
     const { data: profsDB } = await window._supabase
-      .from('perfis').select('*')
-      .eq('escola_id', eid)
-      .in('perfil', ['professor', 'director', 'subdirector', 'secretaria']);
+      .from('staff')
+      .select('*')
+      .eq('escola_id', eid);
     if (profsDB?.length) {
       PROFS.length = 0;
       profsDB.forEach((p, i) => {
         PROFS.push({
           id: i + 1,
-          num: 'PRF' + String(i+1).padStart(6,'0'),
-          nome: p.nome_completo || 'Professor',
-          perfil: p.perfil,
-          email: '',
+          num: p.num || (p.dep==='academico'?'PRF':p.dep==='gestao'?'GST':'FIN') + String(i+1).padStart(6,'0'),
+          nome: p.nome || 'Colaborador',
+          cargo: p.cargo || '',
+          dep: p.dep || 'academico',
+          regime: p.regime || 'inteiro',
+          salario: p.salario || 0,
+          nota: p.nota || 0,
+          form: p.form || '',
+          area: p.area || '',
+          disc: p.disc || [],
+          turmas: [],
+          cargos: [],
+          nasc: p.nasc || '',
+          genero: p.genero || '',
+          bi: p.bi || '',
+          niss: p.niss || '',
+          nuit: p.nuit || '',
+          tel: p.tel || '',
+          email: p.email || '',
+          morada: p.morada || '',
+          contrato: p.contrato || 'indeterminado',
           ativo: p.ativo !== false,
           _dbId: p.id,
         });
       });
-      console.log('[Scholaris] Professores carregados:', PROFS.length);
+      console.log('[Scholaris] Staff carregado:', PROFS.length);
     }
 
     // 4. Carregar disciplinas
@@ -11578,10 +11603,7 @@ function rLMSProf() {
 //  ADMISSÕES ONLINE
 // ════════════════════════════════════════════════════════════
 
-let CANDIDATURAS = [
-  {id:1,nome:'Maria da Conceição Macuane',nasc:'2012-03-15',genero:'F',encarregado:'João Macuane',tel:'841111111',email:'j.macuane@email.mz',classeDesejada:'7ª',docs:['BI','Boletim'],estado:'pendente',data:'2026-05-20',notas:''},
-  {id:2,nome:'Pedro Nhantumbo',nasc:'2010-07-22',genero:'M',encarregado:'Rosa Nhantumbo',tel:'842222222',email:null,classeDesejada:'10ª',docs:['BI'],estado:'aprovado',data:'2026-05-18',notas:'Aprovado — aguarda pagamento de matrícula'},
-];
+let CANDIDATURAS = []
 
 function rAdmissoes() {
   // This view is accessible to gestor, director and secretario
@@ -17623,8 +17645,39 @@ function guardarNovoStaff() {
   };
 
   PROFS.push(staff);
+
+  // Guardar no Supabase
+  if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+    window._supabase.from('staff').insert({
+      escola_id:   window._escolaId,
+      num:         newNum,
+      nome:        staff.nome,
+      cargo:       staff.cargo,
+      dep:         staff.dep,
+      regime:      staff.regime,
+      salario:     staff.salario,
+      nota:        0,
+      form:        staff.form,
+      area:        staff.area,
+      disc:        staff.disc,
+      nasc:        staff.nasc||null,
+      genero:      staff.genero||null,
+      bi:          staff.bi||null,
+      niss:        staff.niss||null,
+      nuit:        staff.nuit||null,
+      tel:         staff.tel||null,
+      email:       staff.email||null,
+      morada:      staff.morada||null,
+      contrato:    staff.contrato||'indeterminado',
+      ativo:       true,
+    }).then(({error}) => {
+      if (error) toast('Aviso: erro ao guardar no servidor: ' + error.message);
+    });
+  }
+
   closeM('m-novo-staff');
   toast(`${cargo} ${nome} (${newNum}) registado!`);
+  rStaff('todos');
 
   if (confirm(`${nome} registado com sucesso!\n\nEmitir Ficha de Contrato agora?`)) {
     emitirFichaStaff(newId);
