@@ -17302,24 +17302,26 @@ function onFotoAluno(input) {
 }
 
 function guardarNovoAluno() {
-  const nome   = document.getElementById('na-nome')?.value.trim();
-  const nasc   = document.getElementById('na-nasc')?.value;
-  const genero = document.getElementById('na-genero')?.value;
-  const bi     = document.getElementById('na-bi')?.value.trim();
-  const nat    = document.getElementById('na-nat')?.value.trim();
-  const morada = document.getElementById('na-morada')?.value.trim();
-  const tel    = document.getElementById('na-tel')?.value.trim();
-  const email  = document.getElementById('na-email')?.value.trim();
-  const enome  = document.getElementById('na-enome')?.value.trim();
-  const erel   = document.getElementById('na-erel')?.value;
-  const etel   = document.getElementById('na-etel')?.value.trim();
-  const ebi    = document.getElementById('na-ebi')?.value.trim();
-  const eprof  = document.getElementById('na-eprof')?.value.trim();
-  const eender = document.getElementById('na-eender')?.value.trim();
-  const turma  = document.getElementById('na-turma')?.value;
-  const bolseiro = document.getElementById('na-bolseiro')?.value;
-  const niss   = document.getElementById('na-niss')?.value.trim();
-  const escola_anterior = document.getElementById('na-escola-ant')?.value.trim();
+  const nome   = document.getElementById('n-al-nome')?.value.trim();
+  const nasc   = document.getElementById('n-al-nasc')?.value;
+  const genero = document.getElementById('n-al-gen')?.value;
+  const bi     = document.getElementById('n-al-bi')?.value.trim();
+  const nat    = document.getElementById('n-al-nat')?.value.trim();
+  const morada = document.getElementById('n-al-morada')?.value?.trim() || '';
+  const tel    = document.getElementById('n-al-tel')?.value?.trim() || '';
+  const email  = document.getElementById('n-al-email')?.value?.trim() || '';
+  const encSel = document.getElementById('n-al-enc')?.value || '';
+  const enome  = encSel ? (encSel.includes('—') ? encSel.split('—')[1]?.trim() : encSel) : (document.getElementById('na-enome')?.value?.trim() || 'N/A');
+  const erel   = document.getElementById('n-al-erel')?.value || 'Pai/Mãe';
+  const etelEl = [...document.querySelectorAll('#m-naluno input[type=text]')].find(el=>el.placeholder?.includes('84')||el.placeholder?.includes('258'));
+  const etel   = etelEl?.value?.trim() || document.getElementById('na-etel')?.value?.trim() || '';
+  const ebi    = document.getElementById('na-ebi')?.value?.trim() || '';
+  const eprof  = document.getElementById('na-eprof')?.value?.trim() || '';
+  const eender = document.getElementById('na-eender')?.value?.trim() || '';
+  const turma  = document.getElementById('n-al-turma')?.value;
+  const bolseiro = document.getElementById('n-al-bolseiro')?.value || document.getElementById('na-bolseiro')?.value || 'nao';
+  const niss   = document.getElementById('na-niss')?.value?.trim() || '';
+  const escola_anterior = document.getElementById('na-escola-ant')?.value?.trim() || '';
 
   if (!nome)  { toast('Nome do aluno obrigatório'); return; }
   if (!nasc)  { toast('Data de nascimento obrigatória'); return; }
