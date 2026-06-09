@@ -14095,8 +14095,8 @@ function openTurma(turmaId) {
     <button class="btn btn-tl btn-sm" onclick="abrirAlocarTurma('${turmaId}')">
       <i class="ti ti-users-group"></i> Alocar Alunos
     </button>
-    <button class="btn btn-p btn-sm" onclick="abrirAlocarDisciplinas('${turmaId}')">
-      <i class="ti ti-book"></i> Alocar Disciplinas
+    <button class="btn btn-p btn-sm" onclick="_addDiscBtn('${turmaId}')">
+      <i class="ti ti-plus"></i> Adicionar Disciplina
     </button>
   ` : '';
 
@@ -14152,8 +14152,8 @@ function openTurma(turmaId) {
       <!-- Disciplinas alocadas -->
       <div class="card">
         <div class="ch">
-          <span class="ct">Disciplinas & Professores</span>
-          ${canEdit?`<button class="btn btn-p btn-sm" onclick="abrirAlocarDisciplinas('${turmaId}')"><i class="ti ti-plus"></i> Alocar</button>`:''}
+          <span class="ct">Disciplinas</span>
+          ${canEdit?`<button class="btn btn-p btn-sm" onclick="_addDiscBtn('${turmaId}')"><i class="ti ti-plus"></i> Adicionar Disciplina</button>`:''}
         </div>
         <div class="tw">
           ${discs.length ? `<table>
@@ -14173,8 +14173,8 @@ function openTurma(turmaId) {
           </table>`
           : `<div style="text-align:center;padding:20px;color:var(--t2)">
               <i class="ti ti-books" style="font-size:32px;color:var(--t3);display:block;margin-bottom:8px"></i>
-              Sem disciplinas alocadas.
-              ${canEdit?`<br><button class="btn btn-p btn-sm" style="margin-top:8px" onclick="abrirAlocarDisciplinas('${turmaId}')"><i class="ti ti-plus"></i> Alocar Disciplinas</button>`:''}
+              Sem disciplinas adicionadas ainda.
+              ${canEdit?`<br><button class="btn btn-p btn-sm" style="margin-top:8px" onclick="_addDiscBtn('${turmaId}')"><i class="ti ti-plus"></i> Adicionar Disciplina</button>`:''}
             </div>`}
         </div>
       </div>
@@ -14331,6 +14331,117 @@ function abrirAlocarTurma(turmaId) {
 
 // ── ALOCAR DISCIPLINAS A TURMA ────────────────────────────────
 let _alocTurmaId = null;
+
+
+function _addDiscBtn(turmaId) {
+  var turma = TURMAS.find(function(t){ return t.id === turmaId; });
+  if (!turma) { toast('Turma não encontrada'); return; }
+
+  // Criar modal simples directamente
+  var existente = document.getElementById('m-add-disc-turma');
+  if (existente) existente.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'm-add-disc-turma';
+  modal.className = 'modal';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center';
+
+  var box = document.createElement('div');
+  box.className = 'modal-box';
+  box.style.maxWidth = '420px';
+
+  var hdr = document.createElement('div');
+  hdr.className = 'modal-hdr';
+  hdr.innerHTML = '<span><i class="ti ti-books"></i> Adicionar Disciplina</span>';
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'cls-btn';
+  closeBtn.textContent = '×';
+  closeBtn.onclick = function(){ modal.remove(); };
+  hdr.appendChild(closeBtn);
+
+  var body = document.createElement('div');
+  body.className = 'modal-body';
+
+  var info = document.createElement('div');
+  info.className = 'ib-box ib-blue';
+  info.style.marginBottom = '12px';
+  info.innerHTML = '<i class="ti ti-info-circle"></i> Cria a disciplina e aloca automaticamente à turma <strong>' + turmaId + '</strong>.';
+  body.appendChild(info);
+
+  var fg1 = document.createElement('div');
+  fg1.className = 'fg';
+  fg1.innerHTML = '<label class="fl">Nome da Disciplina *</label><input class="ffi" id="adt-nome" placeholder="Ex: Matemática">';
+  body.appendChild(fg1);
+
+  var fg2 = document.createElement('div');
+  fg2.className = 'fg';
+  fg2.innerHTML = '<label class="fl">Carga Horária Semanal (h) *</label><input class="ffi" type="number" id="adt-carga" value="3" min="1" max="10">';
+  body.appendChild(fg2);
+
+  var ftr = document.createElement('div');
+  ftr.className = 'modal-ftr';
+  var saveBtn = document.createElement('button');
+  saveBtn.className = 'btn btn-p';
+  saveBtn.innerHTML = '<i class="ti ti-plus"></i> Criar e Adicionar';
+  saveBtn.onclick = function(){ _criarDiscNaTurma(turmaId); };
+  ftr.appendChild(saveBtn);
+
+  box.appendChild(hdr);
+  box.appendChild(body);
+  box.appendChild(ftr);
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+  setTimeout(function(){ document.getElementById('adt-nome')?.focus(); }, 100);
+}
+
+async function _criarDiscNaTurma(turmaId) {
+  var nomeEl  = document.getElementById('adt-nome');
+  var cargaEl = document.getElementById('adt-carga');
+  var nome    = nomeEl ? nomeEl.value.trim() : '';
+  var carga   = parseInt(cargaEl ? cargaEl.value : 3) || 3;
+
+  if (!nome) { toast('Introduza o nome da disciplina'); nomeEl?.focus(); return; }
+
+  var turma = TURMAS.find(function(t){ return t.id === turmaId; });
+  if (!turma) { toast('Turma não encontrada'); return; }
+
+  var modal = document.getElementById('m-add-disc-turma');
+
+  if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+    // 1. Criar disciplina
+    var ins = await window._supabase.from('disciplinas').insert({
+      escola_id:     window._escolaId,
+      nome:          nome,
+      classe:        parseInt(turma.classe) || 8,
+      carga_semanal: carga,
+    }).select().single();
+
+    if (ins.error) { toast('Erro: ' + ins.error.message); return; }
+
+    // 2. Alocar à turma
+    if (turma._dbId) {
+      await window._supabase.from('atribuicoes').insert({
+        escola_id:      window._escolaId,
+        disciplina_id:  ins.data.id,
+        turma_id:       turma._dbId,
+        ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
+      });
+    }
+
+    // Actualizar cache
+    if (!window._DISCIPLINAS_DB) window._DISCIPLINAS_DB = [];
+    window._DISCIPLINAS_DB.push(ins.data);
+    window._ATRIBUICOES_DB = null;
+  } else {
+    // Modo local
+    if (!window._DISCIPLINAS_DB) window._DISCIPLINAS_DB = [];
+    window._DISCIPLINAS_DB.push({ id: 'local-' + Date.now(), nome: nome, classe: parseInt(turma.classe)||8, carga_semanal: carga });
+  }
+
+  toast('✅ ' + nome + ' adicionada à turma ' + turmaId);
+  if (modal) modal.remove();
+  if (typeof openTurma === 'function') openTurma(turmaId);
+}
 
 function abrirAlocarDisciplinas(turmaId) {
   // Encontrar a turma pelo id local
