@@ -3881,7 +3881,7 @@ function abrirNovaDiscTurma(turmaDbId, turmaId, classe) {
 
   var modal = document.createElement('div');
   modal.id = 'm-add-disc-turma';
-  modal.className = 'modal';
+  modal.className = 'modal-ov';
   modal.style.display = 'flex';
   modal.setAttribute('data-turma-db', turmaDbId);
   modal.setAttribute('data-turma-id', turmaId);
@@ -14343,8 +14343,8 @@ function _addDiscBtn(turmaId) {
 
   var modal = document.createElement('div');
   modal.id = 'm-add-disc-turma';
-  modal.className = 'modal';
-  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center';
+  modal.className = 'modal-ov';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
 
   var box = document.createElement('div');
   box.className = 'modal-box';
