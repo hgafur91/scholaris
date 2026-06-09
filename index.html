@@ -3192,9 +3192,10 @@ let CONFIG={
   // Faltas
   faltasMaxPct:25,
   // Notas — componentes por trimestre
-  pesoAS1:30,        // 1ª Avaliação Semestral
-  pesoAS2:30,        // 2ª Avaliação Semestral
-  pesoAT:40,         // Avaliação Trimestral
+  pesoAS1:25,        // 1ª Avaliação Semestral
+  pesoAS2:25,        // 2ª Avaliação Semestral
+  pesoAS3:25,        // 3ª Avaliação Semestral
+  pesoAT:25,         // Avaliação Trimestral
   // Notas — média final
   mediaAprovacao:10,
   pesoT1:33,pesoT2:33,pesoT3:34,
@@ -3873,12 +3874,8 @@ async function rCurrClasses(){
     '</div></div>';
 }
 
-// Adicionar disciplina a uma turma específica
+// Adicionar/Criar disciplina numa turma específica
 function abrirNovaDiscTurma(turmaDbId, turmaId, classe) {
-  var discsClasse = (window._DISCIPLINAS_DB||[]).filter(function(d){ return String(d.classe) === String(classe); });
-  var profOpts = PROFS.map(function(p){ return '<option value="' + (p._dbId||'') + '">' + p.nome + '</option>'; }).join('');
-  var discOpts = discsClasse.map(function(d){ return '<option value="' + d.id + '">' + d.nome + ' (' + (d.carga_semanal||0) + 'h/sem)</option>'; }).join('');
-
   var existente = document.getElementById('m-add-disc-turma');
   if (existente) existente.remove();
 
@@ -3888,21 +3885,67 @@ function abrirNovaDiscTurma(turmaDbId, turmaId, classe) {
   modal.style.display = 'flex';
   modal.setAttribute('data-turma-db', turmaDbId);
   modal.setAttribute('data-turma-id', turmaId);
+  modal.setAttribute('data-classe', classe);
+
   modal.innerHTML =
     '<div class="modal-box" style="max-width:460px">' +
-    '<div class="modal-hdr"><span><i class="ti ti-books"></i> Disciplina para Turma ' + turmaId + '</span>' +
+    '<div class="modal-hdr"><span><i class="ti ti-books"></i> Adicionar Disciplina — Turma ' + turmaId + '</span>' +
     '<button class="cls-btn" onclick="_fecharModal(this.closest(\'.modal\').id)">×</button></div>' +
     '<div class="modal-body">' +
-    (discOpts ?
-      '<div class="fg"><label class="fl">Disciplina *</label><select class="ffi" id="adt-disc">' +
-      '<option value="">— Seleccionar —</option>' + discOpts + '</select></div>' :
-      '<div class="ib-box ib-am"><i class="ti ti-alert-circle"></i> Sem disciplinas para a ' + classe + 'ª classe. <button class="btn btn-p btn-sm" onclick="abrirNovaDisc(' + classe + ')">Criar disciplina</button></div>'
-    ) +
-    '<div class="fg"><label class="fl">Professor *</label><select class="ffi" id="adt-prof"><option value="">— Seleccionar —</option>' + profOpts + '</select></div>' +
+    '<div class="ib-box ib-blue" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> A disciplina será criada e automaticamente alocada à turma ' + turmaId + '.</div>' +
+    '<div class="fg"><label class="fl">Nome da Disciplina *</label><input class="ffi" id="adt-nome" placeholder="Ex: Matemática"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+    '<div class="fg"><label class="fl">Classe</label><input class="ffi" type="number" id="adt-classe" value="' + classe + '" readonly style="background:var(--bg3)"></div>' +
+    '<div class="fg"><label class="fl">Carga Semanal (h) *</label><input class="ffi" type="number" id="adt-carga" value="3" min="1" max="10"></div>' +
     '</div>' +
-    '<div class="modal-ftr"><button class="btn btn-p" onclick="guardarDiscTurma()"><i class="ti ti-device-floppy"></i> Atribuir</button></div>' +
+    '</div>' +
+    '<div class="modal-ftr"><button class="btn btn-p" onclick="criarEAlocarDisc()"><i class="ti ti-plus"></i> Criar e Alocar</button></div>' +
     '</div>';
   document.body.appendChild(modal);
+}
+
+async function criarEAlocarDisc() {
+  var modal    = document.getElementById('m-add-disc-turma');
+  var nome     = document.getElementById('adt-nome')?.value.trim();
+  var carga    = parseInt(document.getElementById('adt-carga')?.value) || 3;
+  var classe   = parseInt(modal?.getAttribute('data-classe'));
+  var turmaDbId = modal?.getAttribute('data-turma-db');
+  var turmaId  = modal?.getAttribute('data-turma-id');
+
+  if (!nome) { toast('Introduza o nome da disciplina'); return; }
+
+  if (!window._supabase || window._escolaId === 'escola_demo') {
+    toast('Sem ligação à base de dados'); return;
+  }
+
+  // 1. Criar disciplina
+  var ins = await window._supabase.from('disciplinas').insert({
+    escola_id: window._escolaId,
+    nome: nome,
+    classe: classe,
+    carga_semanal: carga,
+  }).select().single();
+
+  if (ins.error) { toast('Erro ao criar disciplina: ' + ins.error.message); return; }
+
+  // 2. Alocar à turma
+  var aloc = await window._supabase.from('atribuicoes').insert({
+    escola_id:      window._escolaId,
+    disciplina_id:  ins.data.id,
+    turma_id:       turmaDbId,
+    ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
+  });
+
+  if (aloc.error) { toast('Disciplina criada mas erro na alocação: ' + aloc.error.message); }
+
+  // Actualizar cache
+  if (!window._DISCIPLINAS_DB) window._DISCIPLINAS_DB = [];
+  window._DISCIPLINAS_DB.push(ins.data);
+  window._ATRIBUICOES_DB = null;
+
+  toast('✅ ' + nome + ' criada e alocada à turma ' + turmaId + '!');
+  modal.remove();
+  rTurmas();
 }
 
 async function guardarDiscTurma() {
@@ -6969,8 +7012,16 @@ console.log('[Scholaris] <i class="ti ti-circle-check" style="color:#22c55e"></i
 
 // Calcula a média trimestral de uma disciplina num trimestre
 function calcMediaTrimestral(notas) {
-  // notas = {as1, as2, at}
-  const {as1, as2, at} = notas;
+  // notas = {as1, as2, as3, at}
+  const {as1, as2, as3, at} = notas;
+  // AS3 é opcional — se não existir usa só AS1+AS2+AT
+  if (as3 != null) {
+    if (as1 == null || as2 == null || at == null) return null;
+    return Math.round(
+      (as1 * CONFIG.pesoAS1 + as2 * CONFIG.pesoAS2 + as3 * CONFIG.pesoAS3 + at * CONFIG.pesoAT) /
+      (CONFIG.pesoAS1 + CONFIG.pesoAS2 + CONFIG.pesoAS3 + CONFIG.pesoAT) * 10
+    ) / 10;
+  }
   if (as1 == null || as2 == null || at == null) return null;
   return Math.round(
     (as1 * CONFIG.pesoAS1 + as2 * CONFIG.pesoAS2 + at * CONFIG.pesoAT) /
@@ -7067,7 +7118,7 @@ function renderNotasTrimestre(alunos, trim, canEdit) {
 
   thead.innerHTML = `
     <th style="min-width:140px">Aluno</th>
-    ${discs.map(d => `<th colspan="4" style="text-align:center;border-left:1px solid var(--b)">${d}</th>`).join('')}`;
+    ${discs.map(d => `<th colspan="5" style="text-align:center;border-left:1px solid var(--b)">${d}</th>`).join('')}`;
 
   // Sub-header
   const subrow = document.createElement('tr');
@@ -7075,6 +7126,7 @@ function renderNotasTrimestre(alunos, trim, canEdit) {
   subrow.innerHTML = `<th></th>` + discs.map(() =>
     `<th class="trim-col" style="font-size:9px;color:var(--tl);border-left:1px solid var(--b)">AS1</th>
      <th class="trim-col" style="font-size:9px;color:var(--tl)">AS2</th>
+     <th class="trim-col" style="font-size:9px;color:var(--tl)">AS3</th>
      <th class="trim-col" style="font-size:9px;color:var(--am)">AT</th>
      <th class="trim-col" style="font-size:9px;color:var(--a);font-weight:800">MT</th>`
   ).join('');
@@ -7102,7 +7154,7 @@ function renderNotasTrimestre(alunos, trim, canEdit) {
             </td>`;
           }
         };
-        return mkCell(n.as1,'as1') + mkCell(n.as2,'as2') + mkCell(n.at,'at') + mkCell(mt,'mt');
+        return mkCell(n.as1,'as1') + mkCell(n.as2,'as2') + mkCell(n.as3,'as3') + mkCell(n.at,'at') + mkCell(mt,'mt');
       }).join('')}
     </tr>`;
   }).join('');
