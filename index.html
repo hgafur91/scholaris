@@ -3799,6 +3799,13 @@ async function rCurrClasses(){
     if (rd.data) { window._DISCIPLINAS_DB = rd.data; discs = rd.data; }
   }
 
+  // Carregar atribuições se necessário
+  if (!window._ATRIBUICOES_DB && window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+    var ra = await window._supabase.from('atribuicoes').select('*').eq('escola_id', window._escolaId);
+    if (ra.data) { window._ATRIBUICOES_DB = ra.data; }
+  }
+  var atribs = window._ATRIBUICOES_DB || [];
+
   if (!TURMAS.length && !discs.length) {
     el.innerHTML = '<div class="card"><div class="cb" style="text-align:center;padding:48px;color:var(--t2)">' +
       '<i class="ti ti-school" style="font-size:48px;display:block;margin-bottom:14px;color:var(--t3)"></i>' +
@@ -3816,13 +3823,12 @@ async function rCurrClasses(){
     if (!turmasCiclo.length) return;
 
     var turmaCards = turmasCiclo.map(function(t) {
-      // Disciplinas atribuídas a esta turma
+      // Disciplinas atribuídas a esta turma (via atribuicoes do Supabase)
+      var turmaDbId = t._dbId || '';
       var discsT = discs.filter(function(d) {
-        return (window._ATRIBUICOES_DB||[]).some(function(a){ return a.turma_id === t._dbId && a.disciplina_id === d.id; }) ||
+        return atribs.some(function(a) { return a.turma_id === turmaDbId && a.disciplina_id === d.id; }) ||
                (ALOCACOES||[]).some(function(a){ return a.turma === t.id && a.disc === d.nome; });
       });
-      // Se não há atribuições ainda, mostrar disciplinas da mesma classe
-      if (!discsT.length) discsT = discs.filter(function(d){ return String(d.classe) === String(t.classe); });
 
       var discList = discsT.slice(0,6).map(function(d){
         var prof = PROFS.find(function(p){ return p._dbId === d.professor_id; });
@@ -3922,10 +3928,8 @@ async function guardarDiscTurma() {
 
   if (error) { toast('Erro: ' + error.message); return; }
 
-  // Actualizar cache local
-  if (!window._ATRIBUICOES_DB) window._ATRIBUICOES_DB = [];
-  window._ATRIBUICOES_DB.push({ professor_id: profId, disciplina_id: discId, turma_id: turmaDbId });
-
+  // Invalidar cache e recarregar
+  window._ATRIBUICOES_DB = null;
   toast('✅ Disciplina atribuída à turma ' + turmaId + '!');
   modal.remove();
   rCurrClasses();
