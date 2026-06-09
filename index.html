@@ -5545,6 +5545,19 @@ async function loadDadosEscola() {
           encEmail: a.encarregado_email || '',
           _dbId: a.id,
           _turmaDbId: matricula?.turma_id || null,
+          classe: turmaDB ? (turmaDB.nome?.charAt(0) + 'ª Classe') : '',
+          ingresso: a.created_at ? new Date(a.created_at).getFullYear() : new Date().getFullYear(),
+          verif: false,
+          foto: null,
+          bolseiro: 'nao',
+          faltas: [],
+          notas: {t1:[], t2:[], t3:[]},
+          propinas: Array.from({length:12},(_,i)=>({m:i+1,st:'npago',v:CONFIG?.valorPropina||4500,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente'})),
+          hist: [], transferencias: [],
+          dataInscricao: a.created_at || new Date().toISOString(),
+          inscritoPor: '',
+          morada: '', tel: '', email: 'N/A', nat: 'Maputo', niss: '', escola_anterior: '',
+          erel: 'Pai/Mãe', ebi: '', eprof: '', eender: '',
         });
       });
       console.log('[Scholaris] Alunos carregados:', ALUNOS.length);
