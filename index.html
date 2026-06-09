@@ -14103,13 +14103,30 @@ async function openTurma(turmaId) {
   const dt    = t.dirTurma ? PROFS.find(p=>p.num===t.dirTurma) : null;
   const alunos = ALUNOS.filter(a=>a.turma===turmaId);
   const alocs  = ALOCACOES.filter(a=>a.turma===turmaId);
-  // Também incluir disciplinas do Supabase
+  // Disciplinas do Supabase para esta turma
   const atribs = (window._ATRIBUICOES_DB||[]).filter(function(a){ return a.turma_id === t._dbId; });
-  const discsDB = atribs.map(function(a){
-    var d = (window._DISCIPLINAS_DB||[]).find(function(x){ return x.id === a.disciplina_id; });
-    return d ? d.nome : null;
+  // discsData = array de objectos {id, nome, carga_semanal, profNome}
+  const discsData = atribs.map(function(a) {
+    var d = (window._DISCIPLINAS_DB||[]).find(function(x){ return x.id === a.disciplina_id; }) ||
+            (a.disciplinas) || null;
+    if (!d) return null;
+    var prof = PROFS.find(function(p){ return p._dbId === a.professor_id; });
+    return {
+      id: d.id,
+      nome: d.nome,
+      carga: d.carga_semanal || a.carga_horaria || 3,
+      profNome: prof ? prof.nome : null,
+      atribId: a.id,
+    };
   }).filter(Boolean);
-  const discs = [...new Set([...alocs.map(a=>a.disc), ...discsDB])];
+  // Também incluir do array local ALOCACOES
+  alocs.forEach(function(al) {
+    if (!discsData.find(function(d){ return d.nome === al.disc; })) {
+      var prof = PROFS.find(function(p){ return p.num === al.prof; });
+      discsData.push({ id: null, nome: al.disc, carga: al.horas||3, profNome: prof?prof.nome:null, atribId: null });
+    }
+  });
+  const discs = discsData; // usar discsData no lugar de discs
   const canEdit = ['gestor','director','dir-pedagogico'].includes(curRole);
 
   // Header
@@ -14181,23 +14198,18 @@ async function openTurma(turmaId) {
           ${discs.length ? `<table>
             <thead><tr><th>Disciplina</th><th>Professor</th><th>H/semana</th><th></th></tr></thead>
             <tbody>
-              ${discs.map(d=>{
-                const aloc = alocs.find(a=>a.disc===d);
-                const prof = PROFS.find(p=>p.num===aloc?.prof);
-                return `<tr>
-                  <td style="font-weight:600">${d}</td>
-                  <td>${prof?`<div style="display:flex;align-items:center;gap:6px">${mkAv(prof.nome,22,PROFS.indexOf(prof),false)}<span style="font-size:12px">${prof.nome.split(' ')[0]}</span></div>`:'<span style="color:var(--t3)">Sem professor</span>'}</td>
-                  <td style="text-align:center"><span class="badge bin">${aloc?.horas||'?'}h</span></td>
-                  <td>${canEdit?`<button class="btn btn-re btn-sm" onclick="removerAlocacaoDisc('${turmaId}','${d}')"><i class="ti ti-trash"></i></button>`:''}
-                </tr>`;
-              }).join('')}
+              ${discs.map(d=>`<tr>
+                  <td style="font-weight:600">${d.nome}</td>
+                  <td>${d.profNome?`<span style="font-size:12px">${d.profNome.split(' ')[0]}</span>`:'<span style="color:var(--t3)">Sem professor</span>'}</td>
+                  <td style="text-align:center"><span class="badge bin">${d.carga}h</span></td>
+                  <td>${canEdit?`<button class="btn btn-re btn-sm" onclick="removerDiscTurma('${turmaId}','${t._dbId||''}','${d.nome}','${d.atribId||''}')"><i class="ti ti-trash"></i></button>`:''}</td></tr>`
+              ).join('')}
             </tbody>
           </table>`
           : `<div style="text-align:center;padding:20px;color:var(--t2)">
               <i class="ti ti-books" style="font-size:32px;color:var(--t3);display:block;margin-bottom:8px"></i>
               Sem disciplinas adicionadas ainda.
-              ${canEdit?`<br><button class="btn btn-p btn-sm" style="margin-top:8px" onclick="_addDiscBtn('${turmaId}')"><i class="ti ti-plus"></i> Adicionar Disciplina</button>`:''}
-            </div>`}
+              ${canEdit?`<br><button class="btn btn-p btn-sm" style="margin-top:8px" onclick="_addDiscBtn('${turmaId}')"><i class="ti ti-plus"></i> Adicionar Disciplina</button>`:''}</div>`}
         </div>
       </div>
     </div>
@@ -14416,6 +14428,16 @@ function _addDiscBtn(turmaId) {
   setTimeout(function(){ document.getElementById('adt-nome')?.focus(); }, 100);
 }
 
+
+async function removerDiscTurma(turmaId, turmaDbId, discNome, atribId) {
+  if (!confirm('Remover ' + discNome + ' desta turma?')) return;
+  if (atribId && window._supabase) {
+    await window._supabase.from('atribuicoes').delete().eq('id', atribId);
+    window._ATRIBUICOES_DB = null;
+  }
+  toast('✅ ' + discNome + ' removida');
+  openTurma(turmaId);
+}
 async function _criarDiscNaTurma(turmaId) {
   var nomeEl  = document.getElementById('adt-nome');
   var cargaEl = document.getElementById('adt-carga');
