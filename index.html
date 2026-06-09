@@ -3887,12 +3887,13 @@ function abrirNovaDiscTurma(turmaDbId, turmaId, classe) {
   modal.setAttribute('data-turma-id', turmaId);
   modal.setAttribute('data-classe', classe);
 
+  // Construir modal sem colocar turmaId no HTML (evita problemas com caracteres especiais)
   modal.innerHTML =
     '<div class="modal-box" style="max-width:460px">' +
-    '<div class="modal-hdr"><span><i class="ti ti-books"></i> Adicionar Disciplina — Turma ' + turmaId + '</span>' +
+    '<div class="modal-hdr"><span><i class="ti ti-books"></i> Adicionar Disciplina à Turma</span>' +
     '<button class="cls-btn" onclick="_fecharModal(this.closest(\'.modal\').id)">×</button></div>' +
     '<div class="modal-body">' +
-    '<div class="ib-box ib-blue" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> A disciplina será criada e automaticamente alocada à turma ' + turmaId + '.</div>' +
+    '<div class="ib-box ib-blue" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> A disciplina será criada e automaticamente alocada à turma seleccionada.</div>' +
     '<div class="fg"><label class="fl">Nome da Disciplina *</label><input class="ffi" id="adt-nome" placeholder="Ex: Matemática"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
     '<div class="fg"><label class="fl">Classe</label><input class="ffi" type="number" id="adt-classe" value="' + classe + '" readonly style="background:var(--bg3)"></div>' +
