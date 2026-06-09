@@ -1571,7 +1571,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
       <div class="fgr"><label class="fl">Género</label><select class="ffi" id="n-al-gen"><option>Masculino</option><option>Feminino</option></select></div>
       <div class="fgr"><label class="fl">Nº BI / Documento</label><input class="ffi" id="n-al-bi" placeholder="Número do documento"></div>
       <div class="fgr"><label class="fl">Naturalidade</label><input class="ffi" id="n-al-nat" placeholder="Cidade / Província"></div>
-      <div class="fgr"><label class="fl">Telefone (Encarregado)</label><input class="ffi" placeholder="+258 84..."></div>
+      <div class="fgr"><label class="fl">Telefone (Encarregado)</label><input class="ffi" id="n-al-etel" placeholder="+258 84..."></div>
       <div class="fgr"><label class="fl">Classe</label><select class="ffi" id="n-al-classe"><option>7ª</option><option>8ª</option><option>9ª</option><option>10ª</option><option>11ª</option><option>12ª</option></select></div>
       <div class="fgr"><label class="fl">Turma</label><select class="ffi" id="n-al-turma"><option>7A</option><option>10A</option><option>11B</option></select></div>
       <div class="fgr"><label class="fl">Regime</label><select class="ffi"><option>Manhã</option><option>Tarde</option><option>Noite</option></select></div>
@@ -17313,8 +17313,7 @@ function guardarNovoAluno() {
   const encSel = document.getElementById('n-al-enc')?.value || '';
   const enome  = encSel ? (encSel.includes('—') ? encSel.split('—')[1]?.trim() : encSel) : (document.getElementById('na-enome')?.value?.trim() || 'N/A');
   const erel   = document.getElementById('n-al-erel')?.value || 'Pai/Mãe';
-  const etelEl = [...document.querySelectorAll('#m-naluno input[type=text]')].find(el=>el.placeholder?.includes('84')||el.placeholder?.includes('258'));
-  const etel   = etelEl?.value?.trim() || document.getElementById('na-etel')?.value?.trim() || '';
+  const etel   = document.getElementById('n-al-etel')?.value?.trim() || '';
   const ebi    = document.getElementById('na-ebi')?.value?.trim() || '';
   const eprof  = document.getElementById('na-eprof')?.value?.trim() || '';
   const eender = document.getElementById('na-eender')?.value?.trim() || '';
@@ -17327,7 +17326,7 @@ function guardarNovoAluno() {
   if (!nasc)  { toast('Data de nascimento obrigatória'); return; }
   if (!bi)    { toast('Nº de BI obrigatório'); return; }
   if (!enome) { toast('Nome do encarregado obrigatório'); return; }
-  if (!etel)  { toast('Telefone do encarregado obrigatório'); return; }
+  if (!etel && !encSel)  { toast('Telefone do encarregado obrigatório'); return; }
 
   const newId  = Math.max(0, ...ALUNOS.map(a=>a.id)) + 1;
   const newNum = 'ALU' + String(newId).padStart(6,'0');
