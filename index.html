@@ -14071,9 +14071,27 @@ rTurmas = function() {
 // ════════════════════════════════════════════════════════════
 //  PERFIL DA TURMA
 // ════════════════════════════════════════════════════════════
-function openTurma(turmaId) {
+async function openTurma(turmaId) {
   const t = TURMAS.find(x=>x.id===turmaId);
   if (!t) return;
+
+  // Carregar atribuições do Supabase antes de renderizar
+  if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo' && t._dbId) {
+    const ra = await window._supabase.from('atribuicoes').select('*, disciplinas(id,nome,classe,carga_semanal)').eq('turma_id', t._dbId);
+    if (ra.data) {
+      window._ATRIBUICOES_DB = window._ATRIBUICOES_DB || [];
+      // Remover atribuições desta turma e substituir pelas frescas
+      window._ATRIBUICOES_DB = (window._ATRIBUICOES_DB || []).filter(function(a){ return a.turma_id !== t._dbId; });
+      window._ATRIBUICOES_DB = window._ATRIBUICOES_DB.concat(ra.data);
+      // Actualizar cache de disciplinas
+      if (!window._DISCIPLINAS_DB) window._DISCIPLINAS_DB = [];
+      ra.data.forEach(function(a) {
+        if (a.disciplinas && !window._DISCIPLINAS_DB.find(function(d){ return d.id === a.disciplinas.id; })) {
+          window._DISCIPLINAS_DB.push(a.disciplinas);
+        }
+      });
+    }
+  }
 
   // Switch view
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
@@ -14413,10 +14431,11 @@ async function _criarDiscNaTurma(turmaId) {
 
   if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
     // 1. Criar disciplina
+    var classeNum = parseInt(turma.classe) || parseInt(turma.id) || 8;
     var ins = await window._supabase.from('disciplinas').insert({
       escola_id:     window._escolaId,
       nome:          nome,
-      classe:        parseInt(turma.classe) || 8,
+      classe:        classeNum,
       carga_semanal: carga,
     }).select().single();
 
@@ -27987,7 +28006,8 @@ function abrirUploadPlano(tipo) {
   if (existente) existente.remove();
   var discs = window._DISCIPLINAS_DB || [];
   var discOpts = discs.map(function(d) {
-    return '<option value="' + d.id + '">' + d.nome + ' — ' + d.classe + 'ª Classe</option>';
+    var classeLabel = d.classe ? d.classe + 'ª Classe' : 'Classe não definida';
+    return '<option value="' + d.id + '">' + d.nome + ' — ' + classeLabel + '</option>';
   }).join('');
   var turmaOpts = TURMAS.map(function(t) {
     return '<option value="' + (t._dbId || t.id) + '">' + t.id + '</option>';
