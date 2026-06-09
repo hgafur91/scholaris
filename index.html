@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta  charset="UTF-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scholaris v1.2 — Sistema de Gestão Escolar</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
@@ -15805,8 +15805,8 @@ function closeExportDrop(el) {
 
 // ── INJECT EXPORT BUTTONS INTO TURMA PROFILE ─────────────────
 const _origOpenTurmaExport = openTurma;
-openTurma = function(turmaId) {
-  _origOpenTurmaExport(turmaId);
+openTurma = async function(turmaId) {
+  await _origOpenTurmaExport(turmaId);
   // Add export dropdown to ph-right after the page renders
   setTimeout(() => {
     const right = document.getElementById('turma-p-right');
@@ -18463,8 +18463,8 @@ openAluno = function(id) {
 // ── Add Excel export to turma profile export dropdown ─────────
 // Extend the existing export dropdown when turma opens
 const _origOpenTurmaDocs = openTurma;
-openTurma = function(turmaId) {
-  _origOpenTurmaDocs(turmaId);
+openTurma = async function(turmaId) {
+  await _origOpenTurmaDocs(turmaId);
   setTimeout(() => {
     const expDrop = document.querySelector('.export-dropdown-wrap .exp-drop');
     if (!expDrop) return;
