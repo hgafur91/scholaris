@@ -1681,9 +1681,8 @@ console.log('[Scholaris] Supabase v2 inicializado');
 <div class="modal-ov" id="m-alocacao"><div class="modal">
   <div class="mhd"><span class="mt">Alocar Professor a Turma & Disciplina</span><button class="mclose" onclick="closeM('m-alocacao')"><i class="ti ti-x"></i></button></div>
   <div class="mbod">
-    <div class="ib-box ib-blue" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> Define a carga horária semanal. O horário é gerado automaticamente em <strong>Cargos / Atribuições → Gerar Horário</strong>.</div>
+    <div class="ib-box ib-blue" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> Atribui uma disciplina a uma turma. O professor é definido separadamente em <strong>Cargos / Atribuições</strong>.</div>
     <div class="fg">
-      <div class="fgr"><label class="fl">Professor *</label><select class="ffi" id="aloc-prof"><option value="">— Seleccionar —</option></select></div>
       <div class="fgr"><label class="fl">Disciplina *</label><select class="ffi" id="aloc-disc"><option value="">— Seleccionar —</option></select></div>
       <div class="fgr"><label class="fl">Turma *</label><select class="ffi" id="aloc-turma"><option value="">— Seleccionar —</option></select></div>
       <div class="fgr"><label class="fl">Carga Horária Semanal (horas)</label><input class="ffi" type="number" id="aloc-horas" value="3" min="1" max="10"></div>
@@ -4443,10 +4442,6 @@ function openEnc(id){
 // ════ ALOCAÇÃO — Funções Supabase ═══════════════════════════
 
 function abrirModalAlocacao() {
-  // Popular selects com dados reais
-  var profOpts = PROFS.map(function(p) {
-    return '<option value="' + (p._dbId||'') + '">' + (p.num||'') + ' — ' + p.nome + '</option>';
-  }).join('');
   var discOpts = (window._DISCIPLINAS_DB||[]).map(function(d) {
     return '<option value="' + d.id + '">' + d.nome + ' — ' + d.classe + 'ª</option>';
   }).join('');
@@ -4454,11 +4449,9 @@ function abrirModalAlocacao() {
     return '<option value="' + (t._dbId||t.id) + '">' + t.id + ' — ' + (t.curso||'Geral') + '</option>';
   }).join('');
 
-  var profEl = document.getElementById('aloc-prof');
   var discEl = document.getElementById('aloc-disc');
   var turmaEl = document.getElementById('aloc-turma');
 
-  if (profEl) profEl.innerHTML = '<option value="">— Seleccionar —</option>' + profOpts;
   if (discEl) discEl.innerHTML = '<option value="">— Seleccionar —</option>' + discOpts;
   if (turmaEl) turmaEl.innerHTML = '<option value="">— Seleccionar —</option>' + turmaOpts;
 
@@ -4466,12 +4459,10 @@ function abrirModalAlocacao() {
 }
 
 async function guardarAlocacaoSupabase() {
-  var profId  = document.getElementById('aloc-prof')?.value;
   var discId  = document.getElementById('aloc-disc')?.value;
   var turmaId = document.getElementById('aloc-turma')?.value;
   var horas   = parseInt(document.getElementById('aloc-horas')?.value) || 3;
 
-  if (!profId)  { toast('Seleccione o professor'); return; }
   if (!discId)  { toast('Seleccione a disciplina'); return; }
   if (!turmaId) { toast('Seleccione a turma'); return; }
 
@@ -4479,26 +4470,24 @@ async function guardarAlocacaoSupabase() {
   if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
     var result = await window._supabase.from('atribuicoes').insert({
       escola_id:      window._escolaId,
-      professor_id:   profId,
       disciplina_id:  discId,
       turma_id:       turmaId,
       ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
     });
     if (result.error) { toast('Erro: ' + result.error.message); return; }
-    window._ATRIBUICOES_DB = null; // invalidar cache
+    window._ATRIBUICOES_DB = null;
   }
 
-  // Actualizar array local também
-  var prof = PROFS.find(function(p){ return (p._dbId||'') === profId; });
-  var disc = (window._DISCIPLINAS_DB||[]).find(function(d){ return d.id === discId; });
+  // Actualizar array local
+  var disc  = (window._DISCIPLINAS_DB||[]).find(function(d){ return d.id === discId; });
   var turma = TURMAS.find(function(t){ return (t._dbId||t.id) === turmaId; });
 
-  if (prof && disc && turma) {
+  if (disc && turma) {
     ALOCACOES.push({
-      prof: prof.num, nome: prof.nome,
+      prof: null, nome: null,
       disc: disc.nome, turma: turma.id,
-      horas: horas, regime: prof.regime||'inteiro',
-      _discId: discId, _turmaDbId: turmaId, _profId: profId,
+      horas: horas, regime: 'inteiro',
+      _discId: discId, _turmaDbId: turmaId,
     });
   }
 
@@ -17122,22 +17111,63 @@ function guardarNovoAluno() {
 
   ALUNOS.push(aluno);
 
+  // Guardar no Supabase
+  if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+    (async () => {
+      try {
+        // 1. Inserir aluno
+        const { data: alunoDb, error: alunoErr } = await window._supabase
+          .from('alunos').insert({
+            escola_id:        window._escolaId,
+            nome_completo:    nome,
+            data_nascimento:  nasc || null,
+            genero:           genero || 'M',
+            bi_numero:        bi || null,
+            naturalidade:     nat || 'Maputo',
+            encarregado_nome: enome || null,
+            encarregado_tel:  etel || null,
+            encarregado_email: document.getElementById('na-eemail')?.value.trim() || null,
+            encarregado_bi:   ebi || null,
+            ativo:            true,
+          }).select().single();
+
+        if (alunoErr) { console.warn('[Supabase] Erro aluno:', alunoErr.message); return; }
+
+        // Actualizar _dbId no objecto local
+        aluno._dbId = alunoDb.id;
+
+        // 2. Inserir matrícula se turma seleccionada
+        if (turma) {
+          const turmaObj = TURMAS.find(t => t.id === turma);
+          if (turmaObj?._dbId) {
+            await window._supabase.from('matriculas').insert({
+              aluno_id:       alunoDb.id,
+              turma_id:       turmaObj._dbId,
+              ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
+              escola_id:      window._escolaId,
+              estado:         'activo',
+            });
+          }
+        }
+        console.log('[Scholaris] Aluno guardado no Supabase:', alunoDb.id);
+      } catch(e) {
+        console.warn('[Supabase] Erro ao guardar aluno:', e.message);
+      }
+    })();
+  }
+
   // If turma selected, check capacity
   if (turma) {
     const t = TURMAS.find(x=>x.id===turma);
     const count = ALUNOS.filter(a=>a.turma===turma).length;
-    if (t && count > t.max) toast(`Atenção: turma ${turma} excede a lotação máxima`);
+    if (t && count > t.max) toast('Atenção: turma ' + turma + ' excede a lotação máxima');
   }
 
-  closeM('m-novo-aluno');
-  toast(`${nome} inscrito! Nº ${newNum}`);
+  closeM('m-naluno');
+  toast(nome + ' inscrito! Nº ' + newNum);
 
-  // Immediately open profile + emit boletim option
   setTimeout(() => {
     openAluno(newId);
-    if (confirm(`Aluno ${nome} inscrito com sucesso!\n\nEmitir Boletim de Inscrição agora?`)) {
-      emitirBoletimAluno(newId);
-    }
   }, 200);
 
   if (typeof rAl === 'function') rAl();
