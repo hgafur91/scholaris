@@ -802,6 +802,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="tabs">
     <button class="tab on" onclick="swT('ap','id',this)">Identificação</button>
     <button class="tab" onclick="swT('ap','ac',this)">Académico</button>
+    <button class="tab" onclick="swT('ap','hor',this)">Horário</button>
     <button class="tab" onclick="swT('ap','fin',this)">Financeiro</button>
     <button class="tab" onclick="swT('ap','nt',this)">Notas</button>
     <button class="tab" onclick="swT('ap','pr',this)">Presenças</button>
@@ -811,6 +812,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   </div>
   <div class="tp on" id="ap-t-id"><div class="ig"><div class="isec"><div class="ish"><span class="ist">Dados Pessoais</span></div><div id="ap-id-r"></div></div><div class="isec"><div class="ish"><span class="ist">Contactos</span></div><div id="ap-ct-r"></div></div></div></div>
   <div class="tp" id="ap-t-ac"><div class="ig"><div class="isec"><div class="ish"><span class="ist">Dados Académicos</span></div><div id="ap-ac-r"></div></div><div class="isec"><div class="ish"><span class="ist">Turma & Disciplinas</span></div><div id="ap-td-r"></div></div></div></div>
+  <div class="tp" id="ap-t-hor"><div class="card"><div class="ch"><span class="ct">Horário Semanal</span><div style="font-size:11px;color:var(--t2)" id="ap-hor-info"></div></div><div class="cb"><div class="hg" id="ap-hor-g"></div></div></div></div>
   <div class="tp" id="ap-t-fin"><div id="ap-fin-c"></div></div>
   <div class="tp" id="ap-t-nt"><div id="ap-nt-c"></div></div>
   <div class="tp" id="ap-t-pr"><div id="ap-pr-c"></div></div>
@@ -4373,6 +4375,16 @@ function openAluno(id){
   rIR('ap-id-r',[['Nome',a.nome],['Data Nasc.',a.nasc],['Género',a.genero==='M'?'Masculino':'Feminino'],['BI',a.bi],['Naturalidade',a.nat],['Ano de Adesão',a.ingresso]]);
   rIR('ap-ct-r',[['Telefone',a.tel],['Email',a.email||'N/A'],['Encarregado',a.enc||a.enome]]);
   rIR('ap-ac-r',[['Classe',a.classe],['Turma',a.turma],['Regime','Manhã'],['Campus','Sede'],['Ano Lectivo','2026']]);
+  // Horário do aluno (da turma)
+  (function(){
+    const dias=['seg','ter','qua','qui','sex'];
+    const rows=(typeof HORARIO!=='undefined'&&HORARIO[a.turma])?HORARIO[a.turma]:[];
+    let tot=0;rows.forEach(r=>dias.forEach(dd=>{if(r[dd])tot++}));
+    const infoEl=document.getElementById('ap-hor-info');if(infoEl)infoEl.textContent=rows.length?(tot+' aulas/semana · Turma '+a.turma):'Sem horário definido';
+    const gEl=document.getElementById('ap-hor-g');if(!gEl)return;
+    if(!rows.length){gEl.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--t3);padding:20px;font-size:12px">Horário ainda não gerado para esta turma.</div>';return;}
+    gEl.innerHTML=['','Seg','Ter','Qua','Qui','Sex'].map(dh=>'<div class="hh">'+dh+'</div>').join('')+rows.map(row=>'<div class="hhr">'+row.h+'</div>'+dias.map(dd=>{const cell=row[dd];return cell?'<div class="hc oc" title="'+cell.d+' — '+(cell.p||'Sem professor')+'"><div style="font-size:11px;font-weight:700;color:var(--a)">'+cell.d+'</div><div style="font-size:9px;color:var(--t3)">'+(cell.p?((PROFS.find(p=>p.num===cell.p)||{nome:cell.p}).nome.split(' ')[0]):'—')+'</div></div>':'<div class="hc vz"></div>'}).join('')).join('');
+  })();
   rIR('ap-td-r',[['Director Turma','Prof. António Cuna'],['Disciplinas',a.notas.t1.length+''],['Inscrições','Activas']]);
   // Financeiro
   const totP=a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((s,p)=>s+p.v,0);
