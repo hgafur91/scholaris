@@ -7153,7 +7153,7 @@ openProf = function(id) {
     kpisEl.innerHTML = [
       {l:'Nº Professor',   v: p.num,           c:'var(--a2)'},
       {l:'Regime',         v: 'Tempo Parcial',  c:'var(--am)'},
-      {l:'Horas Alocadas', v: totalHoras+'h/'+p.horasMaxSem+'h', c: totalHoras>(p.horasMaxSem||22)?'var(--r)':totalHoras>(p.horasMaxSem||22)*0.85?'var(--am)':'var(--g)'},
+      {l:'Horas Alocadas', v: totalHoras+'h/'+(p.horasMaxSem||12)+'h', c: totalHoras>(p.horasMaxSem||12)?'var(--r)':totalHoras>(p.horasMaxSem||12)*0.85?'var(--am)':'var(--g)'},
       {l:'Remuneração',    v: salCalc.toLocaleString()+' MZM', c:'var(--g)'},
     ].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
     // Show breakdown
