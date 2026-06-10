@@ -813,6 +813,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
     <button class="tab" onclick="swT('ap','hi',this)">Histórico</button>
     <button class="tab" onclick="swT('ap','fa',this)">Família</button>
     <button class="tab" onclick="swT('ap','dc',this)">Documentos</button>
+    <button class="tab" onclick="swT('ap','an',this)">Análise Gráfica</button>
   </div>
   <div class="tp on" id="ap-t-id"><div class="ig"><div class="isec"><div class="ish"><span class="ist">Dados Pessoais</span></div><div id="ap-id-r"></div></div><div class="isec"><div class="ish"><span class="ist">Contactos</span></div><div id="ap-ct-r"></div></div></div></div>
   <div class="tp" id="ap-t-ac"><div class="ig"><div class="isec"><div class="ish"><span class="ist">Dados Académicos</span></div><div id="ap-ac-r"></div></div><div class="isec"><div class="ish"><span class="ist">Turma & Disciplinas</span></div><div id="ap-td-r"></div></div></div></div>
@@ -823,6 +824,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="tp" id="ap-t-hi"><div class="card"><div class="ch"><span class="ct">Historial Académico</span></div><div class="cb" id="ap-hi-c"></div></div></div>
   <div class="tp" id="ap-t-fa"><div class="ig"><div class="isec"><div class="ish"><span class="ist">Família</span></div><div id="ap-fa-r"></div></div><div class="isec"><div class="ish"><span class="ist">Encarregado</span></div><div id="ap-enc-r"></div></div></div></div>
   <div class="tp" id="ap-t-dc"><div class="docs-grid" id="ap-dc-c"></div></div>
+  <div class="tp" id="ap-t-an"><div id="ap-an-c"></div></div>
 </div>
 
 <!-- ════ PROFESSORES ════ -->
@@ -4366,7 +4368,7 @@ function openAluno(id){
   const a=ALUNOS.find(x=>x.id===id);if(!a)return;
   curAlunoId=id;const i=ALUNOS.indexOf(a),c=gc(i);
   go('aluno-p');
-  document.getElementById('ap-bc').textContent=a.nome;
+  document.getElementById('ap-bc').textContent=a.nome;try{document.getElementById('ap-an-c').innerHTML=renderPortalDesempenho(a);}catch(e){if(document.getElementById('ap-an-c'))document.getElementById('ap-an-c').innerHTML='<div class="card"><div class="cb" style="padding:40px;text-align:center;color:var(--t2)">Análise indisponível.</div></div>';}
   const avt=document.getElementById('ap-avt');
   avt.style.cssText=`width:72px;height:72px;border-radius:16px;background:${c}18;color:${c};font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative`;
   avt.innerHTML=`${ini(a.nome)}<div class="pverif" style="background:${a.verif?'var(--g)':'var(--am)'}"><i class="ti ti-${a.verif?'check':'clock'}" style="font-size:9px"></i></div>`;
@@ -12865,8 +12867,67 @@ function editarCiclo(id) {
 
 let _paTurma = null, _paDisc = null;
 
+function renderTurmaTabAnalise(turmaId, alunos) {
+  var cfg = (typeof CONFIG!=="undefined" && CONFIG.mediaAprovacao) || 10;
+  var trimestres = ["t1","t2","t3"];
+  var trimLabels = ["1º Trim.","2º Trim.","3º Trim."];
+  function mediaTrimAluno(a, tk){
+    var arr = (a.notas && a.notas[tk]) ? a.notas[tk] : [];
+    var ms = arr.map(function(n){ return calcMediaTrimestral(n); }).filter(function(m){ return m!=null; });
+    return ms.length ? (ms.reduce(function(s,m){return s+m;},0)/ms.length) : null;
+  }
+  var medTurma = trimestres.map(function(tk){
+    var vals = alunos.map(function(a){ return mediaTrimAluno(a, tk); }).filter(function(m){ return m!=null; });
+    return vals.length ? Math.round(vals.reduce(function(s,m){return s+m;},0)/vals.length*10)/10 : null;
+  });
+  var proj = (medTurma[0]!=null && medTurma[1]!=null)
+    ? Math.min(20, Math.max(0, Math.round((medTurma[1] + (medTurma[1]-medTurma[0]))*10)/10))
+    : null;
+  var temDados = medTurma.some(function(m){ return m!=null; });
+  var medias = alunos.map(function(a){ return calcMediaGeralAluno(a.id); }).filter(function(m){ return m!=null; });
+  var mediaGeral = medias.length ? Math.round(medias.reduce(function(s,m){return s+m;},0)/medias.length*10)/10 : null;
+  var aprovados = medias.filter(function(m){ return m>=cfg; }).length;
+  var taxaAprov = medias.length ? Math.round(aprovados/medias.length*100) : 0;
+  var discNames = (alunos[0] && alunos[0].notas && alunos[0].notas.t1) ? alunos[0].notas.t1.map(function(n){return n.d;}) : [];
+  var discStats = discNames.map(function(d){
+    var vs = alunos.map(function(a){ return calcNotaFinal(a.id, d); }).filter(function(m){ return m!=null; });
+    var mm = vs.length ? Math.round(vs.reduce(function(s,m){return s+m;},0)/vs.length*10)/10 : null;
+    return {d:d, m:mm};
+  }).filter(function(x){ return x.m!=null; });
+  discStats.sort(function(x,y){ return y.m - x.m; });
+  var melhor = discStats[0], pior = discStats[discStats.length-1];
+  var pontos = [];
+  for(var i=0;i<medTurma.length;i++){ if(medTurma[i]!=null) pontos.push({val:medTurma[i], estimado:false}); }
+  if(proj!=null) pontos.push({val:proj, estimado:true});
+  var grafico = (typeof gerarGraficoLinha==="function" && pontos.length) ? gerarGraficoLinha(pontos, "Média da Turma") : "";
+  var trend = (medTurma[0]!=null && medTurma[1]!=null) ? (medTurma[1]-medTurma[0]) : 0;
+  var trendTxt = trend>0 ? "Em subida" : trend<0 ? "Em descida" : "Estável";
+  var trendCls = trend>0 ? "bok" : trend<0 ? "ber" : "bwn";
+  if(!temDados){
+    return '<div class="card"><div class="cb" style="text-align:center;padding:48px;color:var(--t2)"><i class="ti ti-chart-line" style="font-size:46px;display:block;margin-bottom:12px"></i>Ainda sem notas lan\u00e7adas para esta turma.<br><span style="font-size:12px">A an\u00e1lise gr\u00e1fica aparece assim que houver avalia\u00e7\u00f5es registadas.</span></div></div>';
+  }
+  var H = "";
+  H += '<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-trending-up" style="color:var(--a);margin-right:6px"></i>Evolu\u00e7\u00e3o da M\u00e9dia da Turma</span><span class="badge '+trendCls+'" style="font-size:11px">'+trendTxt+'</span></div><div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:8px 4px">'+grafico+'<div style="font-size:12px;color:var(--t2);line-height:1.9">';
+  H += trimLabels.map(function(l,idx){ return l+': <b style="color:var(--t)">'+(medTurma[idx]!=null?medTurma[idx].toFixed(1):"\u2014")+'</b>'; }).join("<br>");
+  if(proj!=null) H += '<br><span style="color:var(--a)">Previs\u00e3o: <b>'+proj.toFixed(1)+'</b> valores</span>';
+  H += '</div></div></div>';
+  H += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px">';
+  H += '<div class="card"><div class="cb" style="padding:16px"><div style="font-size:12px;color:var(--t2)">M\u00e9dia Geral</div><div style="font-size:26px;font-weight:700;color:var(--t)">'+(mediaGeral!=null?mediaGeral.toFixed(1):"\u2014")+'</div></div></div>';
+  H += '<div class="card"><div class="cb" style="padding:16px"><div style="font-size:12px;color:var(--t2)">Taxa de Aprova\u00e7\u00e3o</div><div style="font-size:26px;font-weight:700;color:'+(taxaAprov>=50?"var(--ok)":"var(--er)")+'">'+taxaAprov+'%</div></div></div>';
+  H += '<div class="card"><div class="cb" style="padding:16px"><div style="font-size:12px;color:var(--t2)">Melhor Disciplina</div><div style="font-size:17px;font-weight:700;color:var(--ok)">'+(melhor?melhor.d+" ("+melhor.m.toFixed(1)+")":"\u2014")+'</div></div></div>';
+  H += '<div class="card"><div class="cb" style="padding:16px"><div style="font-size:12px;color:var(--t2)">A Melhorar</div><div style="font-size:17px;font-weight:700;color:var(--er)">'+(pior?pior.d+" ("+pior.m.toFixed(1)+")":"\u2014")+'</div></div></div>';
+  H += '</div>';
+  H += '<div class="card"><div class="ch"><span class="ct">Aproveitamento por Aluno</span></div><table><tr><th>Aluno</th><th>M\u00e9dia</th><th>Estado</th></tr>';
+  H += alunos.map(function(a){
+    var m = calcMediaGeralAluno(a.id);
+    var ok = m!=null && m>=cfg;
+    return '<tr><td>'+a.nome+'</td><td>'+(m!=null?m.toFixed(1):"\u2014")+'</td><td style="color:'+(m==null?"var(--t2)":ok?"var(--ok)":"var(--er)")+'">'+(m==null?"Sem notas":ok?"Aprovado":"Reprovado")+'</td></tr>';
+  }).join("");
+  H += '</table></div>';
+  return H;
+}
 function rPlanoAnalitico(turmaId) {
-  const el = document.getElementById('plano-analitico-c');
+  const _paEls = document.querySelectorAll('[id="plano-analitico-c"]'); const el = Array.from(_paEls).find(function(x){return x.offsetParent!==null;}) || _paEls[_paEls.length-1] || document.getElementById('plano-analitico-c');
   if (!el) return;
 
   // Populate selector
