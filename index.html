@@ -4448,17 +4448,41 @@ function openProf(id){
   avt.innerHTML=`${ini(p.nome)}<div class="pverif"><i class="ti ti-check" style="font-size:9px"></i></div>`;
   document.getElementById('pp-nome').textContent=p.nome;
   document.getElementById('pp-num').textContent=`${p.num} · ${p.cargo}`;
-  document.getElementById('pp-badges').innerHTML=`<span class="badge bpu">${p.form}</span><span class="badge bin">${p.area}</span><span class="badge ${p.regime==='inteiro'?'bok':'bwn'}">${p.regime==='inteiro'?'Tempo Inteiro (20h)':'Tempo Parcial (8h)'}</span>`;
-  document.getElementById('pp-kpis').innerHTML=[{l:'Nº Professor',v:p.num,c:'var(--a2)'},{l:'Regime',v:p.regime==='inteiro'?'20h/sem':'8h/sem',c:'var(--a)'},{l:'Turmas',v:p.turmas.length,c:'var(--g)'},...(canSeeSalary()?[{l:'Salário',v:p.salario.toLocaleString()+' MZM',c:'var(--am)'}]:[])].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
+  // Calcular carga horária real a partir do HORARIO e ALOCACOES
+  const cargaReal = ALOCACOES.filter(a=>a.prof===p.num).reduce((s,a)=>s+(a.horas||0),0);
+  const cargaMax = p.regime==='inteiro' ? (p.horasMaxSem||22) : (p.horasMaxSem||12);
+  const numTurmas = [...new Set(ALOCACOES.filter(a=>a.prof===p.num).map(a=>a.turma))].length;
+  // Para parcial: MZN por aula = salario / total aulas no mês (cargaReal × 4 semanas)
+  const aulasNoMes = cargaReal * 4;
+  const mznPorAula = p.regime==='parcial' && aulasNoMes > 0 ? Math.round(p.salario / aulasNoMes) : 0;
+  document.getElementById('pp-badges').innerHTML=`<span class="badge bpu">${p.form}</span><span class="badge bin">${p.area}</span><span class="badge ${p.regime==='inteiro'?'bok':'bwn'}">${p.regime==='inteiro'?'Tempo Inteiro':'Tempo Parcial'}</span><span class="badge ${cargaReal>cargaMax?'ber':cargaReal>cargaMax*0.85?'bam':'bok'}">${cargaReal}h/${cargaMax}h sem.</span>`;
+  document.getElementById('pp-kpis').innerHTML=[
+    {l:'Nº Professor',v:p.num,c:'var(--a2)'},
+    {l:'Carga Real',v:cargaReal+'h/sem',c:cargaReal>cargaMax?'var(--r)':cargaReal>cargaMax*0.85?'var(--am)':'var(--g)'},
+    {l:'Turmas',v:numTurmas,c:'var(--g)'},
+    ...(canSeeSalary()?[{l:p.regime==='parcial'?'Salário/Mês (est.)':'Salário Mensal',v:p.salario.toLocaleString()+' MZM',c:'var(--am)'}]:[]),
+    ...(p.regime==='parcial'&&canSeeSalary()?[{l:'MZN / Aula',v:mznPorAula.toLocaleString()+' MZM',c:'var(--pi)'}]:[]),
+  ].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
   rIR('pp-id-r',[['Nome',p.nome],['Data Nasc.',p.nasc],['Género',p.genero==='M'?'Masculino':'Feminino'],['BI',p.bi],['Naturalidade',p.nat],['Ano Adesão',p.adesao]]);
-  rIR('pp-ct-r',[['Telefone',p.tel],['Email',p.email],['Regime',p.regime==='inteiro'?'Tempo Inteiro (20h/sem)':'Tempo Parcial (8h/sem)'],['Salário Mensal',p.salario.toLocaleString()+' MZM'],['Contrato',`Desde ${p.adesao}`]]);
+  const ctRows = [
+    ['Telefone', p.tel],
+    ['Email', p.email],
+    ['Regime', p.regime==='inteiro' ? `Tempo Inteiro (${cargaReal}h reais / ${cargaMax}h máx)` : `Tempo Parcial (${cargaReal}h reais / ${cargaMax}h máx)`],
+    ['Salário Mensal', p.salario.toLocaleString() + ' MZM'],
+    ['Contrato', `Desde ${p.adesao}`],
+    ...(p.regime==='parcial' ? [
+      ['Aulas/Mês (est.)', aulasNoMes + ' aulas'],
+      ['MZN / Aula', mznPorAula.toLocaleString() + ' MZM'],
+    ] : []),
+  ];
+  rIR('pp-ct-r', ctRows);
   rIR('pp-fo-r',[['Nível',p.form],['Área',p.area],['Disciplinas',p.disc.join(', ')||'—'],['Universidade','Universidade Eduardo Mondlane']]);
   document.getElementById('pp-tu-r').innerHTML=p.turmas.length?p.turmas.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--b)"><span style="font-size:13px;font-weight:700">${t}</span><button class="btn btn-g btn-sm" onclick="openHorTurma('${t}');go('horario')">Ver Horário</button></div>`).join(''):'<div style="padding:14px 16px;font-size:12px;color:var(--t2)">Sem turmas alocadas. Use o módulo de Alocação.</div>';
   document.getElementById('pp-di-r').innerHTML=p.disc.length?p.disc.map(d=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--b)"><span style="font-size:13px;font-weight:700">${d}</span><span class="badge bin">${ALOCACOES.filter(a=>a.prof===p.num&&a.disc===d).length} turma(s)</span></div>`).join(''):'<div style="padding:14px 16px;font-size:12px;color:var(--t2)">Sem disciplinas. Use o módulo de Alocação.</div>';
   // Horário do professor — agrega das turmas
   const horProf=HORAS_D.map(h=>{const row={h};['seg','ter','qua','qui','sex'].forEach((d,di)=>{Object.entries(HORARIO).forEach(([tid,rows])=>{const r=rows.find(x=>x.h===h);if(r&&r[d]&&r[d].p===p.num)row[d]={d:r[d].d,tid}})});return row});
   let totalH=0;horProf.forEach(r=>['seg','ter','qua','qui','sex'].forEach(d=>{if(r[d])totalH++}));
-  document.getElementById('pp-hr-horas').textContent=`${totalH}h/semana (máx: ${p.horasSem}h)`;
+  document.getElementById('pp-hr-horas').textContent=`${totalH}h/semana (alocadas: ${cargaReal}h · máx: ${cargaMax}h)`;
   const dias=['seg','ter','qua','qui','sex'];
   document.getElementById('pp-hr-g').innerHTML=['','Seg','Ter','Qua','Qui','Sex'].map(d=>`<div class="hh">${d}</div>`).join('')+horProf.map(row=>`<div class="hhr">${row.h}</div>${dias.map(d=>{const cell=row[d];return cell?`<div class="hc oc" style="${totalH>p.horasSem?'border-color:rgba(245,158,11,.4)':''}" onclick="openHorTurma('${cell.tid}');go('horario')"><div style="font-size:11px;font-weight:700;color:var(--a)">${cell.d}</div><div style="font-size:9px;color:var(--t3)">${cell.tid}</div></div>`:`<div class="hc vz"></div>`}).join('')}`).join('');
   document.querySelectorAll('#v-prof-p .tab').forEach((t,i)=>t.classList.toggle('on',i===0));
@@ -5659,6 +5683,9 @@ async function loadDadosEscola() {
     if (typeof rDash === 'function') {
       try { rDash(); } catch(e) {}
     }
+
+    // 9. Carregar horário guardado
+    await carregarHorarioSaved();
 
   } catch(e) {
     console.warn('[Scholaris] Erro ao carregar dados:', e.message);
@@ -13142,6 +13169,7 @@ function gerarHorarioAuto() {
         <span class="ct">Pré-visualização — Horário Gerado</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-p btn-sm" onclick="go('horario')"><i class="ti ti-eye"></i> Ver Horário Completo</button>
+          <button class="btn btn-s btn-sm" onclick="guardarHorarioGerado()" id="btn-guardar-horario"><i class="ti ti-device-floppy"></i> Guardar Horário</button>
           <button class="btn btn-g btn-sm" onclick="gerarHorarioAuto()"><i class="ti ti-refresh"></i> Regenerar</button>
         </div>
       </div>
@@ -13163,7 +13191,50 @@ function gerarHorarioAuto() {
         ${TURMAS.length > 2 ? `<div style="font-size:12px;color:var(--t2);text-align:center;padding:8px">+ ${TURMAS.length-2} turma(s) mais geradas. <a onclick="go('horario')" style="cursor:pointer;color:var(--a)">Ver todas</a></div>` : ''}
       </div>
     </div>`;
-  toast('Horário gerado com sucesso! Ver em Horário.');
+  toast('Horário gerado! Clique "Guardar Horário" para persistir.');
+}
+
+// ── GUARDAR / CARREGAR HORÁRIO ──────────────────────────────
+async function guardarHorarioGerado() {
+  if (!window._supabase || !window._escolaId || window._escolaId === 'escola_demo') {
+    toast('Demo: horário guardado localmente.'); return;
+  }
+  if (!HORARIO || !Object.keys(HORARIO).length) {
+    toast('Gera o horário primeiro!'); return;
+  }
+  const btn = document.getElementById('btn-guardar-horario');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> A guardar...'; }
+  try {
+    // Delete existing horario for this escola
+    await window._supabase.from('horarios').delete().eq('escola_id', window._escolaId);
+    // Insert new
+    const { error } = await window._supabase.from('horarios').insert({
+      escola_id: window._escolaId,
+      dados: HORARIO,
+      gerado_em: new Date().toISOString(),
+    });
+    if (error) { toast('Erro ao guardar: ' + error.message); }
+    else {
+      toast('✅ Horário guardado com sucesso!');
+      if (btn) btn.innerHTML = '<i class="ti ti-circle-check"></i> Guardado';
+    }
+  } catch(e) {
+    toast('Erro: ' + e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function carregarHorarioSaved() {
+  if (!window._supabase || !window._escolaId || window._escolaId === 'escola_demo') return;
+  try {
+    const { data } = await window._supabase.from('horarios')
+      .select('dados').eq('escola_id', window._escolaId).single();
+    if (data?.dados) {
+      Object.assign(HORARIO, data.dados);
+      console.log('[Scholaris] Horário carregado do Supabase, turmas:', Object.keys(data.dados).length);
+    }
+  } catch(e) { /* sem horário guardado */ }
 }
 
 // ── FIX: Director Geral / Gestor — Calendário ─────────────────
