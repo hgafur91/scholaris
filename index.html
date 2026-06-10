@@ -14010,6 +14010,10 @@ gerarHorarioAuto = function() {
   const horas       = horasLabels.slice(0, maxAulas);
 
   const novoHorario = {};
+  // profSlots global across turmas — previne double-booking do mesmo professor
+  const profSlots = {};
+  PROFS.forEach(p=>{profSlots[p.num]=new Set();});
+
   TURMAS.forEach(turma => {
     const tid   = turma.id;
     const alocs = ALOCACOES.filter(a=>a.turma===tid);
@@ -14020,9 +14024,6 @@ gerarHorarioAuto = function() {
     novoHorario[tid] = horas.map(h => {
       const row = {h}; dias.forEach(d=>{row[d]=null;}); return row;
     });
-
-    const profSlots = {};
-    PROFS.forEach(p=>{profSlots[p.num]=new Set();});
 
     const shuffled = equilibrado ? [...discList].sort(()=>Math.random()-.5) : [...discList];
 
@@ -14056,22 +14057,24 @@ gerarHorarioAuto = function() {
   if (!el) return;
   const totalSlots = Object.values(novoHorario).reduce((s,rows)=>
     s+rows.reduce((ss,row)=>ss+Object.values(row).filter(v=>v&&typeof v==='object').length,0),0);
+  const turmasComAulas = TURMAS.filter(t=>(novoHorario[t.id]||[]).some(row=>['seg','ter','qua','qui','sex'].some(d=>row[d])));
 
   el.innerHTML = `
     <div class="ib-box ib-blue" style="margin-bottom:14px">
       <i class="ti ti-circle-check" style="color:var(--g)"></i>
-      <strong>Horário gerado!</strong> ${TURMAS.length} turma(s) · ${totalSlots} aulas · ${aulasPeriodos.length} períodos/dia
+      <strong>Horário gerado!</strong> ${turmasComAulas.length} turma(s) com aulas · ${totalSlots} aulas · ${aulasPeriodos.length} períodos/dia
     </div>
     <div class="card">
       <div class="ch">
-        <span class="ct">Pré-visualização</span>
+        <span class="ct">Pré-visualização — Todas as Turmas</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-p btn-sm" onclick="go('horario')"><i class="ti ti-eye"></i> Ver Completo</button>
+          <button class="btn btn-s btn-sm" onclick="guardarHorarioGerado()" id="btn-guardar-horario"><i class="ti ti-device-floppy"></i> Guardar Horário</button>
           <button class="btn btn-g btn-sm" onclick="gerarHorarioAuto()"><i class="ti ti-refresh"></i> Regenerar</button>
         </div>
       </div>
-      <div class="cb" style="overflow-x:auto">
-        ${TURMAS.slice(0,2).map(t=>`
+      <div class="cb" style="overflow-x:auto;max-height:460px;overflow-y:auto">
+        ${turmasComAulas.map(t=>`
           <div style="margin-bottom:14px">
             <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--a)">Turma ${t.id}</div>
             <div class="hg">
@@ -14089,7 +14092,7 @@ gerarHorarioAuto = function() {
           </div>`).join('')}
       </div>
     </div>`;
-  toast('Horário gerado com sucesso!');
+  toast('Horário gerado! Clique "Guardar Horário" para persistir.');
 };
 
 // ── UPDATE HORÁRIO DISPLAY — show period names ─────────────────
