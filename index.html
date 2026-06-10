@@ -4610,7 +4610,7 @@ function alocOnDiscChange() {
     profs.map(p => `<option value="${p._dbId||p.id}">${p.nome} (${p.regime==='parcial'?'Parcial':'Inteiro'} · ${p.dep==='academico'?'Académico':'Gestão'})</option>`).join('');
 }
 
-async async function guardarAlocacaoSupabase() {
+async function guardarAlocacaoSupabase() {
   const turmaDbId = document.getElementById('aloc-turma')?.value;
   const discId    = document.getElementById('aloc-disc')?.value;
   const profDbId  = document.getElementById('aloc-prof')?.value;
