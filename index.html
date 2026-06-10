@@ -752,7 +752,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
         <div class="chip" style="padding:6px 12px;font-size:12px" onclick="fAl('verif',this)">Verificados</div>
         <div class="chip" style="padding:6px 12px;font-size:12px" onclick="fAl('pend',this)">Pendentes</div>
       </div>
-      <button class="btn btn-p btn-sm" id="btn-novo-aluno" onclick="openM('m-naluno')"><i class="ti ti-plus"></i> Novo Aluno</button>
+      <button class="btn btn-p btn-sm" id="btn-novo-aluno" onclick="abrirNovoAluno()"><i class="ti ti-plus"></i> Novo Aluno</button>
     </div>
   </div>
   <div class="card"><div class="tw"><table><thead><tr><th></th><th>Nº Aluno</th><th>Nome</th><th>Turma</th><th>Classe</th><th>Faltas</th><th>Estado</th><th></th></tr></thead><tbody id="tb-al"></tbody></table></div></div>
@@ -2707,6 +2707,15 @@ console.log('[Scholaris] Supabase v2 inicializado');
     <!-- Encarregado -->
     <div style="font-size:11px;font-weight:700;color:var(--am);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 10px;border-top:1px solid var(--b);padding-top:12px">Encarregado de Educação</div>
     <div class="fg">
+      <div class="fgr full"><label class="fl">Encarregado Registado</label>
+        <select class="ffi" id="na-enc-sel" onchange="toggleEncManual(this.value)">
+          <option value="">— Seleccionar encarregado existente —</option>
+          <option value="_novo">+ Novo encarregado (preencher abaixo)</option>
+        </select>
+      </div>
+    </div>
+    <div id="na-enc-manual" style="display:none">
+    <div class="fg">
       <div class="fgr full"><label class="fl">Nome Completo do Encarregado *</label>
         <input class="ffi" id="na-enome" placeholder="Nome completo"></div>
       <div class="fgr"><label class="fl">Parentesco</label>
@@ -2727,6 +2736,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
         <input class="ffi" id="na-eprof" placeholder="Ex: Professor, Comerciante..."></div>
       <div class="fgr full"><label class="fl">Endereço do Encarregado</label>
         <input class="ffi" id="na-eender" placeholder="Morada do encarregado"></div>
+    </div>
     </div>
 
     <!-- Matrícula -->
@@ -17334,6 +17344,20 @@ rAl = function(list) {
 
 let _novoAlunoFoto = null; // base64 photo
 
+function toggleEncManual(val) {
+  const manual = document.getElementById('na-enc-manual');
+  if (!manual) return;
+  manual.style.display = val === '_novo' ? '' : 'none';
+  // Se seleccionou um encarregado existente, preenche o tel automaticamente
+  if (val && val !== '_novo') {
+    const enc = ENCS.find(e => String(e.id) === val);
+    if (enc) {
+      const etelEl = document.getElementById('na-etel');
+      if (etelEl) etelEl.value = enc.tel || '';
+    }
+  }
+}
+
 function abrirNovoAluno() {
   _novoAlunoFoto = null;
   // Reset form
@@ -17345,6 +17369,17 @@ function abrirNovoAluno() {
   const hoje = new Date().toISOString().split('T')[0];
   const admEl = document.getElementById('na-ingresso');
   if (admEl) admEl.value = hoje;
+
+  // Populate encarregado selector
+  const encSel = document.getElementById('na-enc-sel');
+  if (encSel) {
+    encSel.innerHTML = '<option value="">— Seleccionar encarregado existente —</option>' +
+      ENCS.map(e => `<option value="${e.id}">${e.nome} (${e.num})</option>`).join('') +
+      '<option value="_novo">+ Novo encarregado (preencher abaixo)</option>';
+    encSel.value = '';
+  }
+  const manual = document.getElementById('na-enc-manual');
+  if (manual) manual.style.display = 'none';
 
   // Populate turma selector
   const turmasSel = document.getElementById('na-turma');
@@ -17374,31 +17409,46 @@ function onFotoAluno(input) {
 }
 
 function guardarNovoAluno() {
-  const nome   = document.getElementById('n-al-nome')?.value.trim();
-  const nasc   = document.getElementById('n-al-nasc')?.value;
-  const genero = document.getElementById('n-al-gen')?.value;
-  const bi     = document.getElementById('n-al-bi')?.value.trim();
-  const nat    = document.getElementById('n-al-nat')?.value.trim();
-  const morada = document.getElementById('n-al-morada')?.value?.trim() || '';
-  const tel    = document.getElementById('n-al-tel')?.value?.trim() || '';
-  const email  = document.getElementById('n-al-email')?.value?.trim() || '';
-  const encSel = document.getElementById('n-al-enc')?.value || '';
-  const enome  = encSel ? (encSel.includes('—') ? encSel.split('—')[1]?.trim() : encSel) : (document.getElementById('na-enome')?.value?.trim() || 'N/A');
-  const erel   = document.getElementById('n-al-erel')?.value || 'Pai/Mãe';
-  const etel   = document.getElementById('n-al-etel')?.value?.trim() || '';
-  const ebi    = document.getElementById('na-ebi')?.value?.trim() || '';
-  const eprof  = document.getElementById('na-eprof')?.value?.trim() || '';
-  const eender = document.getElementById('na-eender')?.value?.trim() || '';
-  const turma  = document.getElementById('n-al-turma')?.value;
-  const bolseiro = document.getElementById('n-al-bolseiro')?.value || document.getElementById('na-bolseiro')?.value || 'nao';
+  // Ler campos do modal m-novo-aluno (na-*) ou m-naluno (n-al-*)
+  const nome   = (document.getElementById('na-nome') || document.getElementById('n-al-nome'))?.value?.trim();
+  const nasc   = (document.getElementById('na-nasc') || document.getElementById('n-al-nasc'))?.value;
+  const genero = (document.getElementById('na-genero') || document.getElementById('n-al-gen'))?.value;
+  const bi     = (document.getElementById('na-bi') || document.getElementById('n-al-bi'))?.value?.trim();
+  const nat    = (document.getElementById('na-nat') || document.getElementById('n-al-nat'))?.value?.trim();
+  const morada = document.getElementById('na-morada')?.value?.trim() || '';
+  const tel    = document.getElementById('na-tel')?.value?.trim() || '';
+  const email  = document.getElementById('na-email')?.value?.trim() || '';
   const niss   = document.getElementById('na-niss')?.value?.trim() || '';
   const escola_anterior = document.getElementById('na-escola-ant')?.value?.trim() || '';
+  const turma  = (document.getElementById('na-turma') || document.getElementById('n-al-turma'))?.value || '';
+  const bolseiro = (document.getElementById('na-bolseiro') || document.getElementById('n-al-bolseiro'))?.value || 'nao';
+
+  // Encarregado: seleccionar existente ou criar novo
+  const naEncSelVal = document.getElementById('na-enc-sel')?.value || '';
+  const encExistente = (naEncSelVal && naEncSelVal !== '_novo') ? ENCS.find(e => String(e.id) === naEncSelVal) : null;
+
+  let enome, etel, erel, ebi, eprof, eender;
+  if (encExistente) {
+    enome  = encExistente.nome;
+    etel   = encExistente.tel || '';
+    erel   = encExistente.rel || 'Familiar';
+    ebi    = encExistente.bi || '';
+    eprof  = encExistente.prof || '';
+    eender = encExistente.morada || '';
+  } else {
+    enome  = document.getElementById('na-enome')?.value?.trim() || (document.getElementById('n-al-enc')?.value ? document.getElementById('n-al-enc').options[document.getElementById('n-al-enc').selectedIndex]?.text : '') || 'N/A';
+    erel   = (document.getElementById('na-erel') || document.getElementById('n-al-erel'))?.value || 'Pai/Mãe';
+    etel   = (document.getElementById('na-etel') || document.getElementById('n-al-etel'))?.value?.trim() || '';
+    ebi    = document.getElementById('na-ebi')?.value?.trim() || '';
+    eprof  = document.getElementById('na-eprof')?.value?.trim() || '';
+    eender = document.getElementById('na-eender')?.value?.trim() || '';
+  }
 
   if (!nome)  { toast('Nome do aluno obrigatório'); return; }
   if (!nasc)  { toast('Data de nascimento obrigatória'); return; }
   if (!bi)    { toast('Nº de BI obrigatório'); return; }
-  if (!enome) { toast('Nome do encarregado obrigatório'); return; }
-  if (!etel && !encSel)  { toast('Telefone do encarregado obrigatório'); return; }
+  if (!encExistente && !enome) { toast('Nome do encarregado obrigatório'); return; }
+  if (!encExistente && !etel)  { toast('Telefone do encarregado obrigatório'); return; }
 
   const newId  = Math.max(0, ...ALUNOS.map(a=>a.id)) + 1;
   const newNum = 'ALU' + String(newId).padStart(6,'0');
@@ -17428,6 +17478,12 @@ function guardarNovoAluno() {
   };
 
   ALUNOS.push(aluno);
+
+  // Ligar ao encarregado existente (actualizar filhos[])
+  if (encExistente) {
+    if (!Array.isArray(encExistente.filhos)) encExistente.filhos = [];
+    encExistente.filhos.push({ id: aluno.id, nome: aluno.nome, num: aluno.num, turma: aluno.turma || '', saldo: 0 });
+  }
 
   // Guardar no Supabase
   if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
