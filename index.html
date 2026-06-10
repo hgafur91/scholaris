@@ -185,6 +185,10 @@ tbody tr:last-child td{border:none}
 /* ── TABS ── */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--b);margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
+#turma-p-tabs{scrollbar-width:thin}
+#turma-p-tabs::-webkit-scrollbar{display:block;height:5px}
+#turma-p-tabs::-webkit-scrollbar-thumb{background:var(--b);border-radius:4px}
+#turma-p-tabs::-webkit-scrollbar-track{background:transparent}
 .tab{flex-shrink:0;padding:10px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--t3);border-bottom:2px solid transparent;transition:all .15s;font-family:var(--ff)}
 .tab:hover{color:var(--t2)}.tab.on{color:var(--a);border-bottom-color:var(--a)}
 .tp{display:none}.tp.on{display:block;animation:fu .15s ease}
@@ -14511,6 +14515,7 @@ async function openTurma(turmaId) {
       <button class="tab" onclick="swTurmaTab('analise',this,'${turmaId}')"><i class="ti ti-chart-bar"></i> Análise Gráfica</button>
       <button class="tab" onclick="swTurmaTab('analitico',this,'${turmaId}')"><i class="ti ti-notebook"></i> Plano Analítico</button>
       <button class="tab" onclick="swTurmaTab('tematico',this,'${turmaId}')"><i class="ti ti-book"></i> Plano Temático</button>
+      <button class="tab" id="turma-tab-horario" onclick="swTurmaTab('horario',this,'${turmaId}')"><i class="ti ti-calendar"></i> Horário</button>
       <button class="tab" id="turma-tab-graduacao" onclick="swTurmaTab('graduacao',this,'${turmaId}')"><i class="ti ti-certificate"></i> Graduação</button>
     </div>
     <div id="turma-p-tab-content">
@@ -14518,7 +14523,28 @@ async function openTurma(turmaId) {
     </div>`;
 }
 
-function swTurmaTab(tab, btn, turmaId) {
+function renderTurmaTabHorario(turmaId) {
+      var grid = (typeof HORARIO !== "undefined" && HORARIO) ? HORARIO[turmaId] : null;
+      var dias = [["seg","Segunda"],["ter","Ter\u00e7a"],["qua","Quarta"],["qui","Quinta"],["sex","Sexta"]];
+      if (!grid || !grid.length) {
+        return '<div class="card" style="padding:24px;text-align:center;color:var(--t2)"><i class="ti ti-calendar-off" style="font-size:32px;display:block;margin-bottom:8px"></i>Nenhum hor\u00e1rio gerado para esta turma ainda.<br><span style="font-size:13px">Use <b>Gerar Hor\u00e1rio</b> no menu lateral para criar e guardar o hor\u00e1rio.</span></div>';
+      }
+      var html = '<div class="card" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="padding:10px;background:var(--bg2);text-align:left">Hora</th>';
+      dias.forEach(function(d){ html += '<th style="padding:10px;background:var(--bg2)">' + d[1] + '</th>'; });
+      html += '</tr></thead><tbody>';
+      grid.forEach(function(linha){
+        html += '<tr style="border-top:1px solid var(--b)"><td style="padding:10px;font-weight:600;white-space:nowrap">' + (linha.h || "") + '</td>';
+        dias.forEach(function(d){
+          var c = linha[d[0]];
+          if (c && c.d) { html += '<td style="padding:8px;text-align:center"><div style="background:var(--p-soft,#eef2ff);border-radius:6px;padding:6px"><b>' + c.d + '</b>' + (c.p ? '<br><span style="font-size:11px;color:var(--t2)">' + c.p + '</span>' : "") + '</div></td>'; }
+          else { html += '<td style="padding:8px;text-align:center;color:#bbb">\u2014</td>'; }
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      return html;
+    }
+    function swTurmaTab(tab, btn, turmaId) {
   document.querySelectorAll('#turma-p-tabs .tab').forEach(t=>t.classList.remove('on'));
   if(btn) btn.classList.add('on');
   const el = document.getElementById('turma-p-tab-content');
@@ -14532,6 +14558,7 @@ function swTurmaTab(tab, btn, turmaId) {
   else if (tab==='graduacao')  el.innerHTML = renderTurmaTabGraduacao(turmaId, alunos, canEdit);
   else if (tab==='analitico')  { el.innerHTML='<div id="pa-disc-body"><div id="plano-analitico-c"></div></div>'; _paTurma=turmaId; rPlanoAnalitico(turmaId); }
   else if (tab==='tematico')   el.innerHTML = renderTurmaTabTematico(turmaId);
+  else if (tab==='horario')   el.innerHTML = renderTurmaTabHorario(turmaId);
 }
 
 function renderTurmaTabAlunos(turmaId, alunos, canEdit) {
