@@ -15201,47 +15201,173 @@ function confirmarTransferencia() {
 
 // abrirGraduar/confirmarGraduacao removed — use turma tab
 
-function executarGraduacaoTurma(turmaId) {
-  if (!_gradSelIds.size) { toast('Seleccione pelo menos um aluno'); return; }
-  const arquivar = document.getElementById('grad-arquivar')?.checked;
-  const turma    = TURMAS.find(t=>t.id===turmaId);
-  const classeN  = parseInt(turma?.classe||0);
-  const proxCl   = String(classeN+1);
-  const anoActual= CONFIG.anoLectivo || 2026;
-  let   movidos=0, arquivados=0;
 
-  _gradSelIds.forEach(id=>{
-    const a = ALUNOS.find(x=>x.id===id);
+// ── Lógica de classes (Moçambique): nível, ciclo, próxima classe ──
+function infoClasse(n) {
+  n = parseInt(n) || 0;
+  if (n >= 1 && n <= 3)   return { nivel: 'Ensino Primário',   ciclo: '1º Ciclo' };
+  if (n >= 4 && n <= 6)   return { nivel: 'Ensino Primário',   ciclo: '2º Ciclo' };
+  if (n >= 7 && n <= 9)   return { nivel: 'Ensino Secundário', ciclo: '1º Ciclo' };
+  if (n >= 10 && n <= 12) return { nivel: 'Ensino Secundário', ciclo: '2º Ciclo' };
+  return { nivel: '', ciclo: '' };
+}
+function proximaClasse(n) { n = parseInt(n)||0; return n >= 12 ? null : n + 1; }
+
+let _gradSelIds = new Set();
+
+function renderTurmaTabGraduacao(turmaId, alunos, canEdit) {
+  const turma   = TURMAS.find(t => t.id === turmaId);
+  const classeN = parseInt(turma?.classe || 0);
+  const prox    = proximaClasse(classeN);
+  const info    = infoClasse(classeN);
+  const minAprov = (typeof CONFIG !== 'undefined' && CONFIG.mediaAprovacao) || 10;
+  _gradSelIds = new Set();
+  alunos.forEach(a => { const m = calcMediaGeralAluno(a.id); if (m != null && m >= minAprov) _gradSelIds.add(a.id); });
+
+  const destinoTxt = prox ? (prox + 'ª Classe') : 'Conclusão do Ensino Secundário';
+  let rows = alunos.map(a => {
+    const med = calcMediaGeralAluno(a.id);
+    const apto = med != null && med >= minAprov;
+    const medTxt = med != null ? med.toFixed(1) : '—';
+    const corMed = med == null ? 'var(--t3)' : (apto ? 'var(--g)' : 'var(--r)');
+    return '<tr>' +
+      '<td style="text-align:center">' + (apto ? '<input type="checkbox" class="grad-chk" data-id="' + a.id + '" checked onclick="toggleGradSel(' + a.id + ',this.checked)">' : '<input type="checkbox" disabled title="Não apto">') + '</td>' +
+      '<td>' + mkAv(a.nome, 28, ALUNOS.indexOf(a)) + '</td>' +
+      '<td style="font-weight:600">' + a.nome + '</td>' +
+      '<td style="text-align:center;font-weight:700;color:' + corMed + '">' + medTxt + '</td>' +
+      '<td style="text-align:center">' + (apto ? '<span class="badge" style="background:var(--g)18;color:var(--g)">Apto</span>' : '<span class="badge" style="background:var(--r)18;color:var(--r)">Não apto</span>') + '</td>' +
+      '<td style="text-align:center"><button class="btn btn-g btn-sm" onclick="gerarBoletimAnual(' + a.id + ',\'' + turmaId + '\')"><i class="ti ti-file-text"></i> Boletim</button> ' +
+        (apto ? '<button class="btn btn-p btn-sm" onclick="gerarCertificadoPassagem(' + a.id + ',\'' + turmaId + '\')"><i class="ti ti-certificate"></i> Certificado</button>' : '') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  return '<div class="card">' +
+    '<div class="ch"><span class="ct">Graduação · ' + (turma?.nome || '') + '</span>' +
+      '<span style="font-size:13px;color:var(--t2)">' + info.nivel + ' · ' + info.ciclo + ' · Média mínima: <b>' + minAprov + '</b></span></div>' +
+    '<div style="padding:12px 16px;background:var(--bg2);border-radius:8px;margin:0 0 14px;font-size:13px;color:var(--t2)">' +
+      '<i class="ti ti-arrow-big-up-lines"></i> Ao graduar, os alunos aptos passam para <b>' + destinoTxt + '</b> e ficam autorizados a matricular (a matrícula não é automática). O histórico é arquivado.</div>' +
+    (alunos.length ? '<div class="tw"><table><thead><tr><th style="width:34px"></th><th></th><th>Nome</th><th style="text-align:center">Média Final</th><th style="text-align:center">Estado</th><th style="text-align:center">Documentos</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div style="padding:24px;text-align:center;color:var(--t2)">Sem alunos nesta turma.</div>') +
+    (canEdit && alunos.length ? '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--b)">' +
+      '<label style="font-size:13px;color:var(--t2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="grad-arquivar"> Arquivar (concluir percurso, não promover)</label>' +
+      '<button class="btn btn-p" onclick="executarGraduacaoTurma(\'' + turmaId + '\')"><i class="ti ti-school"></i> Graduar Seleccionados</button></div>' : '') +
+  '</div>';
+}
+
+function toggleGradSel(id, checked) { if (checked) _gradSelIds.add(id); else _gradSelIds.delete(id); }
+
+async function executarGraduacaoTurma(turmaId) {
+  if (!_gradSelIds.size) { toast('Seleccione pelo menos um aluno'); return; }
+  const arquivar  = document.getElementById('grad-arquivar')?.checked;
+  const turma     = TURMAS.find(t => t.id === turmaId);
+  const classeN   = parseInt(turma?.classe || 0);
+  const prox      = proximaClasse(classeN);
+  const concluido = (classeN >= 12) || arquivar || prox == null;
+  const anoActual = CONFIG.anoLectivo || new Date().getFullYear();
+  const eid       = window._escolaId;
+  let movidos = 0, arquivados = 0;
+  const regs = [];
+
+  _gradSelIds.forEach(id => {
+    const a = ALUNOS.find(x => x.id === id);
     if (!a) return;
-    // Save to hist
-    if (!a.hist) a.hist=[];
-    a.hist.push({
-      ano: anoActual, t: turmaId,
-      m:   calcMediaGeralAluno(id),
-      a:   true,
-      discs: (a.notas.t1||[]).map(n=>({d:n.d,nota:calcNotaFinal?calcNotaFinal(id,n.d):null})),
-    });
-    // Archive notes
+    const media = calcMediaGeralAluno(id);
+    if (!a.hist) a.hist = [];
+    a.hist.push({ ano: anoActual, t: turmaId, m: media, a: true,
+      discs: (a.notas?.t1 || []).map(n => ({ d: n.d, nota: calcNotaFinal ? calcNotaFinal(id, n.d) : null })) });
     a.notasAnteriores = a.notas;
-    a.notas  = {t1:[],t2:[],t3:[]};
+    a.notas = { t1: [], t2: [], t3: [] };
     a.faltas = [];
-    a.classe = proxCl+'ª Classe';
-    a.turma  = null; // No turma until enrolment
-    a.graduadoDe  = turmaId;
-    a.graduadoAno = anoActual;
-    if (classeN>=12 || arquivar) {
-      a.graduado = true;
-      a.anoGraduacao = anoActual;
-      arquivados++;
-    } else {
-      movidos++;
-    }
+    a.classe = concluido ? (classeN + 'ª Classe (Concluída)') : (prox + 'ª Classe');
+    a.turma = null;
+    a.graduadoDe = turmaId; a.graduadoAno = anoActual;
+    if (concluido) { a.graduado = true; a.anoGraduacao = anoActual; arquivados++; } else { movidos++; }
+    if (a._dbId) regs.push({
+      escola_id: eid, aluno_id: a._dbId, ano_lectivo_id: CONFIG.anoLectivoId || null,
+      turma_origem_id: turma?.id || null, classe_origem: classeN, classe_destino: prox,
+      media_final: media, aprovado: true, concluido: concluido, autorizado_matricula: !concluido,
+      notas_arquivadas: a.notasAnteriores || null, graduado_por: (window._userNome || 'gestor')
+    });
   });
 
-  toast(`Graduação concluída! ${movidos} promovidos para ${proxCl}ª · ${arquivados} arquivados`);
-  // Refresh tab
-  setTimeout(()=>{ openTurma(turmaId); }, 200);
+  if (window._supabase && regs.length) {
+    try {
+      const ins = await window._supabase.from('graduacoes').insert(regs);
+      if (ins.error) toast('Aviso: erro ao guardar graduação: ' + ins.error.message);
+      const ids = regs.map(r => r.aluno_id);
+      const upd = await window._supabase.from('matriculas')
+        .update({ estado: 'graduado', data_saida: new Date().toISOString(), motivo_saida: concluido ? 'Conclusão' : 'Graduação para classe seguinte' })
+        .in('aluno_id', ids).eq('turma_id', turma?.id).eq('estado', 'activa');
+      if (upd.error) toast('Aviso: erro ao actualizar matrículas: ' + upd.error.message);
+    } catch (e) { toast('Aviso: ' + e.message); }
+  }
+
+  toast('Graduação concluída! ' + movidos + ' promovidos' + (prox ? ' para ' + prox + 'ª' : '') + ' · ' + arquivados + ' concluídos');
+  setTimeout(() => { openTurma(turmaId); }, 250);
 }
+
+function _gradEscolaHeader() {
+  const s = (typeof ESCOLA_SETTINGS !== 'undefined') ? ESCOLA_SETTINGS : {};
+  const logo = s.logo ? '<img src="' + s.logo + '" style="height:64px;margin-bottom:8px">' : '';
+  return '<div style="text-align:center;border-bottom:3px solid ' + (s.corPrimaria || '#0d1526') + ';padding-bottom:14px;margin-bottom:20px">' +
+    logo + '<div style="font-size:22px;font-weight:800;color:' + (s.corPrimaria || '#0d1526') + '">' + (s.nome || 'Scholaris') + '</div>' +
+    (s.subNome ? '<div style="font-size:13px;color:#555">' + s.subNome + '</div>' : '') +
+    (s.morada ? '<div style="font-size:12px;color:#777">' + s.morada + (s.telefone ? ' · ' + s.telefone : '') + '</div>' : '') +
+  '</div>';
+}
+function _gradAssinaturas(turma) {
+  const dt = turma?.director_turma || '_______________________';
+  return '<div style="display:flex;justify-content:space-between;margin-top:60px;gap:40px;text-align:center">' +
+    '<div style="flex:1"><div style="border-top:1px solid #000;padding-top:6px;font-size:12px">O Director da Turma<br><b>' + dt + '</b></div></div>' +
+    '<div style="flex:1"><div style="border-top:1px solid #000;padding-top:6px;font-size:12px">O Director da Escola</div></div>' +
+    '<div style="flex:1"><div style="border-top:1px solid #000;padding-top:6px;font-size:12px">O Encarregado de Educação</div></div>' +
+  '</div>';
+}
+function _gradPrint(html) {
+  const w = window.open('', '_blank', 'width=820,height=900');
+  w.document.write('<html><head><meta charset="utf-8"><title>Documento</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:40px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #ccc;padding:7px 9px;text-align:left}th{background:#f3f4f6}@media print{button{display:none}}</style></head><body>' + html + '<div style="text-align:center;margin-top:30px"><button onclick="window.print()" style="padding:10px 24px;font-size:14px;cursor:pointer">Imprimir / PDF</button></div></body></html>');
+  w.document.close();
+}
+function gerarBoletimAnual(alunoId, turmaId) {
+  const a = ALUNOS.find(x => x.id === alunoId); if (!a) return;
+  const turma = TURMAS.find(t => t.id === turmaId);
+  const info = infoClasse(turma?.classe);
+  const discs = (a.notas?.t1 || []).map(n => n.d);
+  const media = calcMediaGeralAluno(alunoId);
+  const minAprov = (CONFIG && CONFIG.mediaAprovacao) || 10;
+  let linhas = discs.map(d => {
+    const nf = calcNotaFinal ? calcNotaFinal(alunoId, d) : null;
+    return '<tr><td>' + d + '</td><td style="text-align:center">' + (nf != null ? nf.toFixed(1) : '—') + '</td><td style="text-align:center">' + (nf != null && nf >= minAprov ? 'Aprovado' : (nf != null ? 'Reprovado' : '—')) + '</td></tr>';
+  }).join('');
+  const html = _gradEscolaHeader() +
+    '<h2 style="text-align:center;margin:0 0 4px">Boletim Anual de Aproveitamento</h2>' +
+    '<div style="text-align:center;color:#666;margin-bottom:18px">Ano Lectivo ' + (CONFIG.anoLectivo || new Date().getFullYear()) + '</div>' +
+    '<table style="margin-bottom:18px"><tr><td><b>Nome:</b> ' + a.nome + '</td><td><b>Turma:</b> ' + (turma?.nome || '') + '</td></tr>' +
+    '<tr><td><b>Classe:</b> ' + (turma?.classe || '') + 'ª</td><td><b>' + info.nivel + ' · ' + info.ciclo + '</b></td></tr></table>' +
+    '<table><thead><tr><th>Disciplina</th><th style="text-align:center">Média Final</th><th style="text-align:center">Situação</th></tr></thead><tbody>' + linhas +
+    '<tr style="font-weight:700;background:#f9fafb"><td>MÉDIA GERAL</td><td style="text-align:center">' + (media != null ? media.toFixed(1) : '—') + '</td><td style="text-align:center">' + (media != null && media >= minAprov ? 'TRANSITA' : 'NÃO TRANSITA') + '</td></tr>' +
+    '</tbody></table>' + _gradAssinaturas(turma);
+  _gradPrint(html);
+}
+function gerarCertificadoPassagem(alunoId, turmaId) {
+  const a = ALUNOS.find(x => x.id === alunoId); if (!a) return;
+  const turma = TURMAS.find(t => t.id === turmaId);
+  const classeN = parseInt(turma?.classe || 0);
+  const prox = proximaClasse(classeN);
+  const info = infoClasse(classeN);
+  const media = calcMediaGeralAluno(alunoId);
+  const destino = prox ? (prox + 'ª Classe') : 'conclusão do Ensino Secundário';
+  const html = _gradEscolaHeader() +
+    '<h1 style="text-align:center;letter-spacing:2px;margin:10px 0 6px">CERTIFICADO DE PASSAGEM</h1>' +
+    '<div style="text-align:center;color:#666;margin-bottom:30px">' + info.nivel + ' · ' + info.ciclo + '</div>' +
+    '<p style="font-size:15px;line-height:2;text-align:center;margin:30px 40px">Certifica-se que <b>' + a.nome + '</b>, aluno(a) da turma <b>' + (turma?.nome || '') + '</b>, ' +
+    'concluiu com aproveitamento a <b>' + (turma?.classe || '') + 'ª Classe</b> com a média final de <b>' + (media != null ? media.toFixed(1) + ' valores' : '—') + '</b>, ' +
+    'estando autorizado(a) a matricular-se na <b>' + destino + '</b>.</p>' +
+    '<div style="text-align:right;margin:30px 40px 0;font-size:13px;color:#555">' + ((ESCOLA_SETTINGS && ESCOLA_SETTINGS.morada) || '') + ', aos _____ de _________________ de ' + (CONFIG.anoLectivo || new Date().getFullYear()) + '</div>' +
+    _gradAssinaturas(turma);
+  _gradPrint(html);
+}
+
+
 
 // ═══════════════════════════════════════════════════════════
 //  DESEMPENHO INDIVIDUAL — Portal Aluno + Encarregado + Prof
