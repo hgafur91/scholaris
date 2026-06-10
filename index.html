@@ -4366,6 +4366,9 @@ function fAl(f,btn){document.querySelectorAll('#al-filtros .chip').forEach(c=>c.
 // ══ PERFIL ALUNO ══
 function openAluno(id){
   const a=ALUNOS.find(x=>x.id===id);if(!a)return;
+  // Garantir campos financeiros (calculados a partir das propinas)
+  try{ if(typeof a.saldo!=='number'){ const _div=(a.propinas||[]).filter(p=>p.st!=='pago'&&p.st!=='multa').reduce((s,p)=>s+(p.v||0),0); a.saldo=-_div; } if(typeof a.adiant!=='number') a.adiant=0; }catch(_e){ a.saldo=a.saldo||0; a.adiant=a.adiant||0; }
+  if(!Array.isArray(a.docs)) a.docs=[];
   curAlunoId=id;const i=ALUNOS.indexOf(a),c=gc(i);
   go('aluno-p');
   document.getElementById('ap-bc').textContent=a.nome;try{document.getElementById('ap-an-c').innerHTML=renderPortalDesempenho(a);}catch(e){if(document.getElementById('ap-an-c'))document.getElementById('ap-an-c').innerHTML='<div class="card"><div class="cb" style="padding:40px;text-align:center;color:var(--t2)">Análise indisponível.</div></div>';}
@@ -18401,6 +18404,9 @@ function docData() {
     subNome: ESCOLA_SETTINGS?.subNome || 'Maputo · Ano Lectivo 2026',
     hoje: new Date().toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric'}),
     ano: new Date().getFullYear(),
+    nuit: (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nuit)||'',
+    morada: (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.morada)||'',
+    telefone: (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.telefone)||'',
   };
 }
 
@@ -18469,6 +18475,9 @@ function emitirReciboPropina(pagamentoId) {
   const a   = ALUNOS.find(x=>x.id===pag.alunoId);
   const d   = docData();
   const cod = `REC-${pagamentoId}-${d.ano}`;
+  const _enc = (typeof ENCS!=='undefined') ? ENCS.find(e=>e.num===(a&&a.enc)) : null;
+  const _encNome = (_enc&&_enc.nome) || (a&&a.erel) || '\u2014';
+  const _divAberto = a ? (a.propinas||[]).filter(p=>p.st!=='pago'&&p.st!=='multa').reduce((s,p)=>s+(p.v||0),0) : 0;
 
   const mesesStr = pag.meses.map(mi=>M[mi]+'/'+d.ano).join(', ');
   const canalLabel = {
@@ -18503,6 +18512,7 @@ function emitirReciboPropina(pagamentoId) {
 
     <div class="g2" style="margin-bottom:10px">
       <div class="campo"><div class="lbl">Aluno</div><div class="val">${a?.nome||pag.alunoNome}</div></div>
+      <div class="campo"><div class="lbl">Encarregado de Educação</div><div class="val">${_encNome}</div></div>
       <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${pag.alunoNum}</div></div>
       <div class="campo"><div class="lbl">Turma</div><div class="val">${pag.turmaId||'—'}</div></div>
       <div class="campo"><div class="lbl">Referência Bancária</div><div class="val" style="font-family:monospace">${pag.ref||'—'}</div></div>
@@ -18522,6 +18532,10 @@ function emitirReciboPropina(pagamentoId) {
       · Ref. extracto: <strong>${pag.confirmedRef||pag.ref||'—'}</strong>
     </div>`:''}
 
+    <!-- Situacao da divida -->
+    <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid ${_divAberto>0?'#fecaca':'#bbf7d0'};background:${_divAberto>0?'#fef2f2':'#f0fdf4'};border-radius:8px;padding:10px 14px;margin:14px 0"><div style="font-size:11px;color:${_divAberto>0?'#991b1b':'#166534'};font-weight:700">${_divAberto>0?'Saldo em dívida (propinas em aberto)':'Sem propinas em dívida'}</div><div style="font-size:16px;font-weight:900;color:${_divAberto>0?'#dc2626':'#16a34a'}">${(_divAberto||0).toLocaleString('pt-PT')} MZM</div></div>
+    <!-- Dados fiscais da escola -->
+    <div style="font-size:9px;color:#94a3b8;text-align:center;margin:6px 0 12px;line-height:1.5">${d.nuit?('NUIT: '+d.nuit+' · '):''}${d.morada?(d.morada+' · '):''}${d.telefone?('Tel: '+d.telefone):''}<br>Documento processado por computador · Recibo válido sem rasuras</div>
     <div class="sig sig2">
       <div><div class="sig-line">Secretário(a) / Tesouraria</div></div>
       <div><div class="sig-line">Encarregado de Educação</div></div>
