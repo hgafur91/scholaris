@@ -4495,7 +4495,8 @@ function openProf(id){
   ];
   rIR('pp-ct-r', ctRows);
   rIR('pp-fo-r',[['Nível',p.form],['Área',p.area],['Disciplinas',p.disc.join(', ')||'—'],['Universidade','Universidade Eduardo Mondlane']]);
-  document.getElementById('pp-tu-r').innerHTML=p.turmas.length?p.turmas.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--b)"><span style="font-size:13px;font-weight:700">${t}</span><button class="btn btn-g btn-sm" onclick="openHorTurma('${t}');go('horario')">Ver Horário</button></div>`).join(''):'<div style="padding:14px 16px;font-size:12px;color:var(--t2)">Sem turmas alocadas. Use o módulo de Alocação.</div>';
+  const profTurmasAloc = [...new Set(ALOCACOES.filter(a=>a.prof===p.num).map(a=>a.turma))];
+  document.getElementById('pp-tu-r').innerHTML=profTurmasAloc.length?profTurmasAloc.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--b)"><span style="font-size:13px;font-weight:700">${t}</span><button class="btn btn-g btn-sm" onclick="openHorTurma('${t}');go('horario')">Ver Horário</button></div>`).join(''):'<div style="padding:14px 16px;font-size:12px;color:var(--t2)">Sem turmas alocadas. Use o módulo de Alocação.</div>';
   document.getElementById('pp-di-r').innerHTML=p.disc.length?p.disc.map(d=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--b)"><span style="font-size:13px;font-weight:700">${d}</span><span class="badge bin">${ALOCACOES.filter(a=>a.prof===p.num&&a.disc===d).length} turma(s)</span></div>`).join(''):'<div style="padding:14px 16px;font-size:12px;color:var(--t2)">Sem disciplinas. Use o módulo de Alocação.</div>';
   // Horário do professor — agrega das turmas
   const horProf=HORAS_D.map(h=>{const row={h};['seg','ter','qua','qui','sex'].forEach((d,di)=>{Object.entries(HORARIO).forEach(([tid,rows])=>{const r=rows.find(x=>x.h===h);if(r&&r[d]&&r[d].p===p.num)row[d]={d:r[d].d,tid}})});return row});
@@ -13262,8 +13263,8 @@ function gerarHorarioAuto() {
           <button class="btn btn-g btn-sm" onclick="gerarHorarioAuto()"><i class="ti ti-refresh"></i> Regenerar</button>
         </div>
       </div>
-      <div class="cb" style="overflow-x:auto">
-        ${TURMAS.slice(0,2).map(t=>`
+      <div class="cb" style="overflow-x:auto;max-height:420px;overflow-y:auto">
+        ${TURMAS.filter(t=>(novoHorario[t.id]||[]).some(row=>['seg','ter','qua','qui','sex'].some(d=>row[d]))).map(t=>`
           <div style="margin-bottom:14px">
             <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--a)">Turma ${t.id}</div>
             <div class="hg">
@@ -13277,7 +13278,6 @@ function gerarHorarioAuto() {
                 }).join('')}`).join('')}
             </div>
           </div>`).join('')}
-        ${TURMAS.length > 2 ? `<div style="font-size:12px;color:var(--t2);text-align:center;padding:8px">+ ${TURMAS.length-2} turma(s) mais geradas. <a onclick="go('horario')" style="cursor:pointer;color:var(--a)">Ver todas</a></div>` : ''}
       </div>
     </div>`;
   toast('Horário gerado! Clique "Guardar Horário" para persistir.');
@@ -13294,14 +13294,12 @@ async function guardarHorarioGerado() {
   const btn = document.getElementById('btn-guardar-horario');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> A guardar...'; }
   try {
-    // Delete existing horario for this escola
-    await window._supabase.from('horarios').delete().eq('escola_id', window._escolaId);
-    // Insert new
-    const { error } = await window._supabase.from('horarios').insert({
+    // Upsert horario (insert or update if exists)
+    const { error } = await window._supabase.from('horarios').upsert({
       escola_id: window._escolaId,
       dados: HORARIO,
       gerado_em: new Date().toISOString(),
-    });
+    }, { onConflict: 'escola_id' });
     if (error) { toast('Erro ao guardar: ' + error.message); }
     else {
       toast('✅ Horário guardado com sucesso!');
