@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{
+:root{h
   --bg:#080d18;--bg2:#0d1526;--bg3:#131e33;--card:#101828;--card2:#18243c;
   --b:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.14);
   --a:#4f8ef7;--a2:#7c6af7;--g:#22c55e;--am:#f59e0b;--r:#ef4444;--pi:#ec4899;--tl:#06b6d4;
@@ -874,7 +874,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 <!-- ════ ENCARREGADOS ════ -->
 <div class="view" id="v-encarregados">
-  <div class="ph"><div><div class="ph-title">Encarregados</div></div><div class="ph-right"><button class="btn btn-p btn-sm" id="btn-novo-enc" onclick="openM('m-nenc')"><i class="ti ti-plus"></i> Novo</button></div></div>
+  <div class="ph"><div><div class="ph-title">Encarregados</div></div><div class="ph-right"><button class="btn btn-p btn-sm" id="btn-novo-enc" onclick="abrirNovoEnc()"><i class="ti ti-plus"></i> Novo</button></div></div>
   <div class="card"><div class="tw"><table><thead><tr><th></th><th>Nº</th><th>Nome</th><th>Telefone</th><th>Filhos</th><th>Dívida Total</th><th>Adesão</th><th></th></tr></thead><tbody id="tb-enc"></tbody></table></div></div>
 </div>
 
@@ -1691,7 +1691,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="mft"><button class="btn btn-g" onclick="closeM('m-alocacao')">Cancelar</button><button class="btn btn-p" onclick="guardarAlocacaoSupabase()"><i class="ti ti-device-floppy"></i> Guardar Alocação</button></div>
 </div></div>
 
-<div class="modal-ov" id="m-nenc"><div class="modal"><div class="mhd"><span class="mt">Novo Encarregado</span><button class="mclose" onclick="closeM('m-nenc')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="ib-box ib-gr"><i class="ti ti-info-circle"></i> Nº único: <strong>ENC000004</strong></div><div class="fg"><div class="fgr"><label class="fl">Nome</label><input class="ffi" placeholder="Nome completo"></div><div class="fgr"><label class="fl">Telefone</label><input class="ffi" placeholder="+258 84..."></div><div class="fgr"><label class="fl">Email</label><input class="ffi" type="email"></div><div class="fgr"><label class="fl">Profissão</label><input class="ffi"></div><div class="fgr"><label class="fl">Relação</label><select class="ffi"><option>Pai</option><option>Mãe</option><option>Avô/Avó</option><option>Tio/Tia</option><option>Outro</option></select></div><div class="fgr"><label class="fl">BI</label><input class="ffi" placeholder="Nº documento"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nenc')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nenc');toast('ENC000004 criado!')">Guardar</button></div></div></div>
+<div class="modal-ov" id="m-nenc"><div class="modal"><div class="mhd"><span class="mt">Novo Encarregado</span><button class="mclose" onclick="closeM('m-nenc')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="ib-box ib-gr"><i class="ti ti-info-circle"></i> Nº único: <strong id="nenc-num">ENC000001</strong></div><div class="fg"><div class="fgr"><label class="fl">Nome</label><input class="ffi" id="nenc-nome" placeholder="Nome completo"></div><div class="fgr"><label class="fl">Telefone</label><input class="ffi" id="nenc-tel" placeholder="+258 84..."></div><div class="fgr"><label class="fl">Email</label><input class="ffi" id="nenc-email" type="email"></div><div class="fgr"><label class="fl">Profissão</label><input class="ffi" id="nenc-prof"></div><div class="fgr"><label class="fl">Relação</label><select class="ffi" id="nenc-rel"><option>Pai</option><option>Mãe</option><option>Avô/Avó</option><option>Tio/Tia</option><option>Outro</option></select></div><div class="fgr"><label class="fl">BI</label><input class="ffi" id="nenc-bi" placeholder="Nº documento"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nenc')">Cancelar</button><button class="btn btn-p" onclick="guardarNovoEnc()">Guardar</button></div></div></div>
 
 <div class="modal-ov" id="m-nturma"><div class="modal" style="max-width:500px">
   <div class="mhd"><span class="mt">Nova Turma</span>
@@ -4459,6 +4459,37 @@ function openProf(id){
 function rEncs(){
   document.getElementById('tb-enc').innerHTML=ENCS.map((e,i)=>{const div=e.filhos.reduce((s,f)=>s+(f.saldo<0?Math.abs(f.saldo):0),0);return`<tr onclick="openEnc(${e.id})"><td>${mkAv(e.nome,28,i+3,false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${e.num}</td><td style="font-weight:700">${e.nome}</td><td style="color:var(--t2)">${e.tel}</td><td><span class="badge bin">${e.filhos.length} filho(s)</span></td><td style="font-weight:700;color:${div?'var(--r)':'var(--g)'}">${div?div.toLocaleString()+' MZM':'—'}</td><td style="color:var(--t2)">${e.adesao}</td><td><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openEnc(${e.id})">Ver</button></td></tr>`}).join('');
 }
+function abrirNovoEnc(){
+  const nextId=ENCS.length+1;
+  const numEl=document.getElementById('nenc-num');
+  if(numEl)numEl.textContent='ENC'+String(nextId).padStart(6,'0');
+  ['nenc-nome','nenc-tel','nenc-email','nenc-prof','nenc-bi'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const rel=document.getElementById('nenc-rel');if(rel)rel.selectedIndex=0;
+  openM('m-nenc');
+}
+
+async function guardarNovoEnc(){
+  const nome=document.getElementById('nenc-nome')?.value?.trim();
+  if(!nome){toast('Nome obrigatório!');return;}
+  const id=ENCS.length+1;
+  const num='ENC'+String(id).padStart(6,'0');
+  const tel=document.getElementById('nenc-tel')?.value?.trim()||'';
+  const email=document.getElementById('nenc-email')?.value?.trim()||'N/A';
+  const prof=document.getElementById('nenc-prof')?.value?.trim()||'';
+  const rel=document.getElementById('nenc-rel')?.value||'Pai';
+  const bi=document.getElementById('nenc-bi')?.value?.trim()||'';
+  const enc={id,num,nome,tel,email,prof,rel,bi,nasc:'',genero:'M',morada:'',filhos:[],adesao:new Date().getFullYear()};
+  ENCS.push(enc);
+  closeM('m-nenc');
+  rEncs();
+  toast(num+' criado com sucesso!');
+  if(window._supabase&&window._escolaId&&window._escolaId!=='escola_demo'){
+    const{error}=await window._supabase.from('encarregados').insert({
+      escola_id:window._escolaId,num,nome,tel,email,prof,rel,bi,ativo:true,data_registo:new Date().toISOString()
+    });
+    if(error)toast('Aviso: erro ao guardar no servidor: '+error.message);
+  }
+}
 
 function openEnc(id){
   const e=ENCS.find(x=>x.id===id);if(!e)return;
@@ -5563,7 +5594,35 @@ async function loadDadosEscola() {
       console.log('[Scholaris] Alunos carregados:', ALUNOS.length);
     }
 
-    // 6. Carregar atribuições (professor → turma → disciplina)
+    // 6. Carregar encarregados
+    const { data: encsDB } = await window._supabase
+      .from('encarregados')
+      .select('*')
+      .eq('escola_id', eid);
+    if (encsDB?.length) {
+      ENCS.length = 0;
+      encsDB.forEach((e, i) => {
+        ENCS.push({
+          id: i + 1,
+          num: e.num || 'ENC' + String(i+1).padStart(6,'0'),
+          nome: e.nome || '',
+          tel: e.tel || '',
+          email: e.email || 'N/A',
+          prof: e.prof || '',
+          rel: e.rel || 'Familiar',
+          bi: e.bi || '',
+          nasc: e.nasc || '',
+          genero: e.genero || 'M',
+          morada: e.morada || '',
+          filhos: [],
+          adesao: e.data_registo ? new Date(e.data_registo).getFullYear() : new Date().getFullYear(),
+          _dbId: e.id,
+        });
+      });
+      console.log('[Scholaris] Encarregados carregados:', ENCS.length);
+    }
+
+    // 7. Carregar atribuições (professor → turma → disciplina)
     const { data: atribDB } = await window._supabase
       .from('atribuicoes').select('*').eq('escola_id', eid);
     if (atribDB?.length) {
@@ -5586,7 +5645,7 @@ async function loadDadosEscola() {
       console.log('[Scholaris] Alocações carregadas:', ALOCACOES.length);
     }
 
-    // 7. Actualizar dashboard
+    // 8. Actualizar dashboard
     if (typeof rDash === 'function') {
       try { rDash(); } catch(e) {}
     }
