@@ -17552,24 +17552,32 @@ function rFinDashboard() {
     {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:totalAlunos+' alunos x 12 meses', c:'var(--a)', ic:'ti-target'}
   ].map(k=>`<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:17px;font-weight:800;color:${k.c}">${k.v}</div><div style="font-size:10px;color:var(--t2);margin-top:2px">${k.l}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
   // Grafico de linha: saldo mensal (SVG)
-  const W=720, H=180, padL=10, padR=10, padT=20, padB=24;
-  const innerW=W-padL-padR, innerH=H-padT-padB;
-  const maxV=Math.max(1, ...saldoMensal.map(v=>Math.abs(v)));
-  const zeroY=padT + innerH/2;
-  const ptX=i=>padL + (innerW*(i/(11)));
-  const ptY=v=>zeroY - (v/maxV)*(innerH/2);
-  const linePts=saldoMensal.map((v,i)=>ptX(i).toFixed(1)+','+ptY(v).toFixed(1)).join(' ');
-  const dots=saldoMensal.map((v,i)=>'<circle cx="'+ptX(i).toFixed(1)+'" cy="'+ptY(v).toFixed(1)+'" r="3" fill="'+(v>=0?'#22c55e':'#ef4444')+'"></circle>').join('');
-  const xlabels=M.map((m,i)=>'<text x="'+ptX(i).toFixed(1)+'" y="'+(H-6)+'" font-size="9" fill="#7a90bb" text-anchor="middle">'+m+'</text>').join('');
-  const lineChart='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" preserveAspectRatio="none">'
-    +'<line x1="'+padL+'" y1="'+zeroY.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+zeroY.toFixed(1)+'" stroke="#3a4a6a" stroke-dasharray="4 4" stroke-width="1"></line>'
-    +'<polyline fill="none" stroke="#4f8ef7" stroke-width="2" points="'+linePts+'"></polyline>'
-    +dots+xlabels+'</svg>';
+  const W=760, H=240, padL=70, padR=16, padT=16, padB=28;
+          const innerW=W-padL-padR, innerH=H-padT-padB;
+          const STEP_=100000;
+          const maxAbs_=Math.max(STEP_, ...saldoMensal.map(function(v){return Math.abs(v);}));
+          const topVal_=Math.ceil(maxAbs_/STEP_)*STEP_;
+          const zeroY=padT+innerH/2;
+          const scaleY_=(innerH/2)/topVal_;
+          const ptX=function(i){return padL+innerW*(i/11);};
+          const ptY=function(v){return zeroY - v*scaleY_;};
+          const fmtK_=function(v){return v===0?'0':(v>0?'+':'')+(Math.round(v/1000))+'k';};
+          let grid_='', ylab_='';
+          for(let val=-topVal_; val<=topVal_; val+=STEP_){
+            const yy=ptY(val); const isZero=(val===0);
+            grid_+='<line x1="'+padL+'" y1="'+yy.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+yy.toFixed(1)+'" stroke="'+(isZero?'#3a4a6a':'#e5e9f0')+'" stroke-width="'+(isZero?1.2:1)+'" '+(isZero?'stroke-dasharray="4 4"':'')+'/>';
+            ylab_+='<text x="'+(padL-8)+'" y="'+(yy+3).toFixed(1)+'" font-size="10" fill="'+(isZero?'#3a4a6a':'#9aa6bb')+'" text-anchor="end" font-weight="'+(isZero?700:400)+'">'+fmtK_(val)+'</text>';
+          }
+          const linePts=saldoMensal.map(function(v,i){return ptX(i).toFixed(1)+','+ptY(v).toFixed(1);}).join(' ');
+          const dots=saldoMensal.map(function(v,i){var col=(v<0?'#ef4444':'#22c55e');var tip=M[i]+': '+v.toLocaleString('pt-PT')+' MZM';return '<circle cx="'+ptX(i).toFixed(1)+'" cy="'+ptY(v).toFixed(1)+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="1.5" style="cursor:pointer"><title>'+tip+'</title></circle>';}).join('');
+          const xlabels=M.map(function(m,i){return '<text x="'+ptX(i).toFixed(1)+'" y="'+(H-8)+'" font-size="10" fill="#7a90bb" text-anchor="middle">'+m+'</text>';}).join('');
+          const lineChart='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" preserveAspectRatio="none">'+grid_+ylab_+'<polyline fill="none" stroke="#4f8ef7" stroke-width="2" points="'+linePts+'"/>'+dots+xlabels+'</svg>';
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">'+kpisHtml+'</div>'
     +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Saldo Mensal 2026 (Entradas - Saidas)</span></div><div class="cb">'+lineChart+'</div></div>'
     +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Cobranca Mensal de Propinas - 2026</span></div><div class="cb"><div style="display:flex;gap:4px;align-items:flex-end;height:120px;padding:0 8px">'
     +cobrancaMensal.map((m,i)=>{ const pct=m.expected>0?Math.round(m.valor/m.expected*100):0; const cor=pct>=90?'var(--g)':pct>=60?'var(--am)':'var(--r)'; const h=Math.max(4,Math.round(pct/100*100)); return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:9px;font-weight:700;color:${cor}">${pct?pct+'%':''}</div><div style="width:100%;height:${h}px;background:${cor};border-radius:3px 3px 0 0;opacity:.85;min-height:4px"></div><div style="font-size:9px;color:var(--t3)">${m.mes}</div></div>`; }).join('')
     +'</div></div></div>'
+    +gerarTopCategorias()
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">'
     +'<div class="card" style="cursor:pointer" onclick="go(\'reconciliacao\')"><div class="cb" style="text-align:center;padding:16px"><i class="ti ti-building-bank" style="font-size:28px;color:var(--a);display:block;margin-bottom:8px"></i><div style="font-weight:700">Reconciliacao Bancaria</div><div style="font-size:11px;color:var(--t2);margin-top:4px">'+PAGAMENTOS.filter(p=>p.estado==='por_confirmar').length+' pagamento(s) por confirmar</div></div></div>'
     +'<div class="card" style="cursor:pointer" onclick="go(\'aging-report\')"><div class="cb" style="text-align:center;padding:16px"><i class="ti ti-clock-dollar" style="font-size:28px;color:var(--am);display:block;margin-bottom:8px"></i><div style="font-weight:700">Antiguidade de Saldos</div><div style="font-size:11px;color:var(--t2);margin-top:4px">'+fmt(totalDivida)+' MZM em divida</div></div></div>'
@@ -17577,8 +17585,80 @@ function rFinDashboard() {
     +'</div>';
 }
 
-function exportarMapaFinanceiro() {
-  toast('Mapa financeiro exportado!');
+function calcFinanceiroMensal(){
+  var M=(typeof MESES_ABBR!=='undefined')?MESES_ABBR:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var vp=(typeof CONFIG!=='undefined'&&CONFIG.valorPropina)?CONFIG.valorPropina:4500;
+  var despArr=(typeof DESP!=='undefined'&&Array.isArray(DESP))?DESP:((typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG:[]);
+  var mesAtual=new Date().getMonth()+1;
+  return Array.from({length:12},function(_,mi){
+    var mm=mi+1;
+    var entradas=(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]).filter(function(p){return p.data&&parseInt(p.data.slice(5,7),10)===mm&&p.estado!=='estornado';}).reduce(function(s,p){return s+(p.valorTotal||0);},0);
+    var saidas=despArr.filter(function(d){return d.data&&parseInt(d.data.slice(5,7),10)===mm;}).reduce(function(s,d){return s+(d.valor||0);},0);
+    var dividas=(typeof ALUNOS!=='undefined'?ALUNOS:[]).reduce(function(s,a){return s+((a.propinas||[]).filter(function(p){return p.st==='npago'&&p.m===mm&&mm<=mesAtual;}).length*vp);},0);
+    return {mes:M[mi], mesNum:mm, entradas:entradas, saidas:saidas, dividas:dividas, saldo:entradas-saidas};
+  });
+}
+function exportarMapaFinanceiro(){
+  var MM=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var optMes=MM.map(function(m,i){return '<option value="'+(i+1)+'">'+m+'</option>';}).join('');
+  var mesAtualNum=new Date().getMonth()+1;
+  var html='<div id="fin-export-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)this.remove()">'+
+    '<div style="background:var(--card,#fff);border-radius:16px;padding:24px;width:420px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;font-size:18px;font-weight:800;color:var(--t1,#1e293b)">Exportar Mapa Financeiro</h3><span style="cursor:pointer;font-size:22px;color:var(--t3,#94a3b8)" onclick="document.getElementById(\'fin-export-modal\').remove()">&times;</span></div>'+
+    '<p style="margin:0 0 16px;font-size:12px;color:var(--t3,#94a3b8)">Entradas, Saidas, Dividas e Saldo</p>'+
+    '<label style="font-size:12px;font-weight:700;color:var(--t2,#475569);display:block;margin-bottom:6px">Periodo</label>'+
+    '<select id="fx-modo" onchange="__fxToggle()" style="width:100%;padding:9px;border:1px solid var(--b-border,#e2e8f0);border-radius:8px;margin-bottom:12px;font-size:13px"><option value="ano">Ano inteiro (2026)</option><option value="unico">Mes especifico</option><option value="intervalo">Intervalo de meses</option></select>'+
+    '<div id="fx-unico" style="display:none;margin-bottom:12px"><label style="font-size:12px;color:var(--t2,#475569)">Mes</label><select id="fx-mes" style="width:100%;padding:9px;border:1px solid var(--b-border,#e2e8f0);border-radius:8px;font-size:13px">'+optMes+'</select></div>'+
+    '<div id="fx-intervalo" style="display:none;margin-bottom:12px"><div style="display:flex;gap:8px"><div style="flex:1"><label style="font-size:12px;color:var(--t2,#475569)">De</label><select id="fx-ini" style="width:100%;padding:9px;border:1px solid var(--b-border,#e2e8f0);border-radius:8px;font-size:13px">'+optMes+'</select></div><div style="flex:1"><label style="font-size:12px;color:var(--t2,#475569)">Ate</label><select id="fx-fim" style="width:100%;padding:9px;border:1px solid var(--b-border,#e2e8f0);border-radius:8px;font-size:13px">'+optMes+'</select></div></div></div>'+
+    '<label style="font-size:12px;font-weight:700;color:var(--t2,#475569);display:block;margin:4px 0 6px">Formato</label>'+
+    '<div style="display:flex;gap:10px"><button onclick="__fxExport(\'excel\')" style="flex:1;padding:11px;border:none;border-radius:8px;background:#16a34a;color:#fff;font-weight:700;cursor:pointer">Excel</button><button onclick="__fxExport(\'pdf\')" style="flex:1;padding:11px;border:none;border-radius:8px;background:#dc2626;color:#fff;font-weight:700;cursor:pointer">PDF</button></div>'+
+    '</div></div>';
+  var wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstElementChild);
+  var ff=document.getElementById('fx-fim'); if(ff) ff.value=mesAtualNum;
+}
+function __fxToggle(){
+  var modo=document.getElementById('fx-modo').value;
+  document.getElementById('fx-unico').style.display=(modo==='unico')?'block':'none';
+  document.getElementById('fx-intervalo').style.display=(modo==='intervalo')?'block':'none';
+}
+function __fxExport(formato){
+  var MM=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var modo=document.getElementById('fx-modo').value;
+  var mUnico=+document.getElementById('fx-mes').value;
+  var mIni=+document.getElementById('fx-ini').value, mFim=+document.getElementById('fx-fim').value;
+  var rows=calcFinanceiroMensal();
+  if(modo==='unico') rows=rows.filter(function(r){return r.mesNum===mUnico;});
+  else if(modo==='intervalo') rows=rows.filter(function(r){return r.mesNum>=mIni&&r.mesNum<=mFim;});
+  var periodoLabel=(modo==='ano')?'Ano 2026':(modo==='unico')?(MM[mUnico-1]+' 2026'):(MM[mIni-1]+' a '+MM[mFim-1]+' 2026');
+  var fmt=function(n){return (n||0).toLocaleString('pt-PT');};
+  var t=rows.reduce(function(a,r){return {e:a.e+r.entradas,s:a.s+r.saidas,d:a.d+r.dividas,sd:a.sd+r.saldo};},{e:0,s:0,d:0,sd:0});
+  if(formato==='excel'){
+    var h='<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial"><thead><tr style="background:#1e3a5f;color:#fff"><th>Mes</th><th>Entradas (MZM)</th><th>Saidas (MZM)</th><th>Dividas (MZM)</th><th>Saldo (MZM)</th></tr></thead><tbody>';
+    rows.forEach(function(r){h+='<tr><td>'+r.mes+'</td><td>'+fmt(r.entradas)+'</td><td>'+fmt(r.saidas)+'</td><td>'+fmt(r.dividas)+'</td><td style="color:'+(r.saldo<0?'#dc2626':'#16a34a')+'">'+fmt(r.saldo)+'</td></tr>';});
+    h+='<tr style="background:#e2e8f0;font-weight:bold"><td>TOTAL</td><td>'+fmt(t.e)+'</td><td>'+fmt(t.s)+'</td><td>'+fmt(t.d)+'</td><td>'+fmt(t.sd)+'</td></tr></tbody></table>';
+    if(typeof downloadStyledExcel==='function') downloadStyledExcel(h,'mapa-financeiro-'+periodoLabel.replace(/ /g,'-').toLowerCase(),'Mapa Financeiro - '+periodoLabel);
+  } else {
+    var b='<h1 style="text-align:center">Mapa Financeiro</h1><p style="text-align:center;color:#666">'+periodoLabel+'</p><table style="width:100%;border-collapse:collapse;margin-top:16px;font-family:Arial"><thead><tr style="background:#1e3a5f;color:#fff"><th style="padding:8px;text-align:left">Mes</th><th style="padding:8px;text-align:right">Entradas</th><th style="padding:8px;text-align:right">Saidas</th><th style="padding:8px;text-align:right">Dividas</th><th style="padding:8px;text-align:right">Saldo</th></tr></thead><tbody>';
+    rows.forEach(function(r){b+='<tr style="border-bottom:1px solid #ddd"><td style="padding:7px">'+r.mes+'</td><td style="padding:7px;text-align:right">'+fmt(r.entradas)+'</td><td style="padding:7px;text-align:right">'+fmt(r.saidas)+'</td><td style="padding:7px;text-align:right">'+fmt(r.dividas)+'</td><td style="padding:7px;text-align:right;color:'+(r.saldo<0?'#dc2626':'#16a34a')+'">'+fmt(r.saldo)+'</td></tr>';});
+    b+='<tr style="background:#e2e8f0;font-weight:bold"><td style="padding:8px">TOTAL</td><td style="padding:8px;text-align:right">'+fmt(t.e)+'</td><td style="padding:8px;text-align:right">'+fmt(t.s)+'</td><td style="padding:8px;text-align:right">'+fmt(t.d)+'</td><td style="padding:8px;text-align:right">'+fmt(t.sd)+' MZM</td></tr></tbody></table>';
+    if(typeof openPrintWin==='function') openPrintWin(b,'Mapa Financeiro - '+periodoLabel);
+  }
+  var m=document.getElementById('fin-export-modal'); if(m)m.remove();
+  if(typeof toast==='function') toast('Mapa financeiro exportado ('+formato.toUpperCase()+')');
+}
+function gerarTopCategorias(){
+  var despArr=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG:[];
+  var catMeta={}; (typeof DESP_CAT!=='undefined'?DESP_CAT:[]).forEach(function(c){catMeta[c.id]={nome:c.nome,cor:c.cor};});
+  var byCat={}; despArr.forEach(function(d){var k=d.categoria||'outros'; byCat[k]=(byCat[k]||0)+(d.valor||0);});
+  var top=Object.keys(byCat).map(function(k){return [k,byCat[k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
+  var total=Object.keys(byCat).reduce(function(s,k){return s+byCat[k];},0)||1;
+  var fmt=function(n){return (n||0).toLocaleString('pt-PT');};
+  var bars=top.map(function(e){
+    var id=e[0], val=e[1]; var meta=catMeta[id]||{nome:id,cor:'#94a3b8'};
+    var pct=Math.round(val/total*100);
+    return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:600;color:var(--t1,#1e293b)">'+meta.nome+'</span><span style="color:var(--t2,#475569)">'+fmt(val)+' MZM &middot; '+pct+'%</span></div><div style="background:var(--b-border,#eef1f6);border-radius:6px;height:8px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+meta.cor+';border-radius:6px"></div></div></div>';
+  }).join('');
+  return '<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Top Categorias de Despesa</span></div><div class="cb" style="padding-top:8px">'+(bars||'<p style="color:var(--t3)">Sem despesas registadas</p>')+'</div></div>';
 }
 
 console.log('[Scholaris] v1.5 — Financeiro Completo: Audit Trail + Reconciliação + Aging Report + Dashboard');
