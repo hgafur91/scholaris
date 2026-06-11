@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scholaris v1.2 — Sistema de Gestão Escolar</title>
+<title>Scholaris v1.2 — Sistema dehf Gestão Escolar</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -796,7 +796,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
           <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirReciboUltimoPag(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-currency-dollar" style="margin-right:8px"></i>Recibo Última Propina</button>
         </div>
       </div>
-      <button class="btn btn-p btn-sm" id="btn-ap-pag" onclick="openM('m-pag')">Novo Pagamento</button>
+      <button class="btn btn-p btn-sm" id="btn-ap-pag" onclick="abrirRegistarPagamento(curAlunoId)">Novo Pagamento</button>
     </div>
   </div>
   <div class="profile-hero">
@@ -996,7 +996,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 <!-- ════ PROPINA ALUNO DETALHE ════ -->
 <div class="view" id="v-propaluno">
   <div class="ph"><div><div class="bc"><span style="cursor:pointer;color:var(--t2)" onclick="propBack()">Propinas</span><span>›</span><span class="cr" id="pa-bc">—</span></div><div class="ph-title" id="pa-titulo">—</div></div>
-    <div class="ph-right"><button class="btn btn-g btn-sm" onclick="propBack()"><i class="ti ti-arrow-left"></i> Voltar</button><button class="btn btn-gr btn-sm" onclick="openM('m-pag')"><i class="ti ti-check"></i> Registar Pag.</button><button class="btn btn-p btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i> Gerar Factura</button></div>
+    <div class="ph-right"><button class="btn btn-g btn-sm" onclick="propBack()"><i class="ti ti-arrow-left"></i> Voltar</button><button class="btn btn-gr btn-sm" onclick="abrirRegistarPagamento(curAlunoId)"><i class="ti ti-check"></i> Registar Pag.</button><button class="btn btn-p btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i> Gerar Factura</button></div>
   </div>
   <div class="profile-hero" id="pa-hero"></div>
 <div id="pa-insc-mat"></div>
@@ -4403,7 +4403,7 @@ function openAluno(id){
       <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px"><div style="font-size:20px;font-weight:800;color:var(--a);margin-bottom:4px">${a.adiant.toLocaleString()} MZM</div><div style="font-size:11px;color:var(--t2)">Adiantamento</div></div>
       <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px"><div style="font-size:20px;font-weight:800;color:var(--g);margin-bottom:4px">${totP.toLocaleString()} MZM</div><div style="font-size:11px;color:var(--t2)">Total Pago 2026</div></div>
     </div>
-    <div class="card"><div class="ch"><span class="ct">Pagamentos 2026</span>${['gestor','secretario'].includes(curRole)?`<div style="display:flex;gap:6px"><button class="btn btn-gr btn-sm" onclick="curAlunoId=${id};openM('m-pag')"><i class="ti ti-plus"></i> Registar Pag.</button><button class="btn btn-p btn-sm" onclick="curAlunoId=${id};gerarFactura()"><i class="ti ti-file-invoice"></i> Factura</button></div>`:''}</div>
+    <div class="card"><div class="ch"><span class="ct">Pagamentos 2026</span>${['gestor','secretario'].includes(curRole)?`<div style="display:flex;gap:6px"><button class="btn btn-gr btn-sm" onclick="abrirRegistarPagamento(${id})"><i class="ti ti-plus"></i> Registar Pag.</button><button class="btn btn-p btn-sm" onclick="curAlunoId=${id};gerarFactura()"><i class="ti ti-file-invoice"></i> Factura</button></div>`:''}</div>
     ${a.propinas.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--b)"><div style="width:32px;height:32px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':p.st==='multa'?'rgba(245,158,11,.1)':'rgba(239,68,68,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':'!'}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[p.m]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.dt||'Não pago'}${p.ref?' · '+p.ref:''}</div></div><span style="font-size:13px;font-weight:700;color:${p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':'var(--r)'}">${p.v?p.v.toLocaleString()+' MZM':'—'}</span><span class="badge ${p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne'}">${p.st==='pago'?'Pago':p.st==='multa'?'Multa':p.st==='npago'?'Em atraso':'Pendente'}</span></div>`).join('')}</div>`;
   // Notas
   document.getElementById('ap-nt-c').innerHTML=`
