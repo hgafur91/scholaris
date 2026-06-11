@@ -4404,7 +4404,7 @@ function openAluno(id){
       <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px"><div style="font-size:20px;font-weight:800;color:var(--g);margin-bottom:4px">${totP.toLocaleString()} MZM</div><div style="font-size:11px;color:var(--t2)">Total Pago 2026</div></div>
     </div>
     <div class="card"><div class="ch"><span class="ct">Pagamentos 2026</span>${['gestor','secretario'].includes(curRole)?`<div style="display:flex;gap:6px"><button class="btn btn-gr btn-sm" onclick="abrirRegistarPagamento(${id})"><i class="ti ti-plus"></i> Registar Pag.</button><button class="btn btn-p btn-sm" onclick="curAlunoId=${id};gerarFactura()"><i class="ti ti-file-invoice"></i> Factura</button></div>`:''}</div>
-    ${a.propinas.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--b)"><div style="width:32px;height:32px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':p.st==='multa'?'rgba(245,158,11,.1)':'rgba(239,68,68,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':'!'}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[p.m]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.dt||'Não pago'}${p.ref?' · '+p.ref:''}</div></div><span style="font-size:13px;font-weight:700;color:${p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':'var(--r)'}">${p.v?p.v.toLocaleString()+' MZM':'—'}</span><span class="badge ${p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne'}">${p.st==='pago'?'Pago':p.st==='multa'?'Multa':p.st==='npago'?'Em atraso':'Pendente'}</span></div>`).join('')}</div>`;
+    ${a.propinas.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--b)"><div style="width:32px;height:32px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':p.st==='multa'?'rgba(245,158,11,.1)':'rgba(239,68,68,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':'!'}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[p.m-1]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.st==='pago'||p.st==='multa'?'Pago':(p.st==='npago'?'Em atraso':(p.dt||'Não pago'))}${p.ref?' · '+p.ref:''}</div></div><span style="font-size:13px;font-weight:700;color:${p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':'var(--r)'}">${p.v?p.v.toLocaleString()+' MZM':'—'}</span><span class="badge ${p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne'}">${p.st==='pago'?'Pago':p.st==='multa'?'Multa':p.st==='npago'?'Em atraso':'Pendente'}</span></div>`).join('')}</div>`;
   // Notas
   document.getElementById('ap-nt-c').innerHTML=`
     <div class="trimestre-tabs" id="al-nt-tabs">
@@ -5223,7 +5223,7 @@ document.getElementById('prop-meses').innerHTML=a.propinas.map((p,mi)=>{
     const vc=p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':p.st==='npago'?'var(--r)':'var(--t3)';
     return`<div class="pm ${cls}"><div style="font-size:11px;font-weight:700;color:var(--t);margin-bottom:4px">${M[mi]}</div><div style="font-size:12px;font-weight:800;color:${vc};margin-bottom:3px">${p.v?p.v.toLocaleString()+' MZM':'—'}</div><div style="font-size:9px;color:${vc}">${p.st==='pago'?'<i class="ti ti-check"></i> Pago':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Multa':p.st==='npago'?'<i class="ti ti-x"></i> Não pago':'○ Pendente'}</div>${p.dt?`<div style="font-size:8px;color:var(--t3)">${p.dt}</div>`:''} ${['gestor','secretario'].includes(curRole)&&p.st==='npago'?`<div style="display:flex;gap:3px;margin-top:6px"><button style="flex:1;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(34,197,94,.15);color:var(--g);cursor:pointer" onclick="setProp(${a.id},${mi},'pago')">Pago</button><button style="flex:1;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(245,158,11,.15);color:var(--am);cursor:pointer" onclick="setProp(${a.id},${mi},'multa')">Multa</button></div>`:''}</div>`;
   }).join('');
-  document.getElementById('pa-hist').innerHTML=a.propinas.filter(p=>p.st==='pago'||p.st==='multa').map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--b)"><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':'rgba(245,158,11,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>'}</div><div><div style="font-size:13px;font-weight:700">Propina ${MF[p.m]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.dt||'—'} · ${p.ref||'Sem recibo'}</div></div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:800;color:${p.st==='pago'?'var(--g)':'var(--am)'}">${p.v.toLocaleString()} MZM</span><span class="badge ${p.st==='pago'?'bok':'bwn'}">${p.st==='pago'?'Pago':'Multa'}</span>${['gestor','secretario'].includes(curRole)?`<button class="btn btn-g btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i></button>`:''}</div></div>`).join('')||'<div style="padding:18px;text-align:center;color:var(--t2);font-size:13px">Sem pagamentos registados.</div>';
+  document.getElementById('pa-hist').innerHTML=a.propinas.filter(p=>p.st==='pago'||p.st==='multa').map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--b)"><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':'rgba(245,158,11,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>'}</div><div><div style="font-size:13px;font-weight:700">Propina ${MF[p.m-1]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.dt||'—'} · ${p.ref||'Sem recibo'}</div></div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:800;color:${p.st==='pago'?'var(--g)':'var(--am)'}">${p.v.toLocaleString()} MZM</span><span class="badge ${p.st==='pago'?'bok':'bwn'}">${p.st==='pago'?'Pago':'Multa'}</span>${['gestor','secretario'].includes(curRole)?`<button class="btn btn-g btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i></button>`:''}</div></div>`).join('')||'<div style="padding:18px;text-align:center;color:var(--t2);font-size:13px">Sem pagamentos registados.</div>';
 }
 
 function setProp(aid,mi,st){
@@ -5258,21 +5258,40 @@ function emitirRecibo(){
 }
 
 // ══ GERAR FACTURA ══
-function gerarFactura(){
+function gerarFactura(mesIdx, incluirMulta){
   const a=ALUNOS.find(x=>x.id===curAlunoId);if(!a)return;
+  const base=(CONFIG.valorPropina||4500);
+  const pend=a.propinas.filter(p=>p.st==='npago');
+  // Default: primeiro mes em atraso; multa incluida por defeito
+  if(mesIdx===undefined || mesIdx===null){ mesIdx = pend.length? pend[0].m : (a.propinas[0]?a.propinas[0].m:1); }
+  mesIdx=parseInt(mesIdx,10);
+  if(incluirMulta===undefined||incluirMulta===null) incluirMulta=true;
+  incluirMulta=(incluirMulta===true||incluirMulta==='true');
+  const pSel=a.propinas.find(p=>p.m===mesIdx)||{m:mesIdx,v:base};
+  const multaSel=incluirMulta? (typeof calcMulta==='function'? calcMulta(pSel, mesIdx-1):0) : 0;
+  const valorSel=base+multaSel;
+  // Divida total = propinas em atraso (base + multa se incluida)
+  const dividaTotal=pend.reduce((s,p)=>{ const mm=incluirMulta? (typeof calcMulta==='function'? calcMulta(p,p.m-1):0):0; return s+base+mm; },0);
   const num='EC'+Date.now().toString().slice(-8);
-  const mPend=a.propinas.find(p=>p.st==='npago');
-  const nPend=a.propinas.filter(p=>p.st==='npago').length;
-  document.getElementById('fact-num').textContent=`Factura Nº ${num}`;
+  document.getElementById('fact-num').textContent='Factura Nº '+num;
   document.getElementById('fact-cod').textContent=num;
-  document.getElementById('fact-body').innerHTML=`
-    <div class="rcrow"><span style="color:var(--t2)">Aluno</span><span style="font-weight:700">${a.nome}</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Nº Aluno</span><span style="font-family:var(--fm)">${a.num}</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Turma</span><span>${a.turma} — ${a.classe}</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Encarregado</span><span>${a.enome}</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Referência</span><span>${mPend?`Propina ${MF[mPend.m]} 2026`:'Regularização'}</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Valor</span><span style="font-weight:800;color:var(--am)">${CONFIG.valorPropina.toLocaleString()}.00 MZM</span></div>
-    ${nPend>0?`<div style="margin-top:10px;padding:10px;background:rgba(239,68,68,.08);border-radius:var(--rads);font-size:12px;color:var(--r)"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i> ${nPend} mês(es) em atraso · Total em dívida: ${(nPend*CONFIG.valorPropina).toLocaleString()} MZM</div>`:''}`;
+  // Seletor de meses (todos), marcando em atraso
+  const opts=a.propinas.map(p=>'<option value="'+p.m+'"'+(p.m===mesIdx?' selected':'')+'>'+MF[p.m-1]+' 2026'+(p.st==='npago'?' (em atraso)':'')+'</option>').join('');
+  const ctrl='<div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:140px"><div style="font-size:10px;color:var(--t2);margin-bottom:4px">MES DA FACTURA</div>'
+    +'<select class="ffi" onchange="gerarFactura(this.value, document.getElementById(\'fact-multa-chk\').checked)">'+opts+'</select></div>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding-bottom:8px">'
+    +'<input type="checkbox" id="fact-multa-chk"'+(incluirMulta?' checked':'')+' onchange="gerarFactura('+mesIdx+', this.checked)"> Incluir multa</label></div>';
+  document.getElementById('fact-body').innerHTML=ctrl+'\n'
+    +'<div class="rcrow"><span style="color:var(--t2)">Aluno</span><span style="font-weight:700">'+a.nome+'</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Nº Aluno</span><span style="font-family:var(--fm)">'+a.num+'</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Turma</span><span>'+a.turma+' — '+a.classe+'</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Encarregado</span><span>'+a.enome+'</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Referência</span><span>Propina '+MF[mesIdx-1]+' 2026</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Valor base</span><span>'+base.toLocaleString()+'.00 MZM</span></div>'
+    +(multaSel>0?'<div class="rcrow"><span style="color:var(--t2)">Multa</span><span style="color:var(--am)">+'+multaSel.toLocaleString()+' MZM</span></div>':'')
+    +'<div class="rcrow"><span style="color:var(--t2)">Total</span><span style="font-weight:800;color:var(--am)">'+valorSel.toLocaleString()+'.00 MZM</span></div>'
+    +(pend.length>0?'<div style="margin-top:10px;padding:10px;background:rgba(239,68,68,.08);border-radius:var(--rads);font-size:12px;color:var(--r)"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i> '+pend.length+' mês(es) em atraso · Total em dívida'+(incluirMulta?' (c/ multa)':'')+': '+dividaTotal.toLocaleString()+' MZM</div>':'');
   openM('m-factura');
 }
 
@@ -9497,7 +9516,7 @@ function renderPortalPropinas(a) {
     <div class="card"><div class="ch"><span class="ct">Propinas 2026</span></div>
     ${a.propinas.map((p,mi)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--b)">
       <div style="width:32px;height:32px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':p.st==='multa'?'rgba(245,158,11,.1)':'rgba(239,68,68,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':'!'}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[mi]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.dt||'Não pago'}${p.ref?' · '+p.ref:''}</div></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[mi]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.st==='pago'||p.st==='multa'?'Pago':(p.st==='npago'?'Em atraso':(p.dt||'Não pago'))}${p.ref?' · '+p.ref:''}</div></div>
       <span style="font-size:13px;font-weight:700;color:${p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':'var(--r)'}">${p.v?p.v.toLocaleString()+' MZM':'—'}</span>
       <span class="badge ${p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne'}">${p.st==='pago'?'Pago':p.st==='multa'?'Multa':p.st==='npago'?'Em atraso':'Pendente'}</span>
     </div>`).join('')}</div>`;
