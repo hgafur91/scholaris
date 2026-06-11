@@ -17512,86 +17512,69 @@ function exportarAuditTrail() {
 function rFinDashboard() {
   const el = document.getElementById('fin-dashboard-c');
   if (!el) return;
-
-  // Compute financials
-  const totalAlunos  = ALUNOS.length;
-  const totalExpect  = totalAlunos * 12 * (CONFIG.valorPropina||4500);
-  const totalPago    = PAGAMENTOS.filter(p=>p.estado!=='estornado').reduce((s,p)=>s+p.valorTotal,0);
-  const totalConf    = PAGAMENTOS.filter(p=>p.estado==='confirmado').reduce((s,p)=>s+p.valorTotal,0);
-  const totalPorConf = PAGAMENTOS.filter(p=>p.estado==='por_confirmar').reduce((s,p)=>s+p.valorTotal,0);
-  const totalDivida  = ALUNOS.reduce((s,a)=>
-    s+a.propinas.filter(p=>p.st==='npago').length*(CONFIG.valorPropina||4500),0);
-  const txCobranca   = totalExpect>0?Math.round(totalConf/totalExpect*100):0;
-
-  // By month collection
-  const cobrancaMensal = Array.from({length:12},(_,mi)=>{
-    const pago = ALUNOS.reduce((s,a)=>{
-      const p=a.propinas[mi];
-      return s+(p&&(p.st==='pago'||p.st==='multa')?(CONFIG.valorPropina||4500):0);
-    },0);
-    return {mes:M[mi], valor:pago, expected:totalAlunos*(CONFIG.valorPropina||4500)};
+  const vp = (CONFIG.valorPropina||4500);
+  const mesAtual = (new Date()).getMonth()+1;
+  const totalAlunos = ALUNOS.length;
+  // Receita prevista: alunos inscritos x 12 meses x valor propina
+  const receitaPrev = totalAlunos * 12 * vp;
+  // Entradas: todos os pagamentos registados (nao estornados)
+  const pagsValidos = PAGAMENTOS.filter(p=>p.estado!=='estornado' && (p.valorTotal||0)>0);
+  const totalEntradas = pagsValidos.reduce((s,p)=>s+(p.valorTotal||0),0);
+  const entradasConf = PAGAMENTOS.filter(p=>p.estado==='confirmado').reduce((s,p)=>s+(p.valorTotal||0),0);
+  const entradasPorConf = PAGAMENTOS.filter(p=>p.estado==='por_confirmar').reduce((s,p)=>s+(p.valorTotal||0),0);
+  // Saidas: despesas registadas
+  const totalSaidas = (typeof DESPESAS_REG!=='undefined'?DESPESAS_REG:[]).reduce((s,d)=>s+(d.valor||0),0);
+  // Dividas: propinas VENCIDAS (mes<=actual) e nao pagas
+  const totalDivida = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='npago' && p.m<=mesAtual).length*vp,0);
+  // Por vencer (meses futuros, nao sao divida)
+  const porVencer = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='npago' && p.m>mesAtual).length*vp,0);
+  const saldoActual = totalEntradas - totalSaidas;
+  // Saldo mensal (entradas - saidas por mes) para o grafico de linha
+  const DESP = (typeof DESPESAS_REG!=='undefined'?DESPESAS_REG:[]);
+  const saldoMensal = Array.from({length:12},(_,mi)=>{
+    const mm = mi+1;
+    const ent = PAGAMENTOS.filter(p=>p.data && parseInt(p.data.slice(5,7),10)===mm && p.estado!=='estornado').reduce((s,p)=>s+(p.valorTotal||0),0);
+    const sai = DESP.filter(d=>d.data && parseInt(d.data.slice(5,7),10)===mm).reduce((s,d)=>s+(d.valor||0),0);
+    return ent - sai;
   });
-
-  el.innerHTML = `
-    <!-- KPIs principais -->
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
-      ${[
-        {l:'Receita Esperada',      v:(totalExpect/1000).toFixed(0)+'K MZM', c:'var(--t2)',  ic:'ti-target'},
-        {l:'Confirmado Banco',      v:(totalConf/1000).toFixed(0)+'K MZM',   c:'var(--g)',   ic:'ti-circle-check'},
-        {l:'Por Confirmar',         v:(totalPorConf/1000).toFixed(0)+'K MZM',c:'var(--am)',  ic:'ti-clock'},
-        {l:'Dívida Total',          v:(totalDivida/1000).toFixed(0)+'K MZM', c:'var(--r)',   ic:'ti-alert-triangle'},
-        {l:'Taxa de Cobrança',      v:txCobranca+'%',                          c:txCobranca>=75?'var(--g)':txCobranca>=50?'var(--am)':'var(--r)', ic:'ti-percentage'},
-      ].map(k=>`<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div>
-        <i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i>
-        <div style="font-size:18px;font-weight:800;color:${k.c}">${k.v}</div>
-        <div style="font-size:10px;color:var(--t2)">${k.l}</div>
-      </div>`).join('')}
-    </div>
-
-    <!-- Monthly bars chart -->
-    <div class="card" style="margin-bottom:14px">
-      <div class="ch"><span class="ct">Cobrança Mensal de Propinas — 2026</span></div>
-      <div class="cb">
-        <div style="display:flex;gap:4px;align-items:flex-end;height:120px;padding:0 8px">
-          ${cobrancaMensal.map((m,i)=>{
-            const pct = m.expected>0 ? Math.round(m.valor/m.expected*100) : 0;
-            const cor = pct>=90?'var(--g)':pct>=60?'var(--am)':'var(--r)';
-            const h   = Math.max(4, Math.round(pct/100*100));
-            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-              <div style="font-size:9px;font-weight:700;color:${cor}">${pct?pct+'%':''}</div>
-              <div style="width:100%;height:${h}px;background:${cor};border-radius:3px 3px 0 0;opacity:.85;min-height:4px"></div>
-              <div style="font-size:9px;color:var(--t3)">${m.mes}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick actions -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-      <div class="card" style="cursor:pointer" onclick="go('reconciliacao')">
-        <div class="cb" style="text-align:center;padding:16px">
-          <i class="ti ti-building-bank" style="font-size:28px;color:var(--a);display:block;margin-bottom:8px"></i>
-          <div style="font-weight:700">Reconciliação Bancária</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">${PAGAMENTOS.filter(p=>p.estado==='por_confirmar').length} pagamento(s) por confirmar</div>
-        </div>
-      </div>
-      <div class="card" style="cursor:pointer" onclick="go('aging-report')">
-        <div class="cb" style="text-align:center;padding:16px">
-          <i class="ti ti-clock-dollar" style="font-size:28px;color:var(--am);display:block;margin-bottom:8px"></i>
-          <div style="font-weight:700">Antiguidade de Saldos</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">${(totalDivida/1000).toFixed(1)}K MZM em dívida</div>
-        </div>
-      </div>
-      <div class="card" style="cursor:pointer" onclick="go('audit-trail')">
-        <div class="cb" style="text-align:center;padding:16px">
-          <i class="ti ti-shield-lock" style="font-size:28px;color:var(--tl);display:block;margin-bottom:8px"></i>
-          <div style="font-weight:700">Registo de Auditoria</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:4px">${AUDIT_LOG.length} entradas registadas</div>
-        </div>
-      </div>
-    </div>`;
+  // Cobranca mensal de propinas (barras) - mantido
+  const M = (typeof MESES_ABBR!=='undefined'?MESES_ABBR:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']);
+  const cobrancaMensal = Array.from({length:12},(_,mi)=>{
+    const pago = ALUNOS.reduce((s,a)=>{ const p=a.propinas[mi]; return s+(p&&(p.st==='pago'||p.st==='multa')?vp:0); },0);
+    return {mes:M[mi], valor:pago, expected:totalAlunos*vp};
+  });
+  const fmt = n => (n||0).toLocaleString('pt-PT');
+  const kpisHtml = [
+    {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle'},
+    {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle'},
+    {l:'Dividas', v:fmt(totalDivida)+' MZM', sub:'+'+fmt(porVencer)+' por vencer', c:'var(--am)', ic:'ti-alert-triangle'},
+    {l:'Saldo Actual', v:fmt(saldoActual)+' MZM', sub:'Entradas - Saidas', c:(saldoActual>=0?'var(--g)':'var(--r)'), ic:'ti-wallet'},
+    {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:totalAlunos+' alunos x 12 meses', c:'var(--a)', ic:'ti-target'}
+  ].map(k=>`<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:17px;font-weight:800;color:${k.c}">${k.v}</div><div style="font-size:10px;color:var(--t2);margin-top:2px">${k.l}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
+  // Grafico de linha: saldo mensal (SVG)
+  const W=720, H=180, padL=10, padR=10, padT=20, padB=24;
+  const innerW=W-padL-padR, innerH=H-padT-padB;
+  const maxV=Math.max(1, ...saldoMensal.map(v=>Math.abs(v)));
+  const zeroY=padT + innerH/2;
+  const ptX=i=>padL + (innerW*(i/(11)));
+  const ptY=v=>zeroY - (v/maxV)*(innerH/2);
+  const linePts=saldoMensal.map((v,i)=>ptX(i).toFixed(1)+','+ptY(v).toFixed(1)).join(' ');
+  const dots=saldoMensal.map((v,i)=>'<circle cx="'+ptX(i).toFixed(1)+'" cy="'+ptY(v).toFixed(1)+'" r="3" fill="'+(v>=0?'#22c55e':'#ef4444')+'"></circle>').join('');
+  const xlabels=M.map((m,i)=>'<text x="'+ptX(i).toFixed(1)+'" y="'+(H-6)+'" font-size="9" fill="#7a90bb" text-anchor="middle">'+m+'</text>').join('');
+  const lineChart='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" preserveAspectRatio="none">'
+    +'<line x1="'+padL+'" y1="'+zeroY.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+zeroY.toFixed(1)+'" stroke="#3a4a6a" stroke-dasharray="4 4" stroke-width="1"></line>'
+    +'<polyline fill="none" stroke="#4f8ef7" stroke-width="2" points="'+linePts+'"></polyline>'
+    +dots+xlabels+'</svg>';
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">'+kpisHtml+'</div>'
+    +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Saldo Mensal 2026 (Entradas - Saidas)</span></div><div class="cb">'+lineChart+'</div></div>'
+    +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Cobranca Mensal de Propinas - 2026</span></div><div class="cb"><div style="display:flex;gap:4px;align-items:flex-end;height:120px;padding:0 8px">'
+    +cobrancaMensal.map((m,i)=>{ const pct=m.expected>0?Math.round(m.valor/m.expected*100):0; const cor=pct>=90?'var(--g)':pct>=60?'var(--am)':'var(--r)'; const h=Math.max(4,Math.round(pct/100*100)); return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:9px;font-weight:700;color:${cor}">${pct?pct+'%':''}</div><div style="width:100%;height:${h}px;background:${cor};border-radius:3px 3px 0 0;opacity:.85;min-height:4px"></div><div style="font-size:9px;color:var(--t3)">${m.mes}</div></div>`; }).join('')
+    +'</div></div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">'
+    +'<div class="card" style="cursor:pointer" onclick="go(\'reconciliacao\')"><div class="cb" style="text-align:center;padding:16px"><i class="ti ti-building-bank" style="font-size:28px;color:var(--a);display:block;margin-bottom:8px"></i><div style="font-weight:700">Reconciliacao Bancaria</div><div style="font-size:11px;color:var(--t2);margin-top:4px">'+PAGAMENTOS.filter(p=>p.estado==='por_confirmar').length+' pagamento(s) por confirmar</div></div></div>'
+    +'<div class="card" style="cursor:pointer" onclick="go(\'aging-report\')"><div class="cb" style="text-align:center;padding:16px"><i class="ti ti-clock-dollar" style="font-size:28px;color:var(--am);display:block;margin-bottom:8px"></i><div style="font-weight:700">Antiguidade de Saldos</div><div style="font-size:11px;color:var(--t2);margin-top:4px">'+fmt(totalDivida)+' MZM em divida</div></div></div>'
+    +'<div class="card" style="cursor:pointer" onclick="go(\'audit-trail\')"><div class="cb" style="text-align:center;padding:16px"><i class="ti ti-shield-lock" style="font-size:28px;color:var(--tl);display:block;margin-bottom:8px"></i><div style="font-weight:700">Registo de Auditoria</div><div style="font-size:11px;color:var(--t2);margin-top:4px">'+((typeof AUDIT_LOG!=='undefined'?AUDIT_LOG.length:0))+' entradas registadas</div></div></div>'
+    +'</div>';
 }
 
 function exportarMapaFinanceiro() {
