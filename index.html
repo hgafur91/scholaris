@@ -5261,37 +5261,48 @@ function emitirRecibo(){
 function gerarFactura(mesIdx, incluirMulta){
   const a=ALUNOS.find(x=>x.id===curAlunoId);if(!a)return;
   const base=(CONFIG.valorPropina||4500);
-  const pend=a.propinas.filter(p=>p.st==='npago');
-  // Default: primeiro mes em atraso; multa incluida por defeito
-  if(mesIdx===undefined || mesIdx===null){ mesIdx = pend.length? pend[0].m : (a.propinas[0]?a.propinas[0].m:1); }
+  const mesAtual=(new Date()).getMonth()+1;
+  // Factura SO pode ser emitida para propina PAGA. Atraso = nao pago e ja passou; futuro = por pagar.
+  const pagas=a.propinas.filter(p=>p.st==='pago');
+  const atraso=a.propinas.filter(p=>p.st==='npago' && p.m<=mesAtual);
+  if(mesIdx===undefined || mesIdx===null){ mesIdx = pagas.length? pagas[0].m : (a.propinas[0]?a.propinas[0].m:1); }
   mesIdx=parseInt(mesIdx,10);
   if(incluirMulta===undefined||incluirMulta===null) incluirMulta=true;
   incluirMulta=(incluirMulta===true||incluirMulta==='true');
-  const pSel=a.propinas.find(p=>p.m===mesIdx)||{m:mesIdx,v:base};
+  const pSel=a.propinas.find(p=>p.m===mesIdx)||{m:mesIdx,v:base,st:'npago'};
+  const optsAll=a.propinas.map(p=>'<option value="'+p.m+'"'+(p.m===mesIdx? ' selected':'')+'>'+MF[p.m-1]+' 2026'+(p.st==='pago'?' (paga)':(p.m<=mesAtual?' (em atraso)':' (por pagar)'))+'</option>').join('');
+  // BLOQUEIO: nao emitir factura de propina NAO paga
+  if(pSel.st!=='pago'){
+    const estado=(pSel.m<=mesAtual)?'em atraso':'por pagar (mes futuro)';
+    const ctrl0='<div style="margin-bottom:12px"><div style="font-size:10px;color:var(--t2);margin-bottom:4px">MES DA FACTURA</div><select class="ffi" onchange="gerarFactura(this.value, true)">'+optsAll+'</select></div>';
+    document.getElementById('fact-num').textContent='Factura';
+    document.getElementById('fact-cod').textContent='---';
+    document.getElementById('fact-body').innerHTML=ctrl0+'<div style="margin-top:10px;padding:14px;background:rgba(239,68,68,.08);border-radius:var(--rads);font-size:13px;color:var(--r);text-align:center"><i class="ti ti-alert-triangle"></i> A propina de '+MF[mesIdx-1]+' 2026 esta '+estado+'. So e possivel emitir factura de uma propina ja PAGA.</div>';
+    openM('m-factura');
+    return;
+  }
+  // pSel esta PAGA -> emitir factura/recibo
   const multaSel=incluirMulta? (typeof calcMulta==='function'? calcMulta(pSel, mesIdx-1):0) : 0;
   const valorSel=base+multaSel;
-  // Divida total = propinas em atraso (base + multa se incluida)
-  const dividaTotal=pend.reduce((s,p)=>{ const mm=incluirMulta? (typeof calcMulta==='function'? calcMulta(p,p.m-1):0):0; return s+base+mm; },0);
+  const dividaTotal=atraso.reduce((s,p)=>{ const mm=incluirMulta? (typeof calcMulta==='function'? calcMulta(p,p.m-1):0):0; return s+base+mm; },0);
   const num='EC'+Date.now().toString().slice(-8);
-  document.getElementById('fact-num').textContent='Factura Nº '+num;
+  document.getElementById('fact-num').textContent='Factura N '+num;
   document.getElementById('fact-cod').textContent=num;
-  // Seletor de meses (todos), marcando em atraso
-  const opts=a.propinas.map(p=>'<option value="'+p.m+'"'+(p.m===mesIdx?' selected':'')+'>'+MF[p.m-1]+' 2026'+(p.st==='npago'?' (em atraso)':'')+'</option>').join('');
   const ctrl='<div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">'
     +'<div style="flex:1;min-width:140px"><div style="font-size:10px;color:var(--t2);margin-bottom:4px">MES DA FACTURA</div>'
-    +'<select class="ffi" onchange="gerarFactura(this.value, document.getElementById(\'fact-multa-chk\').checked)">'+opts+'</select></div>'
+    +'<select class="ffi" onchange="gerarFactura(this.value, document.getElementById(\'fact-multa-chk\').checked)">'+optsAll+'</select></div>'
     +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding-bottom:8px">'
-    +'<input type="checkbox" id="fact-multa-chk"'+(incluirMulta?' checked':'')+' onchange="gerarFactura('+mesIdx+', this.checked)"> Incluir multa</label></div>';
+    +'<input type="checkbox" id="fact-multa-chk"'+(incluirMulta?' checked':'')+' onchange="gerarFactura("'+mesIdx+', this.checked)"> Incluir multa</label></div>';
   document.getElementById('fact-body').innerHTML=ctrl+'\n'
     +'<div class="rcrow"><span style="color:var(--t2)">Aluno</span><span style="font-weight:700">'+a.nome+'</span></div>'
-    +'<div class="rcrow"><span style="color:var(--t2)">Nº Aluno</span><span style="font-family:var(--fm)">'+a.num+'</span></div>'
-    +'<div class="rcrow"><span style="color:var(--t2)">Turma</span><span>'+a.turma+' — '+a.classe+'</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">N Aluno</span><span style="font-family:var(--fm)">'+a.num+'</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Turma</span><span>'+a.turma+' - '+a.classe+'</span></div>'
     +'<div class="rcrow"><span style="color:var(--t2)">Encarregado</span><span>'+a.enome+'</span></div>'
-    +'<div class="rcrow"><span style="color:var(--t2)">Referência</span><span>Propina '+MF[mesIdx-1]+' 2026</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Referencia</span><span>Propina '+MF[mesIdx-1]+' 2026</span></div>'
     +'<div class="rcrow"><span style="color:var(--t2)">Valor base</span><span>'+base.toLocaleString()+'.00 MZM</span></div>'
     +(multaSel>0?'<div class="rcrow"><span style="color:var(--t2)">Multa</span><span style="color:var(--am)">+'+multaSel.toLocaleString()+' MZM</span></div>':'')
-    +'<div class="rcrow"><span style="color:var(--t2)">Total</span><span style="font-weight:800;color:var(--am)">'+valorSel.toLocaleString()+'.00 MZM</span></div>'
-    +(pend.length>0?'<div style="margin-top:10px;padding:10px;background:rgba(239,68,68,.08);border-radius:var(--rads);font-size:12px;color:var(--r)"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i> '+pend.length+' mês(es) em atraso · Total em dívida'+(incluirMulta?' (c/ multa)':'')+': '+dividaTotal.toLocaleString()+' MZM</div>':'');
+    +'<div class="rcrow"><span style="color:var(--t2)">Total</span><span style="font-weight:800;color:var(--g)">'+valorSel.toLocaleString()+'.00 MZM</span></div>'
+    +(atraso.length>0?'<div style="margin-top:10px;padding:10px;background:rgba(239,68,68,.08);border-radius:var(--rads);font-size:12px;color:var(--r)"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i> '+atraso.length+' mes(es) em atraso . Total em divida'+(incluirMulta?' (c/ multa)':'')+': '+dividaTotal.toLocaleString()+' MZM</div>':'');
   openM('m-factura');
 }
 
