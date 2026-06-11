@@ -17022,6 +17022,10 @@ function confirmarRegistoPagamento() {
   }
   // Refresh reconciliation
   if (document.getElementById('v-reconciliacao')?.classList.contains('on')) rReconciliacao();
+  // Refresh ficha do aluno se aberta
+  if (document.getElementById('v-aluno-p')?.classList.contains('on') && _pagAlunoId != null) {
+    openAluno(_pagAlunoId);
+  }
 }
 
 // ════════════════════════════════════════════════════════════
