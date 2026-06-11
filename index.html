@@ -5761,6 +5761,50 @@ async function loadDadosEscola() {
       console.log('[Scholaris] Encarregados carregados:', ENCS.length);
     }
 
+    // 6b. Carregar pagamentos (propinas) e reflectir nos alunos
+    try {
+      const { data: pagsDB } = await window._supabase
+        .from('pagamentos')
+        .select('*')
+        .eq('escola_id', eid);
+      if (pagsDB && pagsDB.length) {
+        if (typeof PAGAMENTOS !== 'undefined') PAGAMENTOS.length = 0;
+        pagsDB.forEach(row => {
+          const meses = Array.isArray(row.meses) ? row.meses : [];
+          const pag = {
+            id: row.pag_id || row.id,
+            alunoNum: row.aluno_num,
+            alunoNome: row.aluno_nome,
+            turmaId: row.turma_id,
+            meses: meses,
+            valorTotal: row.valor_total || 0,
+            valorBase: row.valor_base || 0,
+            data: row.data_pag, canal: row.canal, banco: row.banco,
+            ref: row.ref, obs: row.obs,
+            estado: row.estado || 'por_confirmar',
+            confirmedBy: null, confirmedAt: null, confirmedRef: null,
+            registadoPor: row.registado_por || '',
+            registadoEm: row.registado_em || row.criado_em || null,
+          };
+          const al = ALUNOS.find(x => x.num === row.aluno_num);
+          if (al) {
+            pag.alunoId = al.id;
+            meses.forEach(mi => {
+              const p = al.propinas && al.propinas[mi];
+              if (p) {
+                p.st = 'pago';
+                p.pagamentoId = pag.id;
+                p.ref = row.ref;
+                p.estadoBanco = (row.estado === 'confirmado') ? 'confirmado' : 'por_confirmar';
+              }
+            });
+          }
+          if (typeof PAGAMENTOS !== 'undefined') PAGAMENTOS.push(pag);
+        });
+        console.log('[Scholaris] Pagamentos carregados:', pagsDB.length);
+      }
+    } catch(e) { console.warn('[Scholaris] Pagamentos load skipped:', e && e.message); }
+
     // 7. Carregar atribuições (professor → turma → disciplina)
     const { data: atribDB } = await window._supabase
       .from('atribuicoes').select('*').eq('escola_id', eid);
@@ -5915,16 +5959,28 @@ async function saveConfigToFirestore() {
 }
 
 // Save payment to Supabase
-async function savePagamentoFirestore(pagData) {
-  if (!window._supabase || window._escolaId === 'escola_demo') return null;
+async function savePagamentoFirestore(pag) {
+  if (!window._supabase || !window._escolaId || window._escolaId === 'escola_demo') return null;
   try {
     const { data, error } = await window._supabase
       .from('pagamentos')
       .insert({
-        ...pagData,
-        escola_id: window._escolaId,
-        criado_em: new Date().toISOString(),
-        criado_por: window._currentUser?.email || 'demo',
+        escola_id:    window._escolaId,
+        pag_id:       pag.id,
+        aluno_num:    pag.alunoNum || null,
+        aluno_nome:   pag.alunoNome || null,
+        turma_id:     pag.turmaId || null,
+        meses:        pag.meses || [],
+        valor_total:  pag.valorTotal || 0,
+        valor_base:   pag.valorBase || 0,
+        data_pag:     pag.data || null,
+        canal:        pag.canal || null,
+        banco:        pag.banco || null,
+        ref:          pag.ref || null,
+        obs:          pag.obs || null,
+        estado:       pag.estado || 'por_confirmar',
+        registado_por: pag.registadoPor || '',
+        registado_em:  pag.registadoEm || new Date().toISOString(),
       })
       .select('id')
       .single();
@@ -16932,6 +16988,8 @@ function confirmarRegistoPagamento() {
     registadoEm: new Date().toISOString(),
   };
   PAGAMENTOS.push(pag);
+  // Persistir na base de dados (Supabase)
+  savePagamentoFirestore(pag);
 
   // Update student propinas
   mesesArr.forEach(mi => {
