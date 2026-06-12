@@ -30624,278 +30624,74 @@ window.renderBalanceteRange=function(mIni,mFim){
   } catch(e){ console.error('v7 observer', e); }
 })();
 
-/* === Patch v8: abas-mae Entradas/Despesas robustas (sobrevive a buildSidebar) === */
+/* === Patch v11 - Entradas com sub-abas (Propinas, Matricula e Inscricao, Servicos) reutilizando o sistema nativo + Balancete === */
 (function(){
-  if(window.__finV8) return; window.__finV8=true;
-  var SEC="sb-sec-GestãoFinanceira";
+  if(window.__finV11) return; window.__finV11=true;
+  var SECID='sb-sec-Gest'+String.fromCharCode(227)+'oFinanceira';
+  function $(id){return document.getElementById(id);}
+  function abrirTab(tab){
+    try{ if(typeof window.go==='function'){ window.go('pagamentos'); } }catch(e){}
+    setTimeout(function(){ try{ if(typeof window.pagTab==='function'){ window.pagTab(tab); } }catch(e){} },60);
+  }
+  window.__irEntradas=function(tab){ abrirTab(tab||'propinas'); };
+  var SUBS=[
+    {id:'v11-sub-propinas', lbl:'Propinas', tab:'propinas', ic:'ti-coin'},
+    {id:'v11-sub-taxas', lbl:'Matricula e Inscricao', tab:'taxas', ic:'ti-id-badge-2'},
+    {id:'v11-sub-servicos', lbl:'Servicos', tab:'avulsos', ic:'ti-file-certificate'}
+  ];
+  function buildEntradas(sec){
+    if($('v11-mae-entradas')) return $('v11-mae-entradas');
+    var wrap=document.createElement('div');
+    wrap.id='v11-mae-entradas';
+    wrap.style.cssText='margin:0;';
+    var head=document.createElement('button');
+    head.className='si';
+    head.id='v11-head-entradas';
+    head.style.cssText='width:100%;display:flex;align-items:center;gap:8px;';
+    head.innerHTML='<i class="ti ti-login-2" style="font-size:16px"></i><span>Entradas</span><i class="ti ti-chevron-down" id="v11-chev" style="margin-left:auto;font-size:14px;transition:transform .2s"></i>';
+    var list=document.createElement('div');
+    list.id='v11-sublist';
+    list.style.cssText='display:none;flex-direction:column;padding-left:10px;';
+    SUBS.forEach(function(s){
+      var b=document.createElement('button');
+      b.className='si'; b.id=s.id;
+      b.style.cssText='width:100%;display:flex;align-items:center;gap:8px;font-size:13px;opacity:.92;';
+      b.innerHTML='<i class="ti '+s.ic+'" style="font-size:14px"></i><span>'+s.lbl+'</span>';
+      b.onclick=function(){ window.__irEntradas(s.tab); };
+      list.appendChild(b);
+    });
+    var open=false;
+    head.onclick=function(){ open=!open; list.style.display=open?'flex':'none'; var c=$('v11-chev'); if(c) c.style.transform=open?'rotate(180deg)':'rotate(0deg)'; };
+    wrap.appendChild(head); wrap.appendChild(list);
+    return wrap;
+  }
   function reorg(){
-    try{
-      var sec=document.getElementById(SEC); if(!sec) return false;
-      if(sec.querySelector('#si-mae-entradas')) return true;
-      var hide=['si-pagamentos','si-propinas','si-despesas','si-despesas-cat','si-folha-salarios'];
-      hide.forEach(function(id){var e=document.getElementById(id); if(e) e.style.display='none';});
-      var dash=document.getElementById('si-fin-dashboard');
-      function mkParent(id,icon,label){
-        var b=document.createElement('button'); b.className='si'; b.id=id;
-        b.innerHTML='<i class="ti '+icon+'" style="font-size:16px"></i><span>'+label+'</span><i class="ti ti-chevron-down" style="margin-left:auto;font-size:14px;transition:.2s"></i>';
-        return b;
-      }
-      function mkSub(label,fn){
-        var b=document.createElement('button'); b.className='si si-sub'; b.style.paddingLeft='34px'; b.style.fontSize='13px';
-        b.innerHTML='<span>'+label+'</span>'; b.onclick=fn; return b;
-      }
-      function wrap(){var d=document.createElement('div'); d.style.display='none'; return d;}
-      var pe=mkParent('si-mae-entradas','ti-arrow-down-circle','Entradas');
-      var we=wrap();
-      we.appendChild(mkSub('Propinas',function(){irEntrada('propinas');}));
-      we.appendChild(mkSub('Inscrição e Matrícula',function(){irEntrada('inscricao');}));
-      we.appendChild(mkSub('Serviços',function(){irEntrada('servicos');}));
-      we.appendChild(mkSub('Outros',function(){irEntrada('outros');}));
-      pe.onclick=function(){var sh=we.style.display==='none'; we.style.display=sh?'block':'none'; var ch=pe.querySelector('.ti-chevron-down'); if(ch) ch.style.transform=sh?'rotate(180deg)':''; irEntrada('todos');};
-      var pd=mkParent('si-mae-despesas','ti-arrow-up-circle','Despesas');
-      var wd=wrap();
-      wd.appendChild(mkSub('Salários',function(){irDespesa('salarios');}));
-      wd.appendChild(mkSub('Utilidades',function(){irDespesa('utilidades');}));
-      wd.appendChild(mkSub('Manutenção',function(){irDespesa('manutencao');}));
-      wd.appendChild(mkSub('Impostos',function(){irDespesa('impostos');}));
-      wd.appendChild(mkSub('Caixa Semanal',function(){irDespesa('caixa');}));
-      wd.appendChild(mkSub('Outras Despesas',function(){irDespesa('outros');}));
-      pd.onclick=function(){var sh=wd.style.display==='none'; wd.style.display=sh?'block':'none'; var ch=pd.querySelector('.ti-chevron-down'); if(ch) ch.style.transform=sh?'rotate(180deg)':''; irDespesa('todos');};
-      var anchor=dash||sec.firstChild;
-      anchor.parentNode.insertBefore(wd, anchor.nextSibling);
-      anchor.parentNode.insertBefore(pd, anchor.nextSibling);
-      anchor.parentNode.insertBefore(we, anchor.nextSibling);
-      anchor.parentNode.insertBefore(pe, anchor.nextSibling);
-      return true;
-    }catch(e){ console.error('v8 reorg', e); return false; }
+    var sec=$(SECID); if(!sec) return;
+    ['si-pagamentos','si-propinas','si-emolumentos'].forEach(function(id){ var e=$(id); if(e) e.style.display='none'; });
+    ['si-mae-entradas','si-mae-despesas'].forEach(function(id){ var e=$(id); if(e) e.remove(); });
+    var mae=buildEntradas(sec);
+    var dash=$('si-fin-dashboard');
+    if(dash && dash.parentNode===sec){ if(mae.nextSibling!==null || dash.nextSibling!==mae){ sec.insertBefore(mae, dash.nextSibling); } }
+    else if(mae.parentNode!==sec){ sec.insertBefore(mae, sec.firstChild); }
+    var desp=$('si-despesas'); var bal=$('si-balancete');
+    if(desp) sec.insertBefore(desp, mae.nextSibling);
+    if(bal && desp) sec.insertBefore(bal, desp.nextSibling);
+    else if(bal) sec.insertBefore(bal, mae.nextSibling);
   }
-  window.__v8reorg=reorg;
-  if(typeof buildSidebar==='function'){
-    var _bs8=buildSidebar;
-    buildSidebar=function(){ var r=_bs8.apply(this,arguments); try{ reorg(); }catch(e){} return r; };
-  }
+  window.__v11reorg=reorg;
   try{
-    var mo=new MutationObserver(function(){ reorg(); });
-    var sb=document.getElementById('sb-content')||document.querySelector('aside')||document.body;
-    if(sb) mo.observe(sb,{childList:true,subtree:true});
+    if(typeof window.buildSidebar==='function' && !window.__v11wrap){
+      window.__v11wrap=true;
+      var _bs=window.buildSidebar;
+      window.buildSidebar=function(){ var r=_bs.apply(this,arguments); try{ reorg(); }catch(e){} return r; };
+    }
   }catch(e){}
-  reorg();
-})();
-/* === Patch v9: sub-abas filtram + Nova Entrada === */
-(function(){
-  if(window.__finV9) return; window.__finV9=true;
-  var MESESV9=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  var fmt=window.__finV7_fmtMZ||function(v){return (v||0)+'';};
-  var svg=window.__finV7_svgLinha||function(){return '';};
-  window.__filtroE='todos'; window.__filtroD='todos';
-  function mostrar(id){ var vs=document.querySelectorAll('.view'); for(var i=0;i<vs.length;i++) vs[i].classList.remove('on'); var t=document.getElementById(id); if(t) t.classList.add('on'); }
-  function hostE(){ var h=document.getElementById('v-entradas'); if(!h){ h=document.createElement('div'); h.id='v-entradas'; h.className='view'; var main=document.querySelector('main')||document.body; main.appendChild(h);} return h; }
-  function hostD(){ var h=document.getElementById('v-despesas'); if(!h){ h=document.createElement('div'); h.id='v-despesas'; h.className='view'; var main=document.querySelector('main')||document.body; main.appendChild(h);} return h; }
-  function mesDe(dstr,dobj){ if(dobj&&dobj.mes!=null) return dobj.mes; var dt=dstr?new Date(dstr):null; return dt&&!isNaN(dt)?dt.getMonth()+1:0; }
-  function catMatch(filtro,c){ if(filtro==='todos'||!filtro) return true; if(filtro==='utilidades') return (c==='agua'||c==='luz'||c==='utilidades'); if(filtro==='salarios') return c==='salarios'; if(filtro==='manutencao') return c==='manutencao'; if(filtro==='impostos') return c==='impostos'; if(filtro==='caixa') return c==='caixa'; if(filtro==='outros') return !(['salarios','agua','luz','utilidades','manutencao','impostos','caixa'].indexOf(c)>=0); return c===filtro; }
-  function tipoMatch(filtro,p){ if(filtro==='todos'||!filtro) return true; var t=((p.tipo||'')+'').toLowerCase(); var cn=((p.categoriaNome||p.categoria||'')+'').toLowerCase(); var hay=t+' '+cn; if(filtro==='propinas') return hay.indexOf('propina')>=0||hay.indexOf('mensalidade')>=0; if(filtro==='inscricao') return hay.indexOf('inscri')>=0||hay.indexOf('matric')>=0; if(filtro==='servicos') return hay.indexOf('servi')>=0; if(filtro==='outros') return !(hay.indexOf('propina')>=0||hay.indexOf('mensalidade')>=0||hay.indexOf('inscri')>=0||hay.indexOf('matric')>=0||hay.indexOf('servi')>=0); return true; }
-  var NOMEF_E={todos:'Todas as Entradas',propinas:'Propinas',inscricao:'Inscrição e Matrícula',servicos:'Serviços',outros:'Outros'};
-  var NOMEF_D={todos:'Todas as Despesas',salarios:'Salários',utilidades:'Utilidades (Água/Luz)',manutencao:'Manutenção',impostos:'Impostos',caixa:'Caixa Semanal',outros:'Outras Despesas'};
-  window.renderDespesasV7=function(){
-    var h=hostD(); var filtro=window.__filtroD||'todos';
-    var todas=(typeof DESPESAS_REG!=='undefined')?DESPESAS_REG:[];
-    var fil=todas.filter(function(d){ return catMatch(filtro,d.categoria); });
-    var mesSel=window.__mesD||((new Date()).getMonth()+1);
-    var porMes=[]; for(var m=1;m<=12;m++){ var tot=0; fil.forEach(function(d){ if(mesDe(d.data,d)===m) tot+=(+d.valor||0); }); porMes.push(tot); }
-    var doMes=fil.filter(function(d){ return mesDe(d.data,d)===mesSel; });
-    var totMes=porMes[mesSel-1]||0; var totAno=porMes.reduce(function(s,v){return s+v;},0); var media=totAno/12;
-    var rows=doMes.map(function(d){ return '<tr><td style="padding:8px 10px;border-top:1px solid var(--b2)">'+(d.descricao||'')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);color:var(--t2)">'+(NOMEF_D[d.categoria]||d.categoria||'')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);text-align:right;font-weight:600;color:#ef4444">'+fmt(d.valor)+' MZM</td></tr>'; }).join('');
-    if(!rows) rows='<tr><td colspan=3 style="padding:14px 10px;color:var(--t2)">Sem despesas registadas neste mês.</td></tr>';
-    var opt=''; for(var mo=1;mo<=12;mo++){ opt+='<option value="'+mo+'"'+(mo===mesSel?' selected':'')+'>'+MESESV9[mo-1]+'</option>'; }
-    h.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">'+
-      '<div><h1 style="margin:0;font-size:22px">Despesas · '+(NOMEF_D[filtro]||'')+'</h1><div style="color:var(--t2);font-size:13px">Mapa de despesas mensais</div></div>'+
-      '<div style="display:flex;gap:10px;align-items:center"><select id="v9d-mes" style="padding:8px 10px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)">'+opt+'</select>'+
-      '<button id="v9d-add" style="padding:9px 14px;border-radius:8px;background:#1d4ed8;color:#fff;border:none;font-weight:600;cursor:pointer">+ Nova Despesa</button></div></div>'+
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+card('Despesas de '+MESESV9[mesSel-1],fmt(totMes)+' MZM','#ef4444')+card('Total do Ano',fmt(totAno)+' MZM','')+card('Média Mensal',fmt(Math.round(media))+' MZM','')+'</div>'+
-      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-weight:600;margin-bottom:8px">Despesas por mês (análise anual)</div>'+svg(porMes,'#ef4444')+'</div>'+
-      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px"><div style="font-weight:600;margin-bottom:8px">Despesas de '+MESESV9[mesSel-1]+' ('+doMes.length+')</div><table style="width:100%;border-collapse:collapse;font-size:14px">'+rows+'</table></div>';
-    mostrar('v-despesas');
-    var sel=document.getElementById('v9d-mes'); if(sel) sel.onchange=function(){ window.__mesD=+this.value; window.renderDespesasV7(); };
-    var add=document.getElementById('v9d-add'); if(add) add.onclick=function(){ if(window.abrirNovaDespesaV7) window.abrirNovaDespesaV7(); };
-  };
-  function card(t,v,cor){ return '<div style="flex:1;min-width:180px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px 16px"><div style="color:var(--t2);font-size:12px;margin-bottom:6px">'+t+'</div><div style="font-size:22px;font-weight:700'+(cor?(';color:'+cor):'')+'">'+v+'</div></div>'; }
-  window.renderEntradasV7=function(){
-    var h=hostE(); var filtro=window.__filtroE||'todos';
-    var pags=(typeof PAGAMENTOS!=='undefined')?PAGAMENTOS:[];
-    var fil=pags.filter(function(p){ return tipoMatch(filtro,p); });
-    var mesSel=window.__mesE||((new Date()).getMonth()+1);
-    function valP(p){ return (+p.valorTotal||+p.valor||+p.montante||0); }
-    function mesP(p){ return mesDe(p.data||p.dataPagamento,p); }
-    var porMes=[]; for(var m=1;m<=12;m++){ var tot=0; fil.forEach(function(p){ if(mesP(p)===m) tot+=valP(p); }); porMes.push(tot); }
-    var doMes=fil.filter(function(p){ return mesP(p)===mesSel; });
-    var totMes=porMes[mesSel-1]||0; var totAno=porMes.reduce(function(s,v){return s+v;},0); var media=totAno/12;
-    var rows=doMes.map(function(p){ return '<tr><td style="padding:8px 10px;border-top:1px solid var(--b2)">'+(p.alunoNome||p.descricao||p.nome||'—')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);color:var(--t2)">'+(p.categoriaNome||p.tipo||'')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);text-align:right;font-weight:600;color:#16a34a">'+fmt(valP(p))+' MZM</td></tr>'; }).join('');
-    if(!rows) rows='<tr><td colspan=3 style="padding:14px 10px;color:var(--t2)">Sem entradas registadas neste mês.</td></tr>';
-    var opt=''; for(var mo=1;mo<=12;mo++){ opt+='<option value="'+mo+'"'+(mo===mesSel?' selected':'')+'>'+MESESV9[mo-1]+'</option>'; }
-    h.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">'+
-      '<div><h1 style="margin:0;font-size:22px">Entradas · '+(NOMEF_E[filtro]||'')+'</h1><div style="color:var(--t2);font-size:13px">Mapa de receitas mensais</div></div>'+
-      '<div style="display:flex;gap:10px;align-items:center"><select id="v9e-mes" style="padding:8px 10px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)">'+opt+'</select>'+
-      '<button id="v9e-add" style="padding:9px 14px;border-radius:8px;background:#16a34a;color:#fff;border:none;font-weight:600;cursor:pointer">+ Nova Entrada</button></div></div>'+
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+card('Entradas de '+MESESV9[mesSel-1],fmt(totMes)+' MZM','#16a34a')+card('Total do Ano',fmt(totAno)+' MZM','')+card('Média Mensal',fmt(Math.round(media))+' MZM','')+'</div>'+
-      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-weight:600;margin-bottom:8px">Entradas por mês (análise anual)</div>'+svg(porMes,'#16a34a')+'</div>'+
-      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px"><div style="font-weight:600;margin-bottom:8px">Entradas de '+MESESV9[mesSel-1]+' ('+doMes.length+')</div><table style="width:100%;border-collapse:collapse;font-size:14px">'+rows+'</table></div>';
-    mostrar('v-entradas');
-    var sel=document.getElementById('v9e-mes'); if(sel) sel.onchange=function(){ window.__mesE=+this.value; window.renderEntradasV7(); };
-    var add=document.getElementById('v9e-add'); if(add) add.onclick=function(){ abrirNovaEntradaV9(); };
-  };
-  window.irEntrada=function(filtro){ window.__filtroE=filtro||'todos'; try{ window.renderEntradasV7(); }catch(e){ console.error('irEntrada v9',e); } };
-  window.irDespesa=function(filtro){ window.__filtroD=filtro||'todos'; try{ window.renderDespesasV7(); }catch(e){ console.error('irDespesa v9',e); } };
-  window.abrirNovaEntradaV9=function(){
-    var old=document.getElementById('v9e-modal'); if(old) old.remove();
-    var ov=document.createElement('div'); ov.id='v9e-modal'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999';
-    var hoje=new Date().toISOString().slice(0,10);
-    ov.innerHTML='<div style="background:var(--card);border:1px solid var(--b2);border-radius:14px;padding:22px;width:380px;max-width:92vw">'+
-      '<h2 style="margin:0 0 14px;font-size:18px">Nova Entrada</h2>'+
-      '<label style="font-size:12px;color:var(--t2)">Tipo</label><select id="v9e-tipo" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)"><option value="propinas">Propinas</option><option value="inscricao">Inscrição e Matrícula</option><option value="servicos">Serviços</option><option value="outros">Outros</option></select>'+
-      '<label style="font-size:12px;color:var(--t2)">Descrição / Aluno</label><input id="v9e-desc" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)" placeholder="Ex: Propina Junho - João"/>'+
-      '<label style="font-size:12px;color:var(--t2)">Valor (MZM)</label><input id="v9e-valor" type="number" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)" placeholder="0"/>'+
-      '<label style="font-size:12px;color:var(--t2)">Data</label><input id="v9e-data" type="date" value="'+hoje+'" style="width:100%;padding:9px;margin:4px 0 16px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)"/>'+
-      '<div style="display:flex;gap:10px;justify-content:flex-end"><button id="v9e-cancel" style="padding:9px 16px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2);cursor:pointer">Cancelar</button><button id="v9e-save" style="padding:9px 16px;border-radius:8px;background:#16a34a;color:#fff;border:none;font-weight:600;cursor:pointer">Guardar</button></div></div>';
-    document.body.appendChild(ov);
-    ov.querySelector('#v9e-cancel').onclick=function(){ ov.remove(); };
-    ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
-    ov.querySelector('#v9e-save').onclick=function(){
-      var tipo=document.getElementById('v9e-tipo').value; var desc=document.getElementById('v9e-desc').value.trim(); var valor=+document.getElementById('v9e-valor').value||0; var data=document.getElementById('v9e-data').value;
-      if(!desc||!valor){ alert('Preencha a descrição e o valor.'); return; }
-      var nomes={propinas:'Propinas',inscricao:'Inscrição e Matrícula',servicos:'Serviços',outros:'Outros'};
-      var rec={ id:'E'+Date.now(), data:data, tipo:tipo, categoriaNome:nomes[tipo], descricao:desc, alunoNome:desc, alunoNum:null, turmaId:null, meses:[], valor:valor, valorTotal:valor };
-      try{ if(typeof PAGAMENTOS!=='undefined') PAGAMENTOS.push(rec); }catch(e){}
-      try{ if(typeof savePagamentoFirestore==='function') savePagamentoFirestore(rec); }catch(e){}
-      ov.remove(); window.renderEntradasV7();
-    };
-  };
-  try{ if(document.getElementById('v-despesas')){ /* leave */ } }catch(e){}
-})();
-/* === Patch v10: Entradas e Despesas em duas abas simples (ver + registar + gravar) === */
-(function(){
-  if(window.__finV10) return; window.__finV10=true;
-  var MESES10=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  var fmt=window.__finV7_fmtMZ||function(v){return (v||0)+'';};
-  var svg=window.__finV7_svgLinha||function(){return '';};
-  function mostrar(id){ var vs=document.querySelectorAll('.view'); for(var i=0;i<vs.length;i++) vs[i].classList.remove('on'); var t=document.getElementById(id); if(t) t.classList.add('on'); }
-  function host(id){ var h=document.getElementById(id); if(!h){ h=document.createElement('div'); h.id=id; h.className='view'; (document.querySelector('main')||document.body).appendChild(h);} return h; }
-  function mesDe(d){ if(d&&d.mes!=null) return d.mes; var s=d&&(d.data||d.dataPagamento); var dt=s?new Date(s):null; return dt&&!isNaN(dt)?dt.getMonth()+1:0; }
-  function card(t,v,cor){ return '<div style="flex:1;min-width:170px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px 16px"><div style="color:var(--t2);font-size:12px;margin-bottom:6px">'+t+'</div><div style="font-size:22px;font-weight:700'+(cor?(';color:'+cor):'')+'">'+v+'</div></div>'; }
-  function selMes(id,sel){ var o=''; for(var m=1;m<=12;m++){ o+='<option value="'+m+'"'+(m===sel?' selected':'')+'>'+MESES10[m-1]+'</option>'; } return '<select id="'+id+'" style="padding:8px 10px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)">'+o+'</select>'; }
-  var DCATS=(typeof DESP_CAT!=='undefined')?DESP_CAT:[{id:'outros',nome:'Outras Despesas'}];
-  function nomeDCat(id){ for(var i=0;i<DCATS.length;i++){ if(DCATS[i].id===id) return DCATS[i].nome; } return id||''; }
-  var ECATS=[{id:'propinas',nome:'Propinas'},{id:'inscricao',nome:'Inscrição e Matrícula'},{id:'servicos',nome:'Serviços'},{id:'outros',nome:'Outros'}];
-  function nomeECat(id){ for(var i=0;i<ECATS.length;i++){ if(ECATS[i].id===id) return ECATS[i].nome; } return id||''; }
-  window.renderDespesasV7=function(){
-    var h=host('v-despesas');
-    var todas=(typeof DESPESAS_REG!=='undefined')?DESPESAS_REG:[];
-    var mesSel=window.__mesD||((new Date()).getMonth()+1);
-    var porMes=[]; for(var m=1;m<=12;m++){ var t=0; todas.forEach(function(d){ if(mesDe(d)===m) t+=(+d.valor||0); }); porMes.push(t); }
-    var doMes=todas.filter(function(d){ return mesDe(d)===mesSel; });
-    var totMes=porMes[mesSel-1]||0, totAno=porMes.reduce(function(s,v){return s+v;},0), media=totAno/12;
-    var rows=doMes.map(function(d){ return '<tr><td style="padding:8px 10px;border-top:1px solid var(--b2)">'+(d.descricao||'')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);color:var(--t2)">'+nomeDCat(d.categoria)+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);text-align:right;font-weight:600;color:#ef4444">'+fmt(d.valor)+' MZM</td></tr>'; }).join('');
-    if(!rows) rows='<tr><td colspan=3 style="padding:14px 10px;color:var(--t2)">Sem despesas registadas neste mês.</td></tr>';
-    h.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">'+
-      '<div><h1 style="margin:0;font-size:24px">Despesas</h1><div style="color:var(--t2);font-size:13px">Todas as despesas — '+MESES10[mesSel-1]+'</div></div>'+
-      '<div style="display:flex;gap:10px;align-items:center">'+selMes('v10d-mes',mesSel)+'<button id="v10d-add" style="padding:9px 16px;border-radius:8px;background:#ef4444;color:#fff;border:none;font-weight:600;cursor:pointer">+ Registar Despesa</button></div></div>'+
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+card('Despesas de '+MESES10[mesSel-1],fmt(totMes)+' MZM','#ef4444')+card('Total do Ano',fmt(totAno)+' MZM','')+card('Média Mensal',fmt(Math.round(media))+' MZM','')+'</div>'+
-      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-weight:600;margin-bottom:8px">Despesas por mês</div>'+svg(porMes,'#ef4444')+'</div>'+
-      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px"><div style="font-weight:600;margin-bottom:8px">Lista de '+MESES10[mesSel-1]+' ('+doMes.length+')</div><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><th style="text-align:left;padding:6px 10px;color:var(--t2);font-size:12px">DESCRIÇÃO</th><th style="text-align:left;padding:6px 10px;color:var(--t2);font-size:12px">CATEGORIA</th><th style="text-align:right;padding:6px 10px;color:var(--t2);font-size:12px">VALOR</th></tr>'+rows+'</table></div>';
-    mostrar('v-despesas');
-    var s=document.getElementById('v10d-mes'); if(s) s.onchange=function(){ window.__mesD=+this.value; window.renderDespesasV7(); };
-    var a=document.getElementById('v10d-add'); if(a) a.onclick=function(){ window.__regDespesaV10(); };
-  };
-  window.__regDespesaV10=function(){
-    var old=document.getElementById('v10-modal'); if(old) old.remove();
-    var ov=document.createElement('div'); ov.id='v10-modal'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999';
-    var hoje=new Date().toISOString().slice(0,10);
-    var catOpts=DCATS.map(function(c){return '<option value="'+c.id+'">'+c.nome+'</option>';}).join('');
-    var st='width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)';
-    ov.innerHTML='<div style="background:var(--card);border:1px solid var(--b2);border-radius:14px;padding:22px;width:380px;max-width:92vw">'+
-      '<h2 style="margin:0 0 14px;font-size:18px">Registar Despesa</h2>'+
-      '<label style="font-size:12px;color:var(--t2)">Categoria</label><select id="v10-cat" style="'+st+'">'+catOpts+'</select>'+
-      '<label style="font-size:12px;color:var(--t2)">Descrição</label><input id="v10-desc" style="'+st+'" placeholder="Ex: Conta de água Junho"/>'+
-      '<label style="font-size:12px;color:var(--t2)">Valor (MZM)</label><input id="v10-valor" type="number" style="'+st+'" placeholder="0"/>'+
-      '<label style="font-size:12px;color:var(--t2)">Data</label><input id="v10-data" type="date" value="'+hoje+'" style="'+st+'"/>'+
-      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px"><button id="v10-cancel" style="padding:9px 16px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2);cursor:pointer">Cancelar</button><button id="v10-save" style="padding:9px 16px;border-radius:8px;background:#ef4444;color:#fff;border:none;font-weight:600;cursor:pointer">Guardar</button></div></div>';
-    document.body.appendChild(ov);
-    ov.querySelector('#v10-cancel').onclick=function(){ ov.remove(); };
-    ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
-    ov.querySelector('#v10-save').onclick=function(){
-      var cat=document.getElementById('v10-cat').value; var desc=document.getElementById('v10-desc').value.trim(); var valor=+document.getElementById('v10-valor').value||0; var data=document.getElementById('v10-data').value;
-      if(!desc||!valor){ alert('Preencha a descrição e o valor.'); return; }
-      var dt=new Date(data); var mes=(!isNaN(dt))?dt.getMonth()+1:null;
-      var rec={ id:'D'+Date.now(), data:data, mes:mes, categoria:cat, descricao:desc, valor:valor, ref:'', registadoEm:new Date().toISOString() };
-      try{ if(typeof DESPESAS_REG!=='undefined') DESPESAS_REG.push(rec); }catch(e){}
-      try{ if(typeof saveDespesaFirestore==='function') saveDespesaFirestore(rec); }catch(e){}
-      window.__mesD=mes||window.__mesD; ov.remove(); window.renderDespesasV7();
-    };
-  };
-  window.renderEntradasV7=function(){
-    var h=host('v-entradas');
-    var pags=(typeof PAGAMENTOS!=='undefined')?PAGAMENTOS:[];
-    var mesSel=window.__mesE||((new Date()).getMonth()+1);
-    function valP(p){ return (+p.valorTotal||+p.valor||+p.montante||0); }
-    var porMes=[]; for(var m=1;m<=12;m++){ var t=0; pags.forEach(function(p){ if(mesDe(p)===m) t+=valP(p); }); porMes.push(t); }
-    var doMes=pags.filter(function(p){ return mesDe(p)===mesSel; });
-    var totMes=porMes[mesSel-1]||0, totAno=porMes.reduce(function(s,v){return s+v;},0), media=totAno/12;
-    var rows=doMes.map(function(p){ return '<tr><td style="padding:8px 10px;border-top:1px solid var(--b2)">'+(p.alunoNome||p.descricao||p.nome||'—')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);color:var(--t2)">'+(p.categoriaNome||nomeECat(p.tipo)||'')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);text-align:right;font-weight:600;color:#16a34a">'+fmt(valP(p))+' MZM</td></tr>'; }).join('');
-    if(!rows) rows='<tr><td colspan=3 style="padding:14px 10px;color:var(--t2)">Sem entradas registadas neste mês.</td></tr>';
-    h.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">'+
-      '<div><h1 style="margin:0;font-size:24px">Entradas</h1><div style="color:var(--t2);font-size:13px">Todas as entradas — '+MESES10[mesSel-1]+'</div></div>'+
-      '<div style="display:flex;gap:10px;align-items:center">'+selMes('v10e-mes',mesSel)+'<button id="v10e-add" style="padding:9px 16px;border-radius:8px;background:#16a34a;color:#fff;border:none;font-weight:600;cursor:pointer">+ Registar Entrada</button></div></div>'+
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+card('Entradas de '+MESES10[mesSel-1],fmt(totMes)+' MZM','#16a34a')+card('Total do Ano',fmt(totAno)+' MZM','')+card('Média Mensal',fmt(Math.round(media))+' MZM','')+'</div>'+
-      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-weight:600;margin-bottom:8px">Entradas por mês</div>'+svg(porMes,'#16a34a')+'</div>'+
-      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px"><div style="font-weight:600;margin-bottom:8px">Lista de '+MESES10[mesSel-1]+' ('+doMes.length+')</div><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><th style="text-align:left;padding:6px 10px;color:var(--t2);font-size:12px">DESCRIÇÃO / ALUNO</th><th style="text-align:left;padding:6px 10px;color:var(--t2);font-size:12px">TIPO</th><th style="text-align:right;padding:6px 10px;color:var(--t2);font-size:12px">VALOR</th></tr>'+rows+'</table></div>';
-    mostrar('v-entradas');
-    var s=document.getElementById('v10e-mes'); if(s) s.onchange=function(){ window.__mesE=+this.value; window.renderEntradasV7(); };
-    var a=document.getElementById('v10e-add'); if(a) a.onclick=function(){ window.__regEntradaV10(); };
-  };
-  window.__regEntradaV10=function(){
-    var old=document.getElementById('v10-modal'); if(old) old.remove();
-    var ov=document.createElement('div'); ov.id='v10-modal'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999';
-    var hoje=new Date().toISOString().slice(0,10);
-    var catOpts=ECATS.map(function(c){return '<option value="'+c.id+'">'+c.nome+'</option>';}).join('');
-    var st='width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)';
-    ov.innerHTML='<div style="background:var(--card);border:1px solid var(--b2);border-radius:14px;padding:22px;width:380px;max-width:92vw">'+
-      '<h2 style="margin:0 0 14px;font-size:18px">Registar Entrada</h2>'+
-      '<label style="font-size:12px;color:var(--t2)">Tipo</label><select id="v10-cat" style="'+st+'">'+catOpts+'</select>'+
-      '<label style="font-size:12px;color:var(--t2)">Descrição / Aluno</label><input id="v10-desc" style="'+st+'" placeholder="Ex: Propina Junho - João"/>'+
-      '<label style="font-size:12px;color:var(--t2)">Valor (MZM)</label><input id="v10-valor" type="number" style="'+st+'" placeholder="0"/>'+
-      '<label style="font-size:12px;color:var(--t2)">Data</label><input id="v10-data" type="date" value="'+hoje+'" style="'+st+'"/>'+
-      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px"><button id="v10-cancel" style="padding:9px 16px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2);cursor:pointer">Cancelar</button><button id="v10-save" style="padding:9px 16px;border-radius:8px;background:#16a34a;color:#fff;border:none;font-weight:600;cursor:pointer">Guardar</button></div></div>';
-    document.body.appendChild(ov);
-    ov.querySelector('#v10-cancel').onclick=function(){ ov.remove(); };
-    ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
-    ov.querySelector('#v10-save').onclick=function(){
-      var cat=document.getElementById('v10-cat').value; var desc=document.getElementById('v10-desc').value.trim(); var valor=+document.getElementById('v10-valor').value||0; var data=document.getElementById('v10-data').value;
-      if(!desc||!valor){ alert('Preencha a descrição e o valor.'); return; }
-      var dt=new Date(data); var mes=(!isNaN(dt))?dt.getMonth()+1:null;
-      var rec={ id:'E'+Date.now(), data:data, mes:mes, tipo:cat, categoriaNome:nomeECat(cat), descricao:desc, alunoNome:desc, alunoNum:null, turmaId:null, meses:[], valor:valor, valorTotal:valor };
-      try{ if(typeof PAGAMENTOS!=='undefined') PAGAMENTOS.push(rec); }catch(e){}
-      try{ if(typeof savePagamentoFirestore==='function') savePagamentoFirestore(rec); }catch(e){}
-      window.__mesE=mes||window.__mesE; ov.remove(); window.renderEntradasV7();
-    };
-  };
-  window.irEntrada=function(){ try{ window.renderEntradasV7(); }catch(e){ console.error('irEntrada v10',e); } };
-  window.irDespesa=function(){ try{ window.renderDespesasV7(); }catch(e){ console.error('irDespesa v10',e); } };
-  function simplificar(){
-    try{
-      ['si-mae-entradas','si-mae-despesas'].forEach(function(id){
-        var b=document.getElementById(id); if(!b) return;
-        var wrap=b.nextElementSibling;
-        if(wrap && wrap.tagName==='DIV' && wrap.querySelector && wrap.querySelector('button.si-sub')){ wrap.parentNode.removeChild(wrap); }
-        var ch=b.querySelector('.ti-chevron-down'); if(ch) ch.style.display='none';
-        if(id==='si-mae-entradas') b.onclick=function(){ window.irEntrada(); };
-        else b.onclick=function(){ window.irDespesa(); };
-      });
-    }catch(e){ console.error('v10 simplificar',e); }
-  }
-  window.__v10simplificar=simplificar;
-  if(typeof buildSidebar==='function'){ var _b=buildSidebar; buildSidebar=function(){ var r=_b.apply(this,arguments); try{ if(window.__v8reorg) window.__v8reorg(); }catch(e){} try{ simplificar(); }catch(e){} return r; }; }
-  try{ var mo=new MutationObserver(function(){ simplificar(); }); var sb=document.getElementById('sb-content')||document.querySelector('aside')||document.body; if(sb) mo.observe(sb,{childList:true,subtree:true}); }catch(e){}
-  try{ if(window.__v8reorg) window.__v8reorg(); }catch(e){}
-  simplificar();
+  try{
+    var mo=new MutationObserver(function(){ if($(SECID) && !$('v11-mae-entradas')){ try{ reorg(); }catch(e){} } });
+    var sb=document.querySelector('.sidebar')||document.body;
+    mo.observe(sb,{childList:true,subtree:true});
+  }catch(e){}
+  try{ reorg(); }catch(e){}
 })();
 
 </script>
