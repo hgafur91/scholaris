@@ -29665,7 +29665,7 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
 /* === SCHOLARIS: MODULO PAGAMENTOS (categorias + balancete) === */
 (function(){
   'use strict';
-  if (window.__pagModuleInit) return; window.__pagModuleInit = true;
+  if (window.__pagModuleInit) return; window.__pagModuleInit = true; return; /* OLD desativado - ver HUB v2 no fim */
   if (typeof window.CATEGORIAS_PAGAMENTO === 'undefined') {
     window.CATEGORIAS_PAGAMENTO = [
       { id:'propinas',  nome:'Propinas',   icon:'ti-cash',            ativo:true, sistema:true },
@@ -30041,6 +30041,274 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
   window.__fxExportDetalhado = __fxExportDetalhado;
   window.__fxExport = __fxExportDetalhado;
 })();
+/* === SCHOLARIS: HUB PAGAMENTOS INTEGRADO v2 (propinas + taxas fixas + avulsos + balancete) === */
+(function(){
+  'use strict';
+  if (window.__pagHubInit) return; window.__pagHubInit = true;
+  function money(n){ return (Number(n)||0).toLocaleString('pt-PT'); }
+  var ANO = new Date().getFullYear();
+  if (typeof window.SERVICOS_AVULSOS === 'undefined') {
+    window.SERVICOS_AVULSOS = [
+      { id:'taxa_exame',      nome:'Taxa de Exame',                preco:500, ativo:true },
+      { id:'exame_recurso',   nome:'Exame de Recurso (2a epoca)',  preco:500, ativo:true },
+      { id:'decl_notas',      nome:'Declaracao de Notas',          preco:150, ativo:true },
+      { id:'boletim',         nome:'Boletim de Passagem',          preco:150, ativo:true },
+      { id:'decl_transf',     nome:'Declaracao de Transferencia',  preco:250, ativo:true },
+      { id:'reactivacao',     nome:'Reactivacao de Matricula',     preco:500, ativo:true },
+      { id:'certificado',     nome:'Emissao de Certificado',       preco:1000, ativo:true },
+      { id:'segunda_via_cartao', nome:'2a Via de Cartao',          preco:200, ativo:true },
+      { id:'seguro',          nome:'Seguro Escolar',               preco:300, ativo:true },
+      { id:'uniforme',        nome:'Uniforme / Fardamento',        preco:0,   ativo:true }
+    ];
+  }
+  function SERVICOS(){ return window.SERVICOS_AVULSOS || []; }
+  function servById(id){ return SERVICOS().filter(function(s){return s.id===id;})[0] || null; }
+  function familiaDe(pag){
+    if(!pag) return 'avulso';
+    if(pag.familia) return pag.familia;
+    var t = pag.tipo || (pag.meses && pag.meses.length ? 'propinas' : null);
+    if(t==='propinas' || (pag.meses && pag.meses.length)) return 'propina';
+    if(t==='matricula' || t==='inscricao') return 'taxa_fixa';
+    return 'avulso';
+  }
+  window.familiaDePagamento = familiaDe;
+  var _pagTab = 'propinas';
+  function rPagamentos(tab){
+    var host = document.getElementById('v-pagamentos'); if(!host) return;
+    if(tab) _pagTab = tab;
+    var tabs = [
+      {id:'propinas', label:'Propinas', icon:'ti-calendar-dollar'},
+      {id:'taxas',    label:'Taxas Fixas', icon:'ti-file-certificate'},
+      {id:'avulsos',  label:'Avulsos / Servicos', icon:'ti-receipt'},
+      {id:'balancete',label:'Balancete', icon:'ti-report-money'}
+    ];
+    var tabBtns = tabs.map(function(tb){
+      var on = tb.id===_pagTab;
+      return '<button onclick="pagTab(\''+tb.id+'\')" style="padding:9px 16px;border:none;border-bottom:2px solid '+(on?'var(--a)':'transparent')+';background:transparent;color:'+(on?'var(--a)':'var(--t2)')+';font-weight:'+(on?'700':'500')+';cursor:pointer;font-size:13px"><i class="ti '+tb.icon+'"></i> '+tb.label+'</button>';
+    }).join('');
+    var html = '';
+    html += '<div class="ph"><div><div class="ph-title">Pagamentos</div><div class="ph-sub">Centro integrado de receitas: propinas, taxas fixas e servicos avulsos</div></div>';
+    html += '<div class="ph-right"><button class="btn btn-g btn-sm" onclick="abrirGestorServicos()"><i class="ti ti-settings"></i> Servicos</button></div></div>';
+    html += '<div style="display:flex;gap:4px;border-bottom:1px solid var(--b);margin-bottom:18px;flex-wrap:wrap">'+tabBtns+'</div>';
+    html += '<div id="pag-tab-body"></div>';
+    host.innerHTML = html;
+    renderPagTab();
+  }
+  window.rPagamentos = rPagamentos;
+  function pagTab(id){ _pagTab=id; rPagamentos(); }
+  window.pagTab = pagTab;
+  function renderPagTab(){
+    var body = document.getElementById('pag-tab-body'); if(!body) return;
+    if(_pagTab==='propinas') return renderTabPropinas(body);
+    if(_pagTab==='taxas') return renderTabTaxas(body);
+    if(_pagTab==='avulsos') return renderTabAvulsos(body);
+    if(_pagTab==='balancete') return renderTabBalancete(body);
+  }
+  function renderTabPropinas(body){
+    var vprop = document.getElementById('v-propinas');
+    if(vprop){
+      var holder = document.createElement('div'); holder.id='prop-embed-holder';
+      while(vprop.firstChild){ holder.appendChild(vprop.firstChild); }
+      body.innerHTML=''; body.appendChild(holder);
+      window.__propEmbedActive = true;
+      try{ if(typeof rPropTurmas==='function') rPropTurmas(); }catch(e){ console.warn('rPropTurmas', e&&e.message); }
+    } else {
+      body.innerHTML = '<div style="text-align:center;color:var(--t2);padding:24px">Modulo de propinas indisponivel.</div>';
+    }
+  }
+  function taxaPagaEsteAno(alunoId, tipo){
+    var pags = (typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]);
+    return pags.filter(function(p){
+      if(p.estado==='estornado') return false;
+      if(String(p.alunoId)!==String(alunoId)) return false;
+      if((p.tipo||'')!==tipo) return false;
+      var ano = p.data ? parseInt(p.data.slice(0,4),10) : ANO;
+      return ano===ANO;
+    })[0] || null;
+  }
+  function precoTaxa(tipo, turmaId){
+    var v = 0;
+    if(tipo==='matricula'){ v = (typeof getMatriculaTurma==='function'?getMatriculaTurma(turmaId):0) || (CONFIG.valorMatricula||0) || 2500; }
+    if(tipo==='inscricao'){ v = (typeof getInscricaoTurma==='function'?getInscricaoTurma(turmaId):0) || (CONFIG.valorInscricao||0) || 2500; }
+    return v;
+  }
+  function renderTabTaxas(body){
+    var alunos = (typeof ALUNOS!=='undefined'?ALUNOS:[]);
+    var optAlunos = alunos.slice().sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');})
+      .map(function(a){ return '<option value="'+a.id+'">'+(a.nome||'')+' ('+(a.num||'')+' / '+(a.turma||'')+')</option>'; }).join('');
+    var html='';
+    html += '<div class="ib box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Taxas fixas anuais: pagas <strong>uma vez por ano</strong> por aluno (matricula e inscricao). O sistema bloqueia pagamento duplicado no mesmo ano lectivo ('+ANO+').</div>';
+    html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px">';
+    html += '<label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Aluno / Encarregado</label>';
+    html += '<select id="tx-aluno" class="btn btn-g" style="width:100%;max-width:420px" onchange="renderTaxasAluno()"><option value="">Seleccionar aluno...</option>'+optAlunos+'</select>';
+    html += '<div id="tx-detalhe" style="margin-top:16px"></div>';
+    html += '</div>';
+    body.innerHTML = html;
+  }
+  function renderTaxasAluno(){
+    var sel=document.getElementById('tx-aluno'); var box=document.getElementById('tx-detalhe');
+    if(!sel||!box) return; if(!sel.value){ box.innerHTML=''; return; }
+    var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).filter(function(x){return String(x.id)===String(sel.value);})[0];
+    if(!a) return;
+    var tipos=[{id:'matricula',nome:'Matricula'},{id:'inscricao',nome:'Inscricao'}];
+    var rows=tipos.map(function(tp){
+      var pago=taxaPagaEsteAno(a.id, tp.id);
+      var isento = (typeof isIsento==='function' && isIsento(a, tp.id));
+      var preco=precoTaxa(tp.id, a.turma);
+      var right;
+      if(isento){ right='<span class="badge bok">Isento</span>'; }
+      else if(pago){ right='<span class="badge bok"><i class="ti ti-check"></i> Pago em '+(pago.data||'-')+'</span>'; }
+      else { right='<button class="btn btn-p btn-sm" onclick="pagarTaxaFixa(\''+a.id+'\',\''+tp.id+'\')">Pagar '+money(preco)+' MZM</button>'; }
+      return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:10px"><strong>'+tp.nome+'</strong></td><td style="padding:10px">'+money(preco)+' MZM</td><td style="padding:10px;text-align:right">'+right+'</td></tr>';
+    }).join('');
+    box.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);text-align:left"><th style="padding:10px">Taxa</th><th style="padding:10px">Valor</th><th style="padding:10px;text-align:right">Estado</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+  window.renderTaxasAluno = renderTaxasAluno;
+  function registarPagamentoGenerico(opts){
+    var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).filter(function(x){return String(x.id)===String(opts.alunoId);})[0];
+    if(!a){ if(typeof toast==='function') toast('Aluno invalido'); return false; }
+    var who=(typeof curUser!=='undefined'&&curUser&&curUser.nome)?curUser.nome:'Sistema';
+    var pag={
+      id:'PAG'+Date.now().toString(36).toUpperCase()+Math.floor(Math.random()*100),
+      alunoId:a.id, alunoNome:a.nome, alunoNum:a.num, turmaId:a.turma,
+      meses:[], valorTotal:opts.valor, valorBase:opts.valor,
+      tipo:opts.tipo, categoriaId:opts.tipo, categoriaNome:opts.nome, familia:opts.familia,
+      data:opts.data||new Date().toISOString().slice(0,10),
+      canal:opts.canal||'Numerario', banco:null, ref:opts.ref||'', obs:opts.obs||'',
+      estado:'por_confirmar', confirmedBy:null, confirmedAt:null, confirmedRef:null,
+      registadoPor:who, registadoEm:new Date().toISOString()
+    };
+    if(typeof PAGAMENTOS!=='undefined'&&PAGAMENTOS.push) PAGAMENTOS.push(pag);
+    try{ if(typeof savePagamentoFirestore==='function') savePagamentoFirestore(pag); }catch(e){}
+    return pag;
+  }
+  window.registarPagamentoGenerico = registarPagamentoGenerico;
+  function pagarTaxaFixa(alunoId, tipo){
+    if(taxaPagaEsteAno(alunoId, tipo)){ if(typeof toast==='function') toast('Esta taxa ja foi paga este ano'); return; }
+    var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).filter(function(x){return String(x.id)===String(alunoId);})[0];
+    var preco=precoTaxa(tipo, a?a.turma:null);
+    var nome = tipo==='matricula'?'Matricula':'Inscricao';
+    var pag=registarPagamentoGenerico({alunoId:alunoId, tipo:tipo, nome:nome, familia:'taxa_fixa', valor:preco});
+    if(pag){ if(typeof toast==='function') toast(nome+' registada ('+money(preco)+' MZM)'); renderTaxasAluno(); }
+  }
+  window.pagarTaxaFixa = pagarTaxaFixa;
+  function renderTabAvulsos(body){
+    var alunos=(typeof ALUNOS!=='undefined'?ALUNOS:[]);
+    var optAlunos = alunos.slice().sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');})
+      .map(function(a){ return '<option value="'+a.id+'">'+(a.nome||'')+' ('+(a.num||'')+' / '+(a.turma||'')+')</option>'; }).join('');
+    var servs=SERVICOS().filter(function(s){return s.ativo!==false;});
+    var optServ = servs.map(function(s){ return '<option value="'+s.id+'" data-preco="'+s.preco+'">'+s.nome+' ('+money(s.preco)+' MZM)</option>'; }).join('');
+    var html='';
+    html += '<div class="ib box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Servicos avulsos/emolumentos: cobrados por pedido. Os precos sao definidos em <strong>Servicos</strong> (botao no topo) e refletem nos Emolumentos.</div>';
+    html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px">';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">';
+    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Aluno / Encarregado</label><select id="av-aluno" class="btn btn-g" style="width:100%"><option value="">Seleccionar aluno...</option>'+optAlunos+'</select></div>';
+    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Servico</label><select id="av-serv" class="btn btn-g" style="width:100%" onchange="avOnChange()">'+optServ+'</select></div>';
+    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Valor (MZM)</label><input id="av-valor" type="number" min="0" class="btn btn-g" style="width:100%"></div>';
+    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Data</label><input id="av-data" type="date" class="btn btn-g" style="width:100%"></div>';
+    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Referencia</label><input id="av-ref" type="text" class="btn btn-g" style="width:100%" placeholder="Opcional"></div>';
+    html += '</div>';
+    html += '<div style="margin-top:14px;text-align:right"><button class="btn btn-p" onclick="registarAvulso()"><i class="ti ti-check"></i> Registar servico</button></div>';
+    html += '</div>';
+    body.innerHTML=html;
+    var di=document.getElementById('av-data'); if(di) di.value=new Date().toISOString().slice(0,10);
+    avOnChange();
+  }
+  function avOnChange(){ var s=document.getElementById('av-serv'); var v=document.getElementById('av-valor'); if(!s||!v) return; var o=s.options[s.selectedIndex]; v.value=o?o.getAttribute('data-preco'):''; }
+  window.avOnChange=avOnChange;
+  function registarAvulso(){
+    var aSel=document.getElementById('av-aluno'), sSel=document.getElementById('av-serv'), vIn=document.getElementById('av-valor'), dIn=document.getElementById('av-data'), rIn=document.getElementById('av-ref');
+    if(!aSel.value){ if(typeof toast==='function') toast('Seleccione um aluno'); return; }
+    var serv=servById(sSel.value)||{id:sSel.value,nome:sSel.value};
+    var valor=parseFloat(vIn.value)||0; if(valor<=0){ if(typeof toast==='function') toast('Indique um valor valido'); return; }
+    var pag=registarPagamentoGenerico({alunoId:aSel.value, tipo:serv.id, nome:serv.nome, familia:'avulso', valor:valor, data:dIn.value, ref:rIn.value});
+    if(pag){ if(typeof toast==='function') toast(serv.nome+' registado ('+money(valor)+' MZM)'); rPagamentos(); }
+  }
+  window.registarAvulso=registarAvulso;
+  function renderTabBalancete(body){
+    var pags=(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]).filter(function(p){return p.estado!=='estornado';});
+    var MM=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    var famNome={propina:'Propinas', taxa_fixa:'Taxas Fixas', avulso:'Servicos Avulsos'};
+    var famCor={propina:'#16a34a', taxa_fixa:'#0ea5e9', avulso:'#f59e0b'};
+    var porFam={propina:0,taxa_fixa:0,avulso:0};
+    var porMes={}; for(var m=1;m<=12;m++){ porMes[m]={propina:0,taxa_fixa:0,avulso:0}; }
+    var porCat={};
+    pags.forEach(function(p){
+      var f=familiaDe(p); var v=p.valorTotal||0; porFam[f]=(porFam[f]||0)+v;
+      var mm=p.data?parseInt(p.data.slice(5,7),10):null; if(mm&&porMes[mm]) porMes[mm][f]+=v;
+      var cn=p.categoriaNome||(p.tipo||'Propinas'); porCat[cn]=(porCat[cn]||0)+v;
+    });
+    var totalAno=porFam.propina+porFam.taxa_fixa+porFam.avulso;
+    var html='';
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">';
+    ['propina','taxa_fixa','avulso'].forEach(function(f){
+      html += '<div style="flex:1;min-width:170px;background:var(--card);border:1px solid var(--b);border-left:4px solid '+famCor[f]+';border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">'+famNome[f]+'</div><div style="font-size:20px;font-weight:800">'+money(porFam[f])+' MZM</div></div>';
+    });
+    html += '<div style="flex:1;min-width:170px;background:var(--a);color:#fff;border-radius:var(--rad);padding:14px"><div style="font-size:12px;opacity:.85">Total '+ANO+'</div><div style="font-size:20px;font-weight:800">'+money(totalAno)+' MZM</div></div>';
+    html += '</div>';
+    html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px;margin-bottom:18px"><div style="font-weight:700;margin-bottom:12px">Balancete Mensal '+ANO+'</div>';
+    html += '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);text-align:right;border-bottom:1px solid var(--b)"><th style="padding:8px;text-align:left">Mes</th><th style="padding:8px">Propinas</th><th style="padding:8px">Taxas Fixas</th><th style="padding:8px">Avulsos</th><th style="padding:8px">Total</th></tr></thead><tbody>';
+    for(var m=1;m<=12;m++){ var pm=porMes[m]; var tm=pm.propina+pm.taxa_fixa+pm.avulso; html += '<tr style="border-bottom:1px solid var(--b);text-align:right"><td style="padding:7px;text-align:left">'+MM[m-1]+'</td><td style="padding:7px">'+money(pm.propina)+'</td><td style="padding:7px">'+money(pm.taxa_fixa)+'</td><td style="padding:7px">'+money(pm.avulso)+'</td><td style="padding:7px;font-weight:700">'+money(tm)+'</td></tr>'; }
+    html += '<tr style="background:var(--bg3);font-weight:800;text-align:right"><td style="padding:8px;text-align:left">TOTAL</td><td style="padding:8px">'+money(porFam.propina)+'</td><td style="padding:8px">'+money(porFam.taxa_fixa)+'</td><td style="padding:8px">'+money(porFam.avulso)+'</td><td style="padding:8px">'+money(totalAno)+'</td></tr>';
+    html += '</tbody></table></div></div>';
+    var catRows=Object.keys(porCat).sort(function(a,b){return porCat[b]-porCat[a];}).map(function(k){ return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:7px">'+k+'</td><td style="padding:7px;text-align:right;font-weight:700">'+money(porCat[k])+' MZM</td></tr>'; }).join('');
+    html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px"><div style="font-weight:700;margin-bottom:12px">Por Categoria '+ANO+'</div><table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>'+(catRows||'<tr><td style="padding:10px;color:var(--t2)">Sem dados</td></tr>')+'</tbody></table></div>';
+    html += '<div style="margin-top:16px;text-align:right"><button class="btn btn-g" onclick="if(typeof exportarMapaFinanceiro===\'function\')exportarMapaFinanceiro()"><i class="ti ti-download"></i> Exportar mapa completo</button></div>';
+    body.innerHTML=html;
+  }
+  function devolverPropinasDOM(){
+    var holder=document.getElementById('prop-embed-holder'); var vprop=document.getElementById('v-propinas');
+    if(holder && vprop){ while(holder.firstChild){ vprop.appendChild(holder.firstChild); } holder.remove(); window.__propEmbedActive=false; }
+  }
+  var _pagTabRaw = pagTab;
+  window.pagTab = function(id){ if(_pagTab==='propinas' && id!=='propinas') devolverPropinasDOM(); _pagTabRaw(id); };
+  pagTab = window.pagTab;
+  function abrirGestorServicos(){
+    var ex=document.getElementById('serv-modal'); if(ex) ex.remove();
+    var rows=SERVICOS().map(function(s){
+      return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:8px">'+s.nome+'</td><td style="padding:8px"><input type="number" value="'+s.preco+'" style="width:90px" class="btn btn-g" onchange="setPrecoServico(\''+s.id+'\',this.value)"></td><td style="padding:8px;text-align:right"><button class="btn btn-g btn-sm" onclick="toggleServico(\''+s.id+'\')">'+(s.ativo!==false?'Activo':'Inactivo')+'</button></td></tr>';
+    }).join('');
+    var html='<div id="serv-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)this.remove()">';
+    html+='<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:22px;width:520px;max-width:92vw;max-height:86vh;overflow:auto">';
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-weight:700;font-size:16px">Servicos / Emolumentos</div><button class="btn btn-g btn-sm" onclick="document.getElementById(\'serv-modal\').remove()"><i class="ti ti-x"></i></button></div>';
+    html+='<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px"><thead><tr style="color:var(--t2);text-align:left"><th style="padding:8px">Servico</th><th style="padding:8px">Preco (MZM)</th><th style="padding:8px;text-align:right">Estado</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    html+='<div style="border-top:1px solid var(--b);padding-top:12px"><div style="font-weight:600;margin-bottom:8px;font-size:13px">Adicionar servico</div><div style="display:flex;gap:8px"><input id="serv-nome" class="btn btn-g" style="flex:1" placeholder="Nome do servico"><input id="serv-preco" type="number" class="btn btn-g" style="width:110px" placeholder="Preco"><button class="btn btn-p" onclick="addServico()"><i class="ti ti-plus"></i></button></div></div>';
+    html+='</div></div>';
+    var d=document.createElement('div'); d.innerHTML=html; document.body.appendChild(d.firstChild);
+  }
+  window.abrirGestorServicos=abrirGestorServicos;
+  function setPrecoServico(id,val){ var s=servById(id); if(s) s.preco=parseFloat(val)||0; }
+  window.setPrecoServico=setPrecoServico;
+  function toggleServico(id){ var s=servById(id); if(s){ s.ativo=(s.ativo===false); abrirGestorServicos(); } }
+  window.toggleServico=toggleServico;
+  function addServico(){ var n=document.getElementById('serv-nome'),p=document.getElementById('serv-preco'); var nome=n&&n.value&&n.value.trim(); if(!nome){ if(typeof toast==='function') toast('Indique o nome'); return; } var id=nome.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||('serv'+Date.now()); if(servById(id)){ if(typeof toast==='function') toast('Ja existe'); return; } SERVICOS().push({id:id,nome:nome,preco:parseFloat(p.value)||0,ativo:true}); abrirGestorServicos(); }
+  window.addServico=addServico;
+  function ensurePagView(){ if(document.getElementById('v-pagamentos')) return; var main=document.getElementById('main'); if(!main) return; var v=document.createElement('div'); v.className='view'; v.id='v-pagamentos'; main.appendChild(v); }
+  function injectPagSidebar(){
+    var sb=document.getElementById('sb-content'); if(!sb) return;
+    var role=(typeof curRole!=='undefined')?curRole:'';
+    if(['gestor','secretario'].indexOf(role)<0) return;
+    if(!document.getElementById('si-pagamentos')){
+      var ref=document.getElementById('si-propinas')||document.getElementById('si-despesas');
+      var btn=document.createElement('button'); btn.className='si'; btn.id='si-pagamentos'; btn.setAttribute('onclick',"go('pagamentos')"); btn.innerHTML='<i class="ti ti-credit-card" style="font-size:16px"></i><span>Pagamentos</span>';
+      if(ref&&ref.parentNode){ ref.parentNode.insertBefore(btn, ref); } else { sb.appendChild(btn); }
+    }
+    var prop=document.getElementById('si-propinas');
+    if(prop && !prop.__rerouted){ prop.__rerouted=true; prop.setAttribute('onclick',"go('pagamentos'); setTimeout(function(){pagTab('propinas');},30);"); }
+  }
+  if(typeof window.go==='function' && !window.__pagGoHook){
+    window.__pagGoHook=true; var _origGo=window.go;
+    window.go=function(id){ try{ if(id!=='pagamentos' && window.__propEmbedActive){ devolverPropinasDOM(); } }catch(e){} return _origGo.apply(this,arguments); };
+    go=window.go;
+  }
+  function wirePag(){ ensurePagView(); if(typeof VM!=='undefined'){ VM['pagamentos']='v-pagamentos'; } if(typeof RENDER_MAP!=='undefined'){ RENDER_MAP['pagamentos']=function(){ rPagamentos(); }; } injectPagSidebar(); }
+  if(typeof window.buildSidebar==='function' && !window.__pagHubSbHook){ window.__pagHubSbHook=true; var _bs=window.buildSidebar; window.buildSidebar=function(){ var r=_bs.apply(this,arguments); try{ injectPagSidebar(); }catch(e){} return r; }; }
+  function pagInit(){ try{ wirePag(); }catch(e){ console.warn('pagInit',e&&e.message); } }
+  if(document.readyState!=='loading'){ setTimeout(pagInit,300); }
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(pagInit,600); });
+  setTimeout(pagInit,1500); setTimeout(pagInit,3500);
+})();
+
 </script>
 </body>
 </html>
