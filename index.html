@@ -30309,6 +30309,42 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
   setTimeout(pagInit,1500); setTimeout(pagInit,3500);
 })();
 
+
+/* === SCHOLARIS: persistencia tipo/categoria + seed categorias (re-anexado p/ HUB v2) === */
+(function(){
+  if(window.__savePagWrapped2) return; window.__savePagWrapped2=true;
+  if(typeof window.CATEGORIAS_PAGAMENTO==='undefined'){
+    window.CATEGORIAS_PAGAMENTO=[
+      {id:'propinas',nome:'Propinas',icon:'ti-cash',ativo:true,sistema:true},
+      {id:'matricula',nome:'Matricula',icon:'ti-file-certificate',ativo:true,sistema:true},
+      {id:'inscricao',nome:'Inscricao',icon:'ti-clipboard-check',ativo:true,sistema:true},
+      {id:'uniformes',nome:'Uniformes',icon:'ti-shirt',ativo:true,sistema:true}
+    ];
+  }
+  if(typeof window.savePagamentoFirestore==='function' && !window.__savePagWrapped){
+    window.__savePagWrapped=true;
+    var _orig=window.savePagamentoFirestore;
+    window.savePagamentoFirestore=async function(pag){
+      try{
+            
+        if(window._supabase && window._escolaId && window._escolaId!=='escola_demo' && pag && pag.tipo){
+          var r=await window._supabase.from('pagamentos').insert({
+            escola_id:window._escolaId, pag_id:pag.id,
+            aluno_num:pag.alunoNum||null, aluno_nome:pag.alunoNome||null, turma_id:pag.turmaId||null,
+            meses:pag.meses||[], valor_total:pag.valorTotal||0, valor_base:pag.valorBase||0,
+            data_pag:pag.data||null, canal:pag.canal||null, banco:pag.banco||null,
+            ref:pag.ref||null, obs:pag.obs||null, estado:pag.estado||'por_confirmar',
+            tipo:pag.tipo, categoria_id:pag.categoriaId||pag.tipo, familia:pag.familia||null,
+            registado_por:pag.registadoPor, registado_em:pag.registadoEm||new Date().toISOString()
+          }).select('id').single();
+          return r;
+        }
+      }catch(e){ console.warn('savePag tipo', e&&e.message); }
+      return _orig.apply(this, arguments);
+    };
+  }
+})();
+
 </script>
 </body>
 </html>
