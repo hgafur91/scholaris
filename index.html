@@ -30397,5 +30397,233 @@ window.renderBalanceteRange=function(mIni,mFim){
 </script>
 
 
+/* ===== Patch v7: Paginas autonomas Entradas e Despesas (mapa do mes + grafico) ===== */
+(function(){
+  if (window.__finV7) return; window.__finV7 = true;
+  var MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function fmtMZ(v){ try { return (Number(v)||0).toLocaleString('pt-PT'); } catch(e){ return String(v||0); } }
+  function mesAtual(){ return new Date().getMonth() + 1; }
+  function nomeCat(catId){ var n = catId; if (typeof DESP_CAT !== 'undefined') { DESP_CAT.forEach(function(c){ if (c.id===catId) n=c.nome; }); } var extra={material:'Material',servicos:'Servicos',transporte:'Transporte',renda:'Renda'}; return (n===catId && extra[catId])?extra[catId]:n; }
+
+  /* grupos para mapear categorias antigas nos novos nomes */
+  function grupoDe(catId){
+    if (catId==='agua' || catId==='luz') return 'utilidades';
+    if (catId==='material' || catId==='servicos' || catId==='transporte' || catId==='renda' || catId==='outros') return 'outros';
+    return catId;
+  }
+
+  /* despesas de um mes (1-12) do ano lectivo */
+  function despesasDoMes(mes){
+    var arr = (typeof DESPESAS_REG !== 'undefined') ? DESPESAS_REG : [];
+    return arr.filter(function(d){ var dt = d.data ? new Date(d.data) : null; var m = (d.mes!=null) ? d.mes : (dt ? dt.getMonth()+1 : 0); return m === mes; });
+  }
+  function totalMes(mes){ return despesasDoMes(mes).reduce(function(s,d){ return s + (Number(d.valor)||0); }, 0); }
+
+  /* grafico SVG de linha: data = array de 12 numeros */
+  function svgLinha(dados, cor){
+    var W=720, H=180, pad=30;
+    var max = Math.max.apply(null, dados.concat([1]));
+    var stepX = (W - pad*2) / 11;
+    var pts = dados.map(function(v,i){ var x = pad + i*stepX; var y = H - pad - ((v/max) * (H - pad*2)); return {x:x, y:y, v:v}; });
+    var path = pts.map(function(p,i){ return (i===0?'M':'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1); }).join(' ');
+    var dots = pts.map(function(p){ return '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3" fill="'+cor+'"></circle>'; }).join('');
+    var labels = pts.map(function(p,i){ return '<text x="'+p.x.toFixed(1)+'" y="'+(H-10)+'" font-size="9" fill="#7a90bb" text-anchor="middle">'+MESES[i].slice(0,3)+'</text>'; }).join('');
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">' +
+           '<line x1="'+pad+'" y1="'+(H-pad)+'" x2="'+(W-pad)+'" y2="'+(H-pad)+'" stroke="#2a3550" stroke-width="1"></line>' +
+           '<path d="'+path+'" fill="none" stroke="'+cor+'" stroke-width="2"></path>' + dots + labels + '</svg>';
+  }
+  window.__finV7_svgLinha = svgLinha;
+  window.__finV7_despesasDoMes = despesasDoMes;
+  window.__finV7_totalMes = totalMes;
+  window.__finV7_nomeCat = nomeCat;
+  window.__finV7_mesAtual = mesAtual;
+  window.__finV7_fmtMZ = fmtMZ;
+})();
+
+/* ---- Patch v7 parte 2: pagina Despesas ---- */
+(function(){
+  if (window.__finV7d) return; window.__finV7d = true;
+  var MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var mesSelD = (new Date().getMonth()+1);
+
+  function showView(id){
+    try { var vs=document.querySelectorAll('.view'); for (var i=0;i<vs.length;i++) vs[i].classList.remove('on'); var t=document.getElementById(id); if(t) t.classList.add('on'); } catch(e){}
+  }
+
+  window.renderDespesasV7 = function(){
+    var host = document.getElementById('v-despesas');
+    if (!host) return;
+    showView('v-despesas');
+    var fmt = window.__finV7_fmtMZ, svgLinha = window.__finV7_svgLinha;
+    var todas = (typeof DESPESAS_REG!=='undefined')?DESPESAS_REG:[];
+    function mesDe(d){ var dt=d.data?new Date(d.data):null; return (d.mes!=null)?d.mes:(dt?dt.getMonth()+1:0); }
+    var doMes = todas.filter(function(d){ return mesDe(d)===mesSelD; });
+    var totalMesV = doMes.reduce(function(s,d){ return s+(Number(d.valor)||0); },0);
+    var porMes = []; for (var m=1;m<=12;m++){ porMes.push(todas.filter(function(d){return mesDe(d)===m;}).reduce(function(s,d){return s+(Number(d.valor)||0);},0)); }
+    var totalAno = porMes.reduce(function(s,v){return s+v;},0);
+    var media = totalAno/12;
+    /* por categoria no mes */
+    var porCat = {}; doMes.forEach(function(d){ porCat[d.categoria]=(porCat[d.categoria]||0)+(Number(d.valor)||0); });
+    var h = '';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">';
+    h += '<div><h1 style="margin:0;font-size:22px">Despesas</h1><div style="color:var(--t2);font-size:13px">Mapa de despesas mensais</div></div>';
+    h += '<div style="display:flex;gap:8px;align-items:center">';
+    h += '<select id="v7d-mes" style="padding:8px 10px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)">';
+    for (var mi=1;mi<=12;mi++){ h += '<option value="'+mi+'"'+(mi===mesSelD?' selected':'')+'>'+MESES[mi-1]+'</option>'; }
+    h += '</select>';
+    h += '<button id="v7d-add" style="padding:9px 14px;border-radius:8px;background:var(--a);color:#fff;border:none;font-weight:600;cursor:pointer">+ Nova Despesa</button>';
+    h += '</div></div>';
+    /* cards resumo */
+    h += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">';
+    h += '<div style="flex:1;min-width:160px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Despesas de '+MESES[mesSelD-1]+'</div><div style="font-size:22px;font-weight:700;color:#ef4444">'+fmt(totalMesV)+' MZM</div></div>';
+    h += '<div style="flex:1;min-width:160px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Total do Ano</div><div style="font-size:22px;font-weight:700">'+fmt(totalAno)+' MZM</div></div>';
+    h += '<div style="flex:1;min-width:160px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Media Mensal</div><div style="font-size:22px;font-weight:700">'+fmt(Math.round(media))+' MZM</div></div>';
+    h += '</div>';
+    /* grafico */
+    h += '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px;margin-bottom:18px">';
+    h += '<div style="font-size:13px;font-weight:600;margin-bottom:8px">Despesas por mes (analise anual)</div>';
+    h += svgLinha(porMes, '#ef4444');
+    h += '</div>';
+    /* lista do mes */
+    h += '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px">';
+    h += '<div style="font-size:13px;font-weight:600;margin-bottom:10px">Despesas de '+MESES[mesSelD-1]+' ('+doMes.length+')</div>';
+    if (!doMes.length){ h += '<div style="color:var(--t2);font-size:13px;padding:14px 0">Sem despesas registadas neste mes.</div>'; }
+    else { h += '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;color:var(--t2);border-bottom:1px solid var(--b2)"><th style="padding:8px">Data</th><th style="padding:8px">Categoria</th><th style="padding:8px">Descricao</th><th style="padding:8px;text-align:right">Valor</th></tr></thead><tbody>';
+      doMes.forEach(function(d){ h += '<tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px">'+(d.data||'-')+'</td><td style="padding:8px">'+window.__finV7_nomeCat(d.categoria)+'</td><td style="padding:8px">'+(d.descricao||'-')+'</td><td style="padding:8px;text-align:right;color:#ef4444">'+fmt(d.valor)+'</td></tr>'; });
+      h += '</tbody></table>'; }
+    h += '</div>';
+    host.innerHTML = h;
+    /* wire */
+    var sel = document.getElementById('v7d-mes');
+    if (sel) sel.onchange = function(){ mesSelD = parseInt(this.value,10)||mesAtualFallback(); window.renderDespesasV7(); };
+    var add = document.getElementById('v7d-add');
+    if (add) add.onclick = function(){ abrirNovaDespesaV7(); };
+  };
+  function mesAtualFallback(){ return new Date().getMonth()+1; }
+  window.__finV7_setMesD = function(m){ mesSelD = m; };
+})();
+
+/* ---- Patch v7 parte 3: modal nova despesa (v2) ---- */
+(function(){
+  if (window.__finV7m) return; window.__finV7m = true;
+  window.abrirNovaDespesaV7 = function(){
+    var old = document.getElementById('v7-desp-modal'); if (old) old.remove();
+    var cats = (typeof DESP_CAT!=='undefined')?DESP_CAT:[{id:'outros',nome:'Outras'}];
+    var ov = document.createElement('div');
+    ov.id = 'v7-desp-modal';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100000;display:flex;align-items:center;justify-content:center';
+    var hoje = new Date().toISOString().slice(0,10);
+    var optsCat = cats.map(function(c){ return '<option value="'+c.id+'">'+c.nome+'</option>'; }).join('');
+    var card = '';
+    card += '<div style="background:var(--card,#101828);border:1px solid var(--b2);border-radius:14px;padding:22px;width:420px;max-width:92vw">';
+    card += '<div style="font-size:17px;font-weight:700;margin-bottom:16px">Registar Nova Despesa</div>';
+    card += '<label style="font-size:12px;color:var(--t2)">Categoria</label>';
+    card += '<select id="v7m-cat" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)">'+optsCat+'</select>';
+    card += '<label style="font-size:12px;color:var(--t2)">Descricao</label>';
+    card += '<input id="v7m-desc" type="text" placeholder="Ex: Conta de agua de Marco" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)" />';
+    card += '<div style="display:flex;gap:10px">';
+    card += '<div style="flex:1"><label style="font-size:12px;color:var(--t2)">Valor (MZM)</label><input id="v7m-valor" type="number" min="0" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)" /></div>';
+    card += '<div style="flex:1"><label style="font-size:12px;color:var(--t2)">Data</label><input id="v7m-data" type="date" value="'+hoje+'" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)" /></div>';
+    card += '</div>';
+    card += '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">';
+    card += '<button id="v7m-cancel" style="padding:9px 16px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2);cursor:pointer">Cancelar</button>';
+    card += '<button id="v7m-save" style="padding:9px 16px;border-radius:8px;background:var(--a);color:#fff;border:none;font-weight:600;cursor:pointer">Guardar</button>';
+    card += '</div></div>';
+    ov.innerHTML = card;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if (e.target===ov) ov.remove(); });
+    document.getElementById('v7m-cancel').onclick = function(){ ov.remove(); };
+    document.getElementById('v7m-save').onclick = function(){
+      var cat = document.getElementById('v7m-cat').value;
+      var desc = document.getElementById('v7m-desc').value.trim();
+      var valor = parseFloat(document.getElementById('v7m-valor').value)||0;
+      var data = document.getElementById('v7m-data').value;
+      if (!valor || valor<=0){ alert('Indique um valor valido.'); return; }
+      var mes = data ? (parseInt(data.slice(5,7),10)) : (new Date().getMonth()+1);
+      var rec = { id:'D'+Date.now(), data:data, mes:mes, categoria:cat, descricao:(desc||window.__finV7_nomeCat(cat)), valor:valor, ref:'', registadoEm:new Date().toISOString() };
+      try { if (typeof DESPESAS_REG !== 'undefined') DESPESAS_REG.push(rec); } catch(e){}
+      try { if (typeof window.saveDespesaFirestore === 'function') window.saveDespesaFirestore(rec); } catch(e){ console.warn('persist', e); }
+      ov.remove();
+      window.__finV7_setMesD(mes);
+      if (typeof window.renderDespesasV7==='function') window.renderDespesasV7();
+    };
+  };
+})();
+
+/* ---- Patch v7 parte 4: pagina Entradas ---- */
+(function(){
+  if (window.__finV7e) return; window.__finV7e = true;
+  var MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var mesSelE = (new Date().getMonth()+1);
+  function showView(id){ try{ var vs=document.querySelectorAll('.view'); for(var i=0;i<vs.length;i++) vs[i].classList.remove('on'); var t=document.getElementById(id); if(t) t.classList.add('on'); }catch(e){} }
+  function ensureHost(){
+    var h = document.getElementById('v-entradas');
+    if (!h){ h = document.createElement('div'); h.id='v-entradas'; h.className='view'; var main=document.getElementById('main'); if(main) main.appendChild(h); }
+    return h;
+  }
+  function mesDePag(p){ var dt = p.data?new Date(p.data):null; return dt?dt.getMonth()+1:0; }
+  window.renderEntradasV7 = function(){
+    var host = ensureHost(); if(!host) return;
+    showView('v-entradas');
+    var fmt = window.__finV7_fmtMZ, svgLinha = window.__finV7_svgLinha;
+    var pags = (typeof PAGAMENTOS!=='undefined')?PAGAMENTOS:[];
+    var doMes = pags.filter(function(p){ return mesDePag(p)===mesSelE; });
+    var meses = (typeof window.calcFinanceiroMensal==='function')?window.calcFinanceiroMensal():[];
+    var porMes = []; for (var m=1;m<=12;m++){ var mm = meses[m-1]; porMes.push(mm?mm.entradas:0); }
+    var totalMesV = porMes[mesSelE-1]||0;
+    var totalAno = porMes.reduce(function(s,v){return s+v;},0);
+    var media = totalAno/12;
+    var h='';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">';
+    h += '<div><h1 style="margin:0;font-size:22px">Entradas</h1><div style="color:var(--t2);font-size:13px">Mapa de receitas mensais</div></div>';
+    h += '<select id="v7e-mes" style="padding:8px 10px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)">';
+    for (var mi=1;mi<=12;mi++){ h += '<option value="'+mi+'"'+(mi===mesSelE?' selected':'')+'>'+MESES[mi-1]+'</option>'; }
+    h += '</select></div>';
+    h += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">';
+    h += '<div style="flex:1;min-width:160px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Entradas de '+MESES[mesSelE-1]+'</div><div style="font-size:22px;font-weight:700;color:#16a34a">'+fmt(totalMesV)+' MZM</div></div>';
+    h += '<div style="flex:1;min-width:160px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Total do Ano</div><div style="font-size:22px;font-weight:700">'+fmt(totalAno)+' MZM</div></div>';
+    h += '<div style="flex:1;min-width:160px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Media Mensal</div><div style="font-size:22px;font-weight:700">'+fmt(Math.round(media))+' MZM</div></div>';
+    h += '</div>';
+    h += '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px;margin-bottom:18px">';
+    h += '<div style="font-size:13px;font-weight:600;margin-bottom:8px">Entradas por mes (analise anual)</div>';
+    h += svgLinha(porMes, '#16a34a');
+    h += '</div>';
+    h += '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px">';
+    h += '<div style="font-size:13px;font-weight:600;margin-bottom:10px">Entradas de '+MESES[mesSelE-1]+' ('+doMes.length+')</div>';
+    if (!doMes.length){ h += '<div style="color:var(--t2);font-size:13px;padding:14px 0">Sem entradas registadas neste mes.</div>'; }
+    else { h += '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;color:var(--t2);border-bottom:1px solid var(--b2)"><th style="padding:8px">Data</th><th style="padding:8px">Aluno</th><th style="padding:8px">Tipo</th><th style="padding:8px;text-align:right">Valor</th></tr></thead><tbody>';
+      doMes.forEach(function(p){ h += '<tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px">'+(p.data||'-')+'</td><td style="padding:8px">'+(p.alunoNome||'-')+'</td><td style="padding:8px">'+(p.categoriaNome||p.tipo||'-')+'</td><td style="padding:8px;text-align:right;color:#16a34a">'+fmt(p.valorTotal||p.valor||0)+'</td></tr>'; });
+      h += '</tbody></table>'; }
+    h += '</div>';
+    host.innerHTML = h;
+    var sel = document.getElementById('v7e-mes');
+    if (sel) sel.onchange = function(){ mesSelE = parseInt(this.value,10)||(new Date().getMonth()+1); window.renderEntradasV7(); };
+  };
+})();
+
+/* ---- Patch v7 parte 5: religar sub-itens + corrigir observer ---- */
+(function(){
+  if (window.__finV7w) return; window.__finV7w = true;
+  /* substitui irEntrada e irDespesa do v6 para usarem as paginas autonomas */
+  window.irEntrada = function(tab){ try { window.renderEntradasV7(); } catch(e){ console.error('irEntrada v7', e); } };
+  window.irDespesa = function(catId){ try { window.renderDespesasV7(); } catch(e){ console.error('irDespesa v7', e); } };
+  /* re-liga os botoes ja existentes na sidebar (se o v6 ja os criou) */
+  function religa(){
+    try {
+      ['si-e-propinas','si-e-inscricao','si-e-servicos','si-e-outros'].forEach(function(id){ var b=document.getElementById(id); if(b) b.onclick=function(){ window.renderEntradasV7(); }; });
+      ['si-d-salarios','si-d-utilidades','si-d-manutencao','si-d-impostos','si-d-caixa','si-d-outras'].forEach(function(id){ var b=document.getElementById(id); if(b) b.onclick=function(){ window.renderDespesasV7(); }; });
+    } catch(e){}
+  }
+  religa();
+  /* corrige observer do v6: nao re-disparar reorg em mutacoes dentro das vistas; so observar a sidebar */
+  try {
+    if (window.__finReorgObserver && typeof window.__finReorgObserver.disconnect==='function') { window.__finReorgObserver.disconnect(); }
+    var sb = document.getElementById('sb-content') || document.querySelector('aside') || document.body;
+    var mo = new MutationObserver(function(){ if (typeof window.__v6reorg==='function') window.__v6reorg(); religa(); });
+    if (sb && sb!==document.body) { mo.observe(sb, { childList:true, subtree:true }); }
+    window.__finV7Observer = mo;
+  } catch(e){ console.error('v7 observer', e); }
+})();
+
 </body>
 </html>
