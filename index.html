@@ -30247,6 +30247,28 @@ window.renderBalanceteRange=function(mIni,mFim){
   body.innerHTML=html;
 };
 })();
+/* ===== Patch v5: Balancete only in left sidebar (remove from Pagamentos hub) ===== */
+(function(){
+  if (window.__balOnlySidebar) return; window.__balOnlySidebar = true;
+  function stripBalBtn(){
+    try {
+      var v = document.getElementById('v-pagamentos');
+      if (!v) return;
+      var btns = v.querySelectorAll('button');
+      for (var i=0;i<btns.length;i++){
+        var oc = btns[i].getAttribute('onclick') || '';
+        if (oc.replace(/[\'\"\s]/g,'').indexOf('pagTab(balancete)') >= 0) { btns[i].remove(); }
+      }
+    } catch(e){}
+  }
+  try {
+    var mo = new MutationObserver(function(){ stripBalBtn(); });
+    mo.observe(document.body, { childList: true, subtree: true });
+    window.__balObserver = mo;
+  } catch(e){ console.error('balObserver', e); }
+  stripBalBtn();
+})();
+
 
 </body>
 </html>
