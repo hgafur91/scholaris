@@ -30623,6 +30623,65 @@ window.renderBalanceteRange=function(mIni,mFim){
     window.__finV7Observer = mo;
   } catch(e){ console.error('v7 observer', e); }
 })();
+
+/* === Patch v8: abas-mae Entradas/Despesas robustas (sobrevive a buildSidebar) === */
+(function(){
+  if(window.__finV8) return; window.__finV8=true;
+  var SEC="sb-sec-GestãoFinanceira";
+  function reorg(){
+    try{
+      var sec=document.getElementById(SEC); if(!sec) return false;
+      if(sec.querySelector('#si-mae-entradas')) return true;
+      var hide=['si-pagamentos','si-propinas','si-despesas','si-despesas-cat','si-folha-salarios'];
+      hide.forEach(function(id){var e=document.getElementById(id); if(e) e.style.display='none';});
+      var dash=document.getElementById('si-fin-dashboard');
+      function mkParent(id,icon,label){
+        var b=document.createElement('button'); b.className='si'; b.id=id;
+        b.innerHTML='<i class="ti '+icon+'" style="font-size:16px"></i><span>'+label+'</span><i class="ti ti-chevron-down" style="margin-left:auto;font-size:14px;transition:.2s"></i>';
+        return b;
+      }
+      function mkSub(label,fn){
+        var b=document.createElement('button'); b.className='si si-sub'; b.style.paddingLeft='34px'; b.style.fontSize='13px';
+        b.innerHTML='<span>'+label+'</span>'; b.onclick=fn; return b;
+      }
+      function wrap(){var d=document.createElement('div'); d.style.display='none'; return d;}
+      var pe=mkParent('si-mae-entradas','ti-arrow-down-circle','Entradas');
+      var we=wrap();
+      we.appendChild(mkSub('Propinas',function(){irEntrada('propinas');}));
+      we.appendChild(mkSub('Inscrição e Matrícula',function(){irEntrada('inscricao');}));
+      we.appendChild(mkSub('Serviços',function(){irEntrada('servicos');}));
+      we.appendChild(mkSub('Outros',function(){irEntrada('outros');}));
+      pe.onclick=function(){var sh=we.style.display==='none'; we.style.display=sh?'block':'none'; var ch=pe.querySelector('.ti-chevron-down'); if(ch) ch.style.transform=sh?'rotate(180deg)':''; irEntrada('todos');};
+      var pd=mkParent('si-mae-despesas','ti-arrow-up-circle','Despesas');
+      var wd=wrap();
+      wd.appendChild(mkSub('Salários',function(){irDespesa('salarios');}));
+      wd.appendChild(mkSub('Utilidades',function(){irDespesa('utilidades');}));
+      wd.appendChild(mkSub('Manutenção',function(){irDespesa('manutencao');}));
+      wd.appendChild(mkSub('Impostos',function(){irDespesa('impostos');}));
+      wd.appendChild(mkSub('Caixa Semanal',function(){irDespesa('caixa');}));
+      wd.appendChild(mkSub('Outras Despesas',function(){irDespesa('outros');}));
+      pd.onclick=function(){var sh=wd.style.display==='none'; wd.style.display=sh?'block':'none'; var ch=pd.querySelector('.ti-chevron-down'); if(ch) ch.style.transform=sh?'rotate(180deg)':''; irDespesa('todos');};
+      var anchor=dash||sec.firstChild;
+      anchor.parentNode.insertBefore(wd, anchor.nextSibling);
+      anchor.parentNode.insertBefore(pd, anchor.nextSibling);
+      anchor.parentNode.insertBefore(we, anchor.nextSibling);
+      anchor.parentNode.insertBefore(pe, anchor.nextSibling);
+      return true;
+    }catch(e){ console.error('v8 reorg', e); return false; }
+  }
+  window.__v8reorg=reorg;
+  if(typeof buildSidebar==='function'){
+    var _bs8=buildSidebar;
+    buildSidebar=function(){ var r=_bs8.apply(this,arguments); try{ reorg(); }catch(e){} return r; };
+  }
+  try{
+    var mo=new MutationObserver(function(){ reorg(); });
+    var sb=document.getElementById('sb-content')||document.querySelector('aside')||document.body;
+    if(sb) mo.observe(sb,{childList:true,subtree:true});
+  }catch(e){}
+  reorg();
+})();
+
 </script>
 
 </body>
