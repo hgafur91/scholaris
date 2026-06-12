@@ -30681,6 +30681,96 @@ window.renderBalanceteRange=function(mIni,mFim){
   }catch(e){}
   reorg();
 })();
+/* === Patch v9: sub-abas filtram + Nova Entrada === */
+(function(){
+  if(window.__finV9) return; window.__finV9=true;
+  var MESESV9=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var fmt=window.__finV7_fmtMZ||function(v){return (v||0)+'';};
+  var svg=window.__finV7_svgLinha||function(){return '';};
+  window.__filtroE='todos'; window.__filtroD='todos';
+  function mostrar(id){ var vs=document.querySelectorAll('.view'); for(var i=0;i<vs.length;i++) vs[i].classList.remove('on'); var t=document.getElementById(id); if(t) t.classList.add('on'); }
+  function hostE(){ var h=document.getElementById('v-entradas'); if(!h){ h=document.createElement('div'); h.id='v-entradas'; h.className='view'; var main=document.querySelector('main')||document.body; main.appendChild(h);} return h; }
+  function hostD(){ var h=document.getElementById('v-despesas'); if(!h){ h=document.createElement('div'); h.id='v-despesas'; h.className='view'; var main=document.querySelector('main')||document.body; main.appendChild(h);} return h; }
+  function mesDe(dstr,dobj){ if(dobj&&dobj.mes!=null) return dobj.mes; var dt=dstr?new Date(dstr):null; return dt&&!isNaN(dt)?dt.getMonth()+1:0; }
+  function catMatch(filtro,c){ if(filtro==='todos'||!filtro) return true; if(filtro==='utilidades') return (c==='agua'||c==='luz'||c==='utilidades'); if(filtro==='salarios') return c==='salarios'; if(filtro==='manutencao') return c==='manutencao'; if(filtro==='impostos') return c==='impostos'; if(filtro==='caixa') return c==='caixa'; if(filtro==='outros') return !(['salarios','agua','luz','utilidades','manutencao','impostos','caixa'].indexOf(c)>=0); return c===filtro; }
+  function tipoMatch(filtro,p){ if(filtro==='todos'||!filtro) return true; var t=((p.tipo||'')+'').toLowerCase(); var cn=((p.categoriaNome||p.categoria||'')+'').toLowerCase(); var hay=t+' '+cn; if(filtro==='propinas') return hay.indexOf('propina')>=0||hay.indexOf('mensalidade')>=0; if(filtro==='inscricao') return hay.indexOf('inscri')>=0||hay.indexOf('matric')>=0; if(filtro==='servicos') return hay.indexOf('servi')>=0; if(filtro==='outros') return !(hay.indexOf('propina')>=0||hay.indexOf('mensalidade')>=0||hay.indexOf('inscri')>=0||hay.indexOf('matric')>=0||hay.indexOf('servi')>=0); return true; }
+  var NOMEF_E={todos:'Todas as Entradas',propinas:'Propinas',inscricao:'Inscrição e Matrícula',servicos:'Serviços',outros:'Outros'};
+  var NOMEF_D={todos:'Todas as Despesas',salarios:'Salários',utilidades:'Utilidades (Água/Luz)',manutencao:'Manutenção',impostos:'Impostos',caixa:'Caixa Semanal',outros:'Outras Despesas'};
+  window.renderDespesasV7=function(){
+    var h=hostD(); var filtro=window.__filtroD||'todos';
+    var todas=(typeof DESPESAS_REG!=='undefined')?DESPESAS_REG:[];
+    var fil=todas.filter(function(d){ return catMatch(filtro,d.categoria); });
+    var mesSel=window.__mesD||((new Date()).getMonth()+1);
+    var porMes=[]; for(var m=1;m<=12;m++){ var tot=0; fil.forEach(function(d){ if(mesDe(d.data,d)===m) tot+=(+d.valor||0); }); porMes.push(tot); }
+    var doMes=fil.filter(function(d){ return mesDe(d.data,d)===mesSel; });
+    var totMes=porMes[mesSel-1]||0; var totAno=porMes.reduce(function(s,v){return s+v;},0); var media=totAno/12;
+    var rows=doMes.map(function(d){ return '<tr><td style="padding:8px 10px;border-top:1px solid var(--b2)">'+(d.descricao||'')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);color:var(--t2)">'+(NOMEF_D[d.categoria]||d.categoria||'')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);text-align:right;font-weight:600;color:#ef4444">'+fmt(d.valor)+' MZM</td></tr>'; }).join('');
+    if(!rows) rows='<tr><td colspan=3 style="padding:14px 10px;color:var(--t2)">Sem despesas registadas neste mês.</td></tr>';
+    var opt=''; for(var mo=1;mo<=12;mo++){ opt+='<option value="'+mo+'"'+(mo===mesSel?' selected':'')+'>'+MESESV9[mo-1]+'</option>'; }
+    h.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">'+
+      '<div><h1 style="margin:0;font-size:22px">Despesas · '+(NOMEF_D[filtro]||'')+'</h1><div style="color:var(--t2);font-size:13px">Mapa de despesas mensais</div></div>'+
+      '<div style="display:flex;gap:10px;align-items:center"><select id="v9d-mes" style="padding:8px 10px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)">'+opt+'</select>'+
+      '<button id="v9d-add" style="padding:9px 14px;border-radius:8px;background:#1d4ed8;color:#fff;border:none;font-weight:600;cursor:pointer">+ Nova Despesa</button></div></div>'+
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+card('Despesas de '+MESESV9[mesSel-1],fmt(totMes)+' MZM','#ef4444')+card('Total do Ano',fmt(totAno)+' MZM','')+card('Média Mensal',fmt(Math.round(media))+' MZM','')+'</div>'+
+      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-weight:600;margin-bottom:8px">Despesas por mês (análise anual)</div>'+svg(porMes,'#ef4444')+'</div>'+
+      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px"><div style="font-weight:600;margin-bottom:8px">Despesas de '+MESESV9[mesSel-1]+' ('+doMes.length+')</div><table style="width:100%;border-collapse:collapse;font-size:14px">'+rows+'</table></div>';
+    mostrar('v-despesas');
+    var sel=document.getElementById('v9d-mes'); if(sel) sel.onchange=function(){ window.__mesD=+this.value; window.renderDespesasV7(); };
+    var add=document.getElementById('v9d-add'); if(add) add.onclick=function(){ if(window.abrirNovaDespesaV7) window.abrirNovaDespesaV7(); };
+  };
+  function card(t,v,cor){ return '<div style="flex:1;min-width:180px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px 16px"><div style="color:var(--t2);font-size:12px;margin-bottom:6px">'+t+'</div><div style="font-size:22px;font-weight:700'+(cor?(';color:'+cor):'')+'">'+v+'</div></div>'; }
+  window.renderEntradasV7=function(){
+    var h=hostE(); var filtro=window.__filtroE||'todos';
+    var pags=(typeof PAGAMENTOS!=='undefined')?PAGAMENTOS:[];
+    var fil=pags.filter(function(p){ return tipoMatch(filtro,p); });
+    var mesSel=window.__mesE||((new Date()).getMonth()+1);
+    function valP(p){ return (+p.valorTotal||+p.valor||+p.montante||0); }
+    function mesP(p){ return mesDe(p.data||p.dataPagamento,p); }
+    var porMes=[]; for(var m=1;m<=12;m++){ var tot=0; fil.forEach(function(p){ if(mesP(p)===m) tot+=valP(p); }); porMes.push(tot); }
+    var doMes=fil.filter(function(p){ return mesP(p)===mesSel; });
+    var totMes=porMes[mesSel-1]||0; var totAno=porMes.reduce(function(s,v){return s+v;},0); var media=totAno/12;
+    var rows=doMes.map(function(p){ return '<tr><td style="padding:8px 10px;border-top:1px solid var(--b2)">'+(p.alunoNome||p.descricao||p.nome||'—')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);color:var(--t2)">'+(p.categoriaNome||p.tipo||'')+'</td><td style="padding:8px 10px;border-top:1px solid var(--b2);text-align:right;font-weight:600;color:#16a34a">'+fmt(valP(p))+' MZM</td></tr>'; }).join('');
+    if(!rows) rows='<tr><td colspan=3 style="padding:14px 10px;color:var(--t2)">Sem entradas registadas neste mês.</td></tr>';
+    var opt=''; for(var mo=1;mo<=12;mo++){ opt+='<option value="'+mo+'"'+(mo===mesSel?' selected':'')+'>'+MESESV9[mo-1]+'</option>'; }
+    h.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">'+
+      '<div><h1 style="margin:0;font-size:22px">Entradas · '+(NOMEF_E[filtro]||'')+'</h1><div style="color:var(--t2);font-size:13px">Mapa de receitas mensais</div></div>'+
+      '<div style="display:flex;gap:10px;align-items:center"><select id="v9e-mes" style="padding:8px 10px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)">'+opt+'</select>'+
+      '<button id="v9e-add" style="padding:9px 14px;border-radius:8px;background:#16a34a;color:#fff;border:none;font-weight:600;cursor:pointer">+ Nova Entrada</button></div></div>'+
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+card('Entradas de '+MESESV9[mesSel-1],fmt(totMes)+' MZM','#16a34a')+card('Total do Ano',fmt(totAno)+' MZM','')+card('Média Mensal',fmt(Math.round(media))+' MZM','')+'</div>'+
+      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-weight:600;margin-bottom:8px">Entradas por mês (análise anual)</div>'+svg(porMes,'#16a34a')+'</div>'+
+      '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:16px"><div style="font-weight:600;margin-bottom:8px">Entradas de '+MESESV9[mesSel-1]+' ('+doMes.length+')</div><table style="width:100%;border-collapse:collapse;font-size:14px">'+rows+'</table></div>';
+    mostrar('v-entradas');
+    var sel=document.getElementById('v9e-mes'); if(sel) sel.onchange=function(){ window.__mesE=+this.value; window.renderEntradasV7(); };
+    var add=document.getElementById('v9e-add'); if(add) add.onclick=function(){ abrirNovaEntradaV9(); };
+  };
+  window.irEntrada=function(filtro){ window.__filtroE=filtro||'todos'; try{ window.renderEntradasV7(); }catch(e){ console.error('irEntrada v9',e); } };
+  window.irDespesa=function(filtro){ window.__filtroD=filtro||'todos'; try{ window.renderDespesasV7(); }catch(e){ console.error('irDespesa v9',e); } };
+  window.abrirNovaEntradaV9=function(){
+    var old=document.getElementById('v9e-modal'); if(old) old.remove();
+    var ov=document.createElement('div'); ov.id='v9e-modal'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:99999';
+    var hoje=new Date().toISOString().slice(0,10);
+    ov.innerHTML='<div style="background:var(--card);border:1px solid var(--b2);border-radius:14px;padding:22px;width:380px;max-width:92vw">'+
+      '<h2 style="margin:0 0 14px;font-size:18px">Nova Entrada</h2>'+
+      '<label style="font-size:12px;color:var(--t2)">Tipo</label><select id="v9e-tipo" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)"><option value="propinas">Propinas</option><option value="inscricao">Inscrição e Matrícula</option><option value="servicos">Serviços</option><option value="outros">Outros</option></select>'+
+      '<label style="font-size:12px;color:var(--t2)">Descrição / Aluno</label><input id="v9e-desc" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)" placeholder="Ex: Propina Junho - João"/>'+
+      '<label style="font-size:12px;color:var(--t2)">Valor (MZM)</label><input id="v9e-valor" type="number" style="width:100%;padding:9px;margin:4px 0 12px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)" placeholder="0"/>'+
+      '<label style="font-size:12px;color:var(--t2)">Data</label><input id="v9e-data" type="date" value="'+hoje+'" style="width:100%;padding:9px;margin:4px 0 16px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2)"/>'+
+      '<div style="display:flex;gap:10px;justify-content:flex-end"><button id="v9e-cancel" style="padding:9px 16px;border-radius:8px;background:var(--card2);color:var(--t);border:1px solid var(--b2);cursor:pointer">Cancelar</button><button id="v9e-save" style="padding:9px 16px;border-radius:8px;background:#16a34a;color:#fff;border:none;font-weight:600;cursor:pointer">Guardar</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#v9e-cancel').onclick=function(){ ov.remove(); };
+    ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+    ov.querySelector('#v9e-save').onclick=function(){
+      var tipo=document.getElementById('v9e-tipo').value; var desc=document.getElementById('v9e-desc').value.trim(); var valor=+document.getElementById('v9e-valor').value||0; var data=document.getElementById('v9e-data').value;
+      if(!desc||!valor){ alert('Preencha a descrição e o valor.'); return; }
+      var nomes={propinas:'Propinas',inscricao:'Inscrição e Matrícula',servicos:'Serviços',outros:'Outros'};
+      var rec={ id:'E'+Date.now(), data:data, tipo:tipo, categoriaNome:nomes[tipo], descricao:desc, alunoNome:desc, alunoNum:null, turmaId:null, meses:[], valor:valor, valorTotal:valor };
+      try{ if(typeof PAGAMENTOS!=='undefined') PAGAMENTOS.push(rec); }catch(e){}
+      try{ if(typeof savePagamentoFirestore==='function') savePagamentoFirestore(rec); }catch(e){}
+      ov.remove(); window.renderEntradasV7();
+    };
+  };
+  try{ if(document.getElementById('v-despesas')){ /* leave */ } }catch(e){}
+})();
 
 </script>
 
