@@ -30120,6 +30120,7 @@ try{ window.injectBalanceteSidebar(); }catch(e){}
 
 
 </script>
+<script>
 
 /* === PATCH v4: integracao despesas + balancete receitas/despesas/saldo === */
 (function(){'use strict';
@@ -30268,6 +30269,132 @@ window.renderBalanceteRange=function(mIni,mFim){
   } catch(e){ console.error('balObserver', e); }
   stripBalBtn();
 })();
+/* ===== Patch v6: Reformulacao area financeira (abas-mae Entradas e Despesas) ===== */
+(function(){
+  if (window.__finReorgV6) return; window.__finReorgV6 = true;
+
+  /* 1. Nova categoria de despesa: Impostos */
+  try {
+    if (typeof DESP_CAT !== 'undefined' && Array.isArray(DESP_CAT)) {
+      if (!DESP_CAT.some(function(c){ return c.id === 'impostos'; })) {
+        var idxOut = -1;
+        for (var i=0;i<DESP_CAT.length;i++){ if (DESP_CAT[i].id === 'outros') { idxOut = i; break; } }
+        var impCat = { id:'impostos', nome:'Impostos', icon:'ti-receipt-tax', cor:'#a855f7', fixo:false };
+        if (idxOut >= 0) { DESP_CAT.splice(idxOut, 0, impCat); } else { DESP_CAT.push(impCat); }
+      }
+    }
+  } catch(e){ console.error('v6 impostos', e); }
+
+  /* 2. Navegacao dos sub-itens de Entradas (reaproveita hub pagamentos + pagTab) */
+  window.irEntrada = function(tab){
+    try {
+      if (typeof go === 'function') go('pagamentos');
+      setTimeout(function(){ try { if (typeof pagTab === 'function') pagTab(tab); } catch(e){} }, 60);
+    } catch(e){ console.error('irEntrada', e); }
+  };
+
+  /* 3. Navegacao dos sub-itens de Despesas (abre vista Despesas e destaca a categoria) */
+  window.irDespesa = function(catId){
+    try {
+      if (typeof go === 'function') go('despesas');
+      setTimeout(function(){ destacarCatDespesa(catId); }, 80);
+    } catch(e){ console.error('irDespesa', e); }
+  };
+  function destacarCatDespesa(catId){
+    try {
+      var nome = catId;
+      if (typeof DESP_CAT !== 'undefined') { DESP_CAT.forEach(function(c){ if (c.id===catId) nome=c.nome; }); }
+      var grupos = { utilidades:['Agua','gua','Luz','Electricidade'], impostos:['Imposto'] };
+      var cards = document.querySelectorAll('#v-despesas .ib, #v-despesas [class*=card], #v-despesas div');
+      var alvo = null;
+      for (var i=0;i<cards.length;i++){
+        var t = (cards[i].textContent||'');
+        if (t.indexOf(nome) >= 0 && t.length < 120) { alvo = cards[i]; break; }
+      }
+      if (alvo && alvo.scrollIntoView) {
+        alvo.scrollIntoView({ behavior:'smooth', block:'center' });
+        var oldBox = alvo.style.boxShadow;
+        alvo.style.transition='box-shadow .3s'; alvo.style.boxShadow='0 0 0 3px var(--a, #4f8ef7)';
+        setTimeout(function(){ alvo.style.boxShadow = oldBox; }, 2200);
+      }
+    } catch(e){ console.error('destacar', e); }
+  }
+
+  /* 4. Helper para construir um botao de sub-item da sidebar */
+  function mkItem(id, icon, label, onclick){
+    var b = document.createElement('button');
+    b.className = 'si'; b.id = id;
+    b.style.paddingLeft = '34px'; b.style.fontSize = '13px';
+    b.setAttribute('data-finv6','1');
+    b.onclick = onclick;
+    var ic = document.createElement('i'); ic.className = 'ti ' + icon; ic.style.fontSize = '14px';
+    var sp = document.createElement('span'); sp.textContent = label;
+    b.appendChild(ic); b.appendChild(sp);
+    return b;
+  }
+
+  /* 5. Helper para construir uma aba-mae expansivel */
+  function mkParent(id, icon, label, subItems){
+    var wrap = document.createElement('div'); wrap.setAttribute('data-finv6','1');
+    var head = document.createElement('button');
+    head.className = 'si'; head.id = id;
+    head.setAttribute('data-finv6','1');
+    var ic = document.createElement('i'); ic.className = 'ti ' + icon; ic.style.fontSize = '16px';
+    var sp = document.createElement('span'); sp.textContent = label; sp.style.flex = '1';
+    var ch = document.createElement('i'); ch.className = 'ti ti-chevron-down'; ch.style.fontSize = '13px'; ch.style.transition='transform .2s';
+    head.appendChild(ic); head.appendChild(sp); head.appendChild(ch);
+    var box = document.createElement('div'); box.style.display = 'none';
+    subItems.forEach(function(it){ box.appendChild(mkItem(it.id, it.icon, it.label, it.onclick)); });
+    head.onclick = function(){
+      var open = box.style.display !== 'none';
+      box.style.display = open ? 'none' : 'block';
+      ch.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+    };
+    wrap.appendChild(head); wrap.appendChild(box);
+    return wrap;
+  }
+
+  /* 6. Reorganiza a seccao da sidebar */
+  function reorg(){
+    try {
+      var sec = document.getElementById('sb-sec-Gest\u00e3oFinanceira');
+      if (!sec || sec.querySelector('[data-finv6]')) return;
+      var dash = document.getElementById('si-fin-dashboard');
+      /* esconder itens absorvidos */
+      ['si-pagamentos','si-propinas','si-despesas','si-despesas-cat','si-folha-salarios'].forEach(function(id){
+        var el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+      var entradas = mkParent('si-mae-entradas','ti-arrow-down-circle','Entradas', [
+        { id:'si-e-propinas', icon:'ti-calendar-dollar', label:'Propinas', onclick:function(){ irEntrada('propinas'); } },
+        { id:'si-e-inscricao', icon:'ti-file-certificate', label:'Inscri\u00e7\u00e3o e Matr\u00edcula', onclick:function(){ irEntrada('taxas'); } },
+        { id:'si-e-servicos', icon:'ti-receipt', label:'Servi\u00e7os', onclick:function(){ irEntrada('avulsos'); } },
+        { id:'si-e-outros', icon:'ti-dots', label:'Outros', onclick:function(){ irEntrada('avulsos'); } }
+      ]);
+      var despesas = mkParent('si-mae-despesas','ti-arrow-up-circle','Despesas', [
+        { id:'si-d-salarios', icon:'ti-users', label:'Sal\u00e1rios', onclick:function(){ irDespesa('salarios'); } },
+        { id:'si-d-utilidades', icon:'ti-bolt', label:'Utilidades', onclick:function(){ irDespesa('utilidades'); } },
+        { id:'si-d-manutencao', icon:'ti-tool', label:'Manuten\u00e7\u00e3o', onclick:function(){ irDespesa('manutencao'); } },
+        { id:'si-d-impostos', icon:'ti-receipt-tax', label:'Impostos', onclick:function(){ irDespesa('impostos'); } },
+        { id:'si-d-caixa', icon:'ti-cash', label:'Caixa Semanal', onclick:function(){ irDespesa('caixa'); } },
+        { id:'si-d-outras', icon:'ti-dots', label:'Outras Despesas', onclick:function(){ irDespesa('outros'); } }
+      ]);
+      if (dash && dash.nextSibling) {
+        sec.insertBefore(despesas, dash.nextSibling);
+        sec.insertBefore(entradas, despesas);
+      } else {
+        sec.appendChild(entradas); sec.appendChild(despesas);
+      }
+    } catch(e){ console.error('v6 reorg', e); }
+  }
+  reorg();
+  /* re-aplica se a sidebar for re-renderizada */
+  try {
+    var mo = new MutationObserver(function(){ reorg(); });
+    mo.observe(document.body, { childList:true, subtree:true });
+    window.__finReorgObserver = mo;
+  } catch(e){}
+})();
+</script>
 
 
 </body>
