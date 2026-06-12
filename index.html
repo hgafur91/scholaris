@@ -30120,5 +30120,133 @@ try{ window.injectBalanceteSidebar(); }catch(e){}
 
 
 </script>
+
+/* === PATCH v4: integracao despesas + balancete receitas/despesas/saldo === */
+(function(){'use strict';
+if(window.__finPatch4) return; window.__finPatch4=true;
+function _money(v){try{return (Number(v)||0).toLocaleString('pt-PT');}catch(e){return String(v||0);}}
+var EXTRA_CAT={material:'Material Didactico',servicos:'Servicos (Agua/Luz)',transporte:'Transporte',renda:'Renda/Aluguer',impostos:'Impostos',outro:'Outras Despesas',outros:'Outras Despesas'};
+window.nomeCategoriaDespesa=function(id){ try{ if(typeof DESP_CAT!=='undefined'){ var c=DESP_CAT.filter(function(x){return x.id===id;})[0]; if(c) return c.nome; } }catch(e){} return EXTRA_CAT[id]||id||'Outras Despesas'; };
+window.saveDespesaFirestore=async function(d){
+  try{
+    if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){
+      await window._supabase.from('despesas').insert({
+        escola_id:window._escolaId, desp_id:d.id, data_desp:d.data, mes:d.mes||null,
+        categoria:d.categoria, descricao:d.descricao||'', valor:d.valor||0, ref:d.ref||'',
+        registado_por:d.registadoPor||null, registado_em:d.registadoEm||new Date().toISOString()
+      });
+    }
+  }catch(e){ console.warn('saveDespesa', e && e.message); }
+};
+window.registarDespesa=function(){
+  var catEl=document.getElementById('desp-cat');
+  var descEl=document.getElementById('desp-desc');
+  var valEl=document.getElementById('desp-valor');
+  var dataEl=document.getElementById('desp-data');
+  var categoria=catEl?catEl.value:'outros';
+  var descricao=descEl?descEl.value.trim():'';
+  var valor=valEl?Math.round(parseFloat(valEl.value)||0):0;
+  var data=dataEl&&dataEl.value?dataEl.value:new Date().toISOString().slice(0,10);
+  if(!valor||valor<=0){ if(typeof toast==='function') toast('Indique um valor valido'); return; }
+  if(!descricao){ descricao=window.nomeCategoriaDespesa(categoria); }
+  var who=(typeof curUser!=='undefined'&&curUser&&curUser.nome)?curUser.nome:'Sistema';
+  var d={ id:'D'+Date.now().toString(36).toUpperCase(), data:data, mes:parseInt(data.slice(5,7),10),
+    categoria:categoria, descricao:descricao, valor:valor, ref:'', registadoPor:who, registadoEm:new Date().toISOString() };
+  if(typeof DESPESAS_REG==='undefined'){ window.DESPESAS_REG=[]; }
+  DESPESAS_REG.push(d);
+  try{ window.saveDespesaFirestore(d); }catch(e){}
+  if(typeof closeM==='function') closeM('m-nova-desp');
+  if(typeof toast==='function') toast('Despesa registada ('+_money(valor)+' MZM)');
+  try{ if(typeof rDespesas==='function') rDespesas(); }catch(e){}
+  try{ if(typeof rDespesasCategoria==='function') rDespesasCategoria(); }catch(e){}
+  try{ if(document.getElementById('si-balancete') && typeof window.renderBalanceteRange==='function' && document.getElementById('bal-mini')){ window.aplicarBalancete(); } }catch(e){}
+  return d;
+};
+window.__fixDespModal=function(){
+  var m=document.getElementById('m-nova-desp'); if(!m) return;
+  if(m.getAttribute('data-fixed4')==='1') return;
+  var body=m.querySelector('.mbod'); if(!body) return;
+  var cats=(typeof DESP_CAT!=='undefined')?DESP_CAT:[{id:'outros',nome:'Outras Despesas'}];
+  var opts=cats.map(function(c){return '<option value="'+c.id+'">'+c.nome+'</option>';}).join('');
+  opts+='<option value="material">Material Didactico</option><option value="servicos">Servicos (Agua/Luz)</option><option value="transporte">Transporte</option><option value="outro">Outra (personalizada)</option>';
+  var hoje=new Date().toISOString().slice(0,10);
+  body.innerHTML='<div class="fg">'+
+    '<div class="fgr"><label class="fl">Categoria</label><select class="ffi" id="desp-cat">'+opts+'</select></div>'+
+    '<div class="fgr"><label class="fl">Descricao</label><input class="ffi" id="desp-desc" placeholder="Descricao da despesa"></div>'+
+    '<div class="fgr"><label class="fl">Valor (MZM)</label><input class="ffi" id="desp-valor" type="number" placeholder="0"></div>'+
+    '<div class="fgr"><label class="fl">Data</label><input class="ffi" id="desp-data" type="date" value="'+hoje+'"></div>'+
+  '</div>';
+  var ft=m.querySelector('.mft');
+  if(ft){ var btns=ft.querySelectorAll('.btn'); btns.forEach(function(b){ if(/guardar/i.test(b.textContent)){ b.setAttribute('onclick','registarDespesa()'); } }); }
+  m.setAttribute('data-fixed4','1');
+};
+if(typeof window.openM==='function' && !window.__openMDespHook){
+  window.__openMDespHook=true;
+  var _origOpenM=window.openM;
+  window.openM=function(id){ if(id==='m-nova-desp'){ try{ window.__fixDespModal(); }catch(e){} } return _origOpenM.apply(this,arguments); };
+}
+try{ window.__fixDespModal(); }catch(e){}
+window.loadDespesasFirestore=async function(){
+  try{
+    if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')) return;
+    var res=await window._supabase.from('despesas').select('*').eq('escola_id', window._escolaId);
+    var rows=res && res.data; if(!rows||!rows.length) return;
+    if(typeof DESPESAS_REG==='undefined') window.DESPESAS_REG=[];
+    var have={}; DESPESAS_REG.forEach(function(d){ have[d.id]=true; });
+    rows.forEach(function(r){ if(!have[r.desp_id]){ DESPESAS_REG.push({id:r.desp_id, data:r.data_desp, mes:r.mes, categoria:r.categoria, descricao:r.descricao, valor:r.valor, ref:r.ref}); } });
+    try{ if(typeof rDespesas==='function') rDespesas(); }catch(e){}
+  }catch(e){ console.warn('loadDespesas', e && e.message); }
+};
+try{ setTimeout(function(){ window.loadDespesasFirestore(); }, 2000); }catch(e){}
+var MMbb=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function _m(v){try{return (Number(v)||0).toLocaleString('pt-PT');}catch(e){return String(v||0);}}
+function _famDe2(p){ try{ if(typeof familiaDePagamento==='function') return familiaDePagamento(p);}catch(e){} return p.familia||'avulso'; }
+window.renderBalanceteRange=function(mIni,mFim){
+  var body=document.getElementById('pag-tab-body'); if(!body) return;
+  mIni=parseInt(mIni,10)||1; mFim=parseInt(mFim,10)||12; if(mFim<mIni){var t=mIni;mIni=mFim;mFim=t;}
+  var pags=(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]).filter(function(p){return p.estado!=='estornado';});
+  var desp=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG:[];
+  var inP=pags.filter(function(p){var mm=p.data?parseInt(p.data.slice(5,7),10):0;return mm>=mIni&&mm<=mFim;});
+  var inD=desp.filter(function(d){var mm=d.data?parseInt(d.data.slice(5,7),10):(d.mes||0);return mm>=mIni&&mm<=mFim;});
+  var recPorMes={},despPorMes={},recPorCat={},despPorCat={};
+  for(var m=mIni;m<=mFim;m++){recPorMes[m]=0;despPorMes[m]=0;}
+  inP.forEach(function(p){var mm=p.data?parseInt(p.data.slice(5,7),10):0;var v=p.valorTotal||0;if(recPorMes[mm]!=null)recPorMes[mm]+=v;var f=_famDe2(p);var cn=p.categoriaNome||(p.tipo||'Outros');recPorCat[cn]=(recPorCat[cn]||0)+v;});
+  inD.forEach(function(d){var mm=d.data?parseInt(d.data.slice(5,7),10):(d.mes||0);var v=d.valor||0;if(despPorMes[mm]!=null)despPorMes[mm]+=v;var cn=window.nomeCategoriaDespesa?window.nomeCategoriaDespesa(d.categoria):(d.categoria||'Outras');despPorCat[cn]=(despPorCat[cn]||0)+v;});
+  var totRec=0,totDesp=0; for(var m=mIni;m<=mFim;m++){totRec+=recPorMes[m];totDesp+=despPorMes[m];}
+  var saldo=totRec-totDesp;
+  var opt=function(v){var o='';for(var i=1;i<=12;i++){o+='<option value="'+i+'"'+(i==v?' selected':'')+'>'+MMbb[i-1]+'</option>';}return o;};
+  var html='';
+  html+='<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">';
+  html+='<div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Mes inicial</label><select id="bal-mini" class="inp" onchange="aplicarBalancete()">'+opt(mIni)+'</select></div>';
+  html+='<div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Mes final</label><select id="bal-mfim" class="inp" onchange="aplicarBalancete()">'+opt(mFim)+'</select></div>';
+  html+='<button class="btn btn-g" onclick="balPreset(1,12)">Ano completo</button>';
+  html+='<button class="btn btn-g" onclick="var d=new Date();balPreset(d.getMonth()+1,d.getMonth()+1)">Mes actual</button>';
+  html+='<button class="btn btn-gr" onclick="if(typeof exportarMapaFinanceiro===\'function\')exportarMapaFinanceiro();else toast(\'Exportacao indisponivel\')"><i class="ti ti-download"></i> Exportar mapa completo</button>';
+  html+='</div>';
+  html+='<div style="font-size:12px;color:var(--t3);margin-bottom:10px">Periodo: '+MMbb[mIni-1]+' a '+MMbb[mFim-1]+' · '+inP.length+' entrada(s), '+inD.length+' despesa(s)</div>';
+  html+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">';
+  html+='<div style="flex:1;min-width:150px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Receitas</div><div style="font-size:20px;font-weight:800;color:#16a34a;margin-top:4px">'+_m(totRec)+' MZM</div></div>';
+  html+='<div style="flex:1;min-width:150px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Despesas</div><div style="font-size:20px;font-weight:800;color:#dc2626;margin-top:4px">'+_m(totDesp)+' MZM</div></div>';
+  html+='<div style="flex:1;min-width:150px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Saldo</div><div style="font-size:20px;font-weight:800;color:'+(saldo>=0?'#16a34a':'#dc2626')+';margin-top:4px">'+_m(saldo)+' MZM</div></div>';
+  html+='</div>';
+  html+='<div style="overflow-x:auto;margin-bottom:18px"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+  html+='<thead><tr style="text-align:left;color:var(--t2);border-bottom:1px solid var(--b2)"><th style="padding:8px">Mes</th><th style="padding:8px;text-align:right">Receitas</th><th style="padding:8px;text-align:right">Despesas</th><th style="padding:8px;text-align:right">Saldo</th></tr></thead><tbody>';
+  for(var m=mIni;m<=mFim;m++){ var sm=recPorMes[m]-despPorMes[m];
+    html+='<tr style="border-bottom:1px solid var(--b)"><td style="padding:8px;font-weight:600">'+MMbb[m-1]+'</td>'+
+      '<td style="padding:8px;text-align:right;color:#16a34a">'+_m(recPorMes[m])+'</td>'+
+      '<td style="padding:8px;text-align:right;color:#dc2626">'+_m(despPorMes[m])+'</td>'+
+      '<td style="padding:8px;text-align:right;font-weight:700;color:'+(sm>=0?'inherit':'#dc2626')+'">'+_m(sm)+'</td></tr>';
+  }
+  html+='<tr style="border-top:2px solid var(--b2);font-weight:800"><td style="padding:8px">TOTAL</td>'+
+    '<td style="padding:8px;text-align:right;color:#16a34a">'+_m(totRec)+'</td>'+
+    '<td style="padding:8px;text-align:right;color:#dc2626">'+_m(totDesp)+'</td>'+
+    '<td style="padding:8px;text-align:right">'+_m(saldo)+'</td></tr>';
+  html+='</tbody></table></div>';
+  function panel(titulo, obj, cor){ var ks=Object.keys(obj).sort(function(a,b){return obj[b]-obj[a];}); var tot=ks.reduce(function(s,k){return s+obj[k];},0); var h='<div style="flex:1;min-width:240px"><div style="font-size:13px;font-weight:700;margin-bottom:8px">'+titulo+'</div>'; if(!ks.length){ h+='<div style="font-size:12px;color:var(--t3)">Sem registos</div>'; } ks.forEach(function(k){ var pct=tot?Math.round(obj[k]/tot*100):0; h+='<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--b)"><span>'+k+'</span><span style="font-weight:700;color:'+cor+'">'+_m(obj[k])+' <span style="color:var(--t3);font-weight:400">('+pct+'%)</span></span></div>'; }); h+='</div>'; return h; }
+  html+='<div style="display:flex;gap:24px;flex-wrap:wrap">'+panel('Receitas por categoria',recPorCat,'#16a34a')+panel('Despesas por categoria',despPorCat,'#dc2626')+'</div>';
+  body.innerHTML=html;
+};
+})();
+
 </body>
 </html>
