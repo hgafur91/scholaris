@@ -29662,385 +29662,6 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
 }
 
 
-/* === SCHOLARIS: MODULO PAGAMENTOS (categorias + balancete) === */
-(function(){
-  'use strict';
-  if (window.__pagModuleInit) return; window.__pagModuleInit = true; return; /* OLD desativado - ver HUB v2 no fim */
-  if (typeof window.CATEGORIAS_PAGAMENTO === 'undefined') {
-    window.CATEGORIAS_PAGAMENTO = [
-      { id:'propinas',  nome:'Propinas',   icon:'ti-cash',            ativo:true, sistema:true },
-      { id:'matricula', nome:'Matricula',  icon:'ti-file-certificate',ativo:true, sistema:true },
-      { id:'inscricao', nome:'Inscricao',  icon:'ti-clipboard-check', ativo:true, sistema:true },
-      { id:'uniformes', nome:'Uniformes',  icon:'ti-shirt',           ativo:true, sistema:true }
-    ];
-  }
-  function CATS(){ return window.CATEGORIAS_PAGAMENTO || []; }
-  function catById(id){ return CATS().filter(function(c){return c.id===id;})[0] || null; }
-  function money(n){ return (Number(n)||0).toLocaleString('pt-PT'); }
-  async function loadCatPagFirestore(){
-    try{
-      if(!window._supabase || !window._escolaId || window._escolaId==='escola_demo') return;
-      var res = await window._supabase.from('categorias_pagamento').select('*').eq('escola_id', window._escolaId);
-      var rows = res && res.data;
-      if(rows && rows.length){
-        var seen = {};
-        var list = rows.map(function(r){ seen[r.cat_id]=true; return { id:r.cat_id, nome:r.nome, icon:r.icon||'ti-cash', ativo:r.ativo!==false, sistema:!!r.sistema }; });
-        CATS().forEach(function(c){ if(c.sistema && !seen[c.id]) list.push(c); });
-        window.CATEGORIAS_PAGAMENTO = list;
-      } else {
-        CATS().forEach(function(c){ saveCatPagFirestore(c); });
-      }
-    }catch(e){ console.warn('loadCatPag', e && e.message); }
-  }
-  async function saveCatPagFirestore(cat){
-    try{
-      if(!window._supabase || !window._escolaId || window._escolaId==='escola_demo') return null;
-      var res = await window._supabase.from('categorias_pagamento').upsert({
-        escola_id: window._escolaId,
-        cat_id: cat.id,
-        nome: cat.nome,
-        icon: cat.icon || 'ti-cash',
-        ativo: cat.ativo!==false,
-        sistema: !!cat.sistema
-      }, { onConflict: 'escola_id,cat_id' });
-      return res;
-    }catch(e){ console.warn('saveCatPag', e && e.message); return null; }
-  }
-  if (typeof window.savePagamentoFirestore === 'function' && !window.__savePagWrapped){
-    window.__savePagWrapped = true;
-    var _origSavePag = window.savePagamentoFirestore;
-    window.savePagamentoFirestore = async function(pag){
-      try{
-        if(window._supabase && window._escolaId && window._escolaId!=='escola_demo' && pag && pag.tipo){
-          var r = await window._supabase.from('pagamentos').insert({
-            escola_id: window._escolaId,
-            pag_id: pag.id,
-            aluno_num: pag.alunoNum || null,
-            aluno_nome: pag.alunoNome || null,
-            turma_id: pag.turmaId || null,
-            meses: pag.meses || [],
-            valor_total: pag.valorTotal || 0,
-            valor_base: pag.valorBase || 0,
-            data_pag: pag.data || null,
-            canal: pag.canal || null,
-            banco: pag.banco || null,
-            ref: pag.ref || null,
-            obs: pag.obs || null,
-            estado: pag.estado || 'por_confirmar',
-            tipo: pag.tipo,
-            categoria_id: pag.categoriaId || pag.tipo,
-            registado_por: pag.registadoPor,
-            registado_em: pag.registadoEm || new Date().toISOString()
-          }).select('id').single();
-          return r;
-        }
-      }catch(e){ console.warn('savePag tipo', e && e.message); }
-      return _origSavePag.apply(this, arguments);
-    };
-  }
-  function valorSugerido(tipo, turmaId){
-    try{
-      if(tipo==='propinas' && typeof getPropinaTurma==='function') return getPropinaTurma(turmaId);
-      if(tipo==='matricula' && typeof getMatriculaTurma==='function') return getMatriculaTurma(turmaId);
-      if(tipo==='inscricao' && typeof getInscricaoTurma==='function') return getInscricaoTurma(turmaId);
-    }catch(e){}
-    return 0;
-  }
-  function rPagamentos(){
-    var host = document.getElementById('v-pagamentos');
-    if(!host) return;
-    var alunos = (typeof ALUNOS!=='undefined' && ALUNOS) ? ALUNOS : [];
-    var cats = CATS().filter(function(c){return c.ativo!==false;});
-    var optCats = cats.map(function(c){ return '<option value="'+c.id+'">'+c.nome+'</option>'; }).join('');
-    var optAlunos = alunos.slice().sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');})
-       .map(function(a){ return '<option value="'+a.id+'">'+(a.nome||'')+' ('+(a.num||'')+' / '+(a.turma||'')+')</option>'; }).join('');
-    var pags = (typeof PAGAMENTOS!=='undefined' && PAGAMENTOS) ? PAGAMENTOS : [];
-    var totalEnt = pags.filter(function(p){return p.estado!=='estornado';}).reduce(function(s,p){return s+(p.valorTotal||0);},0);
-    var html = '';
-    html += '<div class="ph"><div><div class="ph-title">Pagamentos</div><div class="ph-sub">Registar propinas, matricula, inscricao, uniformes e outras receitas</div></div>';
-    html += '<div class="ph-right"><button class="btn btn-g btn-sm" onclick="abrirGestorCategoriasPag()"><i class="ti ti-settings"></i> Categorias</button></div></div>';
-    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">';
-    html += '<div style="flex:1;min-width:180px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">Total de Entradas</div><div style="font-size:20px;font-weight:800;color:var(--g)">'+money(totalEnt)+' MZM</div></div>';
-    html += '<div style="flex:1;min-width:180px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">Pagamentos registados</div><div style="font-size:20px;font-weight:800">'+pags.length+'</div></div>';
-    html += '<div style="flex:1;min-width:180px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">Categorias activas</div><div style="font-size:20px;font-weight:800">'+cats.length+'</div></div>';
-    html += '</div>';
-    html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px;margin-bottom:18px">';
-    html += '<div style="font-weight:700;margin-bottom:14px;font-size:15px"><i class="ti ti-plus"></i> Novo Pagamento</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">';
-    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Aluno / Encarregado</label><select id="pag-aluno" class="btn btn-g" style="width:100%" onchange="pagOnChange()"><option value="">Seleccionar aluno...</option>'+optAlunos+'</select></div>';
-    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Tipo de pagamento</label><select id="pag-tipo" class="btn btn-g" style="width:100%" onchange="pagOnChange()">'+optCats+'</select></div>';
-    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Valor (MZM)</label><input id="pag-valor" type="number" min="0" class="btn btn-g" style="width:100%" placeholder="0"></div>';
-    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Data</label><input id="pag-data" type="date" class="btn btn-g" style="width:100%"></div>';
-    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Canal</label><select id="pag-canal" class="btn btn-g" style="width:100%"><option>Numerario</option><option>Transferencia</option><option>Mpesa</option><option>Emola</option><option>POS</option></select></div>';
-    html += '<div><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Referencia</label><input id="pag-ref" type="text" class="btn btn-g" style="width:100%" placeholder="Opcional"></div>';
-    html += '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Observacoes</label><input id="pag-obs" type="text" class="btn btn-g" style="width:100%" placeholder="Opcional"></div>';
-    html += '</div>';
-    html += '<div style="margin-top:14px;text-align:right"><button class="btn btn-p" onclick="registarPagamentoNovo()"><i class="ti ti-check"></i> Registar pagamento</button></div>';
-    html += '</div>';
-    html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px">';
-    html += '<div style="font-weight:700;margin-bottom:14px;font-size:15px"><i class="ti ti-list"></i> Pagamentos recentes</div>';
-    var recent = pags.slice().sort(function(a,b){return (b.registadoEm||'').localeCompare(a.registadoEm||'');}).slice(0,40);
-    if(!recent.length){
-      html += '<div style="text-align:center;color:var(--t2);padding:24px">Sem pagamentos registados.</div>';
-    } else {
-      html += '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-      html += '<thead><tr style="text-align:left;color:var(--t2);border-bottom:1px solid var(--b)"><th style="padding:8px">Data</th><th style="padding:8px">Aluno</th><th style="padding:8px">Tipo</th><th style="padding:8px">Canal</th><th style="padding:8px;text-align:right">Valor</th><th style="padding:8px">Estado</th></tr></thead><tbody>';
-      recent.forEach(function(p){
-        var c = catById(p.tipo || 'propinas');
-        var tnome = c ? c.nome : (p.tipo || 'Propinas');
-        var est = p.estado==='estornado' ? '<span style="color:var(--r)">Estornado</span>' : (p.estado==='confirmado' ? '<span style="color:var(--g)">Confirmado</span>' : '<span style="color:var(--am)">Por confirmar</span>');
-        html += '<tr style="border-bottom:1px solid var(--b)"><td style="padding:8px">'+(p.data||'-')+'</td><td style="padding:8px">'+(p.alunoNome||'-')+'</td><td style="padding:8px"><i class="ti '+((c&&c.icon)||'ti-cash')+'"></i> '+tnome+'</td><td style="padding:8px">'+(p.canal||'-')+'</td><td style="padding:8px;text-align:right;font-weight:700">'+money(p.valorTotal||0)+'</td><td style="padding:8px">'+est+'</td></tr>';
-      });
-      html += '</tbody></table></div>';
-    }
-    html += '</div>';
-    host.innerHTML = html;
-    var di = document.getElementById('pag-data'); if(di && !di.value){ di.value = new Date().toISOString().slice(0,10); }
-    pagOnChange();
-  }
-  window.rPagamentos = rPagamentos;
-  function pagOnChange(){
-    var aSel = document.getElementById('pag-aluno');
-    var tSel = document.getElementById('pag-tipo');
-    var vIn = document.getElementById('pag-valor');
-    if(!aSel || !tSel || !vIn) return;
-    var alunos = (typeof ALUNOS!=='undefined' && ALUNOS) ? ALUNOS : [];
-    var al = alunos.filter(function(x){return String(x.id)===String(aSel.value);})[0];
-    var sug = al ? valorSugerido(tSel.value, al.turma) : 0;
-    var prevSug = vIn.getAttribute('data-sug');
-    var manual = vIn.value && prevSug!==null && String(vIn.value)!==String(prevSug);
-    if(sug>0){ vIn.value = sug; vIn.setAttribute('data-sug', String(sug)); }
-    else { if(!manual) vIn.value=''; vIn.removeAttribute('data-sug'); }
-  }
-  window.pagOnChange = pagOnChange;
-  function registarPagamentoNovo(){
-    var aSel = document.getElementById('pag-aluno');
-    var tSel = document.getElementById('pag-tipo');
-    var vIn = document.getElementById('pag-valor');
-    var dIn = document.getElementById('pag-data');
-    var cIn = document.getElementById('pag-canal');
-    var rIn = document.getElementById('pag-ref');
-    var oIn = document.getElementById('pag-obs');
-    if(!aSel || !aSel.value){ if(typeof toast==='function') toast('Seleccione um aluno'); return; }
-    var valor = parseFloat(vIn && vIn.value) || 0;
-    if(valor<=0){ if(typeof toast==='function') toast('Indique um valor valido'); return; }
-    var alunos = (typeof ALUNOS!=='undefined' && ALUNOS) ? ALUNOS : [];
-    var al = alunos.filter(function(x){return String(x.id)===String(aSel.value);})[0];
-    if(!al){ if(typeof toast==='function') toast('Aluno invalido'); return; }
-    var cat = catById(tSel.value) || { id:tSel.value, nome:tSel.value };
-    var who = (typeof curUser!=='undefined' && curUser && curUser.nome) ? curUser.nome : 'Sistema';
-    var pagId = 'PAG'+Date.now()+Math.floor(Math.random()*1000);
-    var pag = {
-      id: pagId,
-      alunoId: al.id,
-      alunoNome: al.nome,
-      alunoNum: al.num,
-      turmaId: al.turma,
-      meses: [],
-      valorTotal: valor,
-      valorBase: valor,
-      tipo: cat.id,
-      categoriaId: cat.id,
-      categoriaNome: cat.nome,
-      data: (dIn && dIn.value) || new Date().toISOString().slice(0,10),
-      canal: (cIn && cIn.value) || 'Numerario',
-      banco: null,
-      ref: (rIn && rIn.value) || '',
-      obs: (oIn && oIn.value) || '',
-      estado: 'por_confirmar',
-      confirmedBy: null, confirmedAt: null, confirmedRef: null,
-      registadoPor: who,
-      registadoEm: new Date().toISOString()
-    };
-    if(typeof PAGAMENTOS!=='undefined' && PAGAMENTOS && PAGAMENTOS.push){ PAGAMENTOS.push(pag); }
-    try{ if(typeof savePagamentoFirestore==='function') savePagamentoFirestore(pag); }catch(e){}
-    if(typeof toast==='function') toast('Pagamento de '+cat.nome+' registado ('+money(valor)+' MZM)');
-    rPagamentos();
-  }
-  window.registarPagamentoNovo = registarPagamentoNovo;
-  function abrirGestorCategoriasPag(){
-    var ex = document.getElementById('cat-pag-modal'); if(ex) ex.remove();
-    var rows = CATS().map(function(c){
-      var lock = c.sistema ? ' (sistema)' : '';
-      var del = c.sistema ? '' : '<button class="btn btn-g btn-sm" onclick="removerCategoriaPag(\''+c.id+'\')" title="Remover"><i class="ti ti-trash"></i></button>';
-      var tog = '<button class="btn btn-g btn-sm" onclick="toggleCategoriaPag(\''+c.id+'\')">'+(c.ativo!==false?'Activa':'Inactiva')+'</button>';
-      return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:8px"><i class="ti '+(c.icon||'ti-cash')+'"></i> '+c.nome+lock+'</td><td style="padding:8px;text-align:right">'+tog+' '+del+'</td></tr>';
-    }).join('');
-    var html = '<div id="cat-pag-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)this.remove()">';
-    html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:22px;width:480px;max-width:92vw;max-height:86vh;overflow:auto">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-weight:700;font-size:16px">Categorias de Pagamento</div><button class="btn btn-g btn-sm" onclick="document.getElementById(\'cat-pag-modal\').remove()"><i class="ti ti-x"></i></button></div>';
-    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px"><tbody>'+rows+'</tbody></table>';
-    html += '<div style="border-top:1px solid var(--b);padding-top:14px"><div style="font-weight:600;margin-bottom:8px;font-size:13px">Adicionar nova categoria</div>';
-    html += '<div style="display:flex;gap:8px"><input id="nova-cat-nome" class="btn btn-g" style="flex:1" placeholder="Ex: Transporte, Cantina, Livros..."><button class="btn btn-p" onclick="adicionarCategoriaPag()"><i class="ti ti-plus"></i> Adicionar</button></div></div>';
-    html += '</div></div>';
-    var d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d.firstChild);
-  }
-  window.abrirGestorCategoriasPag = abrirGestorCategoriasPag;
-  function adicionarCategoriaPag(){
-    var inp = document.getElementById('nova-cat-nome');
-    var nome = inp && inp.value && inp.value.trim();
-    if(!nome){ if(typeof toast==='function') toast('Indique o nome'); return; }
-    var id = nome.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || ('cat'+Date.now());
-    if(catById(id)){ if(typeof toast==='function') toast('Categoria ja existe'); return; }
-    var cat = { id:id, nome:nome, icon:'ti-cash', ativo:true, sistema:false };
-    CATS().push(cat);
-    try{ saveCatPagFirestore(cat); }catch(e){}
-    if(typeof toast==='function') toast('Categoria '+nome+' adicionada');
-    abrirGestorCategoriasPag();
-    if(document.getElementById('v-pagamentos') && document.getElementById('v-pagamentos').classList.contains('on')) rPagamentos();
-  }
-  window.adicionarCategoriaPag = adicionarCategoriaPag;
-  function toggleCategoriaPag(id){
-    var c = catById(id); if(!c) return; c.ativo = (c.ativo===false);
-    try{ saveCatPagFirestore(c); }catch(e){}
-    abrirGestorCategoriasPag();
-  }
-  window.toggleCategoriaPag = toggleCategoriaPag;
-  function removerCategoriaPag(id){
-    var c = catById(id); if(!c || c.sistema) return;
-    window.CATEGORIAS_PAGAMENTO = CATS().filter(function(x){return x.id!==id;});
-    try{ if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){ window._supabase.from('categorias_pagamento').delete().eq('escola_id',window._escolaId).eq('cat_id',id); } }catch(e){}
-    if(typeof toast==='function') toast('Categoria removida');
-    abrirGestorCategoriasPag();
-  }
-  window.removerCategoriaPag = removerCategoriaPag;
-  function ensurePagView(){
-    if(document.getElementById('v-pagamentos')) return;
-    var main = document.getElementById('main'); if(!main) return;
-    var v = document.createElement('div'); v.className='view'; v.id='v-pagamentos';
-    main.appendChild(v);
-  }
-  function injectPagSidebar(){
-    var sb = document.getElementById('sb-content'); if(!sb) return;
-    if(document.getElementById('si-pagamentos')) return;
-    var role = (typeof curRole!=='undefined') ? curRole : '';
-    if(['gestor','secretario'].indexOf(role) < 0) return;
-    var finBtn = document.getElementById('si-propinas') || document.getElementById('si-despesas') || document.getElementById('si-relatorio-cobranca');
-    var btn = document.createElement('button');
-    btn.className='si'; btn.id='si-pagamentos'; btn.setAttribute('onclick',"go('pagamentos')");
-    btn.innerHTML = '<i class="ti ti-credit-card" style="font-size:16px"></i><span>Pagamentos</span>';
-    if(finBtn && finBtn.parentNode){ finBtn.parentNode.insertBefore(btn, finBtn.nextSibling); }
-    else { sb.appendChild(btn); }
-  }
-  function wirePagamentos(){
-    ensurePagView();
-    if(typeof VM!=='undefined'){ VM['pagamentos']='v-pagamentos'; }
-    if(typeof RENDER_MAP!=='undefined'){ RENDER_MAP['pagamentos']=rPagamentos; }
-    injectPagSidebar();
-  }
-  if(typeof window.buildSidebar==='function' && !window.__pagSidebarHook){
-    window.__pagSidebarHook = true;
-    var _origBS = window.buildSidebar;
-    window.buildSidebar = function(){ var r=_origBS.apply(this,arguments); try{ injectPagSidebar(); }catch(e){} return r; };
-  }
-  function pagInit(){ try{ wirePagamentos(); loadCatPagFirestore(); }catch(e){ console.warn('pagInit', e&&e.message); } }
-  if(document.readyState==='complete' || document.readyState==='interactive'){ setTimeout(pagInit, 300); }
-  document.addEventListener('DOMContentLoaded', function(){ setTimeout(pagInit, 600); });
-  setTimeout(pagInit, 1500); setTimeout(pagInit, 3500);
-})();
-
-/* === SCHOLARIS: EXPORT FINANCEIRO DETALHADO POR CATEGORIA === */
-(function(){
-  if(window.__finExportDetalhe) return; window.__finExportDetalhe=true;
-  function money(n){ return (Number(n)||0).toLocaleString('pt-PT'); }
-  function entradasPorCategoria(meses){
-    var pags = (typeof PAGAMENTOS!=='undefined' && PAGAMENTOS) ? PAGAMENTOS : [];
-    var cats = (typeof window.CATEGORIAS_PAGAMENTO!=='undefined') ? window.CATEGORIAS_PAGAMENTO : [];
-    var nomeDe = {}; cats.forEach(function(c){ nomeDe[c.id]=c.nome; });
-    var acc = {};
-    pags.forEach(function(p){
-      if(p.estado==='estornado') return;
-      if(meses){ var mm = p.data ? parseInt(p.data.slice(5,7),10) : null; if(meses.indexOf(mm)<0) return; }
-      var tipo = p.tipo || 'propinas';
-      var nome = nomeDe[tipo] || (tipo.charAt(0).toUpperCase()+tipo.slice(1));
-      acc[nome] = (acc[nome]||0) + (p.valorTotal||0);
-    });
-    return Object.keys(acc).map(function(k){ return { nome:k, valor:acc[k] }; }).sort(function(a,b){return b.valor-a.valor;});
-  }
-  function saidasPorCategoria(meses){
-    var desp = (typeof DESPESAS_REG!=='undefined' && DESPESAS_REG) ? DESPESAS_REG : [];
-    var dcat = (typeof DESP_CAT!=='undefined') ? DESP_CAT : [];
-    var nomeDe = {}; dcat.forEach(function(c){ nomeDe[c.id]=c.nome; });
-    var acc = {};
-    desp.forEach(function(d){
-      if(meses){ var mm = d.data ? parseInt(d.data.slice(5,7),10) : null; if(meses.indexOf(mm)<0) return; }
-      var nome = nomeDe[d.categoria] || (d.categoria ? (d.categoria.charAt(0).toUpperCase()+d.categoria.slice(1)) : 'Outras');
-      acc[nome] = (acc[nome]||0) + (d.valor||0);
-    });
-    return Object.keys(acc).map(function(k){ return { nome:k, valor:acc[k] }; }).sort(function(a,b){return b.valor-a.valor;});
-  }
-  function mesesSeleccionados(){
-    var modoEl = document.getElementById('fx-modo'); if(!modoEl) return null;
-    var modo = modoEl.value;
-    if(modo==='unico'){ var m=parseInt(document.getElementById('fx-mes').value,10)+1; return [m]; }
-    if(modo==='intervalo'){ var i=parseInt(document.getElementById('fx-ini').value,10)+1; var f=parseInt(document.getElementById('fx-fim').value,10)+1; var arr=[]; for(var k=Math.min(i,f);k<=Math.max(i,f);k++) arr.push(k); return arr; }
-    return null;
-  }
-  function tabelaCategorias(titulo, dados, corHeader, formato){
-    var total = dados.reduce(function(s,d){return s+d.valor;},0);
-    var thStyle = formato==='excel' ? '' : ' style="padding:8px;text-align:left"';
-    var thStyleR = formato==='excel' ? '' : ' style="padding:8px;text-align:right"';
-    var h = '';
-    h += '<h2 style="font-family:Arial;margin-top:22px;margin-bottom:6px;font-size:16px">'+titulo+'</h2>';
-    h += '<table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-family:Arial">';
-    h += '<thead><tr style="background:'+corHeader+';color:#fff"><th'+thStyle+'>Categoria</th><th'+thStyleR+'>Valor (MZM)</th></tr></thead><tbody>';
-    if(!dados.length){ h += '<tr><td colspan="2" style="padding:8px;text-align:center;color:#666">Sem registos no periodo</td></tr>'; }
-    dados.forEach(function(d){ h += '<tr><td style="padding:7px">'+d.nome+'</td><td style="padding:7px;text-align:right">'+money(d.valor)+'</td></tr>'; });
-    h += '<tr style="background:#e2e8f0;font-weight:bold"><td style="padding:8px">TOTAL</td><td style="padding:8px;text-align:right">'+money(total)+'</td></tr>';
-    h += '</tbody></table>';
-    return h;
-  }
-  function __fxExportDetalhado(formato){
-    var MM = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    var modo = document.getElementById('fx-modo').value;
-    var meses = mesesSeleccionados();
-    var rows = (typeof calcFinanceiroMensal==='function') ? calcFinanceiroMensal() : [];
-    if(meses){ rows = rows.filter(function(r){ return meses.indexOf(parseInt(r.mesNum,10))>=0; }); }
-    var periodoLabel = modo==='ano' ? 'Ano 2026' : (modo==='unico' ? (MM[meses[0]-1]+' 2026') : (MM[meses[0]-1]+' a '+MM[meses[meses.length-1]-1]+' 2026'));
-    var fmt = money;
-    var t = rows.reduce(function(a,r){ return {e:a.e+r.entradas, s:a.s+r.saidas, d:a.d+r.dividas, sd:a.sd+r.saldo}; }, {e:0,s:0,d:0,sd:0});
-    var entCat = entradasPorCategoria(meses);
-    var saiCat = saidasPorCategoria(meses);
-    function tabelaMensal(){
-      var h = '<h2 style="font-family:Arial;margin-top:8px;margin-bottom:6px;font-size:16px">Resumo Mensal</h2>';
-      h += '<table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-family:Arial">';
-      h += '<thead><tr style="background:#1e3a5f;color:#fff"><th style="padding:8px;text-align:left">Mes</th><th style="padding:8px;text-align:right">Entradas</th><th style="padding:8px;text-align:right">Saidas</th><th style="padding:8px;text-align:right">Dividas</th><th style="padding:8px;text-align:right">Saldo</th></tr></thead><tbody>';
-      rows.forEach(function(r){ h += '<tr style="border-bottom:1px solid #ddd"><td style="padding:7px">'+r.mes+'</td><td style="padding:7px;text-align:right">'+fmt(r.entradas)+'</td><td style="padding:7px;text-align:right">'+fmt(r.saidas)+'</td><td style="padding:7px;text-align:right">'+fmt(r.dividas)+'</td><td style="padding:7px;text-align:right;color:'+(r.saldo<0?'#dc2626':'#16a34a')+'">'+fmt(r.saldo)+'</td></tr>'; });
-      h += '<tr style="background:#e2e8f0;font-weight:bold"><td style="padding:8px">TOTAL</td><td style="padding:8px;text-align:right">'+fmt(t.e)+'</td><td style="padding:8px;text-align:right">'+fmt(t.s)+'</td><td style="padding:8px;text-align:right">'+fmt(t.d)+'</td><td style="padding:8px;text-align:right">'+fmt(t.sd)+'</td></tr>';
-      h += '</tbody></table>';
-      return h;
-    }
-    function blocoSaldo(){
-      var cor = t.sd<0 ? '#dc2626' : '#16a34a';
-      var h = '<div style="margin-top:22px;padding:14px;border:2px solid '+cor+';border-radius:8px;font-family:Arial">';
-      h += '<div style="font-size:13px;color:#666">SALDO ACTUAL (Entradas - Saidas) no periodo</div>';
-      h += '<div style="font-size:24px;font-weight:bold;color:'+cor+'">'+fmt(t.e - t.s)+' MZM</div>';
-      h += '<div style="font-size:12px;color:#666;margin-top:4px">Dividas em aberto: '+fmt(t.d)+' MZM</div>';
-      h += '</div>';
-      return h;
-    }
-    var corpo = '';
-    corpo += tabelaMensal();
-    corpo += tabelaCategorias('Entradas por Categoria', entCat, '#16a34a', formato);
-    corpo += tabelaCategorias('Saidas por Categoria', saiCat, '#dc2626', formato);
-    corpo += blocoSaldo();
-    var fileName = 'mapa-financeiro-'+periodoLabel.replace(/[^a-z0-9]+/gi,'-').toLowerCase();
-    if(formato==='excel'){
-      var hx = '<h1 style="font-family:Arial;text-align:center">Mapa Financeiro</h1>';
-      hx += '<p style="font-family:Arial;text-align:center;color:#666">'+periodoLabel+'</p>';
-      hx += corpo;
-      if(typeof downloadStyledExcel==='function'){ downloadStyledExcel(hx, fileName, 'Mapa Financeiro - '+periodoLabel); }
-    } else {
-      var hb = '<h1 style="text-align:center;font-family:Arial">Mapa Financeiro</h1>';
-      hb += '<p style="text-align:center;color:#666;font-family:Arial">'+periodoLabel+'</p>';
-      hb += corpo;
-      if(typeof openPrintWin==='function'){ openPrintWin(hb, 'Mapa Financeiro'); }
-    }
-    var modal = document.getElementById('fin-export-modal'); if(modal) modal.remove();
-  }
-  window.__fxExportDetalhado = __fxExportDetalhado;
-  window.__fxExport = __fxExportDetalhado;
-})();
 /* === SCHOLARIS: HUB PAGAMENTOS INTEGRADO v2 (propinas + taxas fixas + avulsos + balancete) === */
 (function(){
   'use strict';
@@ -30344,6 +29965,159 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
     };
   }
 })();
+
+/* === PATCH v3: recibos universais + balancete com intervalo === */
+(function(){'use strict';
+if(window.__pagPatch3) return; window.__pagPatch3=true;
+var MM=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function money(v){try{return (v||0).toLocaleString('pt-PT');}catch(e){return String(v||0);}}
+function escolaNome(){try{ if(typeof CONFIG!=='undefined' && CONFIG){ return CONFIG.nomeEscola||CONFIG.escola||CONFIG.nome||'Scholaris'; } }catch(e){} return 'Scholaris';}
+function nomeTipoRecibo(pag){var f=pag.familia; if(f==='propina')return 'Propina'; if(f==='taxa_fixa')return pag.categoriaNome||'Taxa Fixa'; if(f==='avulso')return pag.categoriaNome||'Servico'; return pag.categoriaNome||pag.tipo||'Pagamento';}
+window.emitirReciboPag=function(pag){
+  try{
+    if(!pag) return;
+    if(typeof reciboCounter==='undefined'){ window.reciboCounter=100; }
+    reciboCounter++;
+    var ano=(pag.data&&pag.data.slice(0,4))||String(new Date().getFullYear());
+    var num='REC-'+ano+'-'+String(reciboCounter).padStart(6,'0');
+    var agora=new Date();
+    var dt=agora.toLocaleDateString('pt-PT')+' as '+agora.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
+    var setT=function(id,val){var el=document.getElementById(id); if(el) el.textContent=val;};
+    setT('rep-escola-nome', escolaNome());
+    setT('r-num','Recibo No '+num);
+    setT('r-dt',dt);
+    setT('r-cod',num);
+    var who=(typeof curUser!=='undefined'&&curUser&&curUser.nome)?curUser.nome:(pag.registadoPor||'Secretario');
+    setT('r-sec',who);
+    var stamp=(escolaNome()||'EC').replace(/[^A-Za-z]/g,'').slice(0,2).toUpperCase()||'EC';
+    setT('r-stamp',stamp);
+    var ref=nomeTipoRecibo(pag);
+    var detalhe=ref;
+    if(pag.familia==='propina'&&pag.meses&&pag.meses.length){ detalhe=ref+' '+pag.meses.map(function(m){return MM[(m.m||m)-1]||m;}).join(', '); }
+    var rows=[
+      ['Aluno',(pag.alunoNum?pag.alunoNum+' - ':'')+(pag.alunoNome||'-')],
+      ['Turma',pag.turmaId||'-'],
+      ['Referencia',detalhe],
+      ['Valor',money(pag.valorTotal)+' MZM'],
+      ['Metodo',pag.canal||'Numerario']
+    ];
+    if(pag.ref) rows.push(['Ref. transacao',pag.ref]);
+    rows.push(['Secretario',who]);
+    rows.push(['Data',dt]);
+    var bodyEl=document.getElementById('r-body');
+    if(bodyEl){ bodyEl.innerHTML=rows.map(function(r){return '<div class="rcrow"><span style="color:var(--t2)">'+r[0]+'</span><span style="font-weight:700">'+r[1]+'</span></div>';}).join(''); }
+    window.__ultimoRecibo={num:num,pag:pag,dt:dt,rows:rows,detalhe:detalhe,who:who};
+    if(typeof openM==='function') openM('m-recibo');
+    if(typeof toast==='function') toast('Recibo '+num+' emitido');
+  }catch(e){ if(typeof toast==='function') toast('Erro ao emitir recibo'); console.error(e); }
+};
+window.imprimirReciboActual=function(){
+  try{
+    var box=document.querySelector('#m-recibo .recibo-box');
+    var inner=box?box.outerHTML:document.getElementById('r-body').outerHTML;
+    var w=window.open('','_blank','width=480,height=720');
+    if(!w){ if(typeof toast==='function') toast('Permita pop-ups para imprimir'); return; }
+    w.document.write('<!DOCTYPE html><html><head><title>Recibo</title>'
+      +'<style>body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#111}'
+      +'.recibo-box{border:1px solid #ccc;border-radius:10px;padding:20px;max-width:420px;margin:0 auto}'
+      +'.recibo-header{text-align:center;border-bottom:1px solid #ddd;padding-bottom:12px;margin-bottom:12px}'
+      +'.recibo-stamp{display:inline-block;border:2px solid #16a34a;color:#16a34a;border-radius:50%;width:60px;height:60px;line-height:56px;font-weight:800;margin-top:8px}'
+      +'.rcrow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee;font-size:13px}'
+      +'.rcrow:last-child{border:none}span{color:#111}</style></head><body>'
+      +inner+'</body></html>');
+    w.document.close();
+    setTimeout(function(){ try{w.focus();w.print();}catch(e){} },300);
+  }catch(e){ console.error(e); if(typeof toast==='function') toast('Erro ao imprimir'); }
+};
+(function(){ try{ var mods=document.querySelectorAll('#m-recibo .mft .btn'); mods.forEach(function(b){ var oc=b.getAttribute('onclick')||''; if(/imprimir/i.test(b.textContent)||/A imprimir/i.test(oc)){ b.setAttribute('onclick','imprimirReciboActual()'); } }); }catch(e){} })();
+if(typeof window.registarPagamentoGenerico==='function' && !window.__regGenReciboWrapped){
+  window.__regGenReciboWrapped=true;
+  var _origReg=window.registarPagamentoGenerico;
+  window.registarPagamentoGenerico=function(opts){
+    var pag=_origReg.apply(this,arguments);
+    if(pag && typeof pag==='object'){ try{ window.emitirReciboPag(pag); }catch(e){} }
+    return pag;
+  };
+}
+var FAMN={propina:'Propinas',taxa_fixa:'Taxas Fixas',avulso:'Servicos Avulsos'};
+var FAMC={propina:'#16a34a',taxa_fixa:'#0ea5e9',avulso:'#f59e0b'};
+function _famDe(p){ try{ if(typeof familiaDePagamento==='function') return familiaDePagamento(p);}catch(e){} return p.familia||'avulso'; }
+function _money(v){try{return (v||0).toLocaleString('pt-PT');}catch(e){return String(v||0);}}
+window.renderBalanceteRange=function(mIni,mFim){
+  var body=document.getElementById('pag-tab-body'); if(!body) return;
+  mIni=parseInt(mIni,10)||1; mFim=parseInt(mFim,10)||12; if(mFim<mIni){var tmp=mIni;mIni=mFim;mFim=tmp;}
+  var pags=(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]).filter(function(p){return p.estado!=='estornado';});
+  var inRange=pags.filter(function(p){ var mm=p.data?parseInt(p.data.slice(5,7),10):0; return mm>=mIni&&mm<=mFim; });
+  var porFam={propina:0,taxa_fixa:0,avulso:0};
+  var porMes={}; for(var m=mIni;m<=mFim;m++){ porMes[m]={propina:0,taxa_fixa:0,avulso:0}; }
+  var porCat={};
+  inRange.forEach(function(p){ var f=_famDe(p); var v=p.valorTotal||0; if(porFam[f]==null)porFam[f]=0; porFam[f]+=v; var mm=p.data?parseInt(p.data.slice(5,7),10):0; if(mm&&porMes[mm])porMes[mm][f]+=v; var cn=p.categoriaNome||(p.tipo||'Outros'); porCat[cn]=(porCat[cn]||0)+v; });
+  var total=porFam.propina+porFam.taxa_fixa+porFam.avulso;
+  var opt=function(sel,v){ var o=''; for(var i=1;i<=12;i++){ o+='<option value="'+i+'"'+(i==v?' selected':'')+'>'+MMb[i-1]+'</option>'; } return o; };
+  var html='';
+  html+='<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">';
+  html+='<div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Mes inicial</label><select id="bal-mini" class="inp" onchange="aplicarBalancete()">'+opt(0,mIni)+'</select></div>';
+  html+='<div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Mes final</label><select id="bal-mfim" class="inp" onchange="aplicarBalancete()">'+opt(0,mFim)+'</select></div>';
+  html+='<button class="btn btn-g" onclick="balPreset(1,12)">Ano completo</button>';
+  html+='<button class="btn btn-g" onclick="var d=new Date();balPreset(d.getMonth()+1,d.getMonth()+1)">Mes actual</button>';
+  html+='<button class="btn btn-gr" onclick="if(typeof exportarMapaFinanceiro===\'function\')exportarMapaFinanceiro();else toast(\'Exportacao indisponivel\')"><i class="ti ti-download"></i> Exportar mapa</button>';
+  html+='</div>';
+  html+='<div style="font-size:12px;color:var(--t3);margin-bottom:10px">Periodo: '+MMb[mIni-1]+' a '+MMb[mFim-1]+' · '+inRange.length+' pagamento(s)</div>';
+  html+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">';
+  ['propina','taxa_fixa','avulso'].forEach(function(f){
+    html+='<div style="flex:1;min-width:150px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px">'+
+      '<div style="font-size:11px;color:var(--t2)">'+FAMN[f]+'</div>'+
+      '<div style="font-size:20px;font-weight:800;color:'+FAMC[f]+';margin-top:4px">'+_money(porFam[f])+' MZM</div></div>';
+  });
+  html+='<div style="flex:1;min-width:150px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px">'+
+    '<div style="font-size:11px;color:var(--t2)">Total do periodo</div>'+
+    '<div style="font-size:20px;font-weight:800;margin-top:4px">'+_money(total)+' MZM</div></div>';
+  html+='</div>';
+  html+='<div style="overflow-x:auto;margin-bottom:18px"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+  html+='<thead><tr style="text-align:left;color:var(--t2);border-bottom:1px solid var(--b2)"><th style="padding:8px">Mes</th><th style="padding:8px;text-align:right">Propinas</th><th style="padding:8px;text-align:right">Taxas Fixas</th><th style="padding:8px;text-align:right">Avulsos</th><th style="padding:8px;text-align:right">Total</th></tr></thead><tbody>';
+  for(var m=mIni;m<=mFim;m++){ var pm=porMes[m]; var tm=pm.propina+pm.taxa_fixa+pm.avulso;
+    html+='<tr style="border-bottom:1px solid var(--b)"><td style="padding:8px;font-weight:600">'+MMb[m-1]+'</td>'+
+      '<td style="padding:8px;text-align:right">'+_money(pm.propina)+'</td>'+
+      '<td style="padding:8px;text-align:right">'+_money(pm.taxa_fixa)+'</td>'+
+      '<td style="padding:8px;text-align:right">'+_money(pm.avulso)+'</td>'+
+      '<td style="padding:8px;text-align:right;font-weight:700">'+_money(tm)+'</td></tr>';
+  }
+  html+='<tr style="border-top:2px solid var(--b2);font-weight:800"><td style="padding:8px">TOTAL</td>'+
+    '<td style="padding:8px;text-align:right">'+_money(porFam.propina)+'</td>'+
+    '<td style="padding:8px;text-align:right">'+_money(porFam.taxa_fixa)+'</td>'+
+    '<td style="padding:8px;text-align:right">'+_money(porFam.avulso)+'</td>'+
+    '<td style="padding:8px;text-align:right">'+_money(total)+'</td></tr>';
+  html+='</tbody></table></div>';
+  var cats=Object.keys(porCat).sort(function(a,b){return porCat[b]-porCat[a];});
+  if(cats.length){ html+='<div style="font-size:13px;font-weight:700;margin-bottom:8px">Por categoria</div><div style="display:flex;flex-direction:column;gap:6px">';
+    cats.forEach(function(c){ var pct=total?Math.round(porCat[c]/total*100):0; html+='<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--b)"><span>'+c+'</span><span style="font-weight:700">'+_money(porCat[c])+' MZM <span style="color:var(--t3);font-weight:400">('+pct+'%)</span></span></div>'; });
+    html+='</div>'; }
+  body.innerHTML=html;
+};
+var MMb=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+window.aplicarBalancete=function(){ var a=document.getElementById('bal-mini'), b=document.getElementById('bal-mfim'); window.renderBalanceteRange(a?a.value:1, b?b.value:12); };
+window.balPreset=function(i,f){ window.renderBalanceteRange(i,f); };
+if(typeof window.pagTab==='function' && !window.__pagTabBalHooked){
+  window.__pagTabBalHooked=true;
+  var _origPagTab=window.pagTab;
+  window.pagTab=function(id){ var r=_origPagTab.apply(this,arguments); if(id==='balancete'){ try{ var d=new Date(); window.renderBalanceteRange(1,12); }catch(e){console.error(e);} } return r; };
+}
+window.injectBalanceteSidebar=function(){
+  var sb=document.getElementById('sb-content'); if(!sb) return;
+  if(document.getElementById('si-balancete')) return;
+  var role=(typeof curRole!=='undefined')?curRole:'';
+  if(['gestor','secretario'].indexOf(role)<0) return;
+  var anchor=document.getElementById('si-pagamentos'); if(!anchor) return;
+  var btn=document.createElement('button');
+  btn.className='si'; btn.id='si-balancete';
+  btn.setAttribute('onclick',"go('pagamentos'); setTimeout(function(){pagTab('balancete');},40);");
+  btn.innerHTML='<i class="ti ti-report-money" style="font-size:16px"></i><span>Balancete</span>';
+  anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+};
+try{ window.injectBalanceteSidebar(); }catch(e){}
+(function(){ var sb=document.getElementById('sb-content'); if(!sb||window.__balSbObs) return; window.__balSbObs=true; var mo=new MutationObserver(function(){ try{ if(document.getElementById('si-pagamentos')&&!document.getElementById('si-balancete')) window.injectBalanceteSidebar(); }catch(e){} }); mo.observe(sb,{childList:true,subtree:false}); })();
+})();
+
 
 </script>
 </body>
