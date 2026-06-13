@@ -31277,6 +31277,113 @@ window.renderBalanceteRange=function(mIni,mFim){
   window.__finV19 = true;
 })();
 
+/* ===== Patch v20: mapa de propinas so-consulta + multa automatica por atraso + recibo automatico guardado ===== */
+(function(){
+  if(window.__finV20) return;
+
+  /* ---- (b) MULTA AUTOMATICA por atraso, conforme CONFIG.multaPropina ---- */
+  window.__aplicarMultasAutomaticas = function(aluno){
+    try{
+      var pct = (typeof CONFIG!=='undefined' && CONFIG.multaPropina!=null) ? CONFIG.multaPropina : 0;
+      var now = new Date();
+      var mesAtual = now.getMonth()+1;
+      var lista = aluno ? [aluno] : ((typeof ALUNOS!=='undefined')? ALUNOS : []);
+      var mudou = false;
+      lista.forEach(function(a){
+        if(!a || !a.propinas) return;
+        var base = (typeof getPropinaTurma==='function')? getPropinaTurma(a.turma) : (CONFIG.valorPropina||0);
+        Object.keys(a.propinas).forEach(function(k){
+          var p = a.propinas[k];
+          if(!p) return;
+          var mesProp = (typeof p.m!=='undefined') ? p.m : (parseInt(k,10)+1);
+          if(p.st==='npago' && mesProp < mesAtual){
+            p.st = 'multa';
+            p.multaAuto = true;
+            p.multaLock = true;
+            p.v = Math.round(base + base*pct/100);
+            mudou = true;
+          }
+        });
+      });
+      return mudou;
+    }catch(e){ return false; }
+  };
+
+  /* ---- (a)+(b) wrap unico do openPA: aplica multas e remove botoes do mapa ---- */
+  (function(){
+    var origOpenPA = window.openPA;
+    if(typeof origOpenPA!=='function') return;
+    window.openPA = function(id){
+      try{
+        var a = (typeof ALUNOS!=='undefined')? ALUNOS.find(function(x){return x.id===id;}) : null;
+        if(a) window.__aplicarMultasAutomaticas(a);
+      }catch(e){}
+      var r = origOpenPA.apply(this, arguments);
+      setTimeout(function(){
+        try{
+          var btns = document.querySelectorAll('#prop-meses button');
+          btns.forEach(function(b){
+            var oc = b.getAttribute('onclick')||'';
+            if(/setProp\s*\(/.test(oc)){
+              var wrap = b.parentNode;
+              if(wrap && /setProp/.test(wrap.innerHTML) && wrap.parentNode){ wrap.parentNode.removeChild(wrap); }
+              else if(b.parentNode){ b.parentNode.removeChild(b); }
+            }
+          });
+        }catch(e){}
+      }, 30);
+      return r;
+    };
+  })();
+
+  /* ---- (c) RECIBO AUTOMATICO apos pagamento, com numero guardado para reemissao ---- */
+  window.__numeroRecibo = function(pag){
+    if(!pag) return '';
+    if(pag.reciboNum) return pag.reciboNum;
+    if(typeof window.reciboCounter==='undefined') window.reciboCounter = 100;
+    window.reciboCounter++;
+    var ano = (pag.data? String(pag.data).slice(0,4) : String(new Date().getFullYear()));
+    pag.reciboNum = 'REC-'+ano+'-'+String(window.reciboCounter).padStart(6,'0');
+    return pag.reciboNum;
+  };
+
+  (function(){
+    var origEmitir = window.emitirReciboPag;
+    if(typeof origEmitir==='function'){
+      window.emitirReciboPag = function(pag){
+        try{ if(pag){ var n = window.__numeroRecibo(pag); pag.reciboNum = n; } }catch(e){}
+        return origEmitir.apply(this, arguments);
+      };
+    }
+  })();
+
+  (function(){
+    var origConfirm = window.confirmarRegistoPagamento;
+    if(typeof origConfirm==='function'){
+      window.confirmarRegistoPagamento = function(){
+        var antes = (typeof PAGAMENTOS!=='undefined')? PAGAMENTOS.length : 0;
+        var r = origConfirm.apply(this, arguments);
+        try{
+          if(typeof PAGAMENTOS!=='undefined' && PAGAMENTOS.length>antes){
+            var pag = PAGAMENTOS[PAGAMENTOS.length-1];
+            var num = window.__numeroRecibo(pag);
+            var a = (typeof ALUNOS!=='undefined')? ALUNOS.find(function(x){return x.id===pag.alunoId;}) : null;
+            if(a && a.propinas && Array.isArray(pag.meses)){
+              pag.meses.forEach(function(mi){
+                if(a.propinas[mi]){ a.propinas[mi].reciboNum = num; if(!a.propinas[mi].ref) a.propinas[mi].ref = num; }
+              });
+            }
+            setTimeout(function(){ try{ if(typeof window.emitirReciboPag==='function') window.emitirReciboPag(pag); }catch(e){} }, 120);
+          }
+        }catch(e){}
+        return r;
+      };
+    }
+  })();
+
+  window.__finV20 = true;
+})();
+
 </script>
 </body>
 </html>
