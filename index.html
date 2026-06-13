@@ -31091,6 +31091,192 @@ window.renderBalanceteRange=function(mIni,mFim){
   window.__finV18 = true;
 })();
 
+/* ===== Patch v19: pagamento unificado + recibos em todas as entradas + integracao total + multa protegida ===== */
+(function(){
+  if(window.__finV19) return;
+
+  window.__refreshFinanceiro = function(){
+    var tryFns = ['rDash','rFinDashboard','renderEntradasV7','rPagamentos','rPropTurmas','rDespesas'];
+    tryFns.forEach(function(fn){ try{ if(typeof window[fn]==='function') window[fn](); }catch(e){} });
+    try{ if(typeof window.__fixReceitaCard==='function') setTimeout(window.__fixReceitaCard,60); }catch(e){}
+    try{
+      if(document.getElementById('bal-mini') && document.getElementById('bal-mfim')){
+        if(typeof window.aplicarBalancete==='function') window.aplicarBalancete();
+      }
+    }catch(e){}
+  };
+
+  function wrap(name, after){
+    var orig = window[name];
+    if(typeof orig!=='function') return;
+    window[name] = function(){
+      var r = orig.apply(this, arguments);
+      try{ after.call(this, r, arguments); }catch(e){}
+      return r;
+    };
+  }
+
+  wrap('confirmarRegistoPagamento', function(){ window.__refreshFinanceiro(); });
+  wrap('registarPagamentoGenerico', function(){ window.__refreshFinanceiro(); });
+  wrap('pagarTaxaFixa', function(){ window.__refreshFinanceiro(); });
+  wrap('registarAvulso', function(){ window.__refreshFinanceiro(); });
+  wrap('estornarPagamento', function(){ window.__refreshFinanceiro(); });
+
+  function __mesDe(p){ try{ var dt = p&&p.data? new Date(p.data):null; return dt? dt.getMonth()+1 : 0; }catch(e){ return 0; } }
+
+  wrap('renderEntradasV7', function(){
+    setTimeout(function(){
+    try{
+      var sel = document.getElementById('v7e-mes');
+      var mesSel = sel? parseInt(sel.value,10) : (new Date().getMonth()+1);
+      var pags = (typeof PAGAMENTOS!=='undefined')? PAGAMENTOS : [];
+      var doMes = pags.filter(function(p){ return __mesDe(p)===mesSel; });
+      var tbls = document.querySelectorAll('table');
+      for(var ti=0; ti<tbls.length; ti++){
+        var tbl = tbls[ti];
+        var headRow = tbl.querySelector('thead tr');
+        if(!headRow) continue;
+        var heads = (headRow.textContent||'');
+        if(heads.indexOf('Tipo')<0 || heads.indexOf('Valor')<0) continue;
+        var bodyRows = tbl.querySelectorAll('tbody tr');
+        if(bodyRows.length!==doMes.length) continue;
+        if(headRow.getAttribute('data-recibo')!=='1'){
+          headRow.setAttribute('data-recibo','1');
+          var th = document.createElement('th');
+          th.style.padding='8px'; th.style.textAlign='center'; th.textContent='Recibo';
+          headRow.appendChild(th);
+        }
+        for(var ri=0; ri<bodyRows.length; ri++){
+          var tr = bodyRows[ri];
+          if(tr.getAttribute('data-recibo')==='1') continue;
+          tr.setAttribute('data-recibo','1');
+          var p = doMes[ri];
+          var td = document.createElement('td');
+          td.style.padding='8px'; td.style.textAlign='center';
+          var btn = document.createElement('button');
+          btn.type='button';
+          btn.style.cssText='font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:rgba(34,197,94,.15);color:var(--g);cursor:pointer;';
+          btn.innerHTML='<i class="ti ti-receipt"></i> Recibo';
+          (function(pag){
+            btn.onclick=function(){
+              try{
+                if(pag && typeof window.emitirReciboPag==='function'){ window.emitirReciboPag(pag); }
+                else if(typeof toast==='function'){ toast('Recibo indisponivel'); }
+              }catch(e){ if(typeof toast==='function') toast('Erro ao emitir recibo'); }
+            };
+          })(p);
+          td.appendChild(btn);
+          tr.appendChild(td);
+        }
+      }
+    }catch(e){}
+    }, 30);
+  });
+
+  (function(){
+    var origSetProp = window.setProp;
+    window.setProp = function(aid, mi, st){
+      try{
+        var a = (typeof ALUNOS!=='undefined') ? ALUNOS.find(function(x){return x.id===aid;}) : null;
+        if(!a){ if(origSetProp) return origSetProp.apply(this, arguments); return; }
+        var p = a.propinas && a.propinas[mi];
+
+        if(st==='pago'){
+          if(typeof window.abrirRegistarPagamento==='function'){
+            window.abrirRegistarPagamento(aid);
+            try{
+              if(typeof _pagMesesSel!=='undefined' && _pagMesesSel && _pagMesesSel.add){ _pagMesesSel.add(mi); }
+            }catch(e){}
+            return;
+          }
+          if(origSetProp) return origSetProp.apply(this, arguments);
+          return;
+        }
+
+        if(st==='multa'){
+          var r = origSetProp ? origSetProp.apply(this, arguments) : undefined;
+          try{ if(p){ a.propinas[mi].multaLock = true; } }catch(e){}
+          try{ window.__refreshFinanceiro(); }catch(e){}
+          return r;
+        }
+
+        if(p && (p.multaLock || p.st==='multa') && st!=='multa'){
+          if(curRole!=='gestor'){
+            if(typeof toast==='function') toast('<i class="ti ti-lock" style="color:#f59e0b"></i> So o gestor pode retirar multas');
+            return;
+          }
+          var r2 = origSetProp ? origSetProp.apply(this, arguments) : undefined;
+          try{ if(a.propinas[mi]) a.propinas[mi].multaLock = false; }catch(e){}
+          try{ window.__refreshFinanceiro(); }catch(e){}
+          return r2;
+        }
+
+        var rr = origSetProp ? origSetProp.apply(this, arguments) : undefined;
+        try{ window.__refreshFinanceiro(); }catch(e){}
+        return rr;
+      }catch(e){ if(origSetProp) return origSetProp.apply(this, arguments); }
+    };
+  })();
+
+  window.__gestorRetirarMulta = function(aid, mi){
+    if(curRole!=='gestor'){ if(typeof toast==='function') toast('Apenas o gestor maximo'); return; }
+    var a = ALUNOS.find(function(x){return x.id===aid;});
+    if(!a || !a.propinas || !a.propinas[mi]) return;
+    if(!confirm('Retirar a multa deste mes? (acao do gestor)')) return;
+    a.propinas[mi].st = 'npago';
+    a.propinas[mi].multaLock = false;
+    a.propinas[mi].v = (typeof getPropinaTurma==='function')? getPropinaTurma(a.turma) : a.propinas[mi].v;
+    try{ if(typeof openPA==='function') openPA(aid); }catch(e){}
+    try{ window.__refreshFinanceiro(); }catch(e){}
+    if(typeof toast==='function') toast('<i class="ti ti-circle-check" style="color:#22c55e"></i> Multa retirada');
+  };
+
+  window.__gestorRetirarFalta = function(aid, idx){
+    if(curRole!=='gestor'){ if(typeof toast==='function') toast('Apenas o gestor maximo'); return; }
+    var a = ALUNOS.find(function(x){return x.id===aid;});
+    if(!a || !Array.isArray(a.faltas)) return;
+    if(idx==null){ if(!confirm('Limpar TODAS as faltas deste aluno?')) return; a.faltas = []; }
+    else { a.faltas.splice(idx,1); }
+    try{ if(typeof openA==='function') openA(aid); }catch(e){}
+    try{ if(typeof openAluno==='function') openAluno(aid); }catch(e){}
+    if(typeof toast==='function') toast('<i class="ti ti-circle-check" style="color:#22c55e"></i> Falta(s) retirada(s)');
+  };
+
+  wrap('openPA', function(r, args){
+    setTimeout(function(){
+      try{
+        if(curRole!=='gestor') return;
+        var aid = args && args[0];
+        var a = ALUNOS.find(function(x){return x.id===aid;});
+        if(!a || !a.propinas) return;
+        var host = document.getElementById('pa-hist');
+        if(!host) return;
+        var rows = host.children;
+        var visiveis = a.propinas.filter(function(p){ return p.st==='pago' || p.st==='multa'; });
+        for(var i=0;i<rows.length && i<visiveis.length;i++){
+          var p = visiveis[i];
+          var row = rows[i];
+          if(p.st!=='multa') continue;
+          if(row.getAttribute('data-gretirar')==='1') continue;
+          row.setAttribute('data-gretirar','1');
+          var rightBox = row.lastElementChild;
+          var mi = (typeof p.m!=='undefined') ? p.m : a.propinas.indexOf(p);
+          var b = document.createElement('button');
+          b.type='button';
+          b.title='Retirar multa (gestor)';
+          b.style.cssText='margin-left:8px;font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #f59e0b;background:transparent;color:#f59e0b;cursor:pointer;';
+          b.innerHTML='<i class="ti ti-eraser"></i> Retirar';
+          (function(idx){ b.onclick=function(ev){ ev.stopPropagation(); window.__gestorRetirarMulta(aid, idx); }; })(mi);
+          if(rightBox){ rightBox.appendChild(b); } else { row.appendChild(b); }
+        }
+      }catch(e){}
+    }, 40);
+  });
+
+  window.__finV19c = true;
+  window.__finV19 = true;
+})();
+
 </script>
 </body>
 </html>
