@@ -30976,6 +30976,44 @@ window.renderBalanceteRange=function(mIni,mFim){
   window.__finV16 = true;
 })();
 
+/* === Patch v17: pagamentos registados refletem no dashboard financeiro. (1) corrige o cartao 'Receita MZM' do Painel Principal para somar PAGAMENTOS do mes (nao estornados, inclui por_confirmar); (2) re-renderiza dashboards apos registar pagamento === */
+(function(){
+  if(window.__finV17) return;
+  window.__fixReceitaCard = function(){
+    try{
+      var mm = new Date().getMonth()+1;
+      var arr = (typeof PAGAMENTOS!=='undefined' && PAGAMENTOS) ? PAGAMENTOS : [];
+      var receita = arr.filter(function(p){ return p && p.estado!=='estornado' && p.data && parseInt(p.data.slice(5,7),10)===mm; }).reduce(function(s,p){ return s + (p.valorTotal||0); }, 0);
+      var cards = document.querySelectorAll('#dash-stats .sc');
+      for(var i=0;i<cards.length;i++){
+        var lbl = cards[i].querySelector('.sc-lbl');
+        if(lbl && /Receita MZM/.test(lbl.textContent)){
+          var val = cards[i].querySelector('.sc-val');
+          var sub = cards[i].querySelector('.sc-sub');
+          if(val){ val.textContent = receita.toLocaleString('pt-PT'); }
+          if(sub){ sub.textContent = 'Pagamentos do mes (inc. por confirmar)'; }
+          return;
+        }
+      }
+    }catch(e){}
+  };
+  if(typeof window.rDash==='function'){
+    var _origRDash = window.rDash;
+    window.rDash = function(){ var r = _origRDash.apply(this, arguments); try{ setTimeout(window.__fixReceitaCard, 60); setTimeout(window.__fixReceitaCard, 350); }catch(e){} return r; };
+  }
+  if(typeof window.confirmarRegistoPagamento==='function'){
+    var _origConfirm = window.confirmarRegistoPagamento;
+    window.confirmarRegistoPagamento = function(){
+      var r = _origConfirm.apply(this, arguments);
+      try{ if(typeof rDash==='function') rDash(); }catch(e){}
+      try{ if(typeof rFinDashboard==='function') rFinDashboard(); }catch(e){}
+      try{ setTimeout(window.__fixReceitaCard, 80); }catch(e){}
+      return r;
+    };
+  }
+  window.__finV17 = true;
+})();
+
 </script>
 </body>
 </html>
