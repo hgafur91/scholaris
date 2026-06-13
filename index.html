@@ -30743,6 +30743,118 @@ window.renderBalanceteRange=function(mIni,mFim){
   };
 })();
 
+/* === Patch v13: seed de teste + procurar aluno nas Propinas === */
+(function(){
+  if(window.__finV13) return; window.__finV13=true;
+  var DISC_NOMES=['Portugues','Matematica','Ciencias Naturais','Historia','Geografia','Ingles','Educacao Fisica','Biologia','Fisica','Quimica'];
+  var NOMES=['Aaron','Beatriz','Carlos','Dina','Edson','Fatima','Gabriel','Helena','Ivan','Joana','Kelvin','Luisa','Mario','Nadia','Osvaldo','Paula','Quim','Rosa','Samuel','Tania'];
+  var APEL=['Chaimite','Mondlane','Macuacua','Sitoe','Cossa','Nhaca','Tembe','Matola','Langa','Mabunda','Chissano','Guebuza','Nyusi','Bila','Zucula'];
+  function pick(a,i){ return a[i%a.length]; }
+  window.__seedTeste=function(){
+    try{
+      if(window._escolaId){ if(typeof toast==='function') toast('Seed bloqueado: ha base de dados real ligada. Use apenas em modo demonstracao.'); return; }
+      var fixT=(typeof fixTurmaCompat==='function')?fixTurmaCompat:function(x){return x;};
+      var defs=[{c:1,ci:1},{c:4,ci:2},{c:7,ci:3},{c:10,ci:4},{c:11,ci:4}];
+      var profCount=0, alunoIdSeq=(ALUNOS.reduce(function(m,a){return Math.max(m,a.id||0);},0))||0;
+      defs.forEach(function(d,ti){
+        var tid=d.c+'A';
+        if(!TURMAS.find(function(x){return x.id===tid;})){
+          var nova={id:tid,classe:d.c,letra:'A',cicloId:d.ci,curso:'Geral',regime:'Manha',dirTurma:null,max:35}; fixT(nova); TURMAS.push(nova);
+        }
+        for(var di=0; di<5; di++){
+          var dn=DISC_NOMES[di];
+          if(typeof ALOCACOES!=='undefined' && !ALOCACOES.find(function(a){return a.turma===tid && a.disc===dn;})){
+            profCount++;
+            var regime=(profCount%5===0)?'parcial':'inteiro';
+            var pnum='PRF'+String(profCount).padStart(6,'0');
+            var pexist=(typeof PROFS!=='undefined')?PROFS.find(function(p){return p.num===pnum;}):null;
+            if(!pexist && typeof PROFS!=='undefined'){
+              PROFS.push({id:PROFS.length+1,num:pnum,nome:'Prof. '+pick(NOMES,profCount)+' '+pick(APEL,profCount),area:dn,disc:[dn],turmas:[tid],regime:regime,horasSem:(regime==='inteiro'?20:8),salario:(regime==='inteiro'?35000:15000),cargo:'Professor',dep:'academico',genero:(profCount%2?'M':'F'),adesao:2024});
+            }
+            ALOCACOES.push({turma:tid,disc:dn,prof:pnum});
+          }
+        }
+        for(var ai=0; ai<10; ai++){
+          alunoIdSeq++;
+          var prop=[];
+          for(var m=0;m<12;m++){
+            var st='npago';
+            if(m<6){ st = ((ai+m)%5===0)?'npago':'pago'; }
+            prop.push({m:m+1,st:st,v:(CONFIG&&CONFIG.valorPropina)||4500,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:(st==='pago'?'confirmado':'pendente')});
+          }
+          var nome=pick(NOMES,ai+ti)+' '+pick(APEL,ai+ti*3);
+          ALUNOS.push({id:alunoIdSeq,num:'ALU'+String(alunoIdSeq).padStart(6,'0'),nome:nome,genero:(ai%2?'M':'F'),nasc:'2012-01-01',bi:'1000'+alunoIdSeq,nat:'Maputo',turma:tid,classe:d.c+'a Classe',ingresso:2024,bolseiro:'nao',faltas:[],notas:{t1:{},t2:{},t3:{}},propinas:prop,seedTeste:true});
+        }
+      });
+      try{ if(typeof fixTurmaCompat==='function') TURMAS.forEach(fixTurmaCompat); }catch(e){}
+      try{ if(typeof rTurmas==='function') rTurmas(); }catch(e){}
+      try{ if(typeof rAl==='function') rAl(); }catch(e){}
+      try{ if(typeof rPr==='function') rPr(); }catch(e){}
+      try{ if(typeof rCurrClasses==='function') rCurrClasses(); }catch(e){}
+      try{ if(typeof rPropTurmas==='function') rPropTurmas(); }catch(e){}
+      if(typeof toast==='function') toast('Dados de teste gerados: '+TURMAS.length+' turmas, '+ALUNOS.length+' alunos, '+(typeof PROFS!=='undefined'?PROFS.length:0)+' professores (dados ate Junho).');
+    }catch(e){ if(typeof toast==='function') toast('Erro no seed: '+e.message); }
+  };
+  window.__limparTeste=function(){
+    try{
+      for(var i=ALUNOS.length-1;i>=0;i--){ if(ALUNOS[i].seedTeste) ALUNOS.splice(i,1); }
+      var seedT=['1A','4A','7A','10A','11A'];
+      for(var j=TURMAS.length-1;j>=0;j--){ if(seedT.indexOf(TURMAS[j].id)>-1) TURMAS.splice(j,1); }
+      if(typeof PROFS!=='undefined'){ for(var k=PROFS.length-1;k>=0;k--){ if(/^PRF/.test(PROFS[k].num)&&PROFS[k].cargo==='Professor') PROFS.splice(k,1); } }
+      if(typeof ALOCACOES!=='undefined'){ for(var l=ALOCACOES.length-1;l>=0;l--){ if(seedT.indexOf(ALOCACOES[l].turma)>-1) ALOCACOES.splice(l,1); } }
+      try{ if(typeof rTurmas==='function') rTurmas(); }catch(e){}
+      try{ if(typeof rAl==='function') rAl(); }catch(e){}
+      try{ if(typeof rPr==='function') rPr(); }catch(e){}
+      try{ if(typeof rCurrClasses==='function') rCurrClasses(); }catch(e){}
+      try{ if(typeof rPropTurmas==='function') rPropTurmas(); }catch(e){}
+      if(typeof toast==='function') toast('Dados de teste removidos.');
+    }catch(e){ if(typeof toast==='function') toast('Erro ao limpar: '+e.message); }
+  };
+  function escH(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  window.__buscarAlunoPropina=function(){
+    var inp=document.getElementById('v13-busca-aluno'); if(!inp) return;
+    var q=(inp.value||'').trim().toLowerCase(); if(!q){ if(typeof toast==='function') toast('Escreva o numero ou nome do aluno.'); return; }
+    var a=(typeof ALUNOS!=='undefined')?ALUNOS.find(function(x){ return (x.num&&x.num.toLowerCase()===q) || (x.num&&x.num.toLowerCase().indexOf(q)>-1) || (x.nome&&x.nome.toLowerCase().indexOf(q)>-1); }):null;
+    if(!a){ if(typeof toast==='function') toast('Aluno nao encontrado: '+q); var rb=document.getElementById('v13-busca-res'); if(rb) rb.innerHTML='<span style="color:var(--r)">Nenhum aluno encontrado.</span>'; return; }
+    if(typeof abrirRegistarPagamento==='function'){ abrirRegistarPagamento(a.id); }
+    else if(typeof toast==='function'){ toast('Funcao de pagamento indisponivel.'); }
+  };
+  window.__injectBuscaPropina=function(){
+    var s1=document.getElementById('prop-s1'); if(!s1) return false;
+    if(document.getElementById('v13-busca-wrap')) return true;
+    var bar=document.createElement('div'); bar.id='v13-busca-wrap';
+    bar.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px;padding:12px;border:1px solid var(--b);border-radius:var(--rad);background:var(--card)';
+    var H=[];
+    H.push('<div style="width:100%;font-weight:700;font-size:13px;margin-bottom:2px"><i class="ti ti-receipt"></i> Registar propina por aluno</div>');
+    H.push('<input id="v13-busca-aluno" placeholder="N do aluno (ex: ALU000001) ou nome" style="flex:1;min-width:220px;padding:9px 12px;border:1px solid var(--b);border-radius:var(--rads);background:var(--bg)">');
+    H.push('<button class="btn btn-p btn-sm" onclick="window.__buscarAlunoPropina()"><i class="ti ti-search"></i> Procurar e pagar</button>');
+    H.push('<div id="v13-busca-res" style="width:100%;font-size:12px;color:var(--t2)"></div>');
+    bar.innerHTML=H.join('');
+    s1.insertBefore(bar, s1.firstChild);
+    var inp=document.getElementById('v13-busca-aluno'); if(inp){ inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); window.__buscarAlunoPropina(); } }); }
+    return true;
+  };
+  (function(){
+    var prev=window.__renderPropinasV12;
+    window.__renderPropinasV12=function(){ try{ if(typeof prev==='function') prev.apply(this,arguments); }catch(e){} try{ window.__injectBuscaPropina(); }catch(e){} };
+  })();
+  window.__irEntradasV13=window.__irEntradas;
+  window.__injectSeedBtns=function(){
+    var wrap=document.getElementById('v13-busca-wrap'); if(!wrap) return;
+    if(document.getElementById('v13-seed-row')) return;
+    var row=document.createElement('div'); row.id='v13-seed-row'; row.style.cssText='width:100%;display:flex;gap:8px;margin-top:6px;border-top:1px dashed var(--b);padding-top:8px';
+    var note=(typeof window._escolaId!=='undefined'&&window._escolaId)?'':'';
+    row.innerHTML='<span style="font-size:11px;color:var(--t2);align-self:center">Teste:</span>'+
+      '<button class="btn btn-g btn-sm" onclick="window.__seedTeste()"><i class="ti ti-database-plus"></i> Gerar dados de teste</button>'+
+      '<button class="btn btn-tl btn-sm" onclick="window.__limparTeste()"><i class="ti ti-trash"></i> Limpar dados de teste</button>';
+    wrap.appendChild(row);
+  };
+  (function(){
+    var prevInj=window.__injectBuscaPropina;
+    window.__injectBuscaPropina=function(){ var r=prevInj.apply(this,arguments); try{ window.__injectSeedBtns(); }catch(e){} return r; };
+  })();
+})();
+
 </script>
 
 </body>
