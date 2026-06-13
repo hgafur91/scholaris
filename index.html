@@ -30913,6 +30913,69 @@ window.renderBalanceteRange=function(mIni,mFim){
   setInterval(function(){ if(document.querySelector('.tb-right') && !document.getElementById('v15-seed-top')){ window.__injectSeedTopbar(); } }, 1500);
 })();
 
+/* === Patch v16: seed funciona com BD real ligada mas SO em memoria (nunca grava no Supabase); limpar remove apenas registos com seedTeste:true === */
+(function(){
+  if(window.__finV16) return;
+  var NOMES=['Ana','Bruno','Carla','David','Elsa','Faustino','Gita','Hugo','Iris','Joao'];
+  var APEL=['Sitoe','Macamo','Cossa','Nhaca','Mondlane','Tembe','Chissano','Guebuza','Matusse','Bila'];
+  var DISC=['Portugues','Matematica','Ciencias','Historia','Geografia'];
+  function pick(a,i){return a[i % a.length];}
+  window.__seedTeste = function(){
+    try{
+      var fixT = (typeof fixTurmaCompat==='function')? fixTurmaCompat : function(x){return x;};
+      var defs=[{c:1,ci:1},{c:4,ci:2},{c:7,ci:3},{c:10,ci:4},{c:11,ci:4}];
+      var profCount=0;
+      var alunoIdSeq = ALUNOS.reduce(function(m,a){return Math.max(m,a.id||0);},0);
+      defs.forEach(function(d){
+        var tid = d.c + 'A';
+        if(!TURMAS.find(function(x){return x.id===tid;})){
+          var nova={id:tid,classe:d.c,letra:'A',cicloId:d.ci,curso:'Geral',regime:'Manha',dirTurma:null,max:35,seedTeste:true};
+          fixT(nova); TURMAS.push(nova);
+        }
+        for(var di=0;di<5;di++){
+          var dn=DISC[di];
+          if(typeof ALOCACOES!=='undefined' && !ALOCACOES.find(function(a){return a.turma===tid && a.disc===dn;})){
+            ALOCACOES.push({turma:tid,disc:dn,prof:null,seedTeste:true});
+          }
+          profCount++;
+          var regime=(profCount % 5===0)?'parcial':'inteiro';
+          var pnum='PRF'+String(profCount).padStart(6,'0');
+          if(typeof PROFS!=='undefined' && !PROFS.find(function(p){return p.num===pnum;})){
+            PROFS.push({id:PROFS.length+1,num:pnum,nome:pick(NOMES,profCount)+' '+pick(APEL,profCount),area:dn,disc:[dn],turmas:[tid],regime:regime,horasSem:regime==='inteiro'?40:20,salario:regime==='inteiro'?35000:18000,cargo:'Professor',dep:'academico',genero:profCount%2?'M':'F',adesao:'2024-01-15',seedTeste:true});
+          }
+        }
+        for(var ai=0;ai<10;ai++){
+          alunoIdSeq++;
+          var prop=Array.from({length:12},function(_,i){return {m:i+1,st:(i<5)?'pago':'npago',v:4500,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente'};});
+          ALUNOS.push({id:alunoIdSeq,num:'ALU'+String(alunoIdSeq).padStart(6,'0'),nome:pick(NOMES,ai)+' '+pick(APEL,ai),genero:ai%2?'M':'F',nasc:'2012-01-01',bi:'1000'+alunoIdSeq,nat:'Maputo',turma:tid,classe:d.c+'a Classe',ingresso:'2024',bolseiro:'nao',faltas:[],notas:{t1:{},t2:{},t3:{}},propinas:prop,seedTeste:true});
+        }
+      });
+      try{ if(typeof fixTurmaCompat==='function') TURMAS.forEach(fixTurmaCompat); }catch(e){}
+      try{ if(typeof rTurmas==='function') rTurmas(); }catch(e){}
+      try{ if(typeof rAl==='function') rAl(); }catch(e){}
+      try{ if(typeof rPr==='function') rPr(); }catch(e){}
+      try{ if(typeof rCurrClasses==='function') rCurrClasses(); }catch(e){}
+      try{ if(typeof rPropTurmas==='function') rPropTurmas(); }catch(e){}
+      if(typeof toast==='function') toast('Dados de teste gerados (apenas em memoria, NAO gravados na BD): '+TURMAS.length+' turmas, '+ALUNOS.length+' alunos, '+(typeof PROFS!=='undefined'?PROFS.length:0)+' professores. Recarregar a pagina remove-os.');
+    }catch(e){ if(typeof toast==='function') toast('Erro no seed: '+e.message); }
+  };
+  window.__limparTeste = function(){
+    try{
+      for(var i=ALUNOS.length-1;i>=0;i--){ if(ALUNOS[i] && ALUNOS[i].seedTeste) ALUNOS.splice(i,1); }
+      for(var j=TURMAS.length-1;j>=0;j--){ if(TURMAS[j] && TURMAS[j].seedTeste) TURMAS.splice(j,1); }
+      if(typeof PROFS!=='undefined'){ for(var k=PROFS.length-1;k>=0;k--){ if(PROFS[k] && PROFS[k].seedTeste) PROFS.splice(k,1); } }
+      if(typeof ALOCACOES!=='undefined'){ for(var l=ALOCACOES.length-1;l>=0;l--){ if(ALOCACOES[l] && ALOCACOES[l].seedTeste) ALOCACOES.splice(l,1); } }
+      try{ if(typeof rTurmas==='function') rTurmas(); }catch(e){}
+      try{ if(typeof rAl==='function') rAl(); }catch(e){}
+      try{ if(typeof rPr==='function') rPr(); }catch(e){}
+      try{ if(typeof rCurrClasses==='function') rCurrClasses(); }catch(e){}
+      try{ if(typeof rPropTurmas==='function') rPropTurmas(); }catch(e){}
+      if(typeof toast==='function') toast('Dados de teste removidos (apenas os marcados como teste).');
+    }catch(e){ if(typeof toast==='function') toast('Erro ao limpar: '+e.message); }
+  };
+  window.__finV16 = true;
+})();
+
 </script>
 </body>
 </html>
