@@ -30694,6 +30694,55 @@ window.renderBalanceteRange=function(mIni,mFim){
   try{ reorg(); }catch(e){}
 })();
 
+/* === Patch v12 - corrige render da Propinas dentro de Entradas (scaffold + rPropTurmas + estado vazio, com polling para vencer o re-render nativo) === */
+(function(){
+  if(window.__finV12) return; window.__finV12=true;
+  function $(id){return document.getElementById(id);}
+  function scaffoldHTML(){
+    return ''+
+    '<div id="prop-sub-wrap" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+
+    '<button id="prop-back" onclick="window.__voltarPropinasV12()" class="btn btn-g btn-sm" style="display:none"><i class="ti ti-arrow-left"></i> Voltar</button>'+
+    '<span id="prop-sub" style="color:var(--t2);font-size:14px">Seleccione uma turma</span>'+
+    '<span id="prop-tc" style="display:none"></span>'+
+    '</div>'+
+    '<div id="prop-s1"><div id="prop-turmas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div><div id="prop-empty-v12" style="display:none;padding:30px;text-align:center;color:var(--t2)"></div></div>'+
+    '<div id="prop-s2" style="display:none"><div id="prop-meses"></div><div style="overflow:auto"><table style="width:100%;border-collapse:collapse" id="tb-prop"></table></div></div>';
+  }
+  function ensureScaffold(){
+    var ptb=$('pag-tab-body'); if(!ptb) return false;
+    if(!$('prop-turmas') || !$('prop-s1')){ ptb.innerHTML=scaffoldHTML(); }
+    return true;
+  }
+  window.__voltarPropinasV12=function(){ try{ renderProp(); }catch(e){} };
+  function renderProp(){
+    if(!ensureScaffold()) return;
+    try{ if(typeof window.rPropTurmas==='function'){ window.rPropTurmas(); } }catch(e){}
+    var pt=$('prop-turmas'); var emp=$('prop-empty-v12');
+    var nT=(typeof TURMAS!=='undefined' && TURMAS)?TURMAS.length:0;
+    if(emp){
+      if(nT===0){ emp.style.display='block'; emp.innerHTML='<i class="ti ti-school" style="font-size:32px;opacity:.4"></i><div style="margin-top:8px">Ainda nao ha turmas registadas.</div><div style="font-size:13px;opacity:.7;margin-top:4px">Registe turmas e alunos primeiro (Gestao Academica &rarr; Turmas / Alunos) para gerir propinas aqui.</div>'; if(pt) pt.style.display='none'; }
+      else { emp.style.display='none'; if(pt) pt.style.display='grid'; }
+    }
+  }
+  window.__renderPropinasV12=renderProp;
+  window.__irEntradas=function(tab){
+    var t=tab||'propinas';
+    try{ if(typeof window.go==='function'){ window.go('pagamentos'); } }catch(e){}
+    setTimeout(function(){
+      try{ if(typeof window.pagTab==='function'){ window.pagTab(t); } }catch(e){}
+      if(t==='propinas'){
+        var tries=0, stable=0;
+        var iv=setInterval(function(){
+          tries++;
+          if(!$('prop-turmas')){ try{ renderProp(); }catch(e){} stable=0; }
+          else { stable++; }
+          if(stable>=3 || tries>=20){ clearInterval(iv); }
+        },80);
+      }
+    },60);
+  };
+})();
+
 </script>
 
 </body>
