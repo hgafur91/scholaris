@@ -30885,7 +30885,35 @@ window.renderBalanceteRange=function(mIni,mFim){
   setTimeout(function(){ if(document.getElementById('prop-s1') && !document.getElementById('v13-busca-wrap')) injectNow(); }, 300);
 })();
 
-</script>
+PATCHV15SLOT
 
+</script>
+/* === Patch v15: botões 'Gerar/Limpar dados de teste' no topo (topbar) === */
+(function(){
+  if(window.__finV15) return; window.__finV15=true;
+  try{ window.__injectSeedBtns=function(){ /* movido para o topo no v15 */ }; }catch(e){}
+  try{ var r=document.getElementById('v13-seed-row'); if(r) r.remove(); }catch(e){}
+  window.__injectSeedTopbar=function(){
+    try{
+      if(document.getElementById('v15-seed-top')) return true;
+      if(typeof window._escolaId!=='undefined' && window._escolaId){ return false; }
+      var right=document.querySelector('.tb-right'); if(!right) return false;
+      var box=document.createElement('div'); box.id='v15-seed-top';
+      box.style.cssText='display:inline-flex;align-items:center;gap:6px;margin-right:8px';
+      var b1=document.createElement('button'); b1.className='btn btn-g btn-sm'; b1.title='Gerar dados de teste (apenas demonstracao)';
+      b1.innerHTML='<i class="ti ti-database-plus"></i> Gerar teste';
+      b1.onclick=function(){ try{ if(typeof window.__seedTeste==='function') window.__seedTeste(); }catch(e){} };
+      var b2=document.createElement('button'); b2.className='btn btn-tl btn-sm'; b2.title='Limpar dados de teste';
+      b2.innerHTML='<i class="ti ti-trash"></i> Limpar teste';
+      b2.onclick=function(){ try{ if(typeof window.__limparTeste==='function') window.__limparTeste(); }catch(e){} };
+      box.appendChild(b1); box.appendChild(b2);
+      right.insertBefore(box, right.firstChild);
+      return true;
+    }catch(e){ return false; }
+  };
+  function pollTop(){ var n=0; var iv=setInterval(function(){ n++; if(document.querySelector('.tb-right')){ window.__injectSeedTopbar(); } if(n>=40 || document.getElementById('v15-seed-top')){ clearInterval(iv); } }, 200); }
+  pollTop();
+  setInterval(function(){ if(document.querySelector('.tb-right') && !document.getElementById('v15-seed-top')){ window.__injectSeedTopbar(); } }, 1500);
+})();
 </body>
 </html>
