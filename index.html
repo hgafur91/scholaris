@@ -31014,6 +31014,83 @@ window.renderBalanceteRange=function(mIni,mFim){
   window.__finV17 = true;
 })();
 
+/* === Patch v18: seed COMPLETO para testar todas as pecas. Substitui __seedTeste/__limparTeste. Cria turmas (com Director de Turma), disciplinas+atribuicoes em _DISCIPLINAS_DB/_ATRIBUICOES_DB, professores (80% inteiro) alocados, e alunos com notas (T1/T2/T3 arrays), faltas, propinas, encarregado e historico. Tudo seedTeste:true, so em memoria. === */
+(function(){
+  if(window.__finV18) return;
+  var NOMES=['Ana','Bruno','Carla','David','Elsa','Faustino','Gita','Hugo','Iris','Joao','Lia','Mario','Nilza','Octavio','Paula'];
+  var APEL=['Sitoe','Macamo','Cossa','Nhaca','Mondlane','Tembe','Chissano','Guebuza','Matusse','Bila','Langa','Zita','Mucavele','Fumo','Massingue'];
+  var DISC=['Portugues','Matematica','Ciencias','Historia','Geografia'];
+  function pick(a,i){return a[i % a.length];}
+  function rnd(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+  window.__seedTeste = function(){
+    try{
+      var fixT = (typeof fixTurmaCompat==='function')? fixTurmaCompat : function(x){return x;};
+      var defs=[{c:1,ci:1},{c:4,ci:2},{c:7,ci:3},{c:10,ci:4},{c:11,ci:4}];
+      window._DISCIPLINAS_DB = window._DISCIPLINAS_DB || [];
+      window._ATRIBUICOES_DB = window._ATRIBUICOES_DB || [];
+      var profCount=0, discIdSeq=0, atrIdSeq=0;
+      var alunoIdSeq = ALUNOS.reduce(function(m,a){return Math.max(m,a.id||0);},0);
+      defs.forEach(function(d){
+        var tid = d.c + 'A';
+        var tdb = 'tdb-'+tid;
+        var classeLabel = d.c + 'ª Classe';
+        var turmaProfs = [];
+        if(!TURMAS.find(function(x){return x.id===tid;})){
+          var nova={id:tid,classe:d.c,letra:'A',cicloId:d.ci,curso:'Geral',regime:'Manha',dirTurma:null,max:35,_dbId:tdb,seedTeste:true};
+          fixT(nova); TURMAS.push(nova);
+        }
+        var turmaObj = TURMAS.find(function(x){return x.id===tid;});
+        for(var di=0;di<5;di++){
+          var dn=DISC[di];
+          profCount++;
+          var regime=(profCount % 5===0)?'parcial':'inteiro';
+          var pnum='PRF'+String(profCount).padStart(6,'0');
+          var pdb='pdb-'+profCount;
+          var prof = (typeof PROFS!=='undefined')? PROFS.find(function(p){return p.num===pnum;}) : null;
+          if(typeof PROFS!=='undefined' && !prof){
+            prof = {id:PROFS.length+1,num:pnum,_dbId:pdb,nome:pick(NOMES,profCount)+' '+pick(APEL,profCount),form:'Licenciatura',area:dn,disc:[dn],turmas:[tid],tel:'84'+rnd(1000000,8999999),email:('prof'+profCount)+'@demo.mz',bi:'1100'+profCount+'P',nasc:'1988-05-10',genero:profCount%2?'M':'F',nat:'Maputo',adesao:'2024-01-15',dep:'academico',cargo:'Professor',nota:0,salario:regime==='inteiro'?35000:18000,regime:regime,horasSem:regime==='inteiro'?22:12,horasMaxSem:regime==='inteiro'?22:12,valorHora:regime==='parcial'?350:0,valorHoraExtra:500,seedTeste:true};
+            PROFS.push(prof);
+          }
+          turmaProfs.push(prof);
+          if(typeof ALOCACOES!=='undefined' && !ALOCACOES.find(function(a){return a.turma===tid && a.disc===dn;})){
+            ALOCACOES.push({turma:tid,disc:dn,prof:pnum,seedTeste:true});
+          }
+          discIdSeq++; var ddb='ddb-'+discIdSeq;
+          if(!window._DISCIPLINAS_DB.find(function(x){return x.turma_id===tdb && x.nome===dn;})){
+            window._DISCIPLINAS_DB.push({id:ddb,escola_id:'escola_demo',nome:dn,classe:classeLabel,carga_semanal:4,professor_id:prof?prof._dbId:null,turma_id:tdb,seedTeste:true});
+            atrIdSeq++;
+            window._ATRIBUICOES_DB.push({id:'adb-'+atrIdSeq,escola_id:'escola_demo',disciplina_id:ddb,turma_id:tdb,professor_id:prof?prof._dbId:null,ano_lectivo_id:'demo',seedTeste:true});
+          }
+        }
+        if(turmaObj && !turmaObj.dirTurma && turmaProfs[0]){ turmaObj.dirTurma = turmaProfs[0].num; }
+        for(var ai=0;ai<10;ai++){
+          alunoIdSeq++;
+          var prop=Array.from({length:12},function(_,i){return {m:i+1,st:(i<5)?'pago':'npago',v:(typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente'};});
+          var mkNotas=function(){ return DISC.map(function(dn){ return {d:dn, as1:rnd(8,18), as2:rnd(8,18), at:rnd(8,18)}; }); };
+          var pNome = pick(NOMES,ai)+' '+pick(APEL,ai+d.c);
+          ALUNOS.push({id:alunoIdSeq,num:'ALU'+String(alunoIdSeq).padStart(6,'0'),nome:pNome,genero:ai%2?'M':'F',nasc:'2012-0'+((ai%9)+1)+'-15',bi:'1000'+alunoIdSeq,nat:'Maputo',morada:'Bairro '+(ai+1)+', Maputo',tel:'84'+rnd(1000000,8999999),email:('aluno'+alunoIdSeq)+'@demo.mz',turma:tid,classe:classeLabel,ingresso:'2024',verif:true,foto:null,bolseiro:'nao',niss:'',escola_anterior:'',enc:'Encarregado de '+pNome.split(' ')[0],erel:ai%2?'Pai':'Mãe',etel:'82'+rnd(1000000,8999999),ebi:'2000'+alunoIdSeq+'E',eprof:'Comerciante',eender:'Bairro '+(ai+1)+', Maputo',faltas:[],notas:{t1:mkNotas(),t2:mkNotas(),t3:mkNotas(),exame:[]},propinas:prop,hist:[{data:'2024-02-01',tipo:'Matricula',desc:'Matricula efectuada no ano lectivo'}],transferencias:[],dataInscricao:'2024-02-01T08:00:00.000Z',inscritoPor:'Seed Teste',seedTeste:true});
+        }
+      });
+      try{ if(typeof fixTurmaCompat==='function') TURMAS.forEach(fixTurmaCompat); }catch(e){}
+      ['rTurmas','rAl','rPr','rCurrClasses','rPropTurmas','rDash'].forEach(function(fn){ try{ if(typeof window[fn]==='function') window[fn](); }catch(e){} });
+      if(typeof toast==='function') toast('Dados de teste COMPLETOS gerados (so em memoria): '+TURMAS.length+' turmas, '+ALUNOS.length+' alunos, '+(typeof PROFS!=='undefined'?PROFS.length:0)+' profs, disciplinas alocadas e notas. Recarregar remove-os.');
+    }catch(e){ if(typeof toast==='function') toast('Erro no seed: '+e.message); }
+  };
+  window.__limparTeste = function(){
+    try{
+      for(var i=ALUNOS.length-1;i>=0;i--){ if(ALUNOS[i] && ALUNOS[i].seedTeste) ALUNOS.splice(i,1); }
+      for(var j=TURMAS.length-1;j>=0;j--){ if(TURMAS[j] && TURMAS[j].seedTeste) TURMAS.splice(j,1); }
+      if(typeof PROFS!=='undefined'){ for(var k=PROFS.length-1;k>=0;k--){ if(PROFS[k] && PROFS[k].seedTeste) PROFS.splice(k,1); } }
+      if(typeof ALOCACOES!=='undefined'){ for(var l=ALOCACOES.length-1;l>=0;l--){ if(ALOCACOES[l] && ALOCACOES[l].seedTeste) ALOCACOES.splice(l,1); } }
+      if(window._DISCIPLINAS_DB){ window._DISCIPLINAS_DB = window._DISCIPLINAS_DB.filter(function(d){return !d.seedTeste;}); }
+      if(window._ATRIBUICOES_DB){ window._ATRIBUICOES_DB = window._ATRIBUICOES_DB.filter(function(a){return !a.seedTeste;}); }
+      ['rTurmas','rAl','rPr','rCurrClasses','rPropTurmas','rDash'].forEach(function(fn){ try{ if(typeof window[fn]==='function') window[fn](); }catch(e){} });
+      if(typeof toast==='function') toast('Dados de teste removidos (apenas os marcados como teste).');
+    }catch(e){ if(typeof toast==='function') toast('Erro ao limpar: '+e.message); }
+  };
+  window.__finV18 = true;
+})();
+
 </script>
 </body>
 </html>
