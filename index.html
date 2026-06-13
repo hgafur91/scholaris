@@ -30855,6 +30855,36 @@ window.renderBalanceteRange=function(mIni,mFim){
   })();
 })();
 
+/* === Patch v14: garante injeccao da barra 'procurar aluno' nas Propinas (polling) === */
+(function(){
+  if(window.__finV14) return; window.__finV14=true;
+  function injectNow(){ try{ if(typeof window.__injectBuscaPropina==='function'){ return window.__injectBuscaPropina(); } }catch(e){} return false; }
+  function startPoll(){
+    var tries=0;
+    var iv=setInterval(function(){
+      tries++;
+      var s1=document.getElementById('prop-s1');
+      if(s1){ if(!document.getElementById('v13-busca-wrap')){ injectNow(); } }
+      if(tries>=25 || document.getElementById('v13-busca-wrap')){ clearInterval(iv); }
+    }, 120);
+  }
+  var prevIr=window.__irEntradas;
+  window.__irEntradas=function(tab){
+    try{ if(typeof prevIr==='function') prevIr.apply(this,arguments); }catch(e){}
+    var t=tab||'propinas';
+    if(t==='propinas'){ startPoll(); }
+  };
+  var prevPagTab=window.pagTab;
+  if(typeof prevPagTab==='function'){
+    window.pagTab=function(tab){
+      var r; try{ r=prevPagTab.apply(this,arguments); }catch(e){}
+      if(tab==='propinas'){ startPoll(); }
+      return r;
+    };
+  }
+  setTimeout(function(){ if(document.getElementById('prop-s1') && !document.getElementById('v13-busca-wrap')) injectNow(); }, 300);
+})();
+
 </script>
 
 </body>
