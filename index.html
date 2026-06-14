@@ -31548,6 +31548,108 @@ window.__finV22 = true;
   try{ setInterval(function(){ window.__v29Tick(); }, 1500); }catch(e){}
   try{ setTimeout(function(){ window.__v29Tick(true); }, 400); window.__v29AutoFecho(); }catch(e){}
   window.__finV29=true;
-})();</script>
+})();
+
+/* ===== PATCH v30 : Dividas Consolidadas (sidebar) — so divida vencida, fecho mensal acumulado ===== */
+(function(){'use strict';
+if(window.__finV30)return;
+function vp(t){try{return (typeof window.__valPropina==='function')?window.__valPropina(t):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);}catch(e){return 4500;}}
+function ep(p){try{return (typeof window.__estadoPropina==='function')?window.__estadoPropina(p):(p&&p.st==='npago'?'divida':'pago');}catch(e){return 'pago';}}
+function fmtN(n){try{return (typeof window.fmt==='function')?window.fmt(n):(''+Math.round(n||0));}catch(e){return ''+Math.round(n||0);}}
+var MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+window.__v30Devedores=function(){
+  var al=(typeof ALUNOS!=='undefined'&&ALUNOS)||[];
+  var rows=[];
+  al.forEach(function(a){
+    var props=a.propinas||[];
+    var venc=props.filter(function(p){return p&&p.st==='npago'&&ep(p)==='divida';});
+    if(!venc.length)return;
+    var val=venc.reduce(function(s,p){return s+(p.v||vp(a._turmaDbId||a.turma));},0);
+    var meses=venc.length;
+    rows.push({a:a,meses:meses,val:val,
+      cor:meses>=3?'var(--r)':meses===2?'var(--am)':'var(--t2)',
+      nivel:meses>=3?'Critico':meses===2?'Atencao':'Normal'});
+  });
+  return rows.sort(function(x,y){return y.meses-x.meses;});
+};
+window.__v30Hist=function(){
+  var al=(typeof ALUNOS!=='undefined'&&ALUNOS)||[];
+  var ano=(typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear();
+  var out=[];
+  for(var m=1;m<=12;m++){
+    var acc=0,novo=0;
+    al.forEach(function(a){
+      (a.propinas||[]).forEach(function(p){
+        if(!p||p.st!=='npago')return;
+        if((p.m||0)>m)return;
+        if(ep(p)!=='divida')return;
+        var v=(p.v||vp(a._turmaDbId||a.turma));
+        acc+=v; if((p.m||0)===m)novo+=v;
+      });
+    });
+    var fech=(typeof window.__mesFechado==='function')?window.__mesFechado(m,ano):false;
+    out.push({m:m,nome:MN[m-1],novo:novo,acc:acc,fechado:fech});
+  }
+  return out;
+};
+window.__v30Render=function(){
+  var host=document.getElementById('v-dividas');
+  if(!host)return;
+  var devs=window.__v30Devedores();
+  var totalDiv=devs.reduce(function(s,d){return s+d.val;},0);
+  var al=(typeof ALUNOS!=='undefined'&&ALUNOS)||[];
+  var venc=0,pagOuVenc=0;
+  al.forEach(function(a){(a.propinas||[]).forEach(function(p){var e=ep(p);if(e==='divida'){venc++;}if(e==='divida'||p.st==='pago'){pagOuVenc++;}});});
+  var tx=pagOuVenc?Math.round((pagOuVenc-venc)/pagOuVenc*100):0;
+  var hist=window.__v30Hist();
+  var c1=devs.filter(function(d){return d.meses===1;}).length;
+  var c2=devs.filter(function(d){return d.meses===2;}).length;
+  var c3=devs.filter(function(d){return d.meses>=3;}).length;
+  var sig='v30|'+devs.length+'|'+totalDiv+'|'+tx+'|'+hist.map(function(h){return h.acc+(h.fechado?'F':'A');}).join(',');
+  var head=host.querySelector('#v30-root');
+  if(head&&head.getAttribute('data-sig')===sig)return;
+  var H='';
+  H+='<div id="v30-root" data-sig="'+sig+'">';
+  H+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">';
+  H+='<div class="card" style="padding:16px;text-align:center;border-top:3px solid var(--r)"><div style="font-size:22px"><i class="ti ti-users"></i></div><div style="font-size:24px;font-weight:800;color:var(--r)">'+devs.length+'</div><div style="font-size:12px;color:var(--t2)">Alunos Devedores</div></div>';
+  H+='<div class="card" style="padding:16px;text-align:center;border-top:3px solid var(--r)"><div style="font-size:22px"><i class="ti ti-coin"></i></div><div style="font-size:24px;font-weight:800;color:var(--r)">'+fmtN(totalDiv)+' MZM</div><div style="font-size:12px;color:var(--t2)">Total em Divida (ate ao mes)</div></div>';
+  H+='<div class="card" style="padding:16px;text-align:center;border-top:3px solid var(--am)"><div style="font-size:22px"><i class="ti ti-percentage"></i></div><div style="font-size:24px;font-weight:800;color:var(--am)">'+tx+'%</div><div style="font-size:12px;color:var(--t2)">Taxa de Cobranca</div></div>';
+  H+='</div>';
+  H+='<div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap">';
+  H+='<span style="font-size:13px"><b style="color:var(--t2)">'+c1+'</b> 1 mes em atraso</span>';
+  H+='<span style="font-size:13px"><b style="color:var(--am)">'+c2+'</b> 2 meses em atraso</span>';
+  H+='<span style="font-size:13px"><b style="color:var(--r)">'+c3+'</b> 3+ meses em atraso</span>';
+  H+='<button class="btn btn-am btn-sm" style="margin-left:auto" onclick="try{notificarTodosDevedores()}catch(e){}"><i class="ti ti-bell"></i> Notificar Todos</button>';
+  H+='<button class="btn btn-g btn-sm" onclick="try{exportarRelatorioFinanceiro(\'dividas\')}catch(e){}"><i class="ti ti-download"></i> Exportar</button>';
+  H+='</div>';
+  H+='<div class="card" style="margin-bottom:16px"><div class="ch"><span class="ct">Lista de Devedores</span><span style="font-size:11px;color:var(--t3)">'+devs.length+' alunos · '+fmtN(totalDiv)+' MZM em divida</span></div>';
+  if(!devs.length){H+='<div style="padding:24px;text-align:center;color:var(--t3)">Sem dividas vencidas ate ao mes corrente.</div>';}
+  else{H+='<div class="tw"><table><thead><tr><th>Aluno</th><th>Turma</th><th style="text-align:center">Meses</th><th style="text-align:right">Valor em Divida</th><th>Situacao</th></tr></thead><tbody>';
+  devs.forEach(function(d){H+='<tr><td><b>'+(d.a.nome||'-')+'</b><br><span style="font-size:11px;color:var(--t3)">'+(d.a.num||'')+'</span></td><td>'+(d.a.turma||'-')+'</td><td style="text-align:center;color:'+d.cor+';font-weight:700">'+d.meses+'</td><td style="text-align:right;color:'+d.cor+';font-weight:700">'+fmtN(d.val)+' MZM</td><td style="color:'+d.cor+';font-weight:600">'+d.nivel+'</td></tr>';});
+  H+='</tbody></table></div>';}
+  H+='</div>';
+  H+='<div class="card"><div class="ch"><span class="ct">Historico mensal da divida (acumulada)</span></div>';
+  H+='<div class="tw"><table><thead><tr><th>Mes</th><th style="text-align:right">Divida do mes</th><th style="text-align:right">Divida acumulada</th><th style="text-align:center">Estado</th></tr></thead><tbody>';
+  hist.forEach(function(h){var badge=h.fechado?'<span style="background:var(--r)18;color:var(--r);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">Fechado</span>':'<span style="background:var(--t3)18;color:var(--t3);padding:2px 8px;border-radius:6px;font-size:11px">Aberto</span>';H+='<tr><td>'+h.nome+'</td><td style="text-align:right;color:'+(h.novo>0?'var(--r)':'var(--t3)')+'">'+(h.novo>0?fmtN(h.novo)+' MZM':'—')+'</td><td style="text-align:right;font-weight:700;color:'+(h.acc>0?'var(--r)':'var(--g)')+'">'+fmtN(h.acc)+' MZM</td><td style="text-align:center">'+badge+'</td></tr>';});
+  H+='</tbody></table></div></div>';
+  H+='</div>';
+  var existing=host.querySelector('#v30-root');
+  if(existing){existing.outerHTML=H;}else{host.insertAdjacentHTML('beforeend',H);}
+};
+var __v30Busy=false,__v30Timer=null;
+function v30Visible(){var h=document.getElementById('v-dividas');return h&&h.offsetParent!==null;}
+window.__v30Tick=function(force){
+  if(__v30Busy)return;
+  if(!force&&!v30Visible())return;
+  if(!v30Visible())return;
+  __v30Busy=true;
+  try{window.__v30Render();}catch(e){}
+  setTimeout(function(){__v30Busy=false;},0);
+};
+function v30Schedule(){if(__v30Timer)return;__v30Timer=setTimeout(function(){__v30Timer=null;window.__v30Tick(false);},250);}
+try{var mo=new MutationObserver(function(){if(__v30Busy)return;if(v30Visible())v30Schedule();});mo.observe(document.body,{childList:true,subtree:true});}catch(e){}
+setInterval(function(){window.__v30Tick(false);},1500);
+setTimeout(function(){window.__v30Tick(true);},500);
+window.__finV30=true;})();</script>
 </body>
 </html>
