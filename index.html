@@ -31650,6 +31650,121 @@ function v30Schedule(){if(__v30Timer)return;__v30Timer=setTimeout(function(){__v
 try{var mo=new MutationObserver(function(){if(__v30Busy)return;if(v30Visible())v30Schedule();});mo.observe(document.body,{childList:true,subtree:true});}catch(e){}
 setInterval(function(){window.__v30Tick(false);},1500);
 setTimeout(function(){window.__v30Tick(true);},500);
-window.__finV30=true;})();</script>
+window.__finV30=true;})();
+
+/* ===== PATCH v31 dividas consolidadas: multa, severidade, sem duplicacao, mensal+pago+grafico ===== */
+(function(){
+  if(window.__finV31) return;
+  var SKEY='educare-escola-settings';
+  function lsGet(){ try{ return JSON.parse(localStorage.getItem(SKEY))||{}; }catch(e){ return {}; } }
+  function multaPct(){ var o=lsGet(); var p=parseFloat(o.multaPct); if(isNaN(p)){ try{ p=parseFloat(CONFIG.multaPct); }catch(e){ p=NaN; } } if(isNaN(p)) p=10; return p; }
+  function setMultaPct(v){ var o=lsGet(); o.multaPct=v; try{ localStorage.setItem(SKEY, JSON.stringify(o)); }catch(e){} try{ CONFIG.multaPct=v; }catch(e){} }
+  window.__multaPct=multaPct;
+  function _fmt(n){ try{ return (typeof fmt==='function')? fmt(n) : (Math.round(n).toLocaleString('pt')+' MZM'); }catch(e){ return n+' MZM'; } }
+  function _esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function sev(m){ if(m>=3) return {t:'Grave', c:'#dc2626'}; if(m===2) return {t:'Media', c:'#f59e0b'}; return {t:'Leve', c:'#eab308'}; }
+  function devedores(){
+    var base=[]; try{ base = (typeof window.__v30Devedores==='function')? window.__v30Devedores() : []; }catch(e){ base=[]; }
+    var pct=multaPct(); var out=[];
+    base.forEach(function(x){
+      var meses=x.meses||0, prop=x.val||0;
+      if(meses<=0 || prop<=0) return;
+      var multa=Math.round(prop*pct/100), total=prop+multa, s=sev(meses);
+      out.push({ a:x.a, meses:meses, propina:prop, multa:multa, total:total, sev:s.t, cor:s.c });
+    });
+    out.sort(function(a,b){ return b.meses-a.meses || b.total-a.total; });
+    return out;
+  }
+  window.__v31Devedores=devedores;
+  function historico(){
+    var h=[]; try{ h=(typeof window.__v30Hist==='function')? window.__v30Hist() : []; }catch(e){ h=[]; }
+    var pct=multaPct();
+    return h.map(function(r){
+      var pago=0; try{ pago=(typeof getTotalPagoMes==='function')? (getTotalPagoMes(r.m)||0) : 0; }catch(e){ pago=0; }
+      return { m:r.m, nome:r.nome, novo:Math.round((r.novo||0)*(1+pct/100)), pago:pago, acc:Math.round((r.acc||0)*(1+pct/100)), fechado:!!r.fechado };
+    });
+  }
+  window.__v31Hist=historico;
+  window.__v31Setor=setMultaPct;
+  window.__finV31=true;
+})();
+
+(function(){
+  if(window.__finV31b) return;
+  function _fmt(n){ try{ return (typeof fmt==='function')? fmt(n) : (Math.round(n).toLocaleString('pt')+' MZM'); }catch(e){ return n+' MZM'; } }
+  function _esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var showMensal=false;
+  window.__v31ToggleMensal=function(){ showMensal=!showMensal; render(); };
+  window.__v31OnMultaInput=function(el){ var v=parseFloat(el.value); if(isNaN(v)||v<0) v=0; window.__v31Setor(v); render(); };
+  function chartSVG(hist){
+    var W=720,H=180,pad=30;
+    var max=0; hist.forEach(function(r){ if(r.acc>max) max=r.acc; }); if(max<=0) max=1;
+    var n=hist.length, stepX=(W-pad*2)/(n-1||1);
+    var pts=hist.map(function(r,i){ var x=pad+i*stepX, y=H-pad-(r.acc/max)*(H-pad*2); return [x,y]; });
+    var poly=pts.map(function(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ');
+    var dots=pts.map(function(p,i){ return '<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3" fill="#dc2626"/><text x="'+p[0].toFixed(1)+'" y="'+(H-pad+14)+'" font-size="9" text-anchor="middle" fill="#94a3b8">'+_esc(hist[i].nome)+'</text>'; }).join('');
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto"><line x1="'+pad+'" y1="'+(H-pad)+'" x2="'+(W-pad)+'" y2="'+(H-pad)+'" stroke="#e2e8f0"/><polyline points="'+poly+'" fill="none" stroke="#dc2626" stroke-width="2"/>'+dots+'<text x="'+pad+'" y="14" font-size="10" fill="#64748b">Maximo: '+_fmt(max)+'</text></svg>';
+  }
+  function mensalHTML(){
+    var hist=window.__v31Hist();
+    var rows=hist.map(function(r){
+      var est = r.fechado? '<span style="color:#dc2626;font-weight:700">Fechado</span>' : '<span style="color:#94a3b8">Aberto</span>';
+      var novo = r.novo>0? '<span style="color:#dc2626">'+_fmt(r.novo)+'</span>' : '<span style="color:#94a3b8">&mdash;</span>';
+      var pago = r.pago>0? '<span style="color:#16a34a">'+_fmt(r.pago)+'</span>' : '<span style="color:#94a3b8">&mdash;</span>';
+      var acc = r.acc>0? '<b style="color:#dc2626">'+_fmt(r.acc)+'</b>' : '<b style="color:#16a34a">0 MZM</b>';
+      return '<tr style="border-top:1px solid var(--bd,#eee)"><td style="padding:10px 12px">'+_esc(r.nome)+'</td><td style="padding:10px 12px">'+novo+'</td><td style="padding:10px 12px">'+pago+'</td><td style="padding:10px 12px;text-align:right">'+acc+'</td><td style="padding:10px 12px;text-align:right">'+est+'</td></tr>';
+    }).join('');
+    return '<div style="margin-top:18px;background:var(--card,#fff);border:1px solid var(--bd,#eee);border-radius:14px;padding:16px"><div style="font-weight:700;margin-bottom:6px">Divida mes a mes</div><div style="font-size:12px;color:#64748b;margin-bottom:10px">A divida nao saldada transita para o mes seguinte. Cada mes tranca apos o fecho.</div>'+chartSVG(window.__v31Hist())+'<table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px"><thead><tr style="color:#64748b;font-size:11px;text-transform:uppercase"><th style="text-align:left;padding:8px 12px">Mes</th><th style="text-align:left;padding:8px 12px">Divida do Mes</th><th style="text-align:left;padding:8px 12px">Valor Pago</th><th style="text-align:right;padding:8px 12px">Divida Acumulada</th><th style="text-align:right;padding:8px 12px">Estado</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  function render(){
+    var host=document.querySelector('#v-dividas #dividas-c'); if(!host) return;
+    var v30r=document.getElementById('v30-root'); if(v30r) v30r.remove();
+    var devs=window.__v31Devedores();
+    var pct=window.__multaPct();
+    var totalDivida=devs.reduce(function(s,d){ return s+d.total; },0);
+    var nDev=devs.length;
+    var c1=devs.filter(function(d){return d.meses<2;}).length, c2=devs.filter(function(d){return d.meses===2;}).length, c3=devs.filter(function(d){return d.meses>=3;}).length;
+    var taxa=0; try{ var hist=window.__v31Hist(); }catch(e){}
+    var rows=devs.map(function(d){
+      var a=d.a||{};
+      return '<tr style="border-top:1px solid var(--bd,#eee)"><td style="padding:10px 12px"><b>'+_esc(a.nome)+'</b><br><span style="font-size:11px;color:#94a3b8">'+_esc(a.num||'')+'</span></td><td style="padding:10px 12px">'+_esc(a.turma||'')+'</td><td style="padding:10px 12px;text-align:center">'+d.meses+'</td><td style="padding:10px 12px;text-align:right">'+_fmt(d.propina)+'</td><td style="padding:10px 12px;text-align:right;color:#f59e0b">'+_fmt(d.multa)+'</td><td style="padding:10px 12px;text-align:right"><b>'+_fmt(d.total)+'</b></td><td style="padding:10px 12px;text-align:center"><span style="background:'+d.cor+'22;color:'+d.cor+';padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">'+d.sev+'</span></td></tr>';
+    }).join('');
+    var listaInner = nDev? rows : '<tr><td colspan="7" style="padding:24px;text-align:center;color:#16a34a;font-weight:600">Sem dividas. Todos os pagamentos em dia.</td></tr>';
+    var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">'
+      +'<div style="background:var(--card,#fff);border:1px solid #fecaca;border-top:3px solid #dc2626;border-radius:14px;padding:18px;text-align:center"><div style="font-size:30px;font-weight:800;color:#dc2626">'+nDev+'</div><div style="color:#64748b;font-size:13px">Alunos Devedores</div></div>'
+      +'<div style="background:var(--card,#fff);border:1px solid #fecaca;border-top:3px solid #dc2626;border-radius:14px;padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:#dc2626">'+_fmt(totalDivida)+'</div><div style="color:#64748b;font-size:13px">Total em Divida (c/ multa)</div></div>'
+      +'<div style="background:var(--card,#fff);border:1px solid #fde68a;border-top:3px solid #f59e0b;border-radius:14px;padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:#f59e0b">'+pct+'%</div><div style="color:#64748b;font-size:13px">Multa por atraso</div></div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">'
+      +'<div style="font-size:13px;color:#64748b"><b style="color:#eab308">'+c1+'</b> leve &nbsp; <b style="color:#f59e0b">'+c2+'</b> media &nbsp; <b style="color:#dc2626">'+c3+'</b> grave</div>'
+      +'<div style="flex:1"></div>'
+      +'<label style="font-size:12px;color:#64748b">Multa (%): <input type="number" min="0" step="1" value="'+pct+'" oninput="__v31OnMultaInput(this)" style="width:64px;padding:5px 8px;border:1px solid var(--bd,#ddd);border-radius:8px"></label>'
+      +'<button onclick="__v31ToggleMensal()" style="background:#1e293b;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer">'+(showMensal?'Ocultar divida mensal':'Ver divida mes a mes')+'</button>'
+      +'</div>'
+      +'<div style="background:var(--card,#fff);border:1px solid var(--bd,#eee);border-radius:14px;overflow:hidden"><div style="padding:14px 16px;font-weight:700;border-bottom:1px solid var(--bd,#eee)">Lista de Devedores <span style="font-weight:400;color:#94a3b8;font-size:13px">'+nDev+' alunos &middot; '+_fmt(totalDivida)+' em divida</span></div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="color:#64748b;font-size:11px;text-transform:uppercase"><th style="text-align:left;padding:10px 12px">Aluno</th><th style="text-align:left;padding:10px 12px">Turma</th><th style="text-align:center;padding:10px 12px">Meses</th><th style="text-align:right;padding:10px 12px">Propina</th><th style="text-align:right;padding:10px 12px">Multa</th><th style="text-align:right;padding:10px 12px">Total Divida</th><th style="text-align:center;padding:10px 12px">Situacao</th></tr></thead><tbody>'+listaInner+'</tbody></table></div>'
+      + (showMensal? mensalHTML() : '');
+    host.innerHTML=html; host.style.display='block';
+  }
+  window.__v31Render=render;
+  // neutralizar render nativo antigo e o v30
+  try{ window.rDividasConsolidadas=function(){ render(); }; }catch(e){}
+  try{ window.__v30Render=function(){ render(); }; }catch(e){}
+  var busy=false, t=null;
+  function tick(){
+    var vd=document.getElementById('v-dividas');
+    if(!vd) return;
+    var vis=getComputedStyle(vd).display!=='none';
+    if(!vis) return;
+    if(busy) return; busy=true;
+    try{ render(); }catch(e){} busy=false;
+  }
+  function schedule(){ if(t) return; t=setTimeout(function(){ t=null; tick(); },250); }
+  try{ var mo=new MutationObserver(function(){ schedule(); }); var root=document.getElementById('v-dividas')||document.body; mo.observe(root,{childList:true,subtree:true}); }catch(e){}
+  setInterval(function(){ var vd=document.getElementById('v-dividas'); if(vd && getComputedStyle(vd).display!=='none'){ var has=document.querySelector('#v-dividas #dividas-c'); if(has && !has.querySelector('button')) tick(); } }, 1500);
+  setTimeout(tick, 300);
+  window.__finV31b=true;
+})();
+</script>
 </body>
 </html>
