@@ -31765,6 +31765,148 @@ window.__finV30=true;})();
   setTimeout(tick, 300);
   window.__finV31b=true;
 })();
+
+/* ===== PATCH v32 utilizadores: remove aba duplicada + modal criar utilizador (staff) ===== */
+(function(){
+  if(window.__finV32) return;
+  var MKEY='scholaris-util-manual';
+  function load(){ try{ return JSON.parse(localStorage.getItem(MKEY))||[]; }catch(e){ return []; } }
+  function save(a){ try{ localStorage.setItem(MKEY, JSON.stringify(a)); }catch(e){} }
+  window.__v32Users=load;
+  var ROLES=[
+    {v:'director', t:'Director'},
+    {v:'dir_pedagogico', t:'Director Pedagogico'},
+    {v:'dir_ciclo', t:'Director de Ciclo'},
+    {v:'professor', t:'Professor'},
+    {v:'secretario', t:'Secretario'}
+  ];
+  function roleLabel(v){ for(var i=0;i<ROLES.length;i++){ if(ROLES[i].v===v) return ROLES[i].t; } return v; }
+  function uname(nome){ try{ return (typeof gerarUsername==='function')? gerarUsername(nome) : String(nome||'').toLowerCase().trim().replace(/\s+/g,'.'); }catch(e){ return ''; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  // remover aba duplicada na sidebar
+  function dedupeSidebar(){
+    try{
+      var btns=[].slice.call(document.querySelectorAll('button.si,a.si')).filter(function(e){ return /^utilizadores$/i.test((e.textContent||'').trim()); });
+      if(btns.length>1){ for(var i=1;i<btns.length;i++){ btns[i].remove(); } }
+    }catch(e){}
+  }
+  window.__v32Dedupe=dedupeSidebar;
+  window.__finV32=true;
+})();
+
+(function(){
+  if(window.__finV32b) return;
+  var MKEY='scholaris-util-manual';
+  function load(){ try{ return JSON.parse(localStorage.getItem(MKEY))||[]; }catch(e){ return []; } }
+  function save(a){ try{ localStorage.setItem(MKEY, JSON.stringify(a)); }catch(e){} }
+  var ROLES=[ {v:'director',t:'Director'},{v:'dir_pedagogico',t:'Director Pedagogico'},{v:'dir_ciclo',t:'Director de Ciclo'},{v:'professor',t:'Professor'},{v:'secretario',t:'Secretario'} ];
+  function roleLabel(v){ for(var i=0;i<ROLES.length;i++){ if(ROLES[i].v===v) return ROLES[i].t; } return v; }
+  function uname(nome){ try{ return (typeof gerarUsername==='function')? gerarUsername(nome) : String(nome||'').toLowerCase().trim().replace(/\s+/g,'.'); }catch(e){ return ''; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function toast(msg,ok){
+    try{
+      var d=document.createElement('div');
+      d.textContent=msg;
+      d.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:'+(ok?'#16a34a':'#dc2626')+';color:#fff;padding:11px 18px;border-radius:10px;z-index:99999;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)';
+      document.body.appendChild(d);
+      setTimeout(function(){ try{ d.remove(); }catch(e){} }, 3000);
+    }catch(e){}
+  }
+  function podeCriar(){
+    try{
+      var u = (window.SESSAO||window.sessao||window.USER||window.currentUser||{});
+      var r = (u.role||u.perfil||'').toString().toLowerCase();
+      if(!r) return true;
+      return r.indexOf('gestor')>-1 || r.indexOf('director')>-1 || r==='admin';
+    }catch(e){ return true; }
+  }
+  var mo=null, busy=false;
+  function stopObs(){ try{ if(mo) mo.disconnect(); }catch(e){} }
+  function startObs(){
+    try{
+      var root=document.getElementById('v-utilizadores'); if(!root) return;
+      if(!mo) mo=new MutationObserver(sched);
+      mo.observe(root,{childList:true,subtree:true});
+    }catch(e){}
+  }
+  var t=null;
+  function sched(){ if(t||busy) return; t=setTimeout(function(){ t=null; try{ window.__v32Dedupe(); var v=document.getElementById('v-utilizadores'); if(v && getComputedStyle(v).display!=='none') injectList(); }catch(e){} }, 300); }
+  function ensureModal(){
+    var m=document.getElementById('m-criar-user');
+    if(m) return m;
+    var opts=ROLES.map(function(r){ return '<option value="'+r.v+'">'+r.t+'</option>'; }).join('');
+    var wrap=document.createElement('div');
+    wrap.id='m-criar-user'; wrap.className='modal';
+    wrap.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center';
+    wrap.innerHTML='<div style="background:var(--card,#fff);border-radius:16px;max-width:440px;width:92%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;font-size:18px">Criar Utilizador Manual</h3><button onclick="__v32CloseModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+      +'<p style="margin:0 0 14px;font-size:12px;color:#64748b">Apenas staff. Alunos e Encarregados sao criados automaticamente na inscricao.</p>'
+      +'<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Nome completo</label><input id="cu-nome" oninput="__v32Preview()" placeholder="Ex: Maria Jose da Silva" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'
+      +'<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Perfil / Role</label><select id="cu-role" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'+opts+'</select>'
+      +'<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Email (opcional)</label><input id="cu-email" type="email" placeholder="email@escola.mz" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'
+      +'<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Telefone (password inicial)</label><input id="cu-pass" placeholder="Ex: 84xxxxxxx" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:8px">'
+      +'<div style="background:#f1f5f9;border-radius:9px;padding:9px 11px;font-size:12px;color:#475569;margin-bottom:16px">Username gerado: <b id="cu-uname-prev">&mdash;</b><br>O utilizador deve alterar a password apos o primeiro login.</div>'
+      +'<div style="display:flex;gap:10px;justify-content:flex-end"><button onclick="__v32CloseModal()" style="padding:9px 16px;border:1px solid var(--bd,#ddd);background:#fff;border-radius:9px;cursor:pointer">Cancelar</button><button onclick="__v32SubmitUser()" style="padding:9px 18px;border:none;background:#2563eb;color:#fff;border-radius:9px;cursor:pointer;font-weight:600">Criar</button></div>'
+      +'</div>';
+    document.body.appendChild(wrap);
+    return wrap;
+  }
+  window.__v32Preview=function(){ var n=document.getElementById('cu-nome'); var p=document.getElementById('cu-uname-prev'); if(n&&p){ p.textContent=uname(n.value)||'\u2014'; } };
+  window.__v32CloseModal=function(){ var m=document.getElementById('m-criar-user'); if(m) m.style.display='none'; };
+  window.__v32OpenModal=function(){
+    if(!podeCriar()){ toast('Sem permissao. Apenas Gestor Geral ou Director.', false); return; }
+    var m=ensureModal();
+    var n=document.getElementById('cu-nome'), e=document.getElementById('cu-email'), p=document.getElementById('cu-pass'), pv=document.getElementById('cu-uname-prev');
+    if(n) n.value=''; if(e) e.value=''; if(p) p.value=''; if(pv) pv.textContent='\u2014';
+    m.style.display='flex';
+  };
+  window.__v32SubmitUser=function(){
+    var nome=((document.getElementById('cu-nome')||{}).value||'').trim();
+    var role=(document.getElementById('cu-role')||{}).value||'';
+    var email=((document.getElementById('cu-email')||{}).value||'').trim();
+    var pass=((document.getElementById('cu-pass')||{}).value||'').trim();
+    if(nome.length<3){ toast('Indique o nome completo.', false); return; }
+    if(!role){ toast('Escolha o perfil.', false); return; }
+    if(!pass){ toast('Indique o telefone (password inicial).', false); return; }
+    var arr=load(); var u=uname(nome);
+    if(arr.some(function(x){ return x.username===u; })){ toast('Ja existe um utilizador com esse username.', false); return; }
+    arr.push({ nome:nome, role:role, roleLabel:roleLabel(role), username:u, email:email, passInicial:pass, criadoEm:new Date().toISOString() });
+    save(arr);
+    window.__v32CloseModal();
+    toast('Utilizador '+nome+' criado ('+roleLabel(role)+').', true);
+    injectList();
+  };
+  try{ window.criarUtilizadorManual=function(){ window.__v32OpenModal(); }; }catch(e){}
+  function injectList(){
+    if(busy) return; busy=true; stopObs();
+    try{
+      var v=document.getElementById('v-utilizadores'); if(!v){ return; }
+      var arr=load();
+      var heading=[].slice.call(v.querySelectorAll('*')).filter(function(e){ return e.children.length===0 && /Utilizadores com Acesso Manual/i.test(e.textContent||''); })[0];
+      var table=[].slice.call(v.querySelectorAll('table')).filter(function(t2){ return /Harris|Machava|Manual/i.test(t2.textContent||''); }).pop();
+      if(!table){ table=[].slice.call(v.querySelectorAll('table')).pop(); }
+      if(!table){ return; }
+      var tb=table.querySelector('tbody'); if(!tb){ return; }
+      [].slice.call(tb.querySelectorAll('tr[data-v32]')).forEach(function(r){ r.remove(); });
+      arr.forEach(function(x){
+        var tr=document.createElement('tr'); tr.setAttribute('data-v32','1');
+        tr.innerHTML='<td style="padding:12px 10px"><b>'+esc(x.nome)+'</b></td>'
+          +'<td style="padding:12px 10px"><span style="color:#2563eb;font-weight:600">'+esc(x.roleLabel||x.role)+'</span></td>'
+          +'<td style="padding:12px 10px"><code>'+esc(x.username)+'</code></td>'
+          +'<td style="padding:12px 10px">'+esc(x.passInicial)+'</td>'
+          +'<td style="padding:12px 10px"><span style="background:#dbeafe;color:#2563eb;padding:2px 9px;border-radius:20px;font-size:11px">Manual</span></td>'
+          +'<td style="padding:12px 10px;text-align:right"><button title="Remover" onclick="__v32RemoveUser(\''+esc(x.username)+'\')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:18px">&times;</button></td>';
+        tb.appendChild(tr);
+      });
+      if(heading){ heading.textContent=heading.textContent.replace(/\((\d+)\)/, '('+(3+arr.length)+')'); }
+    }catch(e){}finally{ busy=false; startObs(); }
+  }
+  window.__v32Inject=injectList;
+  window.__v32RemoveUser=function(u){ var arr=load().filter(function(x){ return x.username!==u; }); save(arr); injectList(); };
+  setTimeout(function(){ try{ window.__v32Dedupe(); injectList(); startObs(); }catch(e){} }, 400);
+  window.__finV32b=true;
+})();
+
 </script>
 </body>
 </html>
