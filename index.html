@@ -20580,26 +20580,7 @@ if (typeof RENDER_MAP !== 'undefined') {
   RENDER_MAP['utilizadores'] = () => rUtilizadores();
 }
 
-// Add to gestor sidebar
-const _origBuildSidebarAuth = buildSidebar;
-buildSidebar = function() {
-  _origBuildSidebarAuth();
-  // Inject "Utilizadores" into gestor/director sidebar if not already there
-  if (!['gestor','director'].includes(curRole)) return;
-  const sb = document.getElementById('sb-content');
-  if (!sb || sb.querySelector('[data-id="utilizadores"]')) return;
-  // Find "Configurações" button and add after it
-  const configBtn = sb.querySelector('[id="si-config"]');
-  if (configBtn) {
-    const btn = document.createElement('button');
-    btn.className = 'si';
-    btn.id = 'si-utilizadores';
-    btn.setAttribute('data-id','utilizadores');
-    btn.onclick = () => go('utilizadores');
-    btn.innerHTML = '<i class="ti ti-users-group" style="font-size:16px"></i><span>Utilizadores</span>';
-    configBtn.parentNode.insertBefore(btn, configBtn.nextSibling);
-  }
-};
+
 
 function rUtilizadores() {
   const el = document.getElementById('utilizadores-c');
