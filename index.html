@@ -31889,5 +31889,80 @@ window.__finV30=true;})();
 })();
 
 </script>
+<script>
+/* ===== PATCH v34: handshake - 1o login cria a conta no Supabase ===== */
+(function(){
+  if(window.__finV34) return;
+  var MKEY = 'scholaris-util-manual';
+  function loadManual(){ try{ return JSON.parse(localStorage.getItem(MKEY)) || []; }catch(e){ return []; } }
+  function saveManual(a){ try{ localStorage.setItem(MKEY, JSON.stringify(a)); }catch(e){} }
+  function getSupa(){ try{ return (typeof _supa!=='undefined' && _supa) ? _supa : (window._supa || window.supabase || null); }catch(e){ return (window._supa || window.supabase || null); } }
+
+  // Provisiona: cria conta no Supabase Auth + linha em 'perfis'. Devolve true se provisionou.
+  function provision(u, email, pass){
+    var supa = getSupa();
+    if(!supa || !supa.auth || typeof supa.auth.signUp!=='function'){ return Promise.resolve(false); }
+    return supa.auth.signUp({ email: email, password: pass }).then(function(res){
+      if(res && res.error){
+        if(/already|registered|exists/i.test(res.error.message||'')){ return false; }
+        throw res.error;
+      }
+      var user = res && res.data ? res.data.user : null;
+      var row = {
+        email: email,
+        nome: u.nome,
+        perfil: u.role,
+        escola_id: window._escolaId || 'escola-demo',
+        pass_alterada: false,
+        criado_em: new Date().toISOString()
+      };
+      if(user && user.id){ row.id = user.id; }
+      return Promise.resolve(supa.from('perfis').insert(row)).then(function(){ return true; }).catch(function(){ return true; });
+    });
+  }
+
+  // Wrap fbLogin: antes do login normal, provisiona o utilizador manual nao-ativado.
+  if(typeof window.fbLogin==='function' && !window.fbLogin.__v34){
+    var _origFbLogin = window.fbLogin;
+    window.fbLogin = function(){
+      var self=this, args=arguments;
+      var em = ((document.getElementById('login-email')||{}).value||'').trim();
+      var pw = (document.getElementById('login-pass')||{}).value;
+      var p = Promise.resolve();
+      if(em && pw){
+        var arr = loadManual(); var idx=-1;
+        for(var i=0;i<arr.length;i++){
+          if(arr[i] && arr[i].email && arr[i].email.trim().toLowerCase()===em.toLowerCase() && String(arr[i].passInicial)===String(pw) && !arr[i].ativado){ idx=i; break; }
+        }
+        if(idx>-1){
+          p = provision(arr[idx], em, pw).then(function(done){
+            if(done){ arr[idx].ativado=true; arr[idx].ativadoEm=new Date().toISOString(); saveManual(arr); }
+          }).catch(function(e){ console.warn('v34 handshake:', e && e.message); });
+        }
+      }
+      return p.then(function(){ return _origFbLogin.apply(self, args); });
+    };
+    window.fbLogin.__v34 = true;
+  }
+
+  // Garante o role correcto a partir da lista manual.
+  if(typeof window._entrarNaApp==='function' && !window._entrarNaApp.__v34){
+    var _origEntrar = window._entrarNaApp;
+    window._entrarNaApp = function(userData){
+      try{
+        if(userData && userData.email){
+          var arr = loadManual();
+          var m = arr.filter(function(x){ return x && x.email && x.email.trim().toLowerCase()===String(userData.email).trim().toLowerCase(); })[0];
+          if(m && m.role){ userData.role = m.role; if(m.nome) userData.nome = m.nome; }
+        }
+      }catch(e){}
+      return _origEntrar.apply(this, arguments);
+    };
+    window._entrarNaApp.__v34 = true;
+  }
+
+  window.__finV34 = true;
+})();
+</script>
 </body>
 </html>
