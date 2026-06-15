@@ -4961,7 +4961,7 @@ function setupPresencas(){
   document.getElementById('pres-sub').textContent='Registo de presenças';
   // Preencher select de turmas (professor só vê as suas)
   const turmasSel=document.getElementById('pres-turma-sel');
-  const turmasList=curRole==='professor'?TURMAS.filter(t=>PROFS.find(p=>p.id===1)?.turmas.includes(t.id)):TURMAS;
+  const turmasList=curRole==='professor'?TURMAS.filter(t=>((typeof resolverMeuProf==='function'?resolverMeuProf():null)||PROFS.find(p=>p.id===1))?.turmas.includes(t.id)):TURMAS;
   turmasSel.innerHTML='<option value="">— Seleccionar turma —</option>'+turmasList.map(t=>`<option value="${t.id}">${t.cl}${t.t} — ${t.curso}</option>`).join('');
 }
 
@@ -5463,7 +5463,8 @@ function rPortalAluno(){
 
 // ══ PORTAL PROFESSOR ══
 function rPortalProf(){
-  const p=PROFS.find(x=>x.num==='PRF000001');
+  const p=(typeof resolverMeuProf==='function' && resolverMeuProf()) || PROFS.find(x=>x.num==='PRF000001') || PROFS[0];
+  if(!p){ document.getElementById('portal-prof-c').innerHTML='<div class="ib-box ib-am"><i class="ti ti-alert-triangle"></i> Perfil não encontrado. Peça ao Gestor para registar a sua ficha em Staff.</div>'; const sb=document.getElementById('pportal-sub'); if(sb) sb.textContent=''; return; }
   document.getElementById('pportal-sub').textContent=`${p.nome} · ${p.regime==='inteiro'?'Tempo Inteiro (20h/sem)':'Tempo Parcial (8h/sem)'}`;
   document.getElementById('portal-prof-c').innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px">
@@ -5595,6 +5596,7 @@ async function fbLogin() {
         userData.nome = perfil.nome_completo || perfil.nome || userData.nome;
         userData.role = normalizarPapel(perfil.perfil) || userData.role;
         userData.escolaId = perfil.escola_id || userData.escolaId;
+        window._meuStaffId = perfil.staff_id || null; // ligação conta <-> pessoa (staff)
       }
     } catch(pe) {
       console.warn('[Login] Sem perfil na BD — a usar defaults');
@@ -21902,6 +21904,11 @@ console.log('[Scholaris] Dir. Ciclo + Portal Profissional + Minha Aula carregado
 // ── Resolve prof do utilizador actual ─────────────────────────
 function resolverMeuProf() {
   if (!curUser) return null;
+  // Fase 1: se a conta está ligada a uma ficha de staff, é essa a pessoa (prioridade absoluta)
+  if (window._meuStaffId) {
+    const ligado = PROFS.find(p => p._dbId === window._meuStaffId);
+    if (ligado) return ligado;
+  }
   return PROFS.find(p =>
     (curUser.profNum && p.num === curUser.profNum) ||
     (curUser._profId && p.id  === curUser._profId) ||
