@@ -31955,8 +31955,12 @@ window.__finV30=true;})();
       + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody id="v35-tbody"><tr><td colspan="6" style="color:var(--t3);padding:14px">A carregar...</td></tr></tbody></table></div></div>';
     var sb = supa();
     if (!sb){ var tb0=document.getElementById('v35-tbody'); if(tb0) tb0.innerHTML='<tr><td colspan="6" style="padding:14px;color:var(--t3)">Sem ligação.</td></tr>'; return; }
-    sb.from('perfis').select('id,nome_completo,nome,email,perfil,pass_alterada,ativo,criado_em').order('criado_em', { ascending:false })
-      .then(function(res){
+    Promise.all([
+      sb.from('perfis').select('id,nome_completo,nome,email,perfil,pass_alterada,ativo,criado_em,staff_id').order('criado_em', { ascending:false }),
+      sb.from('staff').select('id,num')
+    ]).then(function(results){
+        var res = results[0] || {};
+        var staffMap = {}; (((results[1]||{}).data)||[]).forEach(function(s){ staffMap[s.id]=s.num; });
         var tb=document.getElementById('v35-tbody'); if(!tb) return;
         var rows = (res && res.data) || [];
         if (!rows.length){ tb.innerHTML='<tr><td colspan="6" style="padding:14px;color:var(--t3)">Ainda não há utilizadores. Crie o primeiro.</td></tr>'; return; }
@@ -31965,7 +31969,8 @@ window.__finV30=true;})();
           var pf = LABEL[u.perfil]||u.perfil||'—';
           var ativo = (u.ativo !== false);
           var numId = '—';
-          if (Array.isArray(window.PROFS) && u.staff_id){ var pp = PROFS.find(function(p){return p._dbId===u.staff_id;}); if(pp && pp.num) numId = pp.num; }
+          if (u.staff_id && staffMap[u.staff_id]) numId = staffMap[u.staff_id];
+          else if (Array.isArray(window.PROFS) && u.staff_id){ var pp = PROFS.find(function(p){return p._dbId===u.staff_id;}); if(pp && pp.num) numId = pp.num; }
           if (numId==='—' && u.id) numId = String(u.id).slice(0,8);
           var estado = ativo ? '<span class="badge bok" style="font-size:10px">Activo</span>' : '<span class="badge ber" style="font-size:10px">Suspenso</span>';
           var idJs = esc(u.id), nomeJs = nome.replace(/'/g,"\\'"), emailJs = esc(u.email||'');
