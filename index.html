@@ -5598,6 +5598,11 @@ async function fbLogin() {
       const { data: perfil } = await window._supabase
         .from('perfis').select('*').eq('id', user.id).single();
       if (perfil) {
+        if (perfil.ativo === false) {
+          await window._supabase.auth.signOut().catch(()=>{});
+          if (typeof showLoginError==='function') showLoginError('Conta suspensa. Contacte o gestor da escola.');
+          return;
+        }
         userData.nome = perfil.nome_completo || perfil.nome || userData.nome;
         userData.role = normalizarPapel(perfil.perfil) || userData.role;
         userData.escolaId = perfil.escola_id || userData.escolaId;
@@ -20814,49 +20819,40 @@ function alterarPassword() {
 
 let _resetEmail = '', _resetNome = '', _resetTel = '';
 
-function abrirResetPass(email, nome, tel) {
-  _resetEmail = email;
-  _resetNome  = nome;
-  _resetTel   = tel;
+function abrirResetPass(id, nome, email) {
+  window._resetId   = id;
+  window._resetNome = nome;
 
   const info = document.getElementById('reset-user-info');
-  if (info) info.innerHTML = `
-    <div style="font-weight:700;font-size:14px">${nome}</div>
-    <div style="font-size:12px;color:var(--t2);margin-top:2px">${email}</div>`;
+  if (info) info.innerHTML =
+    '<div style="font-weight:700;font-size:14px">' + (nome||'') + '</div>' +
+    '<div style="font-size:12px;color:var(--t2);margin-top:2px">' + (email||'') + '</div>';
 
   const newPassEl = document.getElementById('reset-nova-pass');
-  if (newPassEl) newPassEl.value = tel || ''; // Pre-fill with phone (default reset)
+  if (newPassEl) newPassEl.value = '';
 
   openM('m-reset-pass');
 }
 
-function confirmarResetPass() {
+async function confirmarResetPass() {
   const novPass = document.getElementById('reset-nova-pass')?.value.trim();
   if (!novPass || novPass.length < 6) {
     toast('Password deve ter pelo menos 6 caracteres'); return;
   }
-
-  // Firebase Admin SDK not available in client — use Firebase Auth sendPasswordResetEmail
-  // or if we have the user's uid, use Admin API
-  // In demo mode: just confirm
-  if (window._fbAuth && window._auth) {
-    const { sendPasswordResetEmail } = window._fbAuth;
-    if (sendPasswordResetEmail && _resetEmail) {
-      sendPasswordResetEmail(window._auth, _resetEmail)
-        .then(() => {
-          closeM('m-reset-pass');
-          toast(`Email de reset enviado para ${_resetEmail}`);
-        })
-        .catch(() => {
-          closeM('m-reset-pass');
-          toast(`Reset registado para ${_resetNome} — password: ${novPass}`);
-        });
-      return;
-    }
+  if (!window._resetId) { toast('Utilizador não identificado'); return; }
+  const sb = window._supabase;
+  if (!sb || !sb.functions) { toast('Sem ligação ao servidor'); return; }
+  try {
+    const res = await sb.functions.invoke('gerir-utilizador', {
+      body: { action: 'reset-password', alvo_id: window._resetId, password: novPass }
+    });
+    if (res && res.error) { let d=''; try{ const j=await res.error.context.json(); d=(j&&j.error)?j.error:''; }catch(e){} toast(d||res.error.message||'Erro'); return; }
+    if (res && res.data && res.data.error) { toast(res.data.error); return; }
+    closeM('m-reset-pass');
+    toast('Password de ' + (window._resetNome||'utilizador') + ' redefinida.');
+  } catch(e) {
+    toast('Erro: ' + (e&&e.message?e.message:e));
   }
-
-  closeM('m-reset-pass');
-  toast(`Password de ${_resetNome} redefinida para: ${novPass}`);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -31948,17 +31944,41 @@ window.__finV30=true;})();
         tb.innerHTML = rows.map(function(u){
           var nome = esc(u.nome_completo||u.nome||u.email||'—');
           var pf = LABEL[u.perfil]||u.perfil||'—';
-          var estado = u.pass_alterada ? '<span class="badge bok" style="font-size:10px">Password alterada</span>' : '<span class="badge bwn" style="font-size:10px">Pass. inicial</span>';
-          return '<tr><td style="font-weight:700">'+nome+'</td>'
+          var ativo = (u.ativo !== false);
+          var estado = ativo ? '<span class="badge bok" style="font-size:10px">Activo</span>' : '<span class="badge ber" style="font-size:10px">Suspenso</span>';
+          var idJs = esc(u.id), nomeJs = nome.replace(/'/g,"\\'"), emailJs = esc(u.email||'');
+          var acoes = '';
+          if (canEdit) {
+            acoes += '<button class="btn btn-g btn-sm" style="margin-right:5px" onclick="abrirResetPass(\''+idJs+'\',\''+nomeJs+'\',\''+emailJs+'\')"><i class="ti ti-key"></i> Password</button>';
+            if (ativo) acoes += '<button class="btn btn-am btn-sm" onclick="gerirUtilizador(\'suspender\',\''+idJs+'\',\''+nomeJs+'\')"><i class="ti ti-ban"></i> Suspender</button>';
+            else       acoes += '<button class="btn btn-p btn-sm" onclick="gerirUtilizador(\'reactivar\',\''+idJs+'\',\''+nomeJs+'\')"><i class="ti ti-check"></i> Reactivar</button>';
+          }
+          return '<tr'+(ativo?'':' style="opacity:.55"')+'><td style="font-weight:700">'+nome+'</td>'
             + '<td><span class="badge bin">'+esc(pf)+'</span></td>'
             + '<td style="font-family:var(--fm);font-size:11px">'+esc(u.email||'—')+'</td>'
             + '<td>'+estado+'</td>'
-            + (canEdit ? '<td><button class="btn btn-am btn-sm" onclick="abrirResetPass(\''+esc(u.email)+'\',\''+nome+'\',\'\')"><i class="ti ti-refresh"></i> Reset</button></td>' : '')
+            + (canEdit ? '<td style="white-space:nowrap">'+acoes+'</td>' : '')
             + '</tr>';
         }).join('');
       });
   };
   if (window.RENDER_MAP) window.RENDER_MAP['utilizadores'] = function(){ window.rUtilizadores(); };
+
+  window.gerirUtilizador = function(action, id, nome){
+    var msg = action==='suspender'
+      ? ('Suspender '+nome+'?\n\nA pessoa perde o acesso imediatamente. A ficha mantém-se no histórico e pode ser reactivada depois.')
+      : ('Reactivar '+nome+'?\n\nA pessoa volta a poder entrar no sistema.');
+    if (!confirm(msg)) return;
+    var sb = supa(); if(!sb || !sb.functions){ toast('Sem ligação ao servidor'); return; }
+    sb.functions.invoke('gerir-utilizador', { body: { action: action, alvo_id: id } })
+      .then(async function(res){
+        if (res && res.error){ var d=''; try{ var j=await res.error.context.json(); d=(j&&j.error)?j.error:''; }catch(e){} toast(d||res.error.message||'Erro'); return; }
+        if (res && res.data && res.data.error){ toast(res.data.error); return; }
+        toast(action==='suspender' ? (nome+' suspenso.') : (nome+' reactivado.'));
+        if (typeof rUtilizadores==='function') rUtilizadores();
+      })
+      .catch(function(e){ toast('Erro: '+(e&&e.message?e.message:e)); });
+  };
 
   window.__finV35 = true;
 })();
