@@ -5571,17 +5571,20 @@ async function fbLogin() {
     const user = data.user;
     if (!user) { showLoginError('Erro ao autenticar.'); resetBtn(); return; }
 
-    // 2. Carregar perfil
-    const perfilMap = {
-      'admin_sistema':'gestor', 'director':'director',
-      'subdirector':'secretario', 'professor':'professor',
-      'secretaria':'secretario', 'encarregado':'encarregado',
+    // 2. Carregar perfil (papel canónico directo, sem mapa com fugas)
+    const CANON_ROLES = ['gestor','director','dir-pedagogico','dir-ciclo','secretario','professor','encarregado','aluno'];
+    const normalizarPapel = (p) => {
+      if (!p) return null;
+      let r = String(p).trim().replace(/_/g, '-'); // dir_pedagogico -> dir-pedagogico
+      const legado = { 'admin-sistema':'gestor', 'admin':'gestor', 'subdirector':'dir-pedagogico', 'secretaria':'secretario' };
+      r = legado[r] || r;
+      return CANON_ROLES.includes(r) ? r : null;
     };
 
     let userData = {
       uid: user.id, email: user.email,
       nome: user.email.split('@')[0],
-      role: 'gestor',
+      role: 'professor', // fallback seguro: nunca dar 'gestor' por omissão
       escolaId: localStorage.getItem('scholaris-escola-id') || 'escola_demo'
     };
 
@@ -5589,8 +5592,8 @@ async function fbLogin() {
       const { data: perfil } = await window._supabase
         .from('perfis').select('*').eq('id', user.id).single();
       if (perfil) {
-        userData.nome = perfil.nome_completo || userData.nome;
-        userData.role = perfilMap[perfil.perfil] || 'gestor';
+        userData.nome = perfil.nome_completo || perfil.nome || userData.nome;
+        userData.role = normalizarPapel(perfil.perfil) || userData.role;
         userData.escolaId = perfil.escola_id || userData.escolaId;
       }
     } catch(pe) {
@@ -31747,221 +31750,131 @@ window.__finV30=true;})();
   window.__finV31b=true;
 })();
 
-/* ===== PATCH v32 utilizadores: remove aba duplicada + modal criar utilizador (staff) ===== */
-(function(){
-  if(window.__finV32) return;
-  var MKEY='scholaris-util-manual';
-  function load(){ try{ return JSON.parse(localStorage.getItem(MKEY))||[]; }catch(e){ return []; } }
-  function save(a){ try{ localStorage.setItem(MKEY, JSON.stringify(a)); }catch(e){} }
-  window.__v32Users=load;
-  var ROLES=[
-    {v:'director', t:'Director'},
-    {v:'dir_pedagogico', t:'Director Pedagogico'},
-    {v:'dir_ciclo', t:'Director de Ciclo'},
-    {v:'professor', t:'Professor'},
-    {v:'secretario', t:'Secretario'}
-  ];
-  function roleLabel(v){ for(var i=0;i<ROLES.length;i++){ if(ROLES[i].v===v) return ROLES[i].t; } return v; }
-  function uname(nome){ try{ return (typeof gerarUsername==='function')? gerarUsername(nome) : String(nome||'').toLowerCase().trim().replace(/\s+/g,'.'); }catch(e){ return ''; } }
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  // remover aba duplicada na sidebar
-  function dedupeSidebar(){
-    try{
-      var btns=[].slice.call(document.querySelectorAll('button.si,a.si')).filter(function(e){ return /^utilizadores$/i.test((e.textContent||'').trim()); });
-      if(btns.length>1){ for(var i=1;i<btns.length;i++){ btns[i].remove(); } }
-    }catch(e){}
-  }
-  window.__v32Dedupe=dedupeSidebar;
-  window.__finV32=true;
-})();
 
+/* ===== PATCH v35: criar utilizadores via Edge Function (criar-utilizador) ===== */
 (function(){
-  if(window.__finV32b) return;
-  var MKEY='scholaris-util-manual';
-  function load(){ try{ return JSON.parse(localStorage.getItem(MKEY))||[]; }catch(e){ return []; } }
-  function save(a){ try{ localStorage.setItem(MKEY, JSON.stringify(a)); }catch(e){} }
-  var ROLES=[ {v:'director',t:'Director'},{v:'dir_pedagogico',t:'Director Pedagogico'},{v:'dir_ciclo',t:'Director de Ciclo'},{v:'professor',t:'Professor'},{v:'secretario',t:'Secretario'} ];
-  function roleLabel(v){ for(var i=0;i<ROLES.length;i++){ if(ROLES[i].v===v) return ROLES[i].t; } return v; }
-  function uname(nome){ try{ return (typeof gerarUsername==='function')? gerarUsername(nome) : String(nome||'').toLowerCase().trim().replace(/\s+/g,'.'); }catch(e){ return ''; } }
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  function toast(msg,ok){
-    try{
-      var d=document.createElement('div');
-      d.textContent=msg;
-      d.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:'+(ok?'#16a34a':'#dc2626')+';color:#fff;padding:11px 18px;border-radius:10px;z-index:99999;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)';
-      document.body.appendChild(d);
-      setTimeout(function(){ try{ d.remove(); }catch(e){} }, 3000);
-    }catch(e){}
-  }
-  function podeCriar(){
-    try{
-      var u = (window.SESSAO||window.sessao||window.USER||window.currentUser||{});
-      var r = (u.role||u.perfil||'').toString().toLowerCase();
-      if(!r) return true;
-      return r.indexOf('gestor')>-1 || r.indexOf('director')>-1 || r==='admin';
-    }catch(e){ return true; }
-  }
-  var mo=null, busy=false;
-  function stopObs(){ try{ if(mo) mo.disconnect(); }catch(e){} }
-  function startObs(){
-    try{
-      var root=document.getElementById('v-utilizadores'); if(!root) return;
-      if(!mo) mo=new MutationObserver(sched);
-      mo.observe(root,{childList:true,subtree:true});
-    }catch(e){}
-  }
-  var t=null;
-  function sched(){ if(t||busy) return; t=setTimeout(function(){ t=null; try{ window.__v32Dedupe(); var v=document.getElementById('v-utilizadores'); if(v && getComputedStyle(v).display!=='none') injectList(); }catch(e){} }, 300); }
+  if (window.__finV35) return;
+
+  var ROLES = [
+    { v:'director',       t:'Director',            soGestor:true  },
+    { v:'dir-pedagogico', t:'Director Pedagógico', soGestor:false },
+    { v:'dir-ciclo',      t:'Director de Ciclo',   soGestor:false },
+    { v:'secretario',     t:'Secretário',          soGestor:false },
+    { v:'professor',      t:'Professor',           soGestor:false }
+  ];
+  var LABEL = { gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico', 'dir-ciclo':'Director de Ciclo', secretario:'Secretário', professor:'Professor', encarregado:'Encarregado', aluno:'Aluno' };
+
+  function supa(){ return window._supabase || window._supa || null; }
+  function meuPapel(){ try { return (typeof curRole!=='undefined') ? curRole : ''; } catch(e){ return ''; } }
+  function podeCriar(){ var r = meuPapel(); return r==='gestor' || r==='director'; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function uname(nome){ try { return (typeof gerarUsername==='function') ? gerarUsername(nome) : String(nome||'').toLowerCase().trim().replace(/\s+/g,'.'); } catch(e){ return ''; } }
+  function emailDe(nome, manual){ if (manual) return manual; try { return (typeof gerarEmail==='function') ? gerarEmail(nome) : uname(nome)+'@escola.mz'; } catch(e){ return uname(nome)+'@escola.mz'; } }
+
   function ensureModal(){
-    var m=document.getElementById('m-criar-user');
-    if(m) return m;
-    var opts=ROLES.map(function(r){ return '<option value="'+r.v+'">'+r.t+'</option>'; }).join('');
-    var wrap=document.createElement('div');
+    var m = document.getElementById('m-criar-user'); if (m) return m;
+    var soGestor = (meuPapel()==='gestor');
+    var opts = ROLES.filter(function(r){ return soGestor || !r.soGestor; }).map(function(r){ return '<option value="'+r.v+'">'+r.t+'</option>'; }).join('');
+    var wrap = document.createElement('div');
     wrap.id='m-criar-user'; wrap.className='modal';
-    wrap.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center';
-    wrap.innerHTML='<div style="background:var(--card,#fff);border-radius:16px;max-width:440px;width:92%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;font-size:18px">Criar Utilizador Manual</h3><button onclick="__v32CloseModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8">&times;</button></div>'
-      +'<p style="margin:0 0 14px;font-size:12px;color:#64748b">Apenas staff. Alunos e Encarregados sao criados automaticamente na inscricao.</p>'
-      +'<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Nome completo</label><input id="cu-nome" oninput="__v32Preview()" placeholder="Ex: Maria Jose da Silva" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'
-      +'<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Perfil / Role</label><select id="cu-role" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'+opts+'</select>'
-      +'<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Email (opcional)</label><input id="cu-email" type="email" placeholder="email@escola.mz" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'
-      +'<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Telefone (password inicial)</label><input id="cu-pass" placeholder="Ex: 84xxxxxxx" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:8px">'
-      +'<div style="background:#f1f5f9;border-radius:9px;padding:9px 11px;font-size:12px;color:#475569;margin-bottom:16px">Username gerado: <b id="cu-uname-prev">&mdash;</b><br>O utilizador deve alterar a password apos o primeiro login.</div>'
-      +'<div style="display:flex;gap:10px;justify-content:flex-end"><button onclick="__v32CloseModal()" style="padding:9px 16px;border:1px solid var(--bd,#ddd);background:#fff;border-radius:9px;cursor:pointer">Cancelar</button><button onclick="__v32SubmitUser()" style="padding:9px 18px;border:none;background:#2563eb;color:#fff;border-radius:9px;cursor:pointer;font-weight:600">Criar</button></div>'
-      +'</div>';
+    wrap.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;align-items:center;justify-content:center';
+    wrap.innerHTML =
+      '<div style="background:var(--card,#fff);border-radius:16px;max-width:460px;width:92%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;font-size:18px">Criar Utilizador</h3><button onclick="__v35Close()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+      + '<p style="margin:0 0 14px;font-size:12px;color:#64748b">A conta é criada no servidor e o utilizador pode entrar imediatamente em qualquer dispositivo.</p>'
+      + '<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Nome completo</label><input id="cu-nome" oninput="__v35Preview()" placeholder="Ex: Maria José da Silva" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'
+      + '<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Perfil / Função</label><select id="cu-role" onchange="__v35Preview()" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'+opts+'</select>'
+      + '<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Email (login) — opcional, gerado se vazio</label><input id="cu-email" oninput="__v35Preview()" type="email" placeholder="(gerado a partir do nome)" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:12px">'
+      + '<label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Telefone (password inicial)</label><input id="cu-pass" placeholder="Ex: 84xxxxxxx" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px;margin-bottom:8px">'
+      + '<div style="background:#f1f5f9;border-radius:9px;padding:9px 11px;font-size:12px;color:#475569;margin-bottom:16px">Login (email): <b id="cu-email-prev">&mdash;</b><br>O utilizador deve alterar a password após o primeiro acesso.</div>'
+      + '<div style="display:flex;gap:10px;justify-content:flex-end"><button onclick="__v35Close()" style="padding:9px 16px;border:1px solid var(--bd,#ddd);background:#fff;border-radius:9px;cursor:pointer">Cancelar</button><button id="cu-submit" onclick="__v35Submit()" style="padding:9px 18px;border:none;background:#2563eb;color:#fff;border-radius:9px;cursor:pointer;font-weight:600">Criar Conta</button></div>'
+      + '</div>';
     document.body.appendChild(wrap);
     return wrap;
   }
-  window.__v32Preview=function(){ var n=document.getElementById('cu-nome'); var p=document.getElementById('cu-uname-prev'); if(n&&p){ p.textContent=uname(n.value)||'\u2014'; } };
-  window.__v32CloseModal=function(){ var m=document.getElementById('m-criar-user'); if(m) m.style.display='none'; };
-  window.__v32OpenModal=function(){
-    if(!podeCriar()){ toast('Sem permissao. Apenas Gestor Geral ou Director.', false); return; }
-    var m=ensureModal();
-    var n=document.getElementById('cu-nome'), e=document.getElementById('cu-email'), p=document.getElementById('cu-pass'), pv=document.getElementById('cu-uname-prev');
-    if(n) n.value=''; if(e) e.value=''; if(p) p.value=''; if(pv) pv.textContent='\u2014';
+
+  window.__v35Preview = function(){
+    var n = document.getElementById('cu-nome'); var em = document.getElementById('cu-email'); var pv = document.getElementById('cu-email-prev');
+    if (!pv) return;
+    var manual = (em && em.value.trim()) ? em.value.trim() : '';
+    pv.textContent = manual || (n && n.value.trim() ? emailDe(n.value.trim()) : '\u2014');
+  };
+  window.__v35Close = function(){ var m=document.getElementById('m-criar-user'); if(m) m.style.display='none'; };
+  window.__v35Open = function(){
+    if (!podeCriar()){ if(typeof toast==='function') toast('Sem permissão. Apenas Gestor ou Director.'); return; }
+    var old = document.getElementById('m-criar-user'); if (old) old.remove();
+    var m = ensureModal();
+    ['cu-nome','cu-email','cu-pass'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+    var pv=document.getElementById('cu-email-prev'); if(pv) pv.textContent='\u2014';
     m.style.display='flex';
   };
-  window.__v32SubmitUser=function(){
-    var nome=((document.getElementById('cu-nome')||{}).value||'').trim();
-    var role=(document.getElementById('cu-role')||{}).value||'';
-    var email=((document.getElementById('cu-email')||{}).value||'').trim();
-    var pass=((document.getElementById('cu-pass')||{}).value||'').trim();
-    if(nome.length<3){ toast('Indique o nome completo.', false); return; }
-    if(!role){ toast('Escolha o perfil.', false); return; }
-    if(!pass){ toast('Indique o telefone (password inicial).', false); return; }
-    var arr=load(); var u=uname(nome);
-    if(arr.some(function(x){ return x.username===u; })){ toast('Ja existe um utilizador com esse username.', false); return; }
-    arr.push({ nome:nome, role:role, roleLabel:roleLabel(role), username:u, email:email, passInicial:pass, criadoEm:new Date().toISOString() });
-    save(arr);
-    window.__v32CloseModal();
-    toast('Utilizador '+nome+' criado ('+roleLabel(role)+').', true);
-    injectList();
+
+  window.__v35Submit = function(){
+    var nome  = ((document.getElementById('cu-nome')||{}).value||'').trim();
+    var role  = (document.getElementById('cu-role')||{}).value||'';
+    var emailM= ((document.getElementById('cu-email')||{}).value||'').trim();
+    var pass  = ((document.getElementById('cu-pass')||{}).value||'').trim();
+    if (nome.length < 3){ toast('Indique o nome completo.'); return; }
+    if (!role){ toast('Escolha o perfil.'); return; }
+    if (pass.length < 6){ toast('Telefone/password: mínimo 6 caracteres.'); return; }
+    var email = emailDe(nome, emailM).toLowerCase();
+    var sb = supa();
+    if (!sb || !sb.functions){ toast('Sem ligação ao servidor.'); return; }
+    var btn = document.getElementById('cu-submit'); if (btn){ btn.disabled=true; btn.textContent='A criar...'; }
+    sb.functions.invoke('criar-utilizador', { body: { nome:nome, role:role, email:email, telefone:pass } })
+      .then(async function(res){
+        if (btn){ btn.disabled=false; btn.textContent='Criar Conta'; }
+        if (res && res.error){
+          var detalhe = '';
+          try { var j = await res.error.context.json(); detalhe = j && j.error ? j.error : ''; } catch(e){}
+          toast(detalhe || res.error.message || 'Erro ao criar utilizador.'); return;
+        }
+        if (res && res.data && res.data.error){ toast(res.data.error); return; }
+        window.__v35Close();
+        toast('Conta de ' + nome + ' criada (' + (LABEL[role]||role) + ').');
+        if (typeof rUtilizadores === 'function') rUtilizadores();
+      })
+      .catch(function(e){ if (btn){ btn.disabled=false; btn.textContent='Criar Conta'; } toast('Erro: ' + (e && e.message ? e.message : e)); });
   };
-  try{ window.criarUtilizadorManual=function(){ window.__v32OpenModal(); }; }catch(e){}
-  function injectList(){
-    if(busy) return; busy=true; stopObs();
-    try{
-      var v=document.getElementById('v-utilizadores'); if(!v){ return; }
-      var arr=load();
-      var heading=[].slice.call(v.querySelectorAll('*')).filter(function(e){ return e.children.length===0 && /Utilizadores com Acesso Manual/i.test(e.textContent||''); })[0];
-      var table=[].slice.call(v.querySelectorAll('table')).filter(function(t2){ return /Harris|Machava|Manual/i.test(t2.textContent||''); }).pop();
-      if(!table){ table=[].slice.call(v.querySelectorAll('table')).pop(); }
-      if(!table){ return; }
-      var tb=table.querySelector('tbody'); if(!tb){ return; }
-      [].slice.call(tb.querySelectorAll('tr[data-v32]')).forEach(function(r){ r.remove(); });
-      arr.forEach(function(x){
-        var tr=document.createElement('tr'); tr.setAttribute('data-v32','1');
-        tr.innerHTML='<td style="padding:12px 10px"><b>'+esc(x.nome)+'</b></td>'
-          +'<td style="padding:12px 10px"><span style="color:#2563eb;font-weight:600">'+esc(x.roleLabel||x.role)+'</span></td>'
-          +'<td style="padding:12px 10px"><code>'+esc(x.username)+'</code></td>'
-          +'<td style="padding:12px 10px">'+esc(x.passInicial)+'</td>'
-          +'<td style="padding:12px 10px"><span style="background:#dbeafe;color:#2563eb;padding:2px 9px;border-radius:20px;font-size:11px">Manual</span></td>'
-          +'<td style="padding:12px 10px;text-align:right"><button title="Remover" onclick="__v32RemoveUser(\''+esc(x.username)+'\')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:18px">&times;</button></td>';
-        tb.appendChild(tr);
+
+  // o botao existente chama esta funcao
+  window.criarUtilizadorManual = function(){ window.__v35Open(); };
+
+  // ---- Lista de utilizadores REAIS (tabela perfis, isolada por escola via RLS) ----
+  window.rUtilizadores = function(){
+    var el = document.getElementById('utilizadores-c'); if (!el) return;
+    var canEdit = podeCriar();
+    el.innerHTML =
+      '<div class="ib-box ib-blue" style="margin-bottom:16px"><i class="ti ti-info-circle"></i><div>'
+      + '<strong>Contas com acesso ao sistema.</strong> Cada conta criada aqui entra em qualquer dispositivo com o email e a password definidos. '
+      + 'A password inicial é o telefone; o utilizador deve alterá-la após o primeiro acesso.</div></div>'
+      + '<div class="card"><div class="ch"><span class="ct">Utilizadores com Acesso</span>'
+      + (canEdit ? '<button class="btn btn-p btn-sm" onclick="__v35Open()"><i class="ti ti-plus"></i> Criar Utilizador</button>' : '')
+      + '</div><div class="tw"><table><thead><tr><th>Nome</th><th>Perfil</th><th>Email (login)</th><th>Estado</th>'
+      + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody id="v35-tbody"><tr><td colspan="5" style="color:var(--t3);padding:14px">A carregar...</td></tr></tbody></table></div></div>';
+    var sb = supa();
+    if (!sb){ var tb0=document.getElementById('v35-tbody'); if(tb0) tb0.innerHTML='<tr><td colspan="5" style="padding:14px;color:var(--t3)">Sem ligação.</td></tr>'; return; }
+    sb.from('perfis').select('id,nome_completo,nome,email,perfil,pass_alterada,ativo,criado_em').order('criado_em', { ascending:false })
+      .then(function(res){
+        var tb=document.getElementById('v35-tbody'); if(!tb) return;
+        var rows = (res && res.data) || [];
+        if (!rows.length){ tb.innerHTML='<tr><td colspan="5" style="padding:14px;color:var(--t3)">Ainda não há utilizadores. Crie o primeiro.</td></tr>'; return; }
+        tb.innerHTML = rows.map(function(u){
+          var nome = esc(u.nome_completo||u.nome||u.email||'—');
+          var pf = LABEL[u.perfil]||u.perfil||'—';
+          var estado = u.pass_alterada ? '<span class="badge bok" style="font-size:10px">Password alterada</span>' : '<span class="badge bwn" style="font-size:10px">Pass. inicial</span>';
+          return '<tr><td style="font-weight:700">'+nome+'</td>'
+            + '<td><span class="badge bin">'+esc(pf)+'</span></td>'
+            + '<td style="font-family:var(--fm);font-size:11px">'+esc(u.email||'—')+'</td>'
+            + '<td>'+estado+'</td>'
+            + (canEdit ? '<td><button class="btn btn-am btn-sm" onclick="abrirResetPass(\''+esc(u.email)+'\',\''+nome+'\',\'\')"><i class="ti ti-refresh"></i> Reset</button></td>' : '')
+            + '</tr>';
+        }).join('');
       });
-      if(heading){ heading.textContent=heading.textContent.replace(/\((\d+)\)/, '('+(3+arr.length)+')'); }
-    }catch(e){}finally{ busy=false; startObs(); }
-  }
-  window.__v32Inject=injectList;
-  window.__v32RemoveUser=function(u){ var arr=load().filter(function(x){ return x.username!==u; }); save(arr); injectList(); };
-  setTimeout(function(){ try{ window.__v32Dedupe(); injectList(); startObs(); }catch(e){} }, 400);
-  window.__finV32b=true;
-})();
+  };
+  if (window.RENDER_MAP) window.RENDER_MAP['utilizadores'] = function(){ window.rUtilizadores(); };
 
-</script>
-<script>
-/* ===== PATCH v34: handshake - 1o login cria a conta no Supabase ===== */
-(function(){
-  if(window.__finV34) return;
-  var MKEY = 'scholaris-util-manual';
-  function loadManual(){ try{ return JSON.parse(localStorage.getItem(MKEY)) || []; }catch(e){ return []; } }
-  function saveManual(a){ try{ localStorage.setItem(MKEY, JSON.stringify(a)); }catch(e){} }
-  function getSupa(){ try{ return (typeof _supa!=='undefined' && _supa) ? _supa : (window._supa || window.supabase || null); }catch(e){ return (window._supa || window.supabase || null); } }
-
-  // Provisiona: cria conta no Supabase Auth + linha em 'perfis'. Devolve true se provisionou.
-  function provision(u, email, pass){
-    var supa = getSupa();
-    if(!supa || !supa.auth || typeof supa.auth.signUp!=='function'){ return Promise.resolve(false); }
-    return supa.auth.signUp({ email: email, password: pass }).then(function(res){
-      if(res && res.error){
-        if(/already|registered|exists/i.test(res.error.message||'')){ return false; }
-        throw res.error;
-      }
-      var user = res && res.data ? res.data.user : null;
-      var row = {
-        email: email,
-        nome: u.nome,
-        perfil: u.role,
-        escola_id: window._escolaId || 'escola-demo',
-        pass_alterada: false,
-        criado_em: new Date().toISOString()
-      };
-      if(user && user.id){ row.id = user.id; }
-      return Promise.resolve(supa.from('perfis').insert(row)).then(function(){ return true; }).catch(function(){ return true; });
-    });
-  }
-
-  // Wrap fbLogin: antes do login normal, provisiona o utilizador manual nao-ativado.
-  if(typeof window.fbLogin==='function' && !window.fbLogin.__v34){
-    var _origFbLogin = window.fbLogin;
-    window.fbLogin = function(){
-      var self=this, args=arguments;
-      var em = ((document.getElementById('login-email')||{}).value||'').trim();
-      var pw = (document.getElementById('login-pass')||{}).value;
-      var p = Promise.resolve();
-      if(em && pw){
-        var arr = loadManual(); var idx=-1;
-        for(var i=0;i<arr.length;i++){
-          if(arr[i] && arr[i].email && arr[i].email.trim().toLowerCase()===em.toLowerCase() && String(arr[i].passInicial)===String(pw) && !arr[i].ativado){ idx=i; break; }
-        }
-        if(idx>-1){
-          p = provision(arr[idx], em, pw).then(function(done){
-            if(done){ arr[idx].ativado=true; arr[idx].ativadoEm=new Date().toISOString(); saveManual(arr); }
-          }).catch(function(e){ console.warn('v34 handshake:', e && e.message); });
-        }
-      }
-      return p.then(function(){ return _origFbLogin.apply(self, args); });
-    };
-    window.fbLogin.__v34 = true;
-  }
-
-  // Garante o role correcto a partir da lista manual.
-  if(typeof window._entrarNaApp==='function' && !window._entrarNaApp.__v34){
-    var _origEntrar = window._entrarNaApp;
-    window._entrarNaApp = function(userData){
-      try{
-        if(userData && userData.email){
-          var arr = loadManual();
-          var m = arr.filter(function(x){ return x && x.email && x.email.trim().toLowerCase()===String(userData.email).trim().toLowerCase(); })[0];
-          if(m && m.role){ userData.role = m.role; if(m.nome) userData.nome = m.nome; }
-        }
-      }catch(e){}
-      return _origEntrar.apply(this, arguments);
-    };
-    window._entrarNaApp.__v34 = true;
-  }
-
-  window.__finV34 = true;
+  window.__finV35 = true;
 })();
 </script>
 </body>
