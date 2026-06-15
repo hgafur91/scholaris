@@ -20819,7 +20819,26 @@ function alterarPassword() {
 
 let _resetEmail = '', _resetNome = '', _resetTel = '';
 
+function _ensureResetModal(){
+  if (document.getElementById('m-reset-pass')) return;
+  const ov = document.createElement('div');
+  ov.className = 'modal-ov'; ov.id = 'm-reset-pass';
+  ov.innerHTML =
+    '<div class="modal" style="max-width:420px">'
+    + '<div class="mhd"><span class="mt"><i class="ti ti-key"></i> Redefinir Password</span><button class="mclose" onclick="closeM(\'m-reset-pass\')"><i class="ti ti-x"></i></button></div>'
+    + '<div class="mbod">'
+    + '<div id="reset-user-info" style="background:var(--bg3);border-radius:var(--rads);padding:10px 14px;margin-bottom:14px"></div>'
+    + '<div class="fgr full"><label class="fl">Nova Password</label><input class="ffi" id="reset-nova-pass" placeholder="Mínimo 6 caracteres"></div>'
+    + '<div style="font-size:11px;color:var(--t2);margin-top:8px"><i class="ti ti-info-circle" style="color:var(--a)"></i> A pessoa passa a entrar com o email dela e esta nova password.</div>'
+    + '</div>'
+    + '<div class="mft"><button class="btn btn-g" onclick="closeM(\'m-reset-pass\')">Cancelar</button><button class="btn btn-p" onclick="confirmarResetPass()"><i class="ti ti-check"></i> Redefinir</button></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if(e.target===ov) ov.classList.remove('op'); });
+}
+
 function abrirResetPass(id, nome, email) {
+  _ensureResetModal();
   window._resetId   = id;
   window._resetNome = nome;
 
@@ -31932,19 +31951,22 @@ window.__finV30=true;})();
       + 'A password inicial é o telefone; o utilizador deve alterá-la após o primeiro acesso.</div></div>'
       + '<div class="card"><div class="ch"><span class="ct">Utilizadores com Acesso</span>'
       + (canEdit ? '<button class="btn btn-p btn-sm" onclick="criarUtilizadorManual()"><i class="ti ti-plus"></i> Criar Utilizador</button>' : '')
-      + '</div><div class="tw"><table><thead><tr><th>Nome</th><th>Perfil</th><th>Email (login)</th><th>Estado</th>'
-      + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody id="v35-tbody"><tr><td colspan="5" style="color:var(--t3);padding:14px">A carregar...</td></tr></tbody></table></div></div>';
+      + '</div><div class="tw"><table><thead><tr><th>Nº / ID</th><th>Nome</th><th>Perfil</th><th>Email (login)</th><th>Estado</th>'
+      + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody id="v35-tbody"><tr><td colspan="6" style="color:var(--t3);padding:14px">A carregar...</td></tr></tbody></table></div></div>';
     var sb = supa();
-    if (!sb){ var tb0=document.getElementById('v35-tbody'); if(tb0) tb0.innerHTML='<tr><td colspan="5" style="padding:14px;color:var(--t3)">Sem ligação.</td></tr>'; return; }
+    if (!sb){ var tb0=document.getElementById('v35-tbody'); if(tb0) tb0.innerHTML='<tr><td colspan="6" style="padding:14px;color:var(--t3)">Sem ligação.</td></tr>'; return; }
     sb.from('perfis').select('id,nome_completo,nome,email,perfil,pass_alterada,ativo,criado_em').order('criado_em', { ascending:false })
       .then(function(res){
         var tb=document.getElementById('v35-tbody'); if(!tb) return;
         var rows = (res && res.data) || [];
-        if (!rows.length){ tb.innerHTML='<tr><td colspan="5" style="padding:14px;color:var(--t3)">Ainda não há utilizadores. Crie o primeiro.</td></tr>'; return; }
+        if (!rows.length){ tb.innerHTML='<tr><td colspan="6" style="padding:14px;color:var(--t3)">Ainda não há utilizadores. Crie o primeiro.</td></tr>'; return; }
         tb.innerHTML = rows.map(function(u){
           var nome = esc(u.nome_completo||u.nome||u.email||'—');
           var pf = LABEL[u.perfil]||u.perfil||'—';
           var ativo = (u.ativo !== false);
+          var numId = '—';
+          if (Array.isArray(window.PROFS) && u.staff_id){ var pp = PROFS.find(function(p){return p._dbId===u.staff_id;}); if(pp && pp.num) numId = pp.num; }
+          if (numId==='—' && u.id) numId = String(u.id).slice(0,8);
           var estado = ativo ? '<span class="badge bok" style="font-size:10px">Activo</span>' : '<span class="badge ber" style="font-size:10px">Suspenso</span>';
           var idJs = esc(u.id), nomeJs = nome.replace(/'/g,"\\'"), emailJs = esc(u.email||'');
           var acoes = '';
@@ -31953,7 +31975,8 @@ window.__finV30=true;})();
             if (ativo) acoes += '<button class="btn btn-am btn-sm" onclick="gerirUtilizador(\'suspender\',\''+idJs+'\',\''+nomeJs+'\')"><i class="ti ti-ban"></i> Suspender</button>';
             else       acoes += '<button class="btn btn-p btn-sm" onclick="gerirUtilizador(\'reactivar\',\''+idJs+'\',\''+nomeJs+'\')"><i class="ti ti-check"></i> Reactivar</button>';
           }
-          return '<tr'+(ativo?'':' style="opacity:.55"')+'><td style="font-weight:700">'+nome+'</td>'
+          return '<tr'+(ativo?'':' style="opacity:.55"')+'><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+esc(numId)+'</td>'
+            + '<td style="font-weight:700">'+nome+'</td>'
             + '<td><span class="badge bin">'+esc(pf)+'</span></td>'
             + '<td style="font-family:var(--fm);font-size:11px">'+esc(u.email||'—')+'</td>'
             + '<td>'+estado+'</td>'
