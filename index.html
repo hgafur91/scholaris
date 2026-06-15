@@ -2866,7 +2866,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
     <div class="fg">
       <div class="fgr full"><label class="fl">Função no Sistema *</label>
         <select class="ffi" id="ns-role" onchange="autoFillStaffFromRole(this.value)">
-          <option value="">— Seleccionar função —</option>
+          <option value="">— Sem acesso ao sistema (apenas ficha) —</option>
           <option value="professor">Professor</option>
           <option value="dir-ciclo">Director de Ciclo</option>
           <option value="dir-pedagogico">Director Pedagógico</option>
@@ -2874,14 +2874,19 @@ console.log('[Scholaris] Supabase v2 inicializado');
           <option value="director">Director Escolar</option>
         </select>
         <div id="ns-role-preview" style="display:none;background:var(--bg3);border-radius:var(--rads);padding:8px 14px;font-size:12px;color:var(--t2);margin-top:4px;border:1px solid var(--b)"></div>
+        <div id="ns-acesso-box" style="display:none;margin-top:8px;background:rgba(79,142,247,.07);border:1px solid var(--b);border-radius:var(--rads);padding:10px 12px">
+          <label class="fl" style="margin-bottom:4px;display:block">Password inicial de acesso</label>
+          <input class="ffi" id="ns-pass" placeholder="Vazio = usar o telefone como password">
+          <div style="font-size:11px;color:var(--t2);margin-top:6px"><i class="ti ti-info-circle" style="color:var(--a)"></i> Será criada uma conta de login. A pessoa entra com o <b>email</b> indicado acima e esta password (ou o telefone, se deixar vazio), em qualquer dispositivo.</div>
+        </div>
       </div>
       <div class="fgr"><label class="fl">Cargo / Função *</label>
         <input class="ffi" id="ns-cargo" placeholder="Ex: Professor, Secretário..."></div>
       <div class="fgr"><label class="fl">Departamento</label>
         <select class="ffi" id="ns-dep">
-          <option value="academico">Académico</option>
-          <option value="gestao">Gestão</option>
-          <option value="financeiro">Financeiro</option>
+          <option value="academico">Pedagógica</option>
+          <option value="gestao">Administrativa</option>
+          <option value="financeiro">Financeira</option>
         </select>
       </div>
       <div class="fgr"><label class="fl">Regime</label>
@@ -18297,6 +18302,11 @@ function guardarNovoStaff() {
   if (!salario){ toast('Salário obrigatório'); return; }
   if (!niss)   { toast('NISS (INSS) obrigatório por lei'); return; }
 
+  // Fase 2 — unificado: se foi escolhida uma "Função no Sistema", cria ficha + conta de login
+  // (via Edge Function, do lado do servidor) e liga os dois. Caso contrário, segue o registo só-ficha.
+  const _roleAcesso = document.getElementById('ns-role')?.value || '';
+  if (_roleAcesso) { return guardarColaboradorComAcesso(_roleAcesso); }
+
   const newId  = Math.max(0,...PROFS.map(p=>p.id)) + 1;
   const prefix = dep==='academico'?'PRF':dep==='gestao'?'GST':'FIN';
   const newNum = prefix + String(newId).padStart(6,'0');
@@ -18364,6 +18374,74 @@ function guardarNovoStaff() {
   }
 
   if (typeof rPr==='function') rPr();
+}
+
+// ── Fase 2: criar colaborador COM acesso (ficha + login + ligação, via servidor) ──
+async function guardarColaboradorComAcesso(role){
+  const g = id => document.getElementById(id);
+  const nome    = (g('ns-nome')?.value||'').trim();
+  const bi      = (g('ns-bi')?.value||'').trim();
+  const niss    = (g('ns-niss')?.value||'').trim();
+  const cargo   = (g('ns-cargo')?.value||'').trim();
+  const salario = parseFloat(g('ns-salario')?.value)||0;
+  const email   = (g('ns-email')?.value||'').trim().toLowerCase();
+  const tel     = (g('ns-tel')?.value||'').trim();
+  const pass    = ((g('ns-pass')?.value||'').trim()) || tel.replace(/[^0-9]/g,'');
+
+  if(!nome){ toast('Nome obrigatório'); return; }
+  if(!bi){ toast('BI obrigatório'); return; }
+  if(!cargo){ toast('Cargo obrigatório'); return; }
+  if(!salario){ toast('Salário obrigatório'); return; }
+  if(!niss){ toast('NISS (INSS) obrigatório por lei'); return; }
+  if(!email || !/^\S+@\S+\.\S+$/.test(email)){ toast('Email válido é obrigatório para dar acesso ao sistema'); return; }
+  if(pass.length<6){ toast('Password inicial: mínimo 6 caracteres (use o telefone completo, ou preencha o campo Password)'); return; }
+
+  const sb = window._supabase;
+  if(!sb || !sb.functions){ toast('Sem ligação ao servidor'); return; }
+
+  const staffPayload = {
+    cargo, dep: g('ns-dep')?.value||'', regime: g('ns-regime')?.value||'inteiro',
+    salario, tel,
+    nasc: g('ns-nasc')?.value||'', genero: g('ns-genero')?.value||'',
+    bi, niss, nuit: (g('ns-nuit')?.value||'').trim(),
+    morada: (g('ns-morada')?.value||'').trim(),
+    form: g('ns-form')?.value||'', area: (g('ns-area')?.value||'').trim(),
+    nat: g('ns-nat')?.value||'', iban: (g('ns-iban')?.value||'').trim(), banco: g('ns-banco')?.value||'',
+    contrato: g('ns-contrato')?.value||'indeterminado'
+  };
+
+  const btn = document.querySelector("#m-novo-staff .mft .btn-p");
+  if(btn){ btn.disabled=true; btn.dataset._t=btn.innerHTML; btn.innerHTML='<i class="ti ti-loader"></i> A criar...'; }
+
+  try{
+    const res = await sb.functions.invoke('criar-utilizador', { body: { nome, role, email, telefone: pass, staff: staffPayload } });
+    if(btn){ btn.disabled=false; if(btn.dataset._t) btn.innerHTML=btn.dataset._t; }
+    if(res && res.error){
+      let d=''; try{ const j=await res.error.context.json(); d=(j&&j.error)?j.error:''; }catch(e){}
+      toast(d || res.error.message || 'Erro ao criar colaborador'); return;
+    }
+    if(res && res.data && res.data.error){ toast(res.data.error); return; }
+    const out = res.data || {};
+    if (Array.isArray(PROFS)) {
+      PROFS.push({
+        id: (PROFS.reduce((m,p)=>Math.max(m,p.id||0),0))+1,
+        num: out.num||'', _dbId: out.staff_id||null,
+        nome, cargo, dep: staffPayload.dep, regime: staffPayload.regime,
+        salario, nota:0, form: staffPayload.form, area: staffPayload.area, disc:[],
+        nasc: staffPayload.nasc, genero: staffPayload.genero, bi, niss, nuit: staffPayload.nuit,
+        tel, email, morada: staffPayload.morada, contrato: staffPayload.contrato,
+        turmas:[], cargos:[], ativo:true
+      });
+    }
+    closeM('m-novo-staff');
+    toast('Colaborador ' + nome + ' criado com acesso. Login: ' + email);
+    if(typeof rStaff==='function') rStaff('todos');
+    if(typeof rPr==='function') rPr();
+    if(typeof rUtilizadores==='function') rUtilizadores();
+  }catch(e){
+    if(btn){ btn.disabled=false; if(btn.dataset._t) btn.innerHTML=btn.dataset._t; }
+    toast('Erro: ' + (e&&e.message?e.message:e));
+  }
 }
 
 // ── FICHA / CONTRATO STAFF ─────────────────────────────────
@@ -20399,6 +20477,7 @@ function renderPortalCalendario() {
 
 // ── autoFillStaffFromRole ─────────────────────────────────────
 function autoFillStaffFromRole(role) {
+  const box=document.getElementById('ns-acesso-box'); if(box) box.style.display = role ? '' : 'none';
   const map={
     'professor':      {cargo:'Professor',          dep:'academico'},
     'dir-ciclo':      {cargo:'Director de Ciclo',  dep:'academico'},
@@ -31844,8 +31923,8 @@ window.__finV30=true;})();
       .catch(function(e){ if (btn){ btn.disabled=false; btn.textContent='Criar Conta'; } toast('Erro: ' + (e && e.message ? e.message : e)); });
   };
 
-  // o botao existente chama esta funcao
-  window.criarUtilizadorManual = function(){ window.__v35Open(); };
+  // o botao existente abre o formulario unificado de colaborador (ficha + acesso)
+  window.criarUtilizadorManual = function(){ if(typeof abrirNovoStaff==='function'){ abrirNovoStaff(); } else { window.__v35Open(); } };
 
   // ---- Lista de utilizadores REAIS (tabela perfis, isolada por escola via RLS) ----
   window.rUtilizadores = function(){
@@ -31856,7 +31935,7 @@ window.__finV30=true;})();
       + '<strong>Contas com acesso ao sistema.</strong> Cada conta criada aqui entra em qualquer dispositivo com o email e a password definidos. '
       + 'A password inicial é o telefone; o utilizador deve alterá-la após o primeiro acesso.</div></div>'
       + '<div class="card"><div class="ch"><span class="ct">Utilizadores com Acesso</span>'
-      + (canEdit ? '<button class="btn btn-p btn-sm" onclick="__v35Open()"><i class="ti ti-plus"></i> Criar Utilizador</button>' : '')
+      + (canEdit ? '<button class="btn btn-p btn-sm" onclick="criarUtilizadorManual()"><i class="ti ti-plus"></i> Criar Utilizador</button>' : '')
       + '</div><div class="tw"><table><thead><tr><th>Nome</th><th>Perfil</th><th>Email (login)</th><th>Estado</th>'
       + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody id="v35-tbody"><tr><td colspan="5" style="color:var(--t3);padding:14px">A carregar...</td></tr></tbody></table></div></div>';
     var sb = supa();
