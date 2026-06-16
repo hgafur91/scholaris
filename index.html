@@ -31521,7 +31521,7 @@ window.__diasAtrasoPropina=function(mesIdx){try{var hoje=new Date();var ano=(typ
 window.__multaPropina=function(turmaId,mesIdx){try{var base=(typeof getPropinaTurma==='function')?getPropinaTurma(turmaId):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);return Math.round(base*pct/100);}catch(e){return 0;}};
 try{window.calcMulta=function(prop,mesIdx){try{var pct=window.__pctEscalaoAtraso(window.__diasAtrasoPropina(mesIdx));var base=(prop&&prop._base)?prop._base:((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);return Math.round(base*pct/100);}catch(e){return 0;}};}catch(e){}
 try{window.updatePagValor=function(){try{var a=(typeof ALUNOS!=='undefined')?ALUNOS.find(function(x){return x.id===_pagAlunoId;}):null;if(!a)return;var base=(typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);var total=0;_pagMesesSel.forEach(function(mi){total+=base+window.__multaPropina(a.turma,mi);});var el=document.getElementById('pag-valor');if(el)el.value=total;}catch(e){}};}catch(e){}
-try{window.__aplicarMultasAutomaticas=function(aluno){try{var lista=aluno?[aluno]:((typeof ALUNOS!=='undefined')?ALUNOS:[]);var mudou=false;lista.forEach(function(a){if(!a||!a.propinas)return;var base=(typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);Object.keys(a.propinas).forEach(function(k){var p=a.propinas[k];if(!p)return;var mesIdx=(typeof p.m!=='undefined')?(p.m-1):(parseInt(k,10));var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);if(p.st==='npago'&&pct>0){p.st='multa';p.multaAuto=true;p.multaLock=true;p.v=Math.round(base+base*pct/100);mudou=true;}});});return mudou;}catch(e){return false;}};}catch(e){}
+try{window.__aplicarMultasAutomaticas=function(aluno){try{var lista=aluno?[aluno]:((typeof ALUNOS!=='undefined')?ALUNOS:[]);var mudou=false;lista.forEach(function(a){if(!a||!a.propinas)return;var _bol=(a.bolsaPct||0);if(_bol>=100)return;var base=((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500))*(1-_bol/100);Object.keys(a.propinas).forEach(function(k){var p=a.propinas[k];if(!p)return;if(p.st==='isento')return;var mesIdx=(typeof p.m!=='undefined')?(p.m-1):(parseInt(k,10));var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);if(p.st==='npago'&&pct>0){p.st='multa';p.multaAuto=true;p.multaLock=true;p.v=Math.round(base+base*pct/100);mudou=true;}});});return mudou;}catch(e){return false;}};}catch(e){}
 window.__setDiaVenc=function(v){try{if(typeof CONFIG!=='undefined')CONFIG.diaVencimento=parseInt(v,10)||5;if(typeof toast==='function')toast('Guardado');if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}};
 window.__applyValorClasse=function(classe,campo,val){try{val=parseFloat(val)||0;if(typeof CONFIG!=='undefined'){if(!CONFIG.valoresPorClasse)CONFIG.valoresPorClasse={};if(!CONFIG.valoresPorClasse[classe])CONFIG.valoresPorClasse[classe]={};CONFIG.valoresPorClasse[classe][campo]=val;}if(typeof TURMAS!=='undefined'){TURMAS.forEach(function(t){if((''+t.classe)===(''+classe)){t[campo]=val;}});}if(typeof toast==='function')toast('Guardado');if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}};
 window.__syncValoresClasse=function(){try{if(typeof CONFIG==='undefined'||!CONFIG.valoresPorClasse||typeof TURMAS==='undefined')return;TURMAS.forEach(function(t){var v=CONFIG.valoresPorClasse[t.classe];if(v){if(v.propina!==undefined)t.propina=v.propina;if(v.inscricao!==undefined)t.inscricao=v.inscricao;if(v.matricula!==undefined)t.matricula=v.matricula;}});}catch(e){}};
@@ -32201,10 +32201,11 @@ window.__finV30=true;})();
       var v=Math.round(propinaBase(a)*(1-pct/100));
       (a.propinas||[]).forEach(function(p){
         if(p.st==='pago') return;
-        p.v=v;
-        if(pct>=100){ p.st='isento'; }
-        else if(p.st==='isento'){ p.st='npago'; }
+        p.multaAuto=false; p.multaLock=false;
+        if(pct>=100){ p.st='isento'; p.v=0; }
+        else { p.st='npago'; p.v=v; }
       });
+      if(pct<100 && typeof window.__aplicarMultasAutomaticas==='function'){ try{ window.__aplicarMultasAutomaticas(a); }catch(e){} }
       if(sb()&&a._dbId){ sb().from('alunos').update({bolsa_pct:pct}).eq('id',a._dbId).then(function(){},function(){}); }
       if(typeof toast==='function') toast(pct>0?('Bolsa de '+pct+'% aplicada a '+a.nome):'Bolsa removida');
       fillRows();
