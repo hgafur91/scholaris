@@ -4382,10 +4382,10 @@ function openAluno(id){
   avt.innerHTML=`${ini(a.nome)}<div class="pverif" style="background:${a.verif?'var(--g)':'var(--am)'}"><i class="ti ti-${a.verif?'check':'clock'}" style="font-size:9px"></i></div>`;
   document.getElementById('ap-nome').textContent=a.nome;
   document.getElementById('ap-num').textContent=`${a.num}${a.enc?' · '+a.enc:''}`;
-  const f=calcFaltas(id),pend=a.propinas.filter(p=>p.st==='npago').length;
+  const f=calcFaltas(id),pend=(window.__propsEmAtraso?window.__propsEmAtraso(a):a.propinas.filter(p=>p.st==='npago').length);
   document.getElementById('ap-badges').innerHTML=`<span class="badge ${a.verif?'bok':'bwn'}">${a.verif?'<i class="ti ti-check"></i> Verificado':'Pendente'}</span>${pend?`<span class="badge ber">${pend} prop. em atraso</span>`:''} ${f.excluido?`<span class="badge ber"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Excluído (${f.pct}% faltas)</span>`:f.emRisco?`<span class="badge bwn"><i class="ti ti-bolt" style="color:#f59e0b"></i> Em risco (${f.pct}% faltas)</span>`:''}`;
-  const med1=a.notas.t1.reduce((s,n)=>s+(n.n||0),0)/a.notas.t1.length;
-  document.getElementById('ap-kpis').innerHTML=[{l:'Nº Aluno',v:a.num,c:'var(--a)'},{l:'Turma',v:a.turma,c:'var(--t)'},{l:'Média T1',v:med1.toFixed(1),c:med1>=CONFIG.mediaAprovacao?'var(--g)':'var(--am)'},{l:'Faltas',v:`${f.total} (${f.pct}%)`,c:f.excluido?'var(--r)':f.emRisco?'var(--am)':'var(--g)'}].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
+  const _t1m=(a.notas&&Array.isArray(a.notas.t1))?a.notas.t1:[];const med1=_t1m.length?_t1m.reduce((s,n)=>s+(n.n||0),0)/_t1m.length:null;
+  document.getElementById('ap-kpis').innerHTML=[{l:'Nº Aluno',v:a.num,c:'var(--a)'},{l:'Turma',v:a.turma,c:'var(--t)'},{l:'Média T1',v:(med1===null?'—':med1.toFixed(1)),c:(med1===null?'var(--t2)':(med1>=CONFIG.mediaAprovacao?'var(--g)':'var(--am)'))},{l:'Faltas',v:`${f.total} (${f.pct}%)`,c:f.excluido?'var(--r)':f.emRisco?'var(--am)':'var(--g)'}].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
   rIR('ap-id-r',[['Nome',a.nome],['Data Nasc.',a.nasc],['Género',a.genero==='M'?'Masculino':'Feminino'],['BI',a.bi],['Naturalidade',a.nat],['Ano de Adesão',a.ingresso]]);
   rIR('ap-ct-r',[['Telefone',a.tel],['Email',a.email||'N/A'],['Encarregado',a.enc||a.enome]]);
   rIR('ap-ac-r',[['Classe',a.classe],['Turma',a.turma],['Regime','Manhã'],['Campus','Sede'],['Ano Lectivo','2026']]);
@@ -32072,6 +32072,29 @@ window.__finV30=true;})();
   stripSeed();
   try { var mo=new MutationObserver(function(){ stripSeed(); }); mo.observe(document.body,{childList:true,subtree:true}); window.__v36MO=mo; } catch(e){}
   window.__finV36=true;
+})();
+
+/* ===== PATCH v37: contagem correcta de propinas em atraso (a partir do mes de matricula) ===== */
+(function(){
+  if (window.__finV37) return;
+  window.__propsEmAtraso = function(a){
+    try{
+      if(!a || !Array.isArray(a.propinas)) return 0;
+      var ingM = 1;
+      try{
+        if(a.dataInscricao){
+          var di = new Date(a.dataInscricao);
+          var anoLect = (typeof CONFIG!=='undefined' && CONFIG.anoLectivo) ? CONFIG.anoLectivo : di.getFullYear();
+          if(di.getFullYear() === anoLect) ingM = di.getMonth()+1;
+        }
+      }catch(e){}
+      return a.propinas.filter(function(p){
+        var est = (typeof window.__estadoPropina==='function') ? window.__estadoPropina(p) : (p.st==='npago'?'divida':p.st);
+        return est==='divida' && (p.m||0) >= ingM;
+      }).length;
+    }catch(e){ return 0; }
+  };
+  window.__finV37 = true;
 })();
 </script>
 </body>
