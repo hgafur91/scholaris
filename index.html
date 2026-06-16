@@ -5762,7 +5762,7 @@ async function loadDadosEscola() {
           _turmaDbId: matricula?.turma_id || null,
           classe: turmaDB ? (turmaDB.nome?.charAt(0) + 'ª Classe') : '',
           ingresso: a.created_at ? new Date(a.created_at).getFullYear() : new Date().getFullYear(),
-          verif: false,
+          verif: a.confirmado === true,
           foto: null,
           bolseiro: 'nao',
           faltas: [],
@@ -29694,7 +29694,15 @@ function pagarTaxa(alunoId, tipo, valor) {
   const ref = `REF-${tipo.toUpperCase()}-${String(alunoId).padStart(4,'0')}`;
   if (!a[tipo]) a[tipo] = {};
   a[tipo].st = 'pago'; a[tipo].v = valor; a[tipo].dt = dt; a[tipo].ref = ref;
-  toast(`${tipo==='inscricao'?'Inscrição':'Matrícula'} registada com sucesso`);
+  // Matrícula paga (uma vez) => aluno confirmado/activo, deixa de estar "Pendente"
+  if (tipo === 'matricula') {
+    a.verif = true;
+    if (window._supabase && a._dbId) {
+      window._supabase.from('alunos').update({ confirmado: true }).eq('id', a._dbId)
+        .then(()=>{}, function(e){ try{console.warn('confirmar aluno', e);}catch(_){} });
+    }
+  }
+  toast(`${tipo==='inscricao'?'Inscrição':'Matrícula'} registada com sucesso${tipo==='matricula'?' — aluno confirmado':''}`);
   if (typeof openAluno === 'function') openAluno(alunoId);
 }
 
