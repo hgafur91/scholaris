@@ -5761,6 +5761,9 @@ async function loadDadosEscola() {
       alunosDB.forEach((a, i) => {
         const matricula = a.matriculas?.[0];
         const turmaDB = matricula ? (turmasDB||[]).find(t=>t.id===matricula.turma_id) : null;
+        const _propBase = (turmaDB&&turmaDB.propina)||CONFIG?.valorPropina||4500;
+        const _bolsaPct = Number(a.bolsa_pct)||0;
+        const _propComBolsa = Math.round(_propBase*(1-_bolsaPct/100));
         ALUNOS.push({
           id: i + 1,
           num: a.numero_aluno || 'ALU' + String(i+1).padStart(6,'0'),
@@ -5778,10 +5781,12 @@ async function loadDadosEscola() {
           ingresso: a.created_at ? new Date(a.created_at).getFullYear() : new Date().getFullYear(),
           verif: a.confirmado === true,
           foto: null,
-          bolseiro: 'nao',
+          bolseiro: _bolsaPct>0?'sim':'nao',
+          bolsaPct: _bolsaPct,
+          isencoes: {matricula: a.isento_matricula===true, inscricao: a.isento_inscricao===true},
           faltas: [],
           notas: {t1:[], t2:[], t3:[]},
-          propinas: Array.from({length:12},(_,i)=>({m:i+1,st:'npago',v:(turmaDB&&turmaDB.propina)||CONFIG?.valorPropina||4500,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente'})),
+          propinas: Array.from({length:12},(_,i)=>({m:i+1,st:'npago',v:_propComBolsa,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente'})),
           hist: [], transferencias: [],
           dataInscricao: a.created_at || new Date().toISOString(),
           inscritoPor: '',
@@ -32177,6 +32182,110 @@ window.__finV30=true;})();
   try{ if(typeof iniciarFechoAno==='function' && !iniciarFechoAno.__v38){ var _o=iniciarFechoAno; window.iniciarFechoAno=function(){ var r=_o.apply(this,arguments); try{ window.__destrancarConfigNovoAno(); }catch(e){} return r; }; window.iniciarFechoAno.__v38=true; } }catch(e){}
   setTimeout(function(){ var v=document.getElementById('v-config'); if(v) aplicarLock(); }, 800);
   window.__finV38=true;
+})();
+
+/* ===== PATCH v39: Bolsas / Bolseiros (Dashboard Financeiro) ===== */
+(function(){
+  if(window.__finV39) return;
+  function isGestor(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'||curRole==='secretario'); }catch(e){ return false; } }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT').replace(/\u00A0/g,' '); }catch(e){ return ''+n; } }
+  function sb(){ return window._supabase; }
+  function turmaDe(a){ try{ return (typeof TURMAS!=='undefined'?TURMAS:[]).find(function(t){return t.id===a.turma;})||null; }catch(e){ return null; } }
+  function propinaBase(a){ var t=turmaDe(a); return (t&&t.propina)||(typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500; }
+
+  window.__setBolsa=function(alunoId, pct){
+    try{
+      var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return String(x.id)===String(alunoId);}); if(!a) return;
+      pct=Math.max(0,Math.min(100,Number(pct)||0));
+      a.bolsaPct=pct; a.bolseiro=pct>0?'sim':'nao';
+      var v=Math.round(propinaBase(a)*(1-pct/100));
+      (a.propinas||[]).forEach(function(p){ if(p.st!=='pago') p.v=v; });
+      if(sb()&&a._dbId){ sb().from('alunos').update({bolsa_pct:pct}).eq('id',a._dbId).then(function(){},function(){}); }
+      if(typeof toast==='function') toast(pct>0?('Bolsa de '+pct+'% aplicada a '+a.nome):'Bolsa removida');
+      fillRows();
+    }catch(e){}
+  };
+  window.__setIsencaoBolsa=function(alunoId, tipo){
+    try{
+      var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return String(x.id)===String(alunoId);}); if(!a) return;
+      if(!a.isencoes) a.isencoes={};
+      a.isencoes[tipo]=!a.isencoes[tipo];
+      var col=(tipo==='matricula')?'isento_matricula':'isento_inscricao'; var upd={}; upd[col]=a.isencoes[tipo]===true;
+      if(sb()&&a._dbId){ sb().from('alunos').update(upd).eq('id',a._dbId).then(function(){},function(){}); }
+      if(typeof toast==='function') toast((a.isencoes[tipo]?'Isenção de ':'Isenção removida de ')+(tipo==='matricula'?'matrícula':'inscrição'));
+      fillRows();
+    }catch(e){}
+  };
+  window.__bolsaFiltro='';
+  window.__bolsaSearch=function(v){ window.__bolsaFiltro=(v||'').toLowerCase(); fillRows(); };
+
+  function listaFiltrada(){
+    var alunos=(typeof ALUNOS!=='undefined'?ALUNOS:[]).slice();
+    var f=window.__bolsaFiltro;
+    if(f) alunos=alunos.filter(function(a){ return (a.nome||'').toLowerCase().indexOf(f)>=0 || (a.num||'').toLowerCase().indexOf(f)>=0 || (a.turma||'').toLowerCase().indexOf(f)>=0; });
+    alunos.sort(function(x,y){ return (x.turma||'').localeCompare(y.turma||'')||(x.nome||'').localeCompare(y.nome||''); });
+    return alunos;
+  }
+  function fillRows(){
+    var tb=document.getElementById('bolsas-tbody'); if(!tb) return;
+    var canEdit=isGestor(); var alunos=listaFiltrada(); var h='';
+    if(!alunos.length){ h='<tr><td colspan="7" style="padding:18px;text-align:center;color:var(--t2)">Sem alunos.</td></tr>'; }
+    alunos.forEach(function(a){
+      var base=propinaBase(a); var pct=a.bolsaPct||0; var comb=Math.round(base*(1-pct/100));
+      var isM=a.isencoes&&a.isencoes.matricula; var isI=a.isencoes&&a.isencoes.inscricao;
+      h+='<tr style="border-top:1px solid var(--b2)">'
+        +'<td style="padding:9px;color:var(--t2)">'+(a.num||'')+'</td>'
+        +'<td style="padding:9px;font-weight:600">'+(a.nome||'')+'</td>'
+        +'<td style="padding:9px">'+(a.turma||'—')+'</td>'
+        +'<td style="padding:9px;text-align:right;color:var(--t2)">'+fmt(base)+'</td>'
+        +'<td style="padding:9px;text-align:center"><input type="number" min="0" max="100" value="'+pct+'"'+(canEdit?'':' disabled')+' onchange="window.__setBolsa(\''+a.id+'\',this.value)" style="width:62px;text-align:right;background:var(--bg3);border:1px solid var(--b);border-radius:7px;padding:5px;color:var(--t);font-size:12px"> %</td>'
+        +'<td style="padding:9px;text-align:right;font-weight:700;color:'+(pct>0?'#16a34a':'var(--t)')+'">'+fmt(comb)+'</td>'
+        +'<td style="padding:9px;text-align:center;white-space:nowrap">'
+        +'<button onclick="window.__setIsencaoBolsa(\''+a.id+'\',\'matricula\')"'+(canEdit?'':' disabled')+' style="margin:2px;padding:4px 8px;border-radius:7px;border:1px solid var(--b2);cursor:pointer;font-size:11px;font-weight:600;'+(isM?'background:#16a34a;color:#fff':'background:var(--bg3);color:var(--t2)')+'">Matrícula</button>'
+        +'<button onclick="window.__setIsencaoBolsa(\''+a.id+'\',\'inscricao\')"'+(canEdit?'':' disabled')+' style="margin:2px;padding:4px 8px;border-radius:7px;border:1px solid var(--b2);cursor:pointer;font-size:11px;font-weight:600;'+(isI?'background:#16a34a;color:#fff':'background:var(--bg3);color:var(--t2)')+'">Inscrição</button>'
+        +'</td></tr>';
+    });
+    tb.innerHTML=h;
+    var cnt=document.getElementById('bolsas-count'); if(cnt) cnt.textContent=listaFiltrada().filter(function(a){return (a.bolsaPct||0)>0;}).length;
+  }
+  function rBolsas(){
+    var host=document.getElementById('v-bolsas'); if(!host) return;
+    var ano=((typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||'');
+    var f=(window.__bolsaFiltro||'').replace(/"/g,'&quot;');
+    var h='<div class="ph"><div><div class="ph-title">Bolsas / Bolseiros</div><div class="ph-sub">Descontos de propina e isenções · Ano Lectivo '+ano+'</div></div></div>';
+    h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0">';
+    h+='<div style="min-width:130px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Bolseiros</div><div id="bolsas-count" style="font-size:22px;font-weight:700;color:#4f8ef7">0</div></div>';
+    h+='<div style="flex:1;min-width:220px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px;display:flex;align-items:center"><input type="text" id="bolsas-search" placeholder="Procurar aluno, nº ou turma..." value="'+f+'" oninput="window.__bolsaSearch(this.value)" style="width:100%;background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:9px 12px;color:var(--t);font-size:13px"></div>';
+    h+='</div>';
+    h+='<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3);color:var(--t2);font-size:11px;text-align:left"><th style="padding:10px">Nº</th><th style="padding:10px">ALUNO</th><th style="padding:10px">TURMA</th><th style="padding:10px;text-align:right">PROPINA BASE</th><th style="padding:10px;text-align:center">BOLSA %</th><th style="padding:10px;text-align:right">PROPINA C/ BOLSA</th><th style="padding:10px;text-align:center">ISENÇÕES</th></tr></thead><tbody id="bolsas-tbody"></tbody></table></div></div>';
+    host.innerHTML=h; fillRows();
+  }
+  window.rBolsas=rBolsas;
+
+  function ensureView(){
+    if(document.getElementById('v-bolsas')) return;
+    var ref=document.getElementById('v-fin-dashboard'); if(!ref||!ref.parentNode) return;
+    var v=document.createElement('div'); v.className='view'; v.id='v-bolsas'; v.style.display='none';
+    ref.parentNode.insertBefore(v, ref.nextSibling);
+  }
+  ensureView();
+  try{ if(typeof VM!=='undefined') VM['bolsas']='v-bolsas'; }catch(e){}
+  try{ if(typeof RENDER_MAP!=='undefined') RENDER_MAP['bolsas']=function(){ ensureView(); rBolsas(); }; }catch(e){}
+
+  function injectMenu(){
+    try{
+      if(document.getElementById('si-bolsas-v39')) return;
+      var ref=document.getElementById('si-fin-dashboard')||document.getElementById('si-propinas'); if(!ref||!ref.parentNode) return;
+      var b=document.createElement('button'); b.className=ref.className||'si'; b.id='si-bolsas-v39';
+      b.style.width='100%'; b.style.display='flex'; b.style.alignItems='center'; b.style.gap='8px';
+      b.innerHTML='<i class="ti ti-discount-2" style="font-size:16px"></i><span>Bolsas / Bolseiros</span>';
+      b.onclick=function(){ if(typeof go==='function') go('bolsas'); };
+      ref.parentNode.insertBefore(b, ref.nextSibling);
+    }catch(e){}
+  }
+  injectMenu();
+  try{ var mo=new MutationObserver(function(){ injectMenu(); }); mo.observe(document.body,{childList:true,subtree:true}); window.__v39MO=mo; }catch(e){}
+  window.__finV39=true;
 })();
 </script>
 </body>
