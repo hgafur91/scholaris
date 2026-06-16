@@ -5641,7 +5641,7 @@ function _entrarNaApp(userData) {
       encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao'
     }[curRole] || 'dash';
     go(startView);
-    toast('<i class="ti ti-circle-check" style="color:#22c55e"></i> Bem-vindo, ' + curUser.nome + '!');
+    toast('Bem-vindo, ' + curUser.nome + '!');
   });
 }
 
@@ -5680,7 +5680,9 @@ async function loadDadosEscola() {
           letra: t.letra || '',
           regime: t.turno || 'Manhã',
           max: t.capacidade || 35,
-          propina: CONFIG.valorPropina || 4500,
+          propina: t.propina || CONFIG.valorPropina || 4500,
+          matricula: (t.matricula!=null ? t.matricula : undefined),
+          inscricao: (t.inscricao!=null ? t.inscricao : undefined),
           _dbId: t.id,
           cicloId: tCicloId,
           curso: t.curso || 'Geral',
@@ -5767,7 +5769,7 @@ async function loadDadosEscola() {
           bolseiro: 'nao',
           faltas: [],
           notas: {t1:[], t2:[], t3:[]},
-          propinas: Array.from({length:12},(_,i)=>({m:i+1,st:'npago',v:CONFIG?.valorPropina||4500,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente'})),
+          propinas: Array.from({length:12},(_,i)=>({m:i+1,st:'npago',v:(turmaDB&&turmaDB.propina)||CONFIG?.valorPropina||4500,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente'})),
           hist: [], transferencias: [],
           dataInscricao: a.created_at || new Date().toISOString(),
           inscritoPor: '',
@@ -31311,7 +31313,7 @@ window.renderBalanceteRange=function(mIni,mFim){
 
         if(p && (p.multaLock || p.st==='multa') && st!=='multa'){
           if(curRole!=='gestor'){
-            if(typeof toast==='function') toast('<i class="ti ti-lock" style="color:#f59e0b"></i> So o gestor pode retirar multas');
+            if(typeof toast==='function') toast('Só o gestor pode retirar multas');
             return;
           }
           var r2 = origSetProp ? origSetProp.apply(this, arguments) : undefined;
@@ -31337,7 +31339,7 @@ window.renderBalanceteRange=function(mIni,mFim){
     a.propinas[mi].v = (typeof getPropinaTurma==='function')? getPropinaTurma(a.turma) : a.propinas[mi].v;
     try{ if(typeof openPA==='function') openPA(aid); }catch(e){}
     try{ window.__refreshFinanceiro(); }catch(e){}
-    if(typeof toast==='function') toast('<i class="ti ti-circle-check" style="color:#22c55e"></i> Multa retirada');
+    if(typeof toast==='function') toast('Multa retirada');
   };
 
   window.__gestorRetirarFalta = function(aid, idx){
@@ -31348,7 +31350,7 @@ window.renderBalanceteRange=function(mIni,mFim){
     else { a.faltas.splice(idx,1); }
     try{ if(typeof openA==='function') openA(aid); }catch(e){}
     try{ if(typeof openAluno==='function') openAluno(aid); }catch(e){}
-    if(typeof toast==='function') toast('<i class="ti ti-circle-check" style="color:#22c55e"></i> Falta(s) retirada(s)');
+    if(typeof toast==='function') toast('Falta(s) retirada(s)');
   };
 
   wrap('openPA', function(r, args){
