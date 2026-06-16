@@ -4409,7 +4409,7 @@ function openAluno(id){
       <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px"><div style="font-size:20px;font-weight:800;color:var(--g);margin-bottom:4px">${totP.toLocaleString()} MZM</div><div style="font-size:11px;color:var(--t2)">Total Pago 2026</div></div>
     </div>
     <div class="card"><div class="ch"><span class="ct">Pagamentos 2026</span>${['gestor','secretario'].includes(curRole)?`<div style="display:flex;gap:6px"><button class="btn btn-gr btn-sm" onclick="abrirRegistarPagamento(${id})"><i class="ti ti-plus"></i> Registar Pag.</button><button class="btn btn-p btn-sm" onclick="curAlunoId=${id};gerarFactura()"><i class="ti ti-file-invoice"></i> Factura</button></div>`:''}</div>
-    ${a.propinas.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--b)"><div style="width:32px;height:32px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':p.st==='multa'?'rgba(245,158,11,.1)':'rgba(239,68,68,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':'!'}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[p.m-1]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.st==='pago'||p.st==='multa'?'Pago':(p.st==='npago'?'Em atraso':(p.dt||'Não pago'))}${p.ref?' · '+p.ref:''}</div></div><span style="font-size:13px;font-weight:700;color:${p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':'var(--r)'}">${p.v?p.v.toLocaleString()+' MZM':'—'}</span><span class="badge ${p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne'}">${p.st==='pago'?'Pago':p.st==='multa'?'Multa':p.st==='npago'?'Em atraso':'Pendente'}</span></div>`).join('')}</div>`;
+    ${a.propinas.map(p=>{var _e=(window.__estadoPropina?window.__estadoPropina(p):(p.st==='pago'?'pago':p.st==='multa'?'divida':p.st==='isento'?'isento':'divida'));var _ml=(p.st==='multa');var _pg=_e==='pago',_at=(_e==='divida'&&!_ml),_pp=_e==='por_pagar',_is=_e==='isento';var _bg=_pg?'rgba(34,197,94,.1)':_ml?'rgba(245,158,11,.1)':_at?'rgba(239,68,68,.1)':'rgba(79,142,247,.1)';var _ic=_pg?'<i class="ti ti-check"></i>':_ml?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':_at?'!':'<i class="ti ti-clock" style="color:#4f8ef7"></i>';var _sub=_pg?'Pago':_ml?'Multa':_at?'Em atraso':_is?'Isento':'Por pagar';var _vc=_pg?'var(--g)':_ml?'var(--am)':_at?'var(--r)':'var(--t2)';var _bc=_pg?'bok':_ml?'bwn':_at?'ber':'bne';var _bt=_pg?'Pago':_ml?'Multa':_at?'Em atraso':_is?'Isento':'Por pagar';return`<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--b)"><div style="width:32px;height:32px;border-radius:9px;background:${_bg};display:flex;align-items:center;justify-content:center;font-size:14px">${_ic}</div><div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[p.m-1]} 2026</div><div style="font-size:10px;color:var(--t2)">${_sub}${p.ref?' \u00b7 '+p.ref:''}</div></div><span style="font-size:13px;font-weight:700;color:${_vc}">${p.v?p.v.toLocaleString()+' MZM':'\u2014'}</span><span class="badge ${_bc}">${_bt}</span></div>`}).join('')}</div>`;
   // Notas
   document.getElementById('ap-nt-c').innerHTML=`
     <div class="trimestre-tabs" id="al-nt-tabs">
@@ -29897,13 +29897,29 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
     return pag;
   }
   window.registarPagamentoGenerico = registarPagamentoGenerico;
+  function matriculaJaPaga(alunoId){
+    var pags=(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]);
+    return pags.some(function(p){ return p.estado!=='estornado' && String(p.alunoId)===String(alunoId) && (p.tipo||'')==='matricula'; });
+  }
+  window.matriculaJaPaga = matriculaJaPaga;
   function pagarTaxaFixa(alunoId, tipo){
-    if(taxaPagaEsteAno(alunoId, tipo)){ if(typeof toast==='function') toast('Esta taxa ja foi paga este ano'); return; }
     var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).filter(function(x){return String(x.id)===String(alunoId);})[0];
+    if(tipo==='matricula'){
+      if(matriculaJaPaga(alunoId) || (a && a.verif)){ if(typeof toast==='function') toast('A matrícula deste aluno já foi paga (paga-se uma vez por aluno).'); return; }
+    } else {
+      if(taxaPagaEsteAno(alunoId, tipo)){ if(typeof toast==='function') toast('Esta taxa já foi paga este ano'); return; }
+    }
     var preco=precoTaxa(tipo, a?a.turma:null);
     var nome = tipo==='matricula'?'Matricula':'Inscricao';
     var pag=registarPagamentoGenerico({alunoId:alunoId, tipo:tipo, nome:nome, familia:'taxa_fixa', valor:preco});
-    if(pag){ if(typeof toast==='function') toast(nome+' registada ('+money(preco)+' MZM)'); renderTaxasAluno(); }
+    if(pag){
+      if(tipo==='matricula' && a){
+        a.verif=true;
+        if(window._supabase && a._dbId){ window._supabase.from('alunos').update({confirmado:true}).eq('id',a._dbId).then(function(){},function(){}); }
+      }
+      if(typeof toast==='function') toast(nome+' registada ('+money(preco)+' MZM)'+(tipo==='matricula'?' — aluno confirmado':''));
+      renderTaxasAluno();
+    }
   }
   window.pagarTaxaFixa = pagarTaxaFixa;
   function renderTabAvulsos(body){
@@ -32088,17 +32104,9 @@ window.__finV30=true;})();
   window.__propsEmAtraso = function(a){
     try{
       if(!a || !Array.isArray(a.propinas)) return 0;
-      var ingM = 1;
-      try{
-        if(a.dataInscricao){
-          var di = new Date(a.dataInscricao);
-          var anoLect = (typeof CONFIG!=='undefined' && CONFIG.anoLectivo) ? CONFIG.anoLectivo : di.getFullYear();
-          if(di.getFullYear() === anoLect) ingM = di.getMonth()+1;
-        }
-      }catch(e){}
       return a.propinas.filter(function(p){
         var est = (typeof window.__estadoPropina==='function') ? window.__estadoPropina(p) : (p.st==='npago'?'divida':p.st);
-        return est==='divida' && (p.m||0) >= ingM;
+        return est==='divida';
       }).length;
     }catch(e){ return 0; }
   };
