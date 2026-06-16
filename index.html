@@ -32048,6 +32048,31 @@ window.__finV30=true;})();
 
   window.__finV35 = true;
 })();
+
+/* ===== PATCH v36: modo produção — desactivar gerador de dados de teste ===== */
+(function(){
+  if (window.__finV36) return;
+  try { window.__seedTeste = function(){ try{ if(typeof toast==='function') toast('Modo produção: gerador de dados de teste desactivado.'); }catch(e){} }; } catch(e){}
+  try { window.__injectSeedTopbar = function(){ return true; }; } catch(e){}
+  try { window.__injectSeedBtns = function(){}; } catch(e){}
+  function stripSeed(){
+    try {
+      var top=document.getElementById('v15-seed-top'); if(top) top.remove();
+      var row=document.getElementById('v13-seed-row'); if(row) row.remove();
+      var bs=document.querySelectorAll('button');
+      for(var i=0;i<bs.length;i++){
+        var t=(bs[i].textContent||'');
+        if(/Gerar teste|Limpar teste|dados de teste/i.test(t)){
+          var box=(bs[i].closest)?bs[i].closest('#v15-seed-top'):null;
+          (box||bs[i]).remove();
+        }
+      }
+    } catch(e){}
+  }
+  stripSeed();
+  try { var mo=new MutationObserver(function(){ stripSeed(); }); mo.observe(document.body,{childList:true,subtree:true}); window.__v36MO=mo; } catch(e){}
+  window.__finV36=true;
+})();
 </script>
 </body>
 </html>
