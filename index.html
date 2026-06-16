@@ -5690,6 +5690,18 @@ async function loadDadosEscola() {
         if (typeof fixTurmaCompat === 'function') fixTurmaCompat(TURMAS[TURMAS.length-1]);
       });
       console.log('[Scholaris] Turmas carregadas:', TURMAS.length);
+      // Preencher "Valores por Classe" (Configurações) a partir das turmas carregadas
+      try {
+        CONFIG.valoresPorClasse = CONFIG.valoresPorClasse || {};
+        TURMAS.forEach(function(t){
+          var k = ''+t.classe;
+          if (!CONFIG.valoresPorClasse[k]) CONFIG.valoresPorClasse[k] = {};
+          var vc = CONFIG.valoresPorClasse[k];
+          if (vc.propina===undefined && t.propina!=null) vc.propina = t.propina;
+          if (vc.matricula===undefined && t.matricula!=null) vc.matricula = t.matricula;
+          if (vc.inscricao===undefined && t.inscricao!=null) vc.inscricao = t.inscricao;
+        });
+      } catch(e){}
     }
 
     // 3. Carregar staff (tabela staff)
@@ -32113,6 +32125,58 @@ window.__finV30=true;})();
     }catch(e){ return 0; }
   };
   window.__finV37 = true;
+})();
+
+/* ===== PATCH v38: Trancar Configurações do ano lectivo (congela tudo) ===== */
+(function(){
+  if (window.__finV38) return;
+  function isGestor(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'); }catch(e){ return false; } }
+  window.__configTrancada = function(){ try{ return (typeof CONFIG!=='undefined') && CONFIG.configTrancada===true; }catch(e){ return false; } };
+  window.__trancarConfig = function(){
+    if(!isGestor()){ if(typeof toast==='function') toast('Apenas o gestor pode trancar as configurações'); return; }
+    var ano=(typeof CONFIG!=='undefined' && CONFIG.anoLectivo)?CONFIG.anoLectivo:new Date().getFullYear();
+    if(!confirm('Trancar TODAS as configurações para o ano lectivo '+ano+'?\n\nDepois de trancadas ficam só de leitura e aplicam-se a todo o sistema. Só reabrem no fecho do ano.')) return;
+    CONFIG.configTrancada=true; CONFIG.configTrancadaAno=ano;
+    try{ if(typeof saveConfigToFirestore==='function') saveConfigToFirestore(); }catch(e){}
+    if(typeof toast==='function') toast('Configurações trancadas para '+ano);
+    aplicarLock();
+  };
+  window.__destrancarConfigNovoAno = function(){ try{ CONFIG.configTrancada=false; CONFIG.configTrancadaAno=null; if(typeof saveConfigToFirestore==='function') saveConfigToFirestore(); }catch(e){} };
+  function ensureBar(v){
+    var bar=document.getElementById('cfg-lock-bar');
+    if(!bar){ bar=document.createElement('div'); bar.id='cfg-lock-bar'; bar.style.cssText='margin:0 0 14px 0;'; v.insertBefore(bar, v.firstChild); }
+    return bar;
+  }
+  function aplicarLock(){
+    var v=document.getElementById('v-config'); if(!v) return;
+    if(window.__v38MO){ try{ window.__v38MO.disconnect(); }catch(e){} }
+    try{
+      var locked=window.__configTrancada();
+      var ano=(typeof CONFIG!=='undefined' && (CONFIG.configTrancadaAno||CONFIG.anoLectivo))||'';
+      var bar=ensureBar(v);
+      var html;
+      if(locked){
+        html='<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px"><span style="font-size:20px">🔒</span><div><div style="font-weight:700;color:#dc2626">Configurações trancadas — ano lectivo '+ano+'</div><div style="font-size:12px;color:#991b1b">Só leitura. Aplicam-se a todo o sistema. Reabrem no fecho do ano.</div></div></div>';
+      } else if(isGestor()){
+        html='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div style="font-weight:700;color:#166534">Configurações abertas para edição</div><div style="font-size:12px;color:#15803d">Defina os valores do ano e tranque para os congelar em todo o sistema.</div></div><button onclick="window.__trancarConfig()" style="padding:9px 16px;border-radius:9px;border:none;background:#dc2626;color:#fff;font-weight:600;cursor:pointer;font-size:13px">🔒 Trancar Configurações</button></div>';
+      } else { html=''; }
+      if(bar.innerHTML!==html) bar.innerHTML=html;
+      var ctrls=v.querySelectorAll('input,select,textarea');
+      for(var i=0;i<ctrls.length;i++){ if(ctrls[i].closest('#cfg-lock-bar')) continue; ctrls[i].disabled=locked; }
+      var btns=v.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){ var b=btns[j]; if(b.closest('#cfg-lock-bar')) continue; if(locked){ b.style.pointerEvents='none'; b.style.opacity='0.45'; } else { b.style.pointerEvents=''; b.style.opacity=''; } }
+    }catch(e){}
+    if(window.__v38MO){ try{ window.__v38MO.observe(v,{childList:true,subtree:true}); }catch(e){} }
+  }
+  window.__aplicarLockConfig=aplicarLock;
+  try{
+    var t=null;
+    window.__v38MO=new MutationObserver(function(){ if(t) return; t=setTimeout(function(){ t=null; var v=document.getElementById('v-config'); if(v && v.offsetParent!==null) aplicarLock(); },200); });
+    var vc=document.getElementById('v-config'); if(vc) window.__v38MO.observe(vc,{childList:true,subtree:true});
+  }catch(e){}
+  try{ if(typeof iniciarFechoAno==='function' && !iniciarFechoAno.__v38){ var _o=iniciarFechoAno; window.iniciarFechoAno=function(){ var r=_o.apply(this,arguments); try{ window.__destrancarConfigNovoAno(); }catch(e){} return r; }; window.iniciarFechoAno.__v38=true; } }catch(e){}
+  setTimeout(function(){ var v=document.getElementById('v-config'); if(v) aplicarLock(); }, 800);
+  window.__finV38=true;
 })();
 </script>
 </body>
