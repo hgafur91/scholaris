@@ -5875,6 +5875,9 @@ async function loadDadosEscola() {
       }
     } catch(e) { console.warn('[Scholaris] Pagamentos load skipped:', e && e.message); }
 
+    // Aplicar multas automáticas a todos os alunos (após reflectir pagamentos)
+    try { if (typeof window.__aplicarMultasAutomaticas === 'function') window.__aplicarMultasAutomaticas(); } catch(e){}
+
     // 7. Carregar atribuições (professor → turma → disciplina)
     const { data: atribDB } = await window._supabase
       .from('atribuicoes').select('*').eq('escola_id', eid);
@@ -16901,14 +16904,14 @@ ALUNOS.forEach(a => {
     if (!p.ref)          p.ref          = null;
     if (!p.dataConfirm)  p.dataConfirm  = null;
     if (!p.estadoBanco)  p.estadoBanco  = p.st === 'pago' ? 'confirmado' : 'pendente';
-    if (!p.v)            p.v            = CONFIG.valorPropina || 4500;
+    if (p.v == null)     p.v            = (typeof getPropinaTurma==='function'?getPropinaTurma(a.turma):(CONFIG.valorPropina || 4500));
   });
   // Fill missing months up to 12
   while (a.propinas.length < 12) {
     a.propinas.push({
       m: a.propinas.length + 1,
       st: 'npago',
-      v: CONFIG.valorPropina || 4500,
+      v: (typeof getPropinaTurma==='function'?getPropinaTurma(a.turma):(CONFIG.valorPropina || 4500)),
       pagamentoId: null, ref: null, dataConfirm: null, estadoBanco: 'pendente',
     });
   }
@@ -16918,7 +16921,7 @@ ALUNOS.forEach(a => {
 renderPropTabela = function(list) {
   const canPay = ['gestor','secretario','director'].includes(curRole);
   document.getElementById('tb-prop').innerHTML = list.map(a => {
-    const div = a.propinas.filter(p=>p.st==='npago').length * (CONFIG.valorPropina||4500);
+    const div = a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
     const pago = a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((s,p)=>s+(p.v||CONFIG.valorPropina||4500),0);
     const meses6 = a.propinas.slice(0,6).map((p,mi) => {
       const cor = p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne';
