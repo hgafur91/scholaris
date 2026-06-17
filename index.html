@@ -5663,6 +5663,11 @@ async function loadDadosEscola() {
       if (tb) tb.textContent = escola.nome || 'Scholaris';
       const sb = document.getElementById('sb-school');
       if (sb) sb.textContent = escola.nome || 'Scholaris';
+      // Carregar CONFIG persistido (periodos lectivos, trancamento, etc.)
+      if (escola.config && typeof escola.config === 'object') {
+        try { Object.assign(CONFIG, escola.config); } catch(e){}
+        try { if (Array.isArray(CONFIG.periodos) && CONFIG.periodos.length) { PERIODOS.length = 0; CONFIG.periodos.forEach(function(p){ PERIODOS.push(p); }); } } catch(e){}
+      }
     }
 
     // 2. Carregar turmas
@@ -13949,6 +13954,7 @@ function guardarPeriodo() {
     // Sort by start time
     PERIODOS.sort((a,b) => a.inicio.localeCompare(b.inicio));
   }
+  try { CONFIG.periodos = PERIODOS; if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); } catch(e){}
   closeM('m-nperiodo');
   rPeriodos();
   toast('Período ' + (_editingPeriodoId?'actualizado':'adicionado') + '!');
@@ -13971,6 +13977,7 @@ function editarPeriodo(id) {
 function removerPeriodo(id) {
   if (PERIODOS.length <= 1) { toast('Deve manter pelo menos um período'); return; }
   PERIODOS.splice(PERIODOS.findIndex(x=>x.id===id), 1);
+  try { CONFIG.periodos = PERIODOS; if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); } catch(e){}
   rPeriodos();
   toast('Período removido');
 }
@@ -32292,6 +32299,27 @@ window.__finV30=true;})();
   injectMenu();
   try{ var mo=new MutationObserver(function(){ injectMenu(); }); mo.observe(document.body,{childList:true,subtree:true}); window.__v39MO=mo; }catch(e){}
   window.__finV39=true;
+})();
+
+/* ===== PATCH v40: persistir CONFIG silenciosamente (periodos lectivos, etc.) ===== */
+(function(){
+  if(window.__finV40) return;
+  window.__persistConfigSilent=function(){
+    try{
+      if(window._supabase && window._escolaId && window._escolaId!=='escola_demo' && typeof CONFIG!=='undefined'){
+        window._supabase.from('escolas').update({config:CONFIG}).eq('id',window._escolaId).then(function(){},function(){});
+      }
+    }catch(e){}
+  };
+  // garantir que mover período também persiste
+  try{
+    if(typeof moverPeriodo==='function' && !moverPeriodo.__v40){
+      var _mp=moverPeriodo;
+      window.moverPeriodo=function(){ var r=_mp.apply(this,arguments); try{ if(typeof PERIODOS!=='undefined'){ CONFIG.periodos=PERIODOS; window.__persistConfigSilent(); } }catch(e){} return r; };
+      window.moverPeriodo.__v40=true;
+    }
+  }catch(e){}
+  window.__finV40=true;
 })();
 </script>
 </body>
