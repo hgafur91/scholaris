@@ -26532,6 +26532,7 @@ function notificarTodosDevedores() {
 //  2. FOLHA DE SALÁRIOS
 // ════════════════════════════════════════════════════════════
 function rFolhaSalarios() {
+  if (window.__folhaV43) return window.__folhaV43();
   const el = document.getElementById('folha-sal-c');
   if (!el || !finGuard(el)) return;
 
@@ -30041,17 +30042,20 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
       var cn=p.categoriaNome||(p.tipo||'Propinas'); porCat[cn]=(porCat[cn]||0)+v;
     });
     var totalAno=porFam.propina+porFam.taxa_fixa+porFam.avulso;
+    var salMes={}; var totalSalAno=0;
+    for(var sm=1;sm<=12;sm++){ salMes[sm]=(typeof window.__folhaBrutoMes==='function')?window.__folhaBrutoMes(sm,ANO):0; totalSalAno+=salMes[sm]; }
     var html='';
     html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">';
     ['propina','taxa_fixa','avulso'].forEach(function(f){
       html += '<div style="flex:1;min-width:170px;background:var(--card);border:1px solid var(--b);border-left:4px solid '+famCor[f]+';border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">'+famNome[f]+'</div><div style="font-size:20px;font-weight:800">'+money(porFam[f])+' MZM</div></div>';
     });
-    html += '<div style="flex:1;min-width:170px;background:var(--a);color:#fff;border-radius:var(--rad);padding:14px"><div style="font-size:12px;opacity:.85">Total '+ANO+'</div><div style="font-size:20px;font-weight:800">'+money(totalAno)+' MZM</div></div>';
+    html += '<div style="flex:1;min-width:170px;background:var(--a);color:#fff;border-radius:var(--rad);padding:14px"><div style="font-size:12px;opacity:.85">Receita '+ANO+'</div><div style="font-size:20px;font-weight:800">'+money(totalAno)+' MZM</div></div>';
+    html += '<div style="flex:1;min-width:170px;background:var(--card);border:1px solid var(--b);border-left:4px solid #dc2626;border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">Salários (aprovados)</div><div style="font-size:20px;font-weight:800;color:#dc2626">'+money(totalSalAno)+' MZM</div></div>';
     html += '</div>';
     html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px;margin-bottom:18px"><div style="font-weight:700;margin-bottom:12px">Balancete Mensal '+ANO+'</div>';
-    html += '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);text-align:right;border-bottom:1px solid var(--b)"><th style="padding:8px;text-align:left">Mes</th><th style="padding:8px">Propinas</th><th style="padding:8px">Taxas Fixas</th><th style="padding:8px">Avulsos</th><th style="padding:8px">Total</th></tr></thead><tbody>';
-    for(var m=1;m<=12;m++){ var pm=porMes[m]; var tm=pm.propina+pm.taxa_fixa+pm.avulso; html += '<tr style="border-bottom:1px solid var(--b);text-align:right"><td style="padding:7px;text-align:left">'+MM[m-1]+'</td><td style="padding:7px">'+money(pm.propina)+'</td><td style="padding:7px">'+money(pm.taxa_fixa)+'</td><td style="padding:7px">'+money(pm.avulso)+'</td><td style="padding:7px;font-weight:700">'+money(tm)+'</td></tr>'; }
-    html += '<tr style="background:var(--bg3);font-weight:800;text-align:right"><td style="padding:8px;text-align:left">TOTAL</td><td style="padding:8px">'+money(porFam.propina)+'</td><td style="padding:8px">'+money(porFam.taxa_fixa)+'</td><td style="padding:8px">'+money(porFam.avulso)+'</td><td style="padding:8px">'+money(totalAno)+'</td></tr>';
+    html += '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);text-align:right;border-bottom:1px solid var(--b)"><th style="padding:8px;text-align:left">Mes</th><th style="padding:8px">Propinas</th><th style="padding:8px">Taxas Fixas</th><th style="padding:8px">Avulsos</th><th style="padding:8px">Receita</th><th style="padding:8px">Salários</th><th style="padding:8px">Saldo</th></tr></thead><tbody>';
+    for(var m=1;m<=12;m++){ var pm=porMes[m]; var tm=pm.propina+pm.taxa_fixa+pm.avulso; var sal=salMes[m]||0; var saldo=tm-sal; html += '<tr style="border-bottom:1px solid var(--b);text-align:right"><td style="padding:7px;text-align:left">'+MM[m-1]+'</td><td style="padding:7px">'+money(pm.propina)+'</td><td style="padding:7px">'+money(pm.taxa_fixa)+'</td><td style="padding:7px">'+money(pm.avulso)+'</td><td style="padding:7px;font-weight:700">'+money(tm)+'</td><td style="padding:7px;color:#dc2626">'+(sal?'-'+money(sal):'—')+'</td><td style="padding:7px;font-weight:700;color:'+(saldo>=0?'#16a34a':'#dc2626')+'">'+money(saldo)+'</td></tr>'; }
+    html += '<tr style="background:var(--bg3);font-weight:800;text-align:right"><td style="padding:8px;text-align:left">TOTAL</td><td style="padding:8px">'+money(porFam.propina)+'</td><td style="padding:8px">'+money(porFam.taxa_fixa)+'</td><td style="padding:8px">'+money(porFam.avulso)+'</td><td style="padding:8px">'+money(totalAno)+'</td><td style="padding:8px;color:#dc2626">-'+money(totalSalAno)+'</td><td style="padding:8px;color:'+((totalAno-totalSalAno)>=0?'#16a34a':'#dc2626')+'">'+money(totalAno-totalSalAno)+'</td></tr>';
     html += '</tbody></table></div></div>';
     var catRows=Object.keys(porCat).sort(function(a,b){return porCat[b]-porCat[a];}).map(function(k){ return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:7px">'+k+'</td><td style="padding:7px;text-align:right;font-weight:700">'+money(porCat[k])+' MZM</td></tr>'; }).join('');
     html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px"><div style="font-weight:700;margin-bottom:12px">Por Categoria '+ANO+'</div><table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>'+(catRows||'<tr><td style="padding:10px;color:var(--t2)">Sem dados</td></tr>')+'</tbody></table></div>';
@@ -32378,6 +32382,113 @@ window.__finV30=true;})();
   window.__multaDe=function(p){ try{ return (p&&p.st==='multa')?Math.round((p.v||0)*((p.multaPct||0)/100)):0; }catch(e){ return 0; } };
   window.__totalProp=function(p){ try{ return (p?(p.v||0):0)+window.__multaDe(p); }catch(e){ return (p&&p.v)||0; } };
   window.__finV41=true;
+})();
+
+/* ===== PATCH v43: Módulo de Folha de Salários (gerar / subsídios / descontos / aprovar+trancar) ===== */
+(function(){
+  if(window.__finV43) return;
+  var MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function nomeMes(m){ return MESES[m]||(''+m); }
+  function ano(){ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||2026; }
+  function fmtN(n){ try{ return Math.round(n||0).toLocaleString('pt-PT').replace(/\u00A0/g,' '); }catch(e){ return ''+(n||0); } }
+  function podeEditar(){ return curRole==='gestor'||curRole==='director'; }
+  function calcIRPSl(b){ try{ return (typeof calcIRPS==='function')?calcIRPS(b):Math.round(b*0.15); }catch(e){ return Math.round(b*0.15); } }
+  function getFolhas(){ if(typeof CONFIG==='undefined') return {}; if(!CONFIG.folhas) CONFIG.folhas={}; return CONFIG.folhas; }
+  function getFolha(a,m){ var F=getFolhas(); return (F[a]&&F[a][m])||null; }
+  window.__folhaBrutoMes=function(m,a){ a=a||ano(); var f=getFolha(a,m); if(!f||f.status!=='aprovada') return 0; return Object.keys(f.linhas).reduce(function(s,pid){var L=f.linhas[pid];var subs=(L.subsidios||[]).reduce(function(ss,x){return ss+(x.valor||0);},0);return s+(L.base||0)+subs;},0); };
+  function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
+  function kpi(l,v,c){ return '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:12px"><div style="font-size:11px;color:var(--t2)">'+l+'</div><div style="font-size:18px;font-weight:800;color:'+c+'">'+fmtN(v)+' MZM</div></div>'; }
+
+  window.__gerarFolha=function(m){
+    if(!podeEditar()){ if(typeof toast==='function') toast('Apenas gestor ou director'); return; }
+    var a=ano(); var F=getFolhas(); F[a]=F[a]||{}; var ex=F[a][m];
+    if(ex && ex.status==='aprovada'){ if(typeof toast==='function') toast('Folha já aprovada e trancada'); return; }
+    var linhas={};
+    (PROFS||[]).filter(function(p){return (p.salario||0)>0;}).forEach(function(p){
+      var prev=(ex&&ex.linhas&&ex.linhas[p.id])||{};
+      linhas[p.id]={ base:p.salario||0, subsidios:prev.subsidios||[], descontos:prev.descontos||[] };
+    });
+    F[a][m]={ status:'rascunho', linhas:linhas, geradaEm:new Date().toISOString(), aprovadaPor:null, aprovadaEm:null };
+    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' gerada (rascunho)'); window.rFolhaSalarios();
+  };
+  window.__aprovarFolha=function(m){
+    if(!podeEditar()){ if(typeof toast==='function') toast('Apenas gestor ou director'); return; }
+    var a=ano(); var f=getFolha(a,m); if(!f){ if(typeof toast==='function') toast('Gere a folha primeiro'); return; }
+    if(!confirm('Aprovar e TRANCAR a folha de '+nomeMes(m)+'?\n\nDepois de aprovada, este mês fica só de leitura e não pode ser editado.')) return;
+    f.status='aprovada'; f.aprovadaPor=((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||''; f.aprovadaEm=new Date().toISOString();
+    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' aprovada e trancada'); window.rFolhaSalarios();
+  };
+  function editavel(m){ var f=getFolha(ano(),m); return f && f.status==='rascunho' && podeEditar(); }
+  window.__addSubsidio=function(m,pid){
+    if(!editavel(m)){ if(typeof toast==='function') toast('Folha trancada ou sem permissão'); return; }
+    var nome=prompt('Nome do subsídio (ex: Cargo, Transporte):',''); if(nome===null||!nome.trim()) return;
+    var valor=parseFloat(prompt('Valor do subsídio (MZN):','')||'0')||0; if(valor<=0) return;
+    var f=getFolha(ano(),m); var L=f.linhas[pid]; if(!L) return; L.subsidios=L.subsidios||[]; L.subsidios.push({nome:nome.trim(),valor:valor});
+    persist(); window.rFolhaSalarios();
+  };
+  window.__addDesconto=function(m,pid){
+    if(!editavel(m)){ if(typeof toast==='function') toast('Folha trancada ou sem permissão'); return; }
+    var nome=prompt('Motivo do desconto (ex: Faltas, Adiantamento):',''); if(nome===null||!nome.trim()) return;
+    var valor=parseFloat(prompt('Valor do desconto (MZN):','')||'0')||0; if(valor<=0) return;
+    var f=getFolha(ano(),m); var L=f.linhas[pid]; if(!L) return; L.descontos=L.descontos||[]; L.descontos.push({nome:nome.trim(),valor:valor});
+    persist(); window.rFolhaSalarios();
+  };
+  window.__rmSubsidio=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.subsidios){L.subsidios.splice(i,1);persist();window.rFolhaSalarios();} };
+  window.__rmDesconto=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.descontos){L.descontos.splice(i,1);persist();window.rFolhaSalarios();} };
+
+  window.__folhaV43=function(){
+    var el=document.getElementById('folha-sal-c'); if(!el) return;
+    if(!['gestor','director','secretario'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
+    var a=ano();
+    var sel=document.getElementById('fs-mes-sel');
+    var m=parseInt(sel&&sel.value)|| (new Date().getMonth()+1);
+    var f=getFolha(a,m);
+    var canEdit = f && f.status==='rascunho' && podeEditar();
+    var Q=String.fromCharCode(39);
+    var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
+    h+='<select class="ffi" id="fs-mes-sel" style="width:140px" onchange="rFolhaSalarios()">'+MESES.map(function(nm,i){return i===0?'':'<option value="'+i+'" '+(i===m?'selected':'')+'>'+nm+'</option>';}).join('')+'</select>';
+    if(!f){ if(podeEditar()) h+='<button class="btn btn-p btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-file-plus"></i> Gerar Folha do Mês</button>'; }
+    else if(f.status==='rascunho'){
+      h+='<span class="badge bwn">Rascunho</span>';
+      if(podeEditar()){ h+='<button class="btn btn-g btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-refresh"></i> Actualizar bases</button>';
+        h+='<button class="btn btn-p btn-sm" onclick="window.__aprovarFolha('+m+')"><i class="ti ti-lock"></i> Aprovar e Trancar</button>'; }
+    } else {
+      h+='<span class="badge bok"><i class="ti ti-lock"></i> Aprovada e trancada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span>';
+    }
+    if(f) h+='<button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> PDF</button>';
+    h+='</div>';
+    if(!f){ el.innerHTML=h+'<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem folha para '+nomeMes(m)+'. '+(podeEditar()?'Carregue em "Gerar Folha do Mês".':'')+'</div>'; return; }
+
+    var rows=Object.keys(f.linhas).map(function(pid){
+      var L=f.linhas[pid];
+      var p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);})||{nome:'(removido)',num:'',cargo:''};
+      var subs=(L.subsidios||[]).reduce(function(s,x){return s+(x.valor||0);},0);
+      var bruto=(L.base||0)+subs; var inss=Math.round(bruto*0.03); var irps=calcIRPSl(bruto);
+      var dm=(L.descontos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
+      return {pid:pid,p:p,L:L,bruto:bruto,inss:inss,irps:irps,dm:dm,liquido:bruto-inss-irps-dm};
+    }).sort(function(x,y){return (x.p.nome||'').localeCompare(y.p.nome||'');});
+    var tBase=rows.reduce(function(s,r){return s+(r.L.base||0);},0);
+    var tBruto=rows.reduce(function(s,r){return s+r.bruto;},0);
+    var tINSS=rows.reduce(function(s,r){return s+r.inss;},0), tIRPS=rows.reduce(function(s,r){return s+r.irps;},0);
+    var tDM=rows.reduce(function(s,r){return s+r.dm;},0), tLiq=rows.reduce(function(s,r){return s+r.liquido;},0);
+
+    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Bruto',tBruto,'var(--a)')+kpi('INSS + IRPS',tINSS+tIRPS,'var(--am)')+kpi('Outros Descontos',tDM,'var(--r)')+kpi('Total Líquido',tLiq,'var(--g)')+'</div>';
+    h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Descontos</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th style="text-align:right">Líquido</th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var subC=(r.L.subsidios||[]).map(function(s,si){return '<div style="color:var(--g);font-size:10px">+'+fmtN(s.valor)+' '+s.nome+(canEdit?' <a onclick="window.__rmSubsidio('+m+','+Q+r.pid+Q+','+si+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addSubsidio('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ subsídio</a>':'');
+      var desC=(r.L.descontos||[]).map(function(d,di){return '<div style="color:var(--r);font-size:10px">-'+fmtN(d.valor)+' '+d.nome+(canEdit?' <a onclick="window.__rmDesconto('+m+','+Q+r.pid+Q+','+di+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addDesconto('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ desconto</a>':'');
+      h+='<tr><td><div style="font-weight:700">'+r.p.nome+'</div><div style="font-size:10px;color:var(--t2)">'+(r.p.num||'')+' · '+(r.p.cargo||'')+'</div></td>'
+        +'<td style="text-align:right;font-family:var(--fm)">'+fmtN(r.L.base)+'</td>'
+        +'<td>'+(subC||'—')+'</td><td>'+(desC||'—')+'</td>'
+        +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">-'+fmtN(r.inss)+'</td>'
+        +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">-'+fmtN(r.irps)+'</td>'
+        +'<td style="text-align:right;font-family:var(--fm);font-weight:800;color:var(--g)">'+fmtN(r.liquido)+'</td></tr>';
+    });
+    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td>TOTAIS</td><td style="text-align:right">'+fmtN(tBase)+'</td><td></td><td style="text-align:right;color:var(--r)">-'+fmtN(tDM)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tINSS)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tIRPS)+'</td><td style="text-align:right;color:var(--g)">'+fmtN(tLiq)+'</td></tr>';
+    h+='</tbody></table></div></div>';
+    el.innerHTML=h;
+  };
+  window.__finV43=true;
 })();
 </script>
 </body>
