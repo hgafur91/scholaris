@@ -3768,7 +3768,7 @@ function rDash(){
 
 // ══ EXECUTIVO ══
 function rExec(){
-  const totalR=ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+p.v,0),0);
+  const totalR=ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
   const totalD=PROFS.reduce((s,p)=>s+(p.salario||0),0)+38450;
   const aprov=ALUNOS.filter(a=>a.notas.t1.length&&a.notas.t1.reduce((s,n)=>s+(n.n||0),0)/a.notas.t1.length>=CONFIG.mediaAprovacao).length;
   document.getElementById('exec-kpis').innerHTML=[
@@ -4372,7 +4372,7 @@ function fAl(f,btn){document.querySelectorAll('#al-filtros .chip').forEach(c=>c.
 function openAluno(id){
   const a=ALUNOS.find(x=>x.id===id);if(!a)return;
   // Garantir campos financeiros (calculados a partir das propinas)
-  try{ if(typeof a.saldo!=='number'){ const _div=(a.propinas||[]).filter(p=>p.st!=='pago'&&p.st!=='multa').reduce((s,p)=>s+(p.v||0),0); a.saldo=-_div; } if(typeof a.adiant!=='number') a.adiant=0; }catch(_e){ a.saldo=a.saldo||0; a.adiant=a.adiant||0; }
+  try{ if(typeof a.saldo!=='number'){ const _div=(a.propinas||[]).filter(p=>p.st!=='pago'&&p.st!=='isento').reduce((s,p)=>s+(p.v||0),0); a.saldo=-_div; } if(typeof a.adiant!=='number') a.adiant=0; }catch(_e){ a.saldo=a.saldo||0; a.adiant=a.adiant||0; }
   if(!Array.isArray(a.docs)) a.docs=[];
   curAlunoId=id;const i=ALUNOS.indexOf(a),c=gc(i);
   go('aluno-p');
@@ -4401,7 +4401,7 @@ function openAluno(id){
   })();
   rIR('ap-td-r',[['Director Turma','Prof. António Cuna'],['Disciplinas',a.notas.t1.length+''],['Inscrições','Activas']]);
   // Financeiro
-  const totP=a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((s,p)=>s+p.v,0);
+  const totP=a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
   document.getElementById('ap-fin-c').innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
       <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px"><div style="font-size:20px;font-weight:800;color:${a.saldo<0?'var(--r)':'var(--g)'};margin-bottom:4px">${a.saldo.toLocaleString()} MZM</div><div style="font-size:11px;color:var(--t2)">Saldo</div></div>
@@ -5169,7 +5169,7 @@ function rPropTurmas(){
   document.getElementById('prop-turmas').innerHTML=TURMAS.map(t=>{
     const al=ALUNOS.filter(a=>a.turma===t.id);
     const comDiv=al.filter(a=>a.propinas.some(p=>p.st==='npago')).length;
-    const totP=al.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+p.v,0),0);
+    const totP=al.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
     return`<div class="tc" onclick="openPropTurma('${t.id}')">
       <div class="tc-num">${t.cl}${t.t}</div><div class="tc-nome">${t.curso}</div>
       <div class="tc-info">${al.length} aluno(s)</div>
@@ -5196,7 +5196,7 @@ function propBack(){
 
 function renderPropTabela(list){
   document.getElementById('tb-prop').innerHTML=list.map(a=>{
-    const pago=a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((s,p)=>s+p.v,0);
+    const pago=a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
     const div=a.propinas.filter(p=>p.st==='npago').length*getPropinaTurma(a.turma);
     const m6=a.propinas.slice(0,6).map(p=>`<td style="text-align:center"><span class="badge ${p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne'}" style="font-size:9px">${p.st==='pago'?'P':p.st==='multa'?'M':p.st==='npago'?'N':'—'}</span></td>`).join('');
     return`<tr onclick="openPA(${a.id})"><td>${mkAv(a.nome,24,ALUNOS.indexOf(a),false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${a.num}</td><td style="font-weight:700">${a.nome}</td>${m6}<td style="font-weight:700;color:var(--g)">${pago.toLocaleString()}</td><td style="font-weight:700;color:${div?'var(--r)':'var(--g)'}">${div?'-'+div.toLocaleString():'OK'}</td><td style="white-space:nowrap"><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openPA(${a.id})">Gerir</button> ${['gestor','secretario'].includes(curRole)?`<button class="btn btn-p btn-sm" onclick="event.stopPropagation();curAlunoId=${a.id};gerarFactura()"><i class="ti ti-file-invoice"></i></button>`:''}</td></tr>`;
@@ -5217,7 +5217,7 @@ function openPA(id){
   document.getElementById('pa-bc').textContent=a.nome;
   document.getElementById('pa-titulo').textContent='Propinas — '+a.nome;
   var _bl=document.getElementById('pa-base-lbl'); if(_bl) _bl.textContent=((typeof getPropinaTurma==='function'?getPropinaTurma(a.turma):0)||0).toLocaleString()+' MZM/mês'+((a.bolsaPct||0)>0?' · bolsa '+a.bolsaPct+'%':'');
-  const pago=a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((s,p)=>s+p.v,0);
+  const pago=a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
   const div=a.propinas.filter(p=>{var e=(window.__estadoPropina?window.__estadoPropina(p):p.st);return e==='divida';}).reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
   document.getElementById('pa-hero').innerHTML=`
     <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><div style="width:56px;height:56px;border-radius:14px;background:${c}18;color:${c};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0">${ini(a.nome)}</div><div><div style="font-size:18px;font-weight:800;color:var(--t)">${a.nome}</div><div style="font-size:11px;color:var(--t2);font-family:var(--fm)">${a.num} · Turma ${a.turma} · Enc: ${a.enome} (${a.enc})</div></div></div>
@@ -5229,7 +5229,7 @@ document.getElementById('prop-meses').innerHTML=a.propinas.map((p,mi)=>{
     const vc=p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':p.st==='isento'?'var(--g)':p.st==='npago'?'var(--r)':'var(--t3)';
     return`<div class="pm ${cls}"><div style="font-size:11px;font-weight:700;color:var(--t);margin-bottom:4px">${M[mi]}</div><div style="font-size:12px;font-weight:800;color:${vc};margin-bottom:3px">${p.v?p.v.toLocaleString()+' MZM':'—'}</div>${p.st==='multa'&&(p.multaPct||0)>0?`<div style="font-size:8px;color:var(--am);margin-bottom:2px">+${Math.round((p.v||0)*(p.multaPct||0)/100).toLocaleString()} multa (${p.multaPct}%)</div>`:''}<div style="font-size:9px;color:${vc}">${p.st==='pago'?'<i class="ti ti-check"></i> Pago':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Em atraso':p.st==='isento'?'<i class="ti ti-gift"></i> Isento':p.st==='npago'?'<i class="ti ti-x"></i> Não pago':'○ Pendente'}</div>${p.dt?`<div style="font-size:8px;color:var(--t3)">${p.dt}</div>`:''} ${['gestor','secretario','director'].includes(curRole)&&p.st==='npago'?`<div style="display:flex;gap:3px;margin-top:6px"><button style="flex:1;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(34,197,94,.15);color:var(--g);cursor:pointer" onclick="setProp(${a.id},${mi},'pago')">Pago</button>${(curRole==='gestor'||curRole==='director')?`<button style="flex:1;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(245,158,11,.15);color:var(--am);cursor:pointer" onclick="setProp(${a.id},${mi},'multa')">Multa</button>`:''}</div>`:''}</div>`;
   }).join('');
-  document.getElementById('pa-hist').innerHTML=a.propinas.filter(p=>p.st==='pago'||p.st==='multa').map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--b)"><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':'rgba(245,158,11,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>'}</div><div><div style="font-size:13px;font-weight:700">Propina ${MF[p.m-1]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.dt||'—'} · ${p.ref||'Sem recibo'}</div></div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:800;color:${p.st==='pago'?'var(--g)':'var(--am)'}">${p.v.toLocaleString()} MZM${p.st==='multa'&&(p.multaPct||0)>0?' <span style="font-size:11px;color:var(--am)">+ '+Math.round((p.v||0)*(p.multaPct||0)/100).toLocaleString()+' multa</span>':''}</span><span class="badge ${p.st==='pago'?'bok':'bwn'}">${p.st==='pago'?'Pago':'Em atraso'}</span>${['gestor','secretario'].includes(curRole)?`<button class="btn btn-g btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i></button>`:''}</div></div>`).join('')||'<div style="padding:18px;text-align:center;color:var(--t2);font-size:13px">Sem pagamentos registados.</div>';
+  document.getElementById('pa-hist').innerHTML=a.propinas.filter(p=>p.st==='pago').map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--b)"><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':'rgba(245,158,11,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>'}</div><div><div style="font-size:13px;font-weight:700">Propina ${MF[p.m-1]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.dt||'—'} · ${p.ref||'Sem recibo'}</div></div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:800;color:${p.st==='pago'?'var(--g)':'var(--am)'}">${p.v.toLocaleString()} MZM${p.st==='multa'&&(p.multaPct||0)>0?' <span style="font-size:11px;color:var(--am)">+ '+Math.round((p.v||0)*(p.multaPct||0)/100).toLocaleString()+' multa</span>':''}</span><span class="badge ${p.st==='pago'?'bok':'bwn'}">${p.st==='pago'?'Pago':'Em atraso'}</span>${['gestor','secretario'].includes(curRole)?`<button class="btn btn-g btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i></button>`:''}</div></div>`).join('')||'<div style="padding:18px;text-align:center;color:var(--t2);font-size:13px">Sem pagamentos registados.</div>';
 }
 
 function setProp(aid,mi,st){
@@ -5322,7 +5322,7 @@ function rDespesas(){
   const totalSal=PROFS.reduce((s,p)=>s+(p.salario||0),0);
   document.getElementById('desp-sal').textContent=totalSal.toLocaleString();
   document.getElementById('desp-total').textContent=(totalSal+38450).toLocaleString();
-  const totalR=ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+p.v,0),0);
+  const totalR=ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
   document.getElementById('desp-saldo').textContent=Math.max(0,totalR-totalSal-38450).toLocaleString();
   document.getElementById('despesas-c').innerHTML=DESP_CAT.map((cat,ci)=>`
     <div class="desp-acc">
@@ -8708,7 +8708,7 @@ function exportRelatorioFinanceiroPDF() {
   const propinasPorMes = M.map((m, mi) => {
     const cobrado = ALUNOS.reduce((s,a) => {
       const p = a.propinas[mi];
-      return s + (p && (p.st==='pago'||p.st==='multa') ? p.v : 0);
+      return s + (p && (p.st==='pago') ? p.v : 0);
     }, 0);
     const multas = ALUNOS.reduce((s,a) => {
       const p = a.propinas[mi];
@@ -9050,7 +9050,7 @@ exportNotasExcel = function() {
 };
 
 exportPagamentosExcel = function() {
-  const totalR   = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+p.v,0),0);
+  const totalR   = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
   const emAtraso = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0),0);
   const multas   = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='multa').reduce((ss,p)=>ss+(p.v-CONFIG.valorPropina),0),0);
 
@@ -9129,7 +9129,7 @@ exportFaltasExcel = function() {
 exportDespesasExcel = function() {
   const totalSal  = PROFS.reduce((s,p)=>s+(p.salario||0),0);
   const totalDesp = totalSal + 38450;
-  const totalR    = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+p.v,0),0);
+  const totalR    = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
   const saldo     = totalR - totalDesp;
 
   const salRows = PROFS.map((p,i) => {
@@ -9559,7 +9559,7 @@ function renderPortalPresencas(a) {
 }
 
 function renderPortalPropinas(a) {
-  const totP = a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((s,p)=>s+p.v,0);
+  const totP = a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
   const div  = a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
   document.getElementById('portal-c').innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
@@ -9570,7 +9570,7 @@ function renderPortalPropinas(a) {
     <div class="card"><div class="ch"><span class="ct">Propinas 2026</span></div>
     ${a.propinas.map((p,mi)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--b)">
       <div style="width:32px;height:32px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':p.st==='multa'?'rgba(245,158,11,.1)':'rgba(239,68,68,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':'!'}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[mi]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.st==='pago'||p.st==='multa'?'Pago':(p.st==='npago'?'Em atraso':(p.dt||'Não pago'))}${p.ref?' · '+p.ref:''}</div></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">Propina ${MF[mi]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.st==='pago'?'Pago':(p.st==='npago'?'Em atraso':(p.dt||'Não pago'))}${p.ref?' · '+p.ref:''}</div></div>
       <span style="font-size:13px;font-weight:700;color:${p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':'var(--r)'}">${p.v?p.v.toLocaleString()+' MZM':'—'}</span>
       <span class="badge ${p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne'}">${p.st==='pago'?'Pago':p.st==='multa'?'Multa':p.st==='npago'?'Em atraso':'Pendente'}</span>
     </div>`).join('')}</div>`;
@@ -16922,7 +16922,7 @@ renderPropTabela = function(list) {
   const canPay = ['gestor','secretario','director'].includes(curRole);
   document.getElementById('tb-prop').innerHTML = list.map(a => {
     const div = a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
-    const pago = a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((s,p)=>s+(p.v||CONFIG.valorPropina||4500),0);
+    const pago = a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+(p.v||CONFIG.valorPropina||4500),0);
     const meses6 = a.propinas.slice(0,6).map((p,mi) => {
       const cor = p.st==='pago'?'bok':p.st==='multa'?'bwn':p.st==='npago'?'ber':'bne';
       const conf = p.estadoBanco==='confirmado'?'':'?';
@@ -17585,7 +17585,7 @@ function rFinDashboard() {
   // Cobranca mensal de propinas (barras) - mantido
   const M = (typeof MESES_ABBR!=='undefined'?MESES_ABBR:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']);
   const cobrancaMensal = Array.from({length:12},(_,mi)=>{
-    const pago = ALUNOS.reduce((s,a)=>{ const p=a.propinas[mi]; return s+(p&&(p.st==='pago'||p.st==='multa')?vp:0); },0);
+    const pago = ALUNOS.reduce((s,a)=>{ const p=a.propinas[mi]; return s+(p&&(p.st==='pago')?vp:0); },0);
     return {mes:M[mi], valor:pago, expected:totalAlunos*vp};
   });
   const fmt = n => (n||0).toLocaleString('pt-PT');
@@ -18750,7 +18750,7 @@ function emitirReciboPropina(pagamentoId) {
   const cod = `REC-${pagamentoId}-${d.ano}`;
   const _enc = (typeof ENCS!=='undefined') ? ENCS.find(e=>e.num===(a&&a.enc)) : null;
   const _encNome = (_enc&&_enc.nome) || (a&&a.erel) || '\u2014';
-  const _divAberto = a ? (a.propinas||[]).filter(p=>p.st!=='pago'&&p.st!=='multa').reduce((s,p)=>s+(p.v||0),0) : 0;
+  const _divAberto = a ? (a.propinas||[]).filter(p=>p.st!=='pago'&&p.st!=='isento').reduce((s,p)=>s+(p.v||0),0) : 0;
 
   const mesesStr = pag.meses.map(mi=>M[mi]+'/'+d.ano).join(', ');
   const canalLabel = {
@@ -19643,7 +19643,7 @@ function emitirExtractoPropinas(alunoId) {
     .sort((a,b)=>a.data?.localeCompare(b.data||'')||0);
   const totalPago   = pags.filter(p=>p.estado!=='estornado').reduce((s,p)=>s+p.valorTotal,0);
   const totalDivida = a.propinas.filter(p=>p.st==='npago').length*(CONFIG.valorPropina||4500);
-  const mesesPagos  = a.propinas.filter(p=>p.st==='pago'||p.st==='multa').length;
+  const mesesPagos  = a.propinas.filter(p=>p.st==='pago').length;
   const mesesDivida = a.propinas.filter(p=>p.st==='npago').length;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -26351,7 +26351,7 @@ function getTotalPagoMes(mes) {
   // mes = 1-12
   return ALUNOS.reduce((s,a) => {
     const p = (a.propinas||[])[mes-1];
-    return s + (p && (p.st==='pago'||p.st==='multa') ? (p.v||CONFIG.valorPropina||4500) : 0);
+    return s + (p && (p.st==='pago') ? (p.v||CONFIG.valorPropina||4500) : 0);
   }, 0);
 }
 
@@ -26402,7 +26402,7 @@ function rDividasConsolidadas() {
 
   const totalEmDivida = devedores.reduce((s,d) => s + d.valorTotal, 0);
   const totalPago     = ALUNOS.reduce((s,a) =>
-    s + (a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+(p.v||4500),0), 0);
+    s + (a.propinas||[]).filter(p=>p.st==='pago').reduce((ss,p)=>ss+(p.v||4500),0), 0);
   const totalPossivel = ALUNOS.length * 12 * (CONFIG.valorPropina||4500);
   const txCobranca    = totalPossivel ? Math.round(totalPago/totalPossivel*100) : 0;
 
@@ -26788,7 +26788,7 @@ function exportarRelatorioFinanceiro(tipo) {
   const CSS    = typeof CSS_BASE!=='undefined'?CSS_BASE:'';
   const NP     = typeof NO_PRINT_BAR!=='undefined'?NO_PRINT_BAR:'';
 
-  const totalPago    = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+(p.v||4500),0),0);
+  const totalPago    = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago').reduce((ss,p)=>ss+(p.v||4500),0),0);
   const totalDesp    = DESPESAS_REG.reduce((s,d)=>s+d.valor,0);
   const totalSal     = PROFS.reduce((s,p)=>s+(p.salario||0),0) * 5; // 5 months
   const resultado    = totalPago - totalDesp - totalSal;
@@ -26964,7 +26964,7 @@ function rPrevisaoReceita() {
   const nAlunos   = ALUNOS.length;
   const valProp   = CONFIG.valorPropina || 4500;
   const maxAnual  = nAlunos * 12 * valProp;
-  const cobrado   = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+(p.v||valProp),0),0);
+  const cobrado   = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago').reduce((ss,p)=>ss+(p.v||valProp),0),0);
   const emDivida  = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='npago').length*valProp,0);
   const txCobr    = maxAnual ? Math.round(cobrado/maxAnual*100) : 0;
 
@@ -27359,7 +27359,7 @@ function orcTotais() {
 // ── Real totals ───────────────────────────────────────────────
 function orcTotaisReais() {
   const recReal  = ALUNOS.reduce((s,a) =>
-    s + (a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa')
+    s + (a.propinas||[]).filter(p=>p.st==='pago')
       .reduce((ss,p)=>ss+(p.v||4500),0), 0);
   const despReal = (typeof DESPESAS_REG!=='undefined'
     ? DESPESAS_REG.reduce((s,d)=>s+d.valor,0) : 0)
@@ -27956,7 +27956,7 @@ function rGestaoAno() {
             {l:'Alunos',    v:ALUNOS.length,                     c:'var(--a)'},
             {l:'Professores',v:PROFS.filter(p=>p.dep==='academico').length, c:'var(--pu)'},
             {l:'Turmas',   v:TURMAS.length,                      c:'var(--tl)'},
-            {l:'Receita',  v:fmt(ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+(p.v||4500),0),0))+' MZM', c:'var(--g)'},
+            {l:'Receita',  v:fmt(ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago').reduce((ss,p)=>ss+(p.v||4500),0),0))+' MZM', c:'var(--g)'},
             {l:'Aprovação',v:(()=>{const apv=ALUNOS.filter(a=>{const m=calcMediaGeralAluno(a.id);return m!=null&&m>=(CONFIG.mediaAprovacao||10)}).length;return ALUNOS.length?Math.round(apv/ALUNOS.length*100)+'%':'—';})(), c:'var(--g)'},
           ].map(k=>`<div style="background:var(--bg3);border-radius:var(--rads);padding:12px;text-align:center">
             <div style="font-size:18px;font-weight:800;color:${k.c}">${k.v}</div>
@@ -28019,7 +28019,7 @@ function iniciarFechoAno() {
   const nAlunos   = ALUNOS.length;
   const apv       = ALUNOS.filter(a=>{const m=calcMediaGeralAluno(a.id);return m!=null&&m>=(CONFIG.mediaAprovacao||10);}).length;
   const txApv     = nAlunos ? Math.round(apv/nAlunos*100) : 0;
-  const receita   = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+(p.v||4500),0),0);
+  const receita   = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago').reduce((ss,p)=>ss+(p.v||4500),0),0);
 
   modal.innerHTML = `<div class="modal" style="max-width:500px">
     <div class="mhd">
@@ -28104,7 +28104,7 @@ function confirmarFechoAno() {
     return m!=null&&m>=(CONFIG.mediaAprovacao||10);
   }).length;
   const receita = ALUNOS.reduce((s,a)=>
-    s+(a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa')
+    s+(a.propinas||[]).filter(p=>p.st==='pago')
       .reduce((ss,p)=>ss+(p.v||4500),0),0);
 
   const snapshot = {
@@ -28467,7 +28467,7 @@ function exportarRelFinanceiro(ano) {
   const {MESES,fmtN,s,kgrid} = D;
 
   const recMes = MESES.map((_,i)=>
-    ALUNOS.reduce((sum,a)=>{const p=(a.propinas||[])[i];return sum+(p&&(p.st==='pago'||p.st==='multa')?(p.v||CONFIG.valorPropina||4500):0);},0));
+    ALUNOS.reduce((sum,a)=>{const p=(a.propinas||[])[i];return sum+(p&&(p.st==='pago')?(p.v||CONFIG.valorPropina||4500):0);},0));
   const totalPropinas = recMes.reduce((t,v)=>t+v,0);
   const outrasRec = typeof ORCAMENTO_ANUAL!=='undefined'
     ? (ORCAMENTO_ANUAL.outrasReceitas||[]).reduce((s,r)=>s+r.valor,0) : 0;
@@ -28660,14 +28660,14 @@ function exportarRelPropinas(ano) {
   const D = _buildAnoData(ano);
   const {fmtN,bar,kgrid} = D;
 
-  const totalCobrado = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+(p.v||4500),0),0);
+  const totalCobrado = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago').reduce((ss,p)=>ss+(p.v||4500),0),0);
   const totalDivida  = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='npago').length*(CONFIG.valorPropina||4500),0);
   const nDevedores   = ALUNOS.filter(a=>(a.propinas||[]).some(p=>p.st==='npago')).length;
   const txCobr       = (totalCobrado+totalDivida)?Math.round(totalCobrado/(totalCobrado+totalDivida)*100):0;
 
   const propTurmas = TURMAS.map(t=>{
     const als=ALUNOS.filter(a=>a.turma===t.id);
-    const cob=als.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+(p.v||4500),0),0);
+    const cob=als.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago').reduce((ss,p)=>ss+(p.v||4500),0),0);
     const div=als.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='npago').length*(CONFIG.valorPropina||4500),0);
     const nd=als.filter(a=>(a.propinas||[]).some(p=>p.st==='npago')).length;
     const tc=(cob+div)?Math.round(cob/(cob+div)*100):0;
@@ -31366,8 +31366,8 @@ window.renderBalanceteRange=function(mIni,mFim){
     if(entrada===null) return;
     var novo=Math.max(0,Math.min(100,Number(entrada)||0));
     var motivo=prompt('Motivo (opcional):','')||'';
-    if(novo<=0){ p.st='npago'; p.multaPct=0; p.multaLock=false; }
-    else { p.st='multa'; p.multaPct=novo; p.multaLock=true; }
+    if(novo<=0){ p.st='npago'; p.multaPct=0; p.multaLock=false; p.multaIsenta=true; }
+    else { p.st='multa'; p.multaPct=novo; p.multaLock=true; p.multaIsenta=false; }
     p.multaMotivo=motivo; p.multaAjustadoPor=((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||''; p.multaAjustadoEm=new Date().toISOString();
     try{ if(typeof openPA==='function') openPA(aid); }catch(e){}
     try{ window.__refreshFinanceiro(); }catch(e){}
@@ -31536,7 +31536,7 @@ window.__diasAtrasoPropina=function(mesIdx){try{var hoje=new Date();var ano=(typ
 window.__multaPropina=function(turmaId,mesIdx){try{var base=(typeof getPropinaTurma==='function')?getPropinaTurma(turmaId):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);return Math.round(base*pct/100);}catch(e){return 0;}};
 try{window.calcMulta=function(prop,mesIdx){try{var pct=window.__pctEscalaoAtraso(window.__diasAtrasoPropina(mesIdx));var base=(prop&&prop._base)?prop._base:((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);return Math.round(base*pct/100);}catch(e){return 0;}};}catch(e){}
 try{window.updatePagValor=function(){try{var a=(typeof ALUNOS!=='undefined')?ALUNOS.find(function(x){return x.id===_pagAlunoId;}):null;if(!a)return;var base=(typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);var total=0;_pagMesesSel.forEach(function(mi){total+=base+window.__multaPropina(a.turma,mi);});var el=document.getElementById('pag-valor');if(el)el.value=total;}catch(e){}};}catch(e){}
-try{window.__aplicarMultasAutomaticas=function(aluno){try{var lista=aluno?[aluno]:((typeof ALUNOS!=='undefined')?ALUNOS:[]);var mudou=false;lista.forEach(function(a){if(!a||!a.propinas)return;var _bol=(a.bolsaPct||0);if(_bol>=100)return;var base=((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500))*(1-_bol/100);Object.keys(a.propinas).forEach(function(k){var p=a.propinas[k];if(!p)return;if(p.st==='isento')return;var mesIdx=(typeof p.m!=='undefined')?(p.m-1):(parseInt(k,10));var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);if(p.st==='npago'&&pct>0){p.st='multa';p.multaAuto=true;p.multaLock=true;p.multaPct=pct;p.v=Math.round(base);mudou=true;}});});return mudou;}catch(e){return false;}};}catch(e){}
+try{window.__aplicarMultasAutomaticas=function(aluno){try{var lista=aluno?[aluno]:((typeof ALUNOS!=='undefined')?ALUNOS:[]);var mudou=false;lista.forEach(function(a){if(!a||!a.propinas)return;var _bol=(a.bolsaPct||0);if(_bol>=100)return;var base=((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500))*(1-_bol/100);Object.keys(a.propinas).forEach(function(k){var p=a.propinas[k];if(!p)return;if(p.st==='isento'||p.multaIsenta)return;var mesIdx=(typeof p.m!=='undefined')?(p.m-1):(parseInt(k,10));var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);if(p.st==='npago'&&pct>0){p.st='multa';p.multaAuto=true;p.multaLock=true;p.multaPct=pct;p.v=Math.round(base);mudou=true;}});});return mudou;}catch(e){return false;}};}catch(e){}
 window.__setDiaVenc=function(v){try{if(typeof CONFIG!=='undefined')CONFIG.diaVencimento=parseInt(v,10)||5;if(typeof toast==='function')toast('Guardado');if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}};
 window.__applyValorClasse=function(classe,campo,val){try{val=parseFloat(val)||0;if(typeof CONFIG!=='undefined'){if(!CONFIG.valoresPorClasse)CONFIG.valoresPorClasse={};if(!CONFIG.valoresPorClasse[classe])CONFIG.valoresPorClasse[classe]={};CONFIG.valoresPorClasse[classe][campo]=val;}if(typeof TURMAS!=='undefined'){TURMAS.forEach(function(t){if((''+t.classe)===(''+classe)){t[campo]=val;}});}if(typeof toast==='function')toast('Guardado');if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}};
 window.__syncValoresClasse=function(){try{if(typeof CONFIG==='undefined'||!CONFIG.valoresPorClasse||typeof TURMAS==='undefined')return;TURMAS.forEach(function(t){var v=CONFIG.valoresPorClasse[t.classe];if(v){if(v.propina!==undefined)t.propina=v.propina;if(v.inscricao!==undefined)t.inscricao=v.inscricao;if(v.matricula!==undefined)t.matricula=v.matricula;}});}catch(e){}};
@@ -32216,7 +32216,7 @@ window.__finV30=true;})();
       var v=Math.round(propinaBase(a)*(1-pct/100));
       (a.propinas||[]).forEach(function(p){
         if(p.st==='pago') return;
-        p.multaAuto=false; p.multaLock=false; p.multaPct=0;
+        p.multaAuto=false; p.multaLock=false; p.multaPct=0; p.multaIsenta=false;
         if(pct>=100){ p.st='isento'; p.v=0; }
         else { p.st='npago'; p.v=v; }
       });
