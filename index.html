@@ -16957,7 +16957,7 @@ function abrirRegistarPagamento(alunoId) {
   _pagMesesSel = new Set();
   const a       = ALUNOS.find(x=>x.id===alunoId);
   if (!a) return;
-  const mesesPendentes = a.propinas.filter(p=>p.st==='npago');
+  const mesesDivida = a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida');
 
   // Info box
   const info = document.getElementById('pag-aluno-info');
@@ -16967,7 +16967,7 @@ function abrirRegistarPagamento(alunoId) {
       <div>
         <div style="font-weight:800;font-size:14px">${a.nome}</div>
         <div style="font-size:12px;color:var(--t2)">${a.num} · Turma ${a.turma}
-          · <strong style="color:var(--r)">${mesesPendentes.length} mês(es) em dívida</strong>
+          · <strong style="color:var(--r)">${mesesDivida.length} mês(es) em dívida</strong>
         </div>
       </div>
     </div>`;
@@ -16976,19 +16976,37 @@ function abrirRegistarPagamento(alunoId) {
   const mesesEl = document.getElementById('pag-meses-sel');
   if (mesesEl) {
     mesesEl.innerHTML = a.propinas.map((p,mi) => {
-      const disabled = p.st !== 'npago';
-      const multa = p.st === 'npago' ? calcMulta(p, mi) : 0;
+      const disabled = (p.st==='pago' || p.st==='isento');
+      const multa = calcMulta(p, mi);
+      const base = (p && p.v != null) ? p.v : getPropinaTurma(a.turma);
       return `<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--rads);border:1px solid var(--b);cursor:${disabled?'default':'pointer'};opacity:${disabled?'.4':'1'};background:${disabled?'var(--bg3)':'var(--card)'};font-size:11px">
         <input type="checkbox" value="${mi}" ${disabled?'disabled':''}
           onchange="togglePagMes(${mi},this.checked)"
           style="accent-color:var(--a)">
         <div>
-          <div style="font-weight:700">${M[mi]}</div>
-          ${multa>0?`<div style="font-size:9px;color:var(--am)">+${multa} MZM multa</div>`:''}
+          <div style="font-weight:700">${M[mi]}${p.st==='pago'?' ✓':p.st==='isento'?' (isento)':''}</div>
+          <div style="font-size:9px;color:var(--t2)">${base.toLocaleString()} MZM</div>
+          ${multa>0?`<div style="font-size:9px;color:var(--am)">+${multa.toLocaleString()} multa</div>`:''}
         </div>
       </label>`;
     }).join('');
   }
+  // Toggle "sem multa" (gestor/director)
+  try {
+    const _mEl = document.getElementById('pag-meses-sel');
+    let smWrap = document.getElementById('pag-sem-multa-wrap');
+    if (['gestor','director'].includes(curRole) && _mEl) {
+      if (!smWrap) {
+        smWrap = document.createElement('label');
+        smWrap.id = 'pag-sem-multa-wrap';
+        smWrap.style.cssText='display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;cursor:pointer';
+        smWrap.innerHTML='<input type="checkbox" id="pag-sem-multa" onchange="updatePagValor()" style="accent-color:var(--a)"><span>Registar <strong>sem multa</strong> (perdoar a multa neste pagamento)</span>';
+        _mEl.insertAdjacentElement('afterend', smWrap);
+      } else {
+        const cb=document.getElementById('pag-sem-multa'); if(cb) cb.checked=false;
+      }
+    } else if (smWrap) { smWrap.remove(); }
+  } catch(e){}
 
   // Set today
   const hoje = new Date().toISOString().split('T')[0];
@@ -17001,14 +17019,9 @@ function abrirRegistarPagamento(alunoId) {
 }
 
 function calcMulta(prop, mesIdx) {
-  // Multa por atraso conforme CONFIG
-  const hoje = new Date();
-  const anoAtual = hoje.getFullYear();
-  const dataProp = new Date(anoAtual, mesIdx, 1);
-  const diasAtraso = Math.max(0, Math.floor((hoje - dataProp) / (1000*60*60*24)));
-  if (diasAtraso < 30) return 0;
-  const pct = diasAtraso < 60 ? 0.05 : diasAtraso < 90 ? 0.10 : 0.15;
-  return Math.round((CONFIG.valorPropina||4500) * pct);
+  // Multa = percentagem guardada na propina (consistente com a multa automática)
+  if (!prop || prop.st !== 'multa') return 0;
+  return Math.round((prop.v||0) * ((prop.multaPct||0)/100));
 }
 
 function togglePagMes(mesIdx, checked) {
@@ -17020,9 +17033,13 @@ function togglePagMes(mesIdx, checked) {
 function updatePagValor() {
   const a = ALUNOS.find(x=>x.id===_pagAlunoId);
   if (!a) return;
+  const semMulta = !!(document.getElementById('pag-sem-multa') && document.getElementById('pag-sem-multa').checked);
   let total = 0;
   _pagMesesSel.forEach(mi => {
-    total += getPropinaTurma(a.turma) + calcMulta(a.propinas[mi], mi);
+    const p = a.propinas[mi];
+    const base = (p && p.v != null) ? p.v : getPropinaTurma(a.turma);
+    const multa = semMulta ? 0 : calcMulta(p, mi);
+    total += base + multa;
   });
   const el = document.getElementById('pag-valor');
   if (el) el.value = total;
@@ -17067,11 +17084,13 @@ function confirmarRegistoPagamento() {
   savePagamentoFirestore(pag);
 
   // Update student propinas
+  const _semMulta = !!(document.getElementById('pag-sem-multa') && document.getElementById('pag-sem-multa').checked);
   mesesArr.forEach(mi => {
     const p = a.propinas[mi];
     if (p) {
+      if (_semMulta) { p.multaPct = 0; p.multaIsenta = true; }
       p.st         = 'pago';
-      p.v          = (CONFIG.valorPropina||4500) + calcMulta(p, mi);
+      // v mantém-se limpo (propina da turma); a multa paga fica no valorTotal do pagamento
       p.pagamentoId = pagId;
       p.ref        = ref;
       p.dataConfirm = null;  // Not confirmed yet
