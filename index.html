@@ -3801,7 +3801,7 @@ function rConfig(){
     <div class="setting-row"><div><div class="setting-label">Peso Exame (%)</div></div><input type="number" class="ffi" style="width:80px" value="${CONFIG.pesoExame}" onchange="CONFIG.pesoExame=+this.value;toast('Guardado!')"></div>
     <div class="setting-row"><div><div class="setting-label">Exame obrigatório na média</div></div><button class="toggle ${CONFIG.exameObrigatorio?'on':''}" onclick="CONFIG.exameObrigatorio=!CONFIG.exameObrigatorio;this.classList.toggle('on');toast('Guardado!')"></button></div>`;
   document.getElementById('config-fin').innerHTML=`
-    <div class="setting-row"><div><div class="setting-label">Valor da propina (MZM/mês)</div></div><input type="number" class="ffi" style="width:100px" value="${CONFIG.valorPropina}" onchange="CONFIG.valorPropina=+this.value;toast('Guardado!')"></div>
+    <div class="setting-row"><div><div class="setting-label">Valor da propina</div><div class="setting-desc">Definido por classe em "Valores por Classe" (abaixo). Cada turma usa a propina da sua classe.</div></div></div>
     <div class="setting-row"><div><div class="setting-label">Multa de atraso (%)</div><div class="setting-desc">Percentagem adicionada após dia 10</div></div><input type="number" class="ffi" style="width:80px" value="${CONFIG.multaPropina}" onchange="CONFIG.multaPropina=+this.value;toast('Guardado!')"></div>`;
   document.getElementById('config-faltas').innerHTML=`
     <div class="setting-row"><div><div class="setting-label">% Máxima de faltas por semestre</div><div class="setting-desc">Acima deste valor o aluno é excluído automaticamente</div></div><div style="display:flex;align-items:center;gap:8px"><input type="number" class="ffi" style="width:80px" value="${CONFIG.faltasMaxPct}" onchange="CONFIG.faltasMaxPct=+this.value;toast('% actualizada!');rFaltas&&rFaltas()"><span style="font-size:13px;color:var(--t2)">%</span></div></div>
@@ -7169,7 +7169,7 @@ function rConfigFin() {
   const el = document.getElementById('config-fin');
   if (!el) return;
   el.innerHTML = `
-    <div class="setting-row"><div><div class="setting-label">Valor da propina (MZM/mês)</div></div><input type="number" class="ffi" style="width:100px" value="${CONFIG.valorPropina}" onchange="CONFIG.valorPropina=+this.value;toast('Guardado!')"></div>
+    <div class="setting-row"><div><div class="setting-label">Valor da propina</div><div class="setting-desc">Definido por classe em "Valores por Classe" (abaixo). Cada turma usa a propina da sua classe.</div></div></div>
     <div class="setting-row"><div><div class="setting-label">Multa de atraso base (%)</div><div class="setting-desc">Use escalões para multas progressivas</div></div><input type="number" class="ffi" style="width:80px" value="${CONFIG.multaPropina}" onchange="CONFIG.multaPropina=+this.value;toast('Guardado!')"></div>
     <div class="setting-row"><div><div class="setting-label">Escalões de Multa</div><div class="setting-desc">Percentagens progressivas por data</div></div><button class="btn btn-am btn-sm" onclick="openEscaloes()"><i class="ti ti-stairs"></i> Configurar Escalões</button></div>
     <div class="setting-row"><div><div class="setting-label">Descontos / Isenções</div><div class="setting-desc">Bolseiros, filhos de professores</div></div><button class="btn btn-tl btn-sm" onclick="openM('m-desconto')"><i class="ti ti-discount"></i> Gerir Descontos</button></div>`;
@@ -9047,7 +9047,7 @@ exportNotasExcel = function() {
 
 exportPagamentosExcel = function() {
   const totalR   = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((ss,p)=>ss+p.v,0),0);
-  const emAtraso = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='npago').length*CONFIG.valorPropina,0);
+  const emAtraso = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='npago').reduce((s,p)=>s+(p.v||0),0),0);
   const multas   = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='multa').reduce((ss,p)=>ss+(p.v-CONFIG.valorPropina),0),0);
 
   const rows = ALUNOS.map((a,i) =>
@@ -9556,7 +9556,7 @@ function renderPortalPresencas(a) {
 
 function renderPortalPropinas(a) {
   const totP = a.propinas.filter(p=>p.st==='pago'||p.st==='multa').reduce((s,p)=>s+p.v,0);
-  const div  = a.propinas.filter(p=>p.st==='npago').length * CONFIG.valorPropina;
+  const div  = a.propinas.filter(p=>p.st==='npago').reduce((s,p)=>s+(p.v||0),0);
   document.getElementById('portal-c').innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
       <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--g);margin-bottom:4px">${totP.toLocaleString()} MZM</div><div style="font-size:11px;color:var(--t2)">Total Pago</div></div>
@@ -11436,7 +11436,7 @@ function rDashEnc() {
         ${filhos.map((a,i) => {
           const f   = calcFaltas(a.id);
           const med = calcMediaGeralAluno(a.id);
-          const div = a.propinas.filter(p=>p.st==='npago').length * CONFIG.valorPropina;
+          const div = a.propinas.filter(p=>p.st==='npago').reduce((s,p)=>s+(p.v||0),0);
           const pend = contarTrabPendentes(a.id, a.turma);
           return `<div style="background:var(--card);border:1px solid ${f.emRisco||div>0?'rgba(245,158,11,.3)':'var(--b)'};border-radius:var(--rad);padding:18px;cursor:pointer" onclick="go('portal-enc-notas')">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
@@ -11547,7 +11547,7 @@ function rPortalEncPropinas() {
   if (!el) return;
   const filhos = ENCS[0].filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
   el.innerHTML = filhos.map(a => {
-    const div = a.propinas.filter(p=>p.st==='npago').length*CONFIG.valorPropina;
+    const div = a.propinas.filter(p=>p.st==='npago').reduce((s,p)=>s+(p.v||0),0);
     return `
       <div style="font-size:15px;font-weight:800;color:var(--t);margin:16px 0 10px;display:flex;align-items:center;gap:8px">
         ${mkAv(a.nome,28,ALUNOS.indexOf(a),false)} ${a.nome}
