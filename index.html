@@ -3278,7 +3278,6 @@ let HORARIO={};
 let ALOCACOES=[];
 
 const DESP_CAT=[
-{id:'salarios',nome:'Salários',icon:'ti-users',cor:'#4f8ef7',fixo:true},
 {id:'agua',nome:'Água',icon:'ti-droplet',cor:'#14b8a6'},
 {id:'luz',nome:'Luz / Electricidade',icon:'ti-bolt',cor:'#f59e0b'},
 {id:'manutencao',nome:'Manutenção',icon:'ti-tool',cor:'#f97316'},
@@ -5664,6 +5663,26 @@ async function loadDadosEscola() {
       if (tb) tb.textContent = escola.nome || 'Scholaris';
       const sb = document.getElementById('sb-school');
       if (sb) sb.textContent = escola.nome || 'Scholaris';
+      // Sincronizar nome para o ecrã de login + localStorage (para não ficar preso a valor antigo)
+      try {
+        if (escola.nome) {
+          var _ln = document.getElementById('login-escola-nome');
+          if (_ln) _ln.textContent = escola.nome;
+          var _ls = JSON.parse(localStorage.getItem('educare-escola-settings') || '{}');
+          _ls.nome = escola.nome;
+          localStorage.setItem('educare-escola-settings', JSON.stringify(_ls));
+        }
+      } catch(e){}
+      // Aplicar aparência guardada na base de dados (logo, cores, nome)
+      try {
+        if (escola.settings && typeof escola.settings === 'object') {
+          Object.assign(ESCOLA_SETTINGS, escola.settings);
+          if (escola.nome) ESCOLA_SETTINGS.nome = escola.nome;
+          if (ESCOLA_SETTINGS.logo && typeof applyEscolaLogo==='function') applyEscolaLogo(ESCOLA_SETTINGS.logo);
+          if (ESCOLA_SETTINGS.corPrimaria && typeof applyEscolaCores==='function') applyEscolaCores(ESCOLA_SETTINGS.corPrimaria, ESCOLA_SETTINGS.corSecundaria||'#7c6af7');
+          try { localStorage.setItem('educare-escola-settings', JSON.stringify(ESCOLA_SETTINGS)); } catch(e){}
+        }
+      } catch(e){}
       // Carregar CONFIG persistido (periodos lectivos, trancamento, etc.)
       if (escola.config && typeof escola.config === 'object') {
         try { Object.assign(CONFIG, escola.config); } catch(e){}
@@ -6974,10 +6993,10 @@ function loadEscolaSettings() {
 
 function saveEscolaSettings() {
   localStorage.setItem('educare-escola-settings', JSON.stringify(ESCOLA_SETTINGS));
-  // Also save to Firestore if connected
+  // Also save to Supabase if connected
   if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
     try {
-      window._supabase.from('escolas').update({settings: ESCOLA_SETTINGS}).eq('id', window._escolaId);
+      window._supabase.from('escolas').update({settings: ESCOLA_SETTINGS, nome: ESCOLA_SETTINGS.nome}).eq('id', window._escolaId).then(function(){},function(){});
     } catch(e) {}
   }
   toast('Aparência guardada!');
@@ -26521,6 +26540,10 @@ function rFolhaSalarios() {
   const mesLabel = MESES_SHORT[mesN] + ' ' + (CONFIG.anoLectivo||2026);
 
   const profs = PROFS.filter(p => p.salario > 0);
+  if (!profs.length) {
+    el.innerHTML = '<div class="ib-box ib-am" style="margin:20px"><i class="ti ti-info-circle"></i> Sem colaboradores com salário definido. Registe professores/staff (com salário) para gerar a folha.</div>';
+    return;
+  }
   const rows  = profs.map(p => {
     const bruto    = p.salario || 0;
     const subsTotal= Object.values(SUBSIDIOS?.[p.id]?.[CONFIG.anoLectivo||2026]?.[mesN] || {})
