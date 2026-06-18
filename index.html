@@ -32477,7 +32477,7 @@ window.__finV30=true;})();
           h+='<button class="btn btn-p btn-sm" onclick="window.__aprovarFolha('+m+')"><i class="ti ti-lock"></i> Aprovar e Trancar (fechar)</button>'; }
       } else {
         h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada e trancada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span>';
-        if(podeEditar()) h+='<button class="btn btn-tl btn-sm" onclick="window.__reabrirFolha('+m+')"><i class="ti ti-lock-open"></i> Reabrir</button>';
+        h+='<button class="btn btn-g btn-sm" onclick="window.__reabrirFolha('+m+')"><i class="ti ti-lock-open"></i> Reabrir folha</button>';
       }
       if(f) h+='<button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> PDF</button>';
     }
