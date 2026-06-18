@@ -32420,6 +32420,16 @@ window.__finV30=true;})();
     var a=ano(); var f=getFolha(a,m); if(!f){ if(typeof toast==='function') toast('Gere a folha primeiro'); return; }
     if(!confirm('Aprovar e TRANCAR a folha de '+nomeMes(m)+'?\n\nDepois de aprovada, este mês fica só de leitura e não pode ser editado.')) return;
     f.status='aprovada'; f.aprovadaPor=((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||''; f.aprovadaEm=new Date().toISOString();
+    // Escrever UMA linha de despesa (salários) para o mês — alimenta o balancete
+    try{
+      var bruto=(typeof window.__folhaBrutoMes==='function')?window.__folhaBrutoMes(m,a):0;
+      if(typeof DESPESAS_REG!=='undefined' && Array.isArray(DESPESAS_REG)){
+        for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dmm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(dmm===m) DESPESAS_REG.splice(i,1); } }
+        var rec={ id:'SAL'+a+'-'+m, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha de Salários '+nomeMes(m), valor:bruto, ref:'FOLHA-'+m, registadoEm:new Date().toISOString() };
+        DESPESAS_REG.push(rec);
+        try{ if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(rec); }catch(e){}
+      }
+    }catch(e){}
     persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' aprovada e trancada'); window.__folhaRerender();
   };
   function editavel(m){ var f=getFolha(ano(),m); return f && f.status==='rascunho' && podeEditar(); }
@@ -32500,6 +32510,14 @@ window.__finV30=true;})();
   window.__folhaV43=function(){ return window.__folhaRender('folha-sal-c', true); };
   window.__folhaEdit=function(){ return window.__folhaRender('desp-folha-c', false); };
   window.__folhaRerender=function(){ if(document.getElementById('desp-folha-c')) window.__folhaRender('desp-folha-c',false); else if(document.getElementById('folha-sal-c')) window.__folhaRender('folha-sal-c', true); };
+  // Consolidação: a aba "Salarios" das Despesas passa a usar o módulo novo (editável)
+  window.__v23RenderSalarios=function(mes){
+    try{ window.__folhaMes = mes||window.__folhaMes||(new Date().getMonth()+1); }catch(e){}
+    setTimeout(function(){ try{ if(window.__folhaRender) window.__folhaRender('desp-folha-c', false); }catch(e){} }, 40);
+    return '<div id="desp-folha-c"></div>';
+  };
+  // Desactivar o registo antigo (substituído por "Aprovar e Trancar")
+  window.__v23RegistarSalarios=function(){ if(typeof toast==='function') toast('Use "Aprovar e Trancar" no módulo de salários'); };
   window.__finV43=true;
 })();
 </script>
