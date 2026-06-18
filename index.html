@@ -32433,20 +32433,38 @@ window.__finV30=true;})();
     persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' aprovada e trancada'); window.__folhaRerender();
   };
   function editavel(m){ var f=getFolha(ano(),m); return f && f.status==='rascunho' && podeEditar(); }
-  window.__addSubsidio=function(m,pid){
+  window.__folhaModal=function(tipo,m,pid){
     if(!editavel(m)){ if(typeof toast==='function') toast('Folha trancada ou sem permissão'); return; }
-    var nome=prompt('Nome do subsídio (ex: Cargo, Transporte):',''); if(nome===null||!nome.trim()) return;
-    var valor=parseFloat(prompt('Valor do subsídio (MZN):','')||'0')||0; if(valor<=0) return;
-    var f=getFolha(ano(),m); var L=f.linhas[pid]; if(!L) return; L.subsidios=L.subsidios||[]; L.subsidios.push({nome:nome.trim(),valor:valor});
-    persist(); window.__folhaRerender();
+    var ex=document.getElementById('folha-add-modal'); if(ex) ex.remove();
+    var titulo=tipo==='subsidio'?'Adicionar Subsídio':'Adicionar Desconto';
+    var ph=tipo==='subsidio'?'Ex: Cargo, Transporte, Bónus':'Ex: Faltas, Adiantamento';
+    var cor=tipo==='subsidio'?'#16a34a':'#dc2626';
+    var Q=String.fromCharCode(39);
+    var html='<div id="folha-add-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:22px;width:380px;max-width:94vw">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-weight:800;font-size:16px;color:'+cor+'">'+titulo+'</div><button onclick="document.getElementById('+Q+'folha-add-modal'+Q+').remove()" style="background:none;border:none;color:var(--t2);cursor:pointer;font-size:20px;line-height:1">&times;</button></div>'
+      +'<label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">DESCRIÇÃO</label>'
+      +'<input id="folha-add-nome" placeholder="'+ph+'" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--b);border-radius:9px;padding:10px;color:var(--t);font-size:14px;margin-bottom:12px">'
+      +'<label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">VALOR (MZN)</label>'
+      +'<input id="folha-add-valor" type="number" placeholder="0" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--b);border-radius:9px;padding:10px;color:var(--t);font-size:14px;margin-bottom:18px">'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById('+Q+'folha-add-modal'+Q+').remove()" class="btn btn-g btn-sm">Cancelar</button>'
+      +'<button onclick="window.__folhaModalOk('+Q+tipo+Q+','+m+','+Q+pid+Q+')" class="btn btn-p btn-sm">Adicionar</button></div>'
+      +'</div></div>';
+    var d=document.createElement('div'); d.innerHTML=html; document.body.appendChild(d.firstChild);
+    setTimeout(function(){ var n=document.getElementById('folha-add-nome'); if(n) n.focus(); },50);
   };
-  window.__addDesconto=function(m,pid){
-    if(!editavel(m)){ if(typeof toast==='function') toast('Folha trancada ou sem permissão'); return; }
-    var nome=prompt('Motivo do desconto (ex: Faltas, Adiantamento):',''); if(nome===null||!nome.trim()) return;
-    var valor=parseFloat(prompt('Valor do desconto (MZN):','')||'0')||0; if(valor<=0) return;
-    var f=getFolha(ano(),m); var L=f.linhas[pid]; if(!L) return; L.descontos=L.descontos||[]; L.descontos.push({nome:nome.trim(),valor:valor});
-    persist(); window.__folhaRerender();
+  window.__folhaModalOk=function(tipo,m,pid){
+    var nE=document.getElementById('folha-add-nome'), vE=document.getElementById('folha-add-valor');
+    var nome=((nE&&nE.value)||'').trim(); var valor=parseFloat((vE&&vE.value)||'0')||0;
+    if(!nome){ if(typeof toast==='function') toast('Indique a descrição'); return; }
+    if(valor<=0){ if(typeof toast==='function') toast('Indique um valor'); return; }
+    var f=getFolha(ano(),m); if(!f||!f.linhas[pid]) return; var L=f.linhas[pid];
+    if(tipo==='subsidio'){ L.subsidios=L.subsidios||[]; L.subsidios.push({nome:nome,valor:valor}); }
+    else { L.descontos=L.descontos||[]; L.descontos.push({nome:nome,valor:valor}); }
+    persist(); var mo=document.getElementById('folha-add-modal'); if(mo) mo.remove(); window.__folhaRerender();
   };
+  window.__addSubsidio=function(m,pid){ window.__folhaModal('subsidio',m,pid); };
+  window.__addDesconto=function(m,pid){ window.__folhaModal('desconto',m,pid); };
   window.__rmSubsidio=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.subsidios){L.subsidios.splice(i,1);persist();window.__folhaRerender();} };
   window.__rmDesconto=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.descontos){L.descontos.splice(i,1);persist();window.__folhaRerender();} };
 
