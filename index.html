@@ -32415,7 +32415,7 @@ window.__finV30=true;})();
         for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dmm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(dmm===m) DESPESAS_REG.splice(i,1); } }
         var rec={ id:'SAL'+a+'-'+m, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha de Salários '+nomeMes(m), valor:bruto, ref:'FOLHA-'+m, registadoEm:new Date().toISOString() };
         DESPESAS_REG.push(rec);
-        try{ if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(rec); }catch(e){}
+        try{ if(typeof window.__salvarDespesaFolha==='function') window.__salvarDespesaFolha(rec); else if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(rec); }catch(e){}
       }
     }catch(e){}
     persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' aprovada e trancada'); window.__folhaRerender();
@@ -32477,6 +32477,7 @@ window.__finV30=true;})();
           h+='<button class="btn btn-p btn-sm" onclick="window.__aprovarFolha('+m+')"><i class="ti ti-lock"></i> Aprovar e Trancar (fechar)</button>'; }
       } else {
         h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada e trancada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span>';
+        if(podeEditar()) h+='<button class="btn btn-tl btn-sm" onclick="window.__reabrirFolha('+m+')"><i class="ti ti-lock-open"></i> Reabrir</button>';
       }
       if(f) h+='<button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> PDF</button>';
     }
@@ -32516,6 +32517,28 @@ window.__finV30=true;})();
   window.__folhaV43=function(){ return window.__folhaRender('folha-sal-c', true); };
   window.__folhaEdit=function(){ return window.__folhaRender('desp-folha-c', false); };
   window.__folhaRerender=function(){ if(document.getElementById('desp-folha-c')) window.__folhaRender('desp-folha-c',false); else if(document.getElementById('folha-sal-c')) window.__folhaRender('folha-sal-c', true); };
+  // Guardar a linha de salários da folha (apaga a antiga e insere — evita duplicados)
+  window.__salvarDespesaFolha=async function(rec){
+    try{ if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){
+      await window._supabase.from('despesas').delete().eq('escola_id',window._escolaId).eq('desp_id',rec.id);
+      await window._supabase.from('despesas').insert({escola_id:window._escolaId,desp_id:rec.id,data_desp:rec.data,mes:rec.mes||null,categoria:rec.categoria,descricao:rec.descricao||'',valor:rec.valor||0,ref:rec.ref||'',registado_em:rec.registadoEm||new Date().toISOString()});
+    } }catch(e){ console.warn('salvarDespesaFolha', e&&e.message); }
+  };
+  window.__delDespesaFolhaDB=function(id){ try{ if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){ window._supabase.from('despesas').delete().eq('escola_id',window._escolaId).eq('desp_id',id).then(function(){},function(){}); } }catch(e){} };
+  // Reabrir uma folha fechada (gestor/director) — volta a rascunho e sai do balancete
+  window.__reabrirFolha=function(m){
+    if(!podeEditar()){ if(typeof toast==='function') toast('Apenas gestor ou director'); return; }
+    var a=ano(); var f=getFolha(a,m); if(!f||f.status!=='aprovada') return;
+    if(!confirm('Reabrir a folha de '+nomeMes(m)+'?\n\nVolta a rascunho e fica editável. A despesa de salários sai do balancete até voltar a ser aprovada.')) return;
+    f.status='rascunho'; f.aprovadaPor=null; f.aprovadaEm=null;
+    try{
+      if(typeof DESPESAS_REG!=='undefined' && Array.isArray(DESPESAS_REG)){
+        for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(dm===m) DESPESAS_REG.splice(i,1); } }
+      }
+      window.__delDespesaFolhaDB('SAL'+a+'-'+m);
+    }catch(e){}
+    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' reaberta (rascunho)'); window.__folhaRerender();
+  };
   // Consolidação: a aba "Salarios" das Despesas passa a usar o módulo novo (editável)
   window.__v23RenderSalarios=function(mes){
     try{ window.__folhaMes = mes||window.__folhaMes||(new Date().getMonth()+1); }catch(e){}
