@@ -5323,7 +5323,10 @@ function rDespesas(){
   document.getElementById('desp-total').textContent=(totalSal+38450).toLocaleString();
   const totalR=ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
   document.getElementById('desp-saldo').textContent=Math.max(0,totalR-totalSal-38450).toLocaleString();
-  document.getElementById('despesas-c').innerHTML=DESP_CAT.map((cat,ci)=>`
+  var _dtab = window.__despTab||'despesas';
+  var _bar = '<div style="display:flex;gap:8px;margin-bottom:14px"><button class="btn '+(_dtab==='despesas'?'btn-p':'btn-g')+' btn-sm" onclick="window.__setDespTab(\'despesas\')"><i class="ti ti-cash"></i> Despesas Gerais</button><button class="btn '+(_dtab==='salarios'?'btn-p':'btn-g')+' btn-sm" onclick="window.__setDespTab(\'salarios\')"><i class="ti ti-users"></i> Salários</button></div>';
+  if(_dtab==='salarios'){ document.getElementById('despesas-c').innerHTML=_bar+'<div id="desp-folha-c"></div>'; if(window.__folhaEdit) window.__folhaEdit(); return; }
+  document.getElementById('despesas-c').innerHTML=_bar+DESP_CAT.map((cat,ci)=>`
     <div class="desp-acc">
       <div class="desp-head" onclick="toggleDesp('db-${ci}','da-${ci}')">
         <div style="width:42px;height:42px;border-radius:11px;background:${cat.cor}18;color:${cat.cor};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px"><i class="ti ${cat.icon}"></i></div>
@@ -5338,6 +5341,7 @@ function rDespesas(){
       </div>
     </div>`).join('')+(['gestor','secretario'].includes(curRole)?`<button class="btn btn-p btn-sm" style="margin-top:8px" onclick="openM('m-nova-desp')"><i class="ti ti-plus"></i> Registar Nova Despesa</button>`:'');
 }
+window.__setDespTab=function(t){ window.__despTab=t; rDespesas(); };
 function toggleDesp(bid,aid){const b=document.getElementById(bid),a=document.getElementById(aid);const op=b.classList.contains('op');b.classList.toggle('op',!op);if(a)a.style.transform=op?'':'rotate(180deg)'}
 function updDespCat(v){const d=document.getElementById('desp-desc');if(d){const nm={agua:'Água',luz:'Luz / Electricidade',manutencao:'Manutenção',caixa:'Caixa Semanal',outro:''};d.value=nm[v]||''}}
 
@@ -32409,14 +32413,14 @@ window.__finV30=true;})();
       linhas[p.id]={ base:p.salario||0, subsidios:prev.subsidios||[], descontos:prev.descontos||[] };
     });
     F[a][m]={ status:'rascunho', linhas:linhas, geradaEm:new Date().toISOString(), aprovadaPor:null, aprovadaEm:null };
-    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' gerada (rascunho)'); window.rFolhaSalarios();
+    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' gerada (rascunho)'); window.__folhaRerender();
   };
   window.__aprovarFolha=function(m){
     if(!podeEditar()){ if(typeof toast==='function') toast('Apenas gestor ou director'); return; }
     var a=ano(); var f=getFolha(a,m); if(!f){ if(typeof toast==='function') toast('Gere a folha primeiro'); return; }
     if(!confirm('Aprovar e TRANCAR a folha de '+nomeMes(m)+'?\n\nDepois de aprovada, este mês fica só de leitura e não pode ser editado.')) return;
     f.status='aprovada'; f.aprovadaPor=((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||''; f.aprovadaEm=new Date().toISOString();
-    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' aprovada e trancada'); window.rFolhaSalarios();
+    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' aprovada e trancada'); window.__folhaRerender();
   };
   function editavel(m){ var f=getFolha(ano(),m); return f && f.status==='rascunho' && podeEditar(); }
   window.__addSubsidio=function(m,pid){
@@ -32424,39 +32428,44 @@ window.__finV30=true;})();
     var nome=prompt('Nome do subsídio (ex: Cargo, Transporte):',''); if(nome===null||!nome.trim()) return;
     var valor=parseFloat(prompt('Valor do subsídio (MZN):','')||'0')||0; if(valor<=0) return;
     var f=getFolha(ano(),m); var L=f.linhas[pid]; if(!L) return; L.subsidios=L.subsidios||[]; L.subsidios.push({nome:nome.trim(),valor:valor});
-    persist(); window.rFolhaSalarios();
+    persist(); window.__folhaRerender();
   };
   window.__addDesconto=function(m,pid){
     if(!editavel(m)){ if(typeof toast==='function') toast('Folha trancada ou sem permissão'); return; }
     var nome=prompt('Motivo do desconto (ex: Faltas, Adiantamento):',''); if(nome===null||!nome.trim()) return;
     var valor=parseFloat(prompt('Valor do desconto (MZN):','')||'0')||0; if(valor<=0) return;
     var f=getFolha(ano(),m); var L=f.linhas[pid]; if(!L) return; L.descontos=L.descontos||[]; L.descontos.push({nome:nome.trim(),valor:valor});
-    persist(); window.rFolhaSalarios();
+    persist(); window.__folhaRerender();
   };
-  window.__rmSubsidio=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.subsidios){L.subsidios.splice(i,1);persist();window.rFolhaSalarios();} };
-  window.__rmDesconto=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.descontos){L.descontos.splice(i,1);persist();window.rFolhaSalarios();} };
+  window.__rmSubsidio=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.subsidios){L.subsidios.splice(i,1);persist();window.__folhaRerender();} };
+  window.__rmDesconto=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.descontos){L.descontos.splice(i,1);persist();window.__folhaRerender();} };
 
-  window.__folhaV43=function(){
-    var el=document.getElementById('folha-sal-c'); if(!el) return;
+  window.__folhaRender=function(cid, soFechadas){
+    var el=document.getElementById(cid||'folha-sal-c'); if(!el) return;
     if(!['gestor','director','secretario'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
     var a=ano();
-    var sel=document.getElementById('fs-mes-sel');
-    var m=parseInt(sel&&sel.value)|| (new Date().getMonth()+1);
+    var m=window.__folhaMes||(new Date().getMonth()+1);
     var f=getFolha(a,m);
-    var canEdit = f && f.status==='rascunho' && podeEditar();
+    var canEdit = !soFechadas && f && f.status==='rascunho' && podeEditar();
     var Q=String.fromCharCode(39);
+    var rer = soFechadas ? 'rFolhaSalarios()' : 'window.__folhaEdit()';
     var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
-    h+='<select class="ffi" id="fs-mes-sel" style="width:140px" onchange="rFolhaSalarios()">'+MESES.map(function(nm,i){return i===0?'':'<option value="'+i+'" '+(i===m?'selected':'')+'>'+nm+'</option>';}).join('')+'</select>';
-    if(!f){ if(podeEditar()) h+='<button class="btn btn-p btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-file-plus"></i> Gerar Folha do Mês</button>'; }
-    else if(f.status==='rascunho'){
-      h+='<span class="badge bwn">Rascunho</span>';
-      if(podeEditar()){ h+='<button class="btn btn-g btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-refresh"></i> Actualizar bases</button>';
-        h+='<button class="btn btn-p btn-sm" onclick="window.__aprovarFolha('+m+')"><i class="ti ti-lock"></i> Aprovar e Trancar</button>'; }
+    h+='<select class="ffi" style="width:140px" onchange="window.__folhaMes=+this.value;'+rer+'">'+MESES.map(function(nm,i){return i===0?'':'<option value="'+i+'" '+(i===m?'selected':'')+'>'+nm+'</option>';}).join('')+'</select>';
+    if(soFechadas){
+      if(f && f.status==='aprovada'){ h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span><button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> PDF</button>'; }
     } else {
-      h+='<span class="badge bok"><i class="ti ti-lock"></i> Aprovada e trancada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span>';
+      if(!f){ if(podeEditar()) h+='<button class="btn btn-p btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-file-plus"></i> Gerar Folha do Mês</button>'; }
+      else if(f.status==='rascunho'){
+        h+='<span class="badge bwn">Rascunho</span>';
+        if(podeEditar()){ h+='<button class="btn btn-g btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-refresh"></i> Actualizar bases</button>';
+          h+='<button class="btn btn-p btn-sm" onclick="window.__aprovarFolha('+m+')"><i class="ti ti-lock"></i> Aprovar e Trancar (fechar)</button>'; }
+      } else {
+        h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada e trancada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span>';
+      }
+      if(f) h+='<button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> PDF</button>';
     }
-    if(f) h+='<button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> PDF</button>';
     h+='</div>';
+    if(soFechadas && (!f || f.status!=='aprovada')){ el.innerHTML=h+'<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> A folha de '+nomeMes(m)+' ainda não foi fechada. Feche-a em Despesas → Salários.</div>'; return; }
     if(!f){ el.innerHTML=h+'<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem folha para '+nomeMes(m)+'. '+(podeEditar()?'Carregue em "Gerar Folha do Mês".':'')+'</div>'; return; }
 
     var rows=Object.keys(f.linhas).map(function(pid){
@@ -32488,6 +32497,9 @@ window.__finV30=true;})();
     h+='</tbody></table></div></div>';
     el.innerHTML=h;
   };
+  window.__folhaV43=function(){ return window.__folhaRender('folha-sal-c', true); };
+  window.__folhaEdit=function(){ return window.__folhaRender('desp-folha-c', false); };
+  window.__folhaRerender=function(){ if(document.getElementById('desp-folha-c')) window.__folhaRender('desp-folha-c',false); else if(document.getElementById('folha-sal-c')) window.__folhaRender('folha-sal-c', true); };
   window.__finV43=true;
 })();
 </script>
