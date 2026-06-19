@@ -624,6 +624,9 @@ console.log('[Scholaris] Supabase v2 inicializado');
         <span id="login-btn-text"><i class="ti ti-login" style="font-size:14px"></i> Entrar no Sistema</span>
         <span id="login-btn-spin" style="display:none"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:14px"></i> A autenticar...</span>
       </button>
+      <div style="text-align:center;margin-top:12px">
+        <a href="#" onclick="initWizard();return false" style="font-size:11px;color:var(--t3);text-decoration:none"><i class="ti ti-key" style="font-size:11px"></i> Primeira vez nesta escola? Activar com código</a>
+      </div>
 
     </div>
 
@@ -650,7 +653,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.15</span>
+    <span class="logo-ver">v5.16</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5658,6 +5661,9 @@ async function loadDadosEscola() {
     const { data: escola } = await window._supabase
       .from('escolas').select('*').eq('id', eid).single();
     if (escola) {
+      // A escola existe no servidor => está activada/configurada. Nunca mais pedir o código neste nem noutro dispositivo.
+      ESCOLA_SETTINGS.setupDone = true;
+      try { var _sd=JSON.parse(localStorage.getItem('educare-escola-settings')||'{}'); _sd.setupDone=true; localStorage.setItem('educare-escola-settings', JSON.stringify(_sd)); } catch(e){}
       ESCOLA_SETTINGS.nome      = escola.nome      || ESCOLA_SETTINGS.nome;
       ESCOLA_SETTINGS.morada    = escola.endereco  || ESCOLA_SETTINGS.morada;
       ESCOLA_SETTINGS.telefone  = escola.telefone  || ESCOLA_SETTINGS.telefone;
@@ -7386,13 +7392,9 @@ setupRole = function() {
 function initEduCare(){
   loadEscolaSettings();
   initTheme();
-  // Mostrar ecrã correcto imediatamente
-  if (!ESCOLA_SETTINGS.setupDone) {
-    document.getElementById('login-screen').style.display = 'none';
-    initWizard();
-  } else {
-    document.getElementById('login-screen').style.display = 'flex';
-  }
+  // Mostrar sempre o login. O wizard (código de activação) só corre na 1ª
+  // configuração da escola, via o link "Activar com código" no ecrã de login.
+  document.getElementById('login-screen').style.display = 'flex';
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', initEduCare);
