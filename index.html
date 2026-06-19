@@ -650,7 +650,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.14</span>
+    <span class="logo-ver">v5.15</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32550,6 +32550,160 @@ window.__finV30=true;})();
   window.__v23RegistarSalarios=function(){ if(typeof toast==='function') toast('Use "Aprovar e Trancar" no módulo de salários'); };
   window.__finV43=true;
 })();
+</script>
+<script>
+/* ===== PATCH v44: Modulo de Pautas (Trimestral + Anual, PDF + Excel) ===== */
+(function(){
+  if(window.__finPauta) return;
+  function S(){ return (typeof ESCOLA_SETTINGS!=='undefined' && ESCOLA_SETTINGS)?ESCOLA_SETTINGS:{}; }
+  function turmaById(tid){ return ((typeof TURMAS!=='undefined'&&TURMAS)||[]).find(function(t){return t.id===tid;}); }
+  function anoLect(){ try{ return CONFIG.anoLectivo||new Date().getFullYear(); }catch(e){ return new Date().getFullYear(); } }
+  function mediaAprov(){ try{ return CONFIG.mediaAprovacao||10; }catch(e){ return 10; } }
+  function classeTxt(t){ if(!t) return ''; return (t.classe!=null?t.classe:(t.cl!=null?t.cl:''))+'ª'; }
+  function letraTxt(t){ if(!t) return ''; return (t.letra||t.t||''); }
+  function profNomeTurma(t){ try{ if(!t) return '—'; var P=(typeof PROFS!=='undefined'&&PROFS)?PROFS:[]; var p=P.find(function(x){return x.num===t.prof||x._dbId===t.profDbId||x.num===t.regente;}); return p?p.nome:(t.profNome||'—'); }catch(e){ return '—'; } }
+  function alunosTurma(tid){ return ((typeof ALUNOS!=='undefined'&&ALUNOS)||[]).filter(function(a){return a.turma===tid;}); }
+  function discsTurma(alunos){ for(var i=0;i<alunos.length;i++){ var t1=alunos[i].notas&&alunos[i].notas.t1; if(t1&&t1.length) return t1.map(function(n){return n.d;}); } return []; }
+  function mtDisc(a, trim, disc){ try{ var arr=a.notas&&a.notas['t'+trim]; if(!arr) return null; var n=arr.find(function(x){return x.d===disc;}); if(!n) return null; return (typeof calcMediaTrimestral==='function')?calcMediaTrimestral(n):null; }catch(e){ return null; } }
+  function mfDisc(a, disc){ var v=[1,2,3].map(function(t){return mtDisc(a,t,disc);}).filter(function(x){return x!=null;}); if(v.length<3) return null; return Math.round(v.reduce(function(s,x){return s+x;},0)/3*10)/10; }
+  function globalTrim(a, trim, discs){ var v=discs.map(function(d){return mtDisc(a,trim,d);}).filter(function(x){return x!=null;}); if(!v.length) return null; return Math.round(v.reduce(function(s,x){return s+x;},0)/v.length*10)/10; }
+  function globalAnual(a, discs){ var v=discs.map(function(d){return mfDisc(a,d);}).filter(function(x){return x!=null;}); if(!v.length) return null; return Math.round(v.reduce(function(s,x){return s+x;},0)/v.length*10)/10; }
+  function comp(a, trim){ try{ a.comp=a.comp||{}; return a.comp['t'+trim]||''; }catch(e){ return ''; } }
+  window.__pautaSetComp=function(aid, trim, val){ var a=((typeof ALUNOS!=='undefined'&&ALUNOS)||[]).find(function(x){return x.id===aid;}); if(!a) return; a.comp=a.comp||{}; a.comp['t'+trim]=val; };
+  function nf(v){ return v==null?'—':(''+v); }
+  function corNota(v){ if(v==null) return '#94a3b8'; return v>=mediaAprov()?'#166534':'#991b1b'; }
+  var MODO_LBL={'1':'Pauta do 1º Trimestre','2':'Pauta do 2º Trimestre','3':'Pauta do 3º Trimestre','anual':'Pauta Final (Anual)'};
+
+  // ---- Cabecalho (logo + escola + professor/classe/turma + ano) ----
+  function cabecalho(t, modo){
+    var st=S(); var logo=st.logo?('<img src="'+st.logo+'" style="width:54px;height:54px;object-fit:contain;border-radius:8px;border:1px solid #cbd5e1;padding:3px;background:#fff">'):'<div style="width:54px;height:54px;border-radius:8px;border:1px solid #cbd5e1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#1d4ed8;font-size:11px">LOGO</div>';
+    var nome=st.nome||'Colégio iQRA';
+    return '<table style="width:100%;border-collapse:collapse;margin-bottom:6px"><tr>'
+      +'<td style="width:200px;border:1px solid #475569;padding:8px;text-align:center;vertical-align:middle">'+logo+'<div style="font-weight:800;font-size:14px;margin-top:4px">'+nome+'</div></td>'
+      +'<td style="border:1px solid #475569;padding:8px;text-align:center;vertical-align:middle">'
+        +'<div style="font-weight:800;font-size:24px;letter-spacing:1px">'+(modo==='anual'?'PAUTA FINAL':'PAUTA TRIMESTRAL')+'</div>'
+        +'<div style="font-size:13px;margin-top:6px">PROFESSOR(A): <b>'+profNomeTurma(t)+'</b> &nbsp; '+classeTxt(t)+' CLASSE &nbsp; TURMA: <b>'+letraTxt(t)+'</b></div>'
+        +'<div style="font-size:12px;margin-top:2px;color:#475569">'+(MODO_LBL[modo]||'')+'</div>'
+      +'</td>'
+      +'<td style="width:90px;border:1px solid #475569;padding:8px;text-align:center;vertical-align:middle"><div style="font-weight:800;font-size:22px">'+anoLect()+'</div></td>'
+      +'</tr></table>';
+  }
+
+  function compSelect(a, trim){ var v=comp(a,trim); var opts=['','MB','B','S','NS']; var lbl={'':'—','MB':'MB','B':'B','S':'S','NS':'NS'}; var h='<select onchange="window.__pautaSetComp('+a.id+','+trim+',this.value)" style="border:1px solid #cbd5e1;border-radius:5px;padding:2px;font-size:12px">'; opts.forEach(function(o){ h+='<option value="'+o+'"'+(o===v?' selected':'')+'>'+lbl[o]+'</option>'; }); h+='</select>'; return h; }
+
+  // ---- Tabela Trimestral ----
+  function tabelaTrim(t, alunos, discs, trim){
+    var h='<table id="pauta-tbl" style="width:100%;border-collapse:collapse;font-size:12px">';
+    h+='<thead><tr style="background:#1e3a8a;color:#fff">'
+      +'<th style="border:1px solid #475569;padding:5px">Nº</th>'
+      +'<th style="border:1px solid #475569;padding:5px;text-align:left">Nome do aluno</th>';
+    discs.forEach(function(d){ h+='<th style="border:1px solid #475569;padding:5px">'+d+'</th>'; });
+    h+='<th style="border:1px solid #475569;padding:5px">Comp</th><th style="border:1px solid #475569;padding:5px">M. Global</th></tr></thead><tbody>';
+    alunos.forEach(function(a,i){
+      h+='<tr><td style="border:1px solid #94a3b8;padding:4px;text-align:center">'+(i+1)+'</td>'
+        +'<td style="border:1px solid #94a3b8;padding:4px">'+(a.nome||'')+'</td>';
+      discs.forEach(function(d){ var v=mtDisc(a,trim,d); h+='<td style="border:1px solid #94a3b8;padding:4px;text-align:center;font-weight:700;color:'+corNota(v)+'">'+nf(v)+'</td>'; });
+      var g=globalTrim(a,trim,discs);
+      h+='<td style="border:1px solid #94a3b8;padding:4px;text-align:center">'+compSelect(a,trim)+'</td>'
+        +'<td style="border:1px solid #94a3b8;padding:4px;text-align:center;font-weight:800;color:'+corNota(g)+'">'+nf(g)+'</td></tr>';
+    });
+    h+='</tbody></table>';
+    return h;
+  }
+
+  // ---- Tabela Anual ----
+  function tabelaAnual(t, alunos, discs){
+    var h='<table id="pauta-tbl" style="width:100%;border-collapse:collapse;font-size:11px">';
+    h+='<thead><tr style="background:#1e3a8a;color:#fff"><th rowspan="2" style="border:1px solid #475569;padding:4px">Nº</th><th rowspan="2" style="border:1px solid #475569;padding:4px;text-align:left">Nome do aluno</th>';
+    discs.forEach(function(d){ h+='<th colspan="4" style="border:1px solid #475569;padding:4px">'+d+'</th>'; });
+    h+='<th rowspan="2" style="border:1px solid #475569;padding:4px">Comp</th><th rowspan="2" style="border:1px solid #475569;padding:4px">M.Global</th><th rowspan="2" style="border:1px solid #475569;padding:4px">Resultado</th></tr><tr style="background:#2563eb;color:#fff">';
+    discs.forEach(function(){ h+='<th style="border:1px solid #475569;padding:3px">1ºT</th><th style="border:1px solid #475569;padding:3px">2ºT</th><th style="border:1px solid #475569;padding:3px">3ºT</th><th style="border:1px solid #475569;padding:3px">MF</th>'; });
+    h+='</tr></thead><tbody>';
+    alunos.forEach(function(a,i){
+      h+='<tr><td style="border:1px solid #94a3b8;padding:3px;text-align:center">'+(i+1)+'</td><td style="border:1px solid #94a3b8;padding:3px">'+(a.nome||'')+'</td>';
+      discs.forEach(function(d){ var v1=mtDisc(a,1,d),v2=mtDisc(a,2,d),v3=mtDisc(a,3,d),mf=mfDisc(a,d);
+        h+='<td style="border:1px solid #94a3b8;padding:3px;text-align:center">'+nf(v1)+'</td><td style="border:1px solid #94a3b8;padding:3px;text-align:center">'+nf(v2)+'</td><td style="border:1px solid #94a3b8;padding:3px;text-align:center">'+nf(v3)+'</td><td style="border:1px solid #94a3b8;padding:3px;text-align:center;font-weight:800;color:'+corNota(mf)+'">'+nf(mf)+'</td>'; });
+      var g=globalAnual(a,discs); var res=(g==null)?'—':(g>=mediaAprov()?'Progride':'Não progride');
+      h+='<td style="border:1px solid #94a3b8;padding:3px;text-align:center">'+comp(a,3)+'</td><td style="border:1px solid #94a3b8;padding:3px;text-align:center;font-weight:800;color:'+corNota(g)+'">'+nf(g)+'</td>'
+        +'<td style="border:1px solid #94a3b8;padding:3px;text-align:center;font-weight:700;color:'+(g!=null&&g>=mediaAprov()?'#166534':'#991b1b')+'">'+res+'</td></tr>';
+    });
+    h+='</tbody></table>';
+    return h;
+  }
+
+  function corpoPauta(tid, modo){
+    var t=turmaById(tid); var alunos=alunosTurma(tid); var discs=discsTurma(alunos);
+    if(!alunos.length) return '<div style="padding:30px;text-align:center;color:#64748b">Sem alunos nesta turma.</div>';
+    if(!discs.length) return '<div style="padding:30px;text-align:center;color:#64748b">Esta turma ainda não tem disciplinas/notas lançadas.</div>';
+    var head=cabecalho(t, modo);
+    var tbl=(modo==='anual')?tabelaAnual(t,alunos,discs):tabelaTrim(t,alunos,discs,parseInt(modo,10));
+    return head+tbl+'<div style="font-size:10px;color:#64748b;margin-top:8px">Comp: MB=Muito Bom · B=Bom · S=Suficiente · NS=Não Satisfatório. Média de aprovação: '+mediaAprov()+'. Média do trimestre = AS1+AS2+AS3+AT (25% cada).</div>';
+  }
+
+  // ---- Exportar PDF (janela de impressao) ----
+  window.__pautaPDF=function(){
+    var t=turmaById(window.__pautaTid); var body=document.getElementById('pauta-body'); if(!body) return;
+    var w=window.open('','_blank','width=1100,height=760'); if(!w) return;
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Pauta '+classeTxt(t)+letraTxt(t)+'</title>'
+      +'<style>@page{size:A4 landscape;margin:10mm} body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:6px} select{border:none;-webkit-appearance:none;appearance:none} table{page-break-inside:auto} tr{page-break-inside:avoid}</style></head><body>'
+      +body.innerHTML
+      +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},200);}<\/scr'+'ipt></body></html>');
+    w.document.close();
+  };
+
+  // ---- Exportar Excel (CSV) ----
+  window.__pautaExcel=function(){
+    var tid=window.__pautaTid, modo=window.__pautaModo; var t=turmaById(tid); var alunos=alunosTurma(tid); var discs=discsTurma(alunos);
+    var sep=';'; var lines=[]; var nome=(S().nome||'Colegio iQRA');
+    lines.push(nome+sep+(modo==='anual'?'PAUTA FINAL':'PAUTA TRIMESTRAL'));
+    lines.push('Professor(a):'+sep+profNomeTurma(t)+sep+'Classe:'+sep+classeTxt(t)+sep+'Turma:'+sep+letraTxt(t)+sep+'Ano:'+sep+anoLect());
+    lines.push(MODO_LBL[modo]||'');
+    if(modo==='anual'){
+      var h1=['Nº','Nome']; discs.forEach(function(d){ h1.push(d+' 1ºT',d+' 2ºT',d+' 3ºT',d+' MF'); }); h1.push('Comp','M.Global','Resultado'); lines.push(h1.join(sep));
+      alunos.forEach(function(a,i){ var row=[(i+1),a.nome]; discs.forEach(function(d){ row.push(nf(mtDisc(a,1,d)),nf(mtDisc(a,2,d)),nf(mtDisc(a,3,d)),nf(mfDisc(a,d))); }); var g=globalAnual(a,discs); row.push(comp(a,3),nf(g),(g==null?'—':(g>=mediaAprov()?'Progride':'Não progride'))); lines.push(row.join(sep)); });
+    } else {
+      var tr=parseInt(modo,10); var hh=['Nº','Nome'].concat(discs).concat(['Comp','M.Global']); lines.push(hh.join(sep));
+      alunos.forEach(function(a,i){ var row=[(i+1),a.nome]; discs.forEach(function(d){ row.push(nf(mtDisc(a,tr,d))); }); row.push(comp(a,tr),nf(globalTrim(a,tr,discs))); lines.push(row.join(sep)); });
+    }
+    var csv='\ufeff'+lines.join('\n');
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    var url=URL.createObjectURL(blob); var aE=document.createElement('a'); aE.href=url; aE.download='Pauta_'+classeTxt(t).replace('ª','')+letraTxt(t)+'_'+modo+'_'+anoLect()+'.csv'; document.body.appendChild(aE); aE.click(); document.body.removeChild(aE); setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    if(typeof toast==='function') toast('Excel (CSV) exportado');
+  };
+
+  window.__pautaSetModo=function(modo){ window.__pautaModo=modo; var b=document.getElementById('pauta-body'); if(b) b.innerHTML=corpoPauta(window.__pautaTid, modo); document.querySelectorAll('.pauta-tabbtn').forEach(function(x){ x.style.background=(x.getAttribute('data-m')===modo)?'#1d4ed8':'#e2e8f0'; x.style.color=(x.getAttribute('data-m')===modo)?'#fff':'#334155'; }); };
+
+  window.__fecharPauta=function(){ var ov=document.getElementById('pauta-overlay'); if(ov) ov.remove(); };
+
+  window.__abrirPauta=function(tid){
+    tid=tid||window.curNotasTurma; if(!tid){ if(typeof toast==='function') toast('Seleccione uma turma'); return; }
+    window.__pautaTid=tid; window.__pautaModo='1';
+    var ex=document.getElementById('pauta-overlay'); if(ex) ex.remove();
+    var Q=String.fromCharCode(39);
+    var tabs=[['1','1º Trim'],['2','2º Trim'],['3','3º Trim'],['anual','Anual']].map(function(m){ return '<button class="pauta-tabbtn" data-m="'+m[0]+'" onclick="window.__pautaSetModo('+Q+m[0]+Q+')" style="padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;background:'+(m[0]==='1'?'#1d4ed8':'#e2e8f0')+';color:'+(m[0]==='1'?'#fff':'#334155')+'">'+m[1]+'</button>'; }).join('');
+    var ov=document.createElement('div'); ov.id='pauta-overlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99998;display:flex;flex-direction:column;padding:18px;overflow:auto';
+    ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:1200px;width:100%;margin:0 auto;display:flex;flex-direction:column;max-height:100%;overflow:hidden">'
+      +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid #e2e8f0;background:#f8fafc">'
+        +'<div style="font-weight:800;font-size:15px;color:#0f172a">Pautas</div>'
+        +'<div style="display:flex;gap:6px">'+tabs+'</div>'
+        +'<div style="flex:1"></div>'
+        +'<button onclick="window.__pautaPDF()" style="padding:7px 14px;border:none;border-radius:8px;background:#dc2626;color:#fff;font-weight:600;cursor:pointer;font-size:13px">PDF</button>'
+        +'<button onclick="window.__pautaExcel()" style="padding:7px 14px;border:none;border-radius:8px;background:#16a34a;color:#fff;font-weight:600;cursor:pointer;font-size:13px">Excel</button>'
+        +'<button onclick="window.__fecharPauta()" style="padding:7px 14px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font-weight:600;cursor:pointer;font-size:13px">Fechar</button>'
+      +'</div>'
+      +'<div id="pauta-body" style="padding:18px;overflow:auto;background:#fff">'+corpoPauta(tid,'1')+'</div>'
+    +'</div>';
+    ov.onclick=function(e){ if(e.target===ov) window.__fecharPauta(); };
+    document.body.appendChild(ov);
+  };
+
+  // Ligar o botao "Pauta" do modulo de Notas
+  try{ var bp=document.getElementById('btn-pauta'); if(bp){ bp.setAttribute('onclick','window.__abrirPauta(window.curNotasTurma)'); } }catch(e){}
+
+  window.__finPauta=true;
+})();
+
 </script>
 </body>
 </html>
