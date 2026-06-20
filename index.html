@@ -6,6 +6,11 @@
 <title>Scholaris v1.2 — Sistema dehf Gestão Escolar</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d4ed8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{h
   --bg:#080d18;--bg2:#0d1526;--bg3:#131e33;--card:#101828;--card2:#18243c;
@@ -653,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.16</span>
+    <span class="logo-ver">v5.19</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -27346,24 +27351,24 @@ if (typeof ORCAMENTO_ANUAL === 'undefined') window.ORCAMENTO_ANUAL = {
   comentario:   null,
 
   // Receita prevista
-  alunosEsperados:   99,   // editable
+  alunosEsperados:   0,   // editable
   mesesLetivos:      10,   // editable
-  valorPropinaMensal: 4500, // editable
+  valorPropinaMensal: 0, // editable
   outrasReceitas: [
-    { id:'erc1', label:'Emolumentos',    valor: 80000 },
-    { id:'erc2', label:'Outras entradas',valor: 50000 },
+    { id:'erc1', label:'Emolumentos',    valor: 0 },
+    { id:'erc2', label:'Outras entradas',valor: 0 },
   ],
 
   // Despesas orçamentadas — categorias gerais
   despesas: [
-    { id:'d1', label:'Salários Académicos',      valor: 2520000 },
-    { id:'d2', label:'Salários Administrativos', valor:  480000 },
-    { id:'d3', label:'Água e Electricidade',     valor:  180000 },
-    { id:'d4', label:'Limpeza e Higiene',        valor:  120000 },
-    { id:'d5', label:'Material Didáctico',       valor:  200000 },
-    { id:'d6', label:'Manutenção e Obras',       valor:  100000 },
-    { id:'d7', label:'Marketing e Eventos',      valor:   60000 },
-    { id:'d8', label:'Outros / Imprevistos',     valor:  150000 },
+    { id:'d1', label:'Salários Académicos',      valor: 0 },
+    { id:'d2', label:'Salários Administrativos', valor: 0 },
+    { id:'d3', label:'Água e Electricidade',     valor: 0 },
+    { id:'d4', label:'Limpeza e Higiene',        valor: 0 },
+    { id:'d5', label:'Material Didáctico',       valor: 0 },
+    { id:'d6', label:'Manutenção e Obras',       valor: 0 },
+    { id:'d7', label:'Marketing e Eventos',      valor: 0 },
+    { id:'d8', label:'Outros / Imprevistos',     valor: 0 },
   ]
 };
 
@@ -27428,7 +27433,7 @@ rOrcamento = function() {
   const r       = orcTotaisReais();
   const desvio  = r.resultado - t.resultado;
   const isLocked= o.estado==='aprovado';
-  const canEdit = curRole==='director' && ['rascunho','devolvido'].includes(o.estado);
+  const canEdit = (curRole==='director'||curRole==='gestor') && ['rascunho','devolvido'].includes(o.estado);
   const canApprove = curRole==='gestor' && o.estado==='em-revisao';
 
   el.innerHTML = `
@@ -27464,7 +27469,7 @@ rOrcamento = function() {
           <button class="btn btn-g btn-sm" onclick="desbloquearOrcamento()">
             <i class="ti ti-lock-open"></i> Desbloquear
           </button>` : ''}
-        ${!o.criadoPor && curRole==='director' ? (_periodoAberto ? `
+        ${!o.criadoPor && (curRole==='director'||curRole==='gestor') ? ((_periodoAberto||curRole==='gestor') ? `
           <button class="btn btn-p btn-sm" onclick="iniciarOrcamento()">
             <i class="ti ti-plus"></i> Criar Orçamento
           </button>` : `
@@ -32704,6 +32709,255 @@ window.__finV30=true;})();
   try{ var bp=document.getElementById('btn-pauta'); if(bp){ bp.setAttribute('onclick','window.__abrirPauta(window.curNotasTurma)'); } }catch(e){}
 
   window.__finPauta=true;
+})();
+
+</script>
+<script>
+/* ===== PATCH v46: PWA (instalar + abrir offline) + Modo offline so-leitura (7 dias) ===== */
+(function(){
+  if(window.__finPWA) return;
+  var GRACE_MS = 7*24*60*60*1000; // 7 dias
+
+  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+  function eid(){ return window._escolaId || 'iqra'; }
+  function marcarOnline(){ lsSet('scholaris-last-online', String(Date.now())); }
+  function msOffline(){ var t=parseInt(lsGet('scholaris-last-online')||'0',10); return t?(Date.now()-t):0; }
+  function dentroDoPrazo(){ var t=parseInt(lsGet('scholaris-last-online')||'0',10); if(!t) return false; return (Date.now()-t)<=GRACE_MS; }
+
+  /* ---------- Registar Service Worker ---------- */
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){ try{ navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){} });
+  }
+
+  /* ---------- Cache de dados (B) ---------- */
+  window.__cacheDados = function(){
+    try{
+      if(!navigator.onLine) return;
+      var snap = {
+        ts: Date.now(),
+        alunos: (window.ALUNOS||[]),
+        turmas: (typeof TURMAS!=='undefined'?TURMAS:[]),
+        profs: (typeof PROFS!=='undefined'?PROFS:[]),
+        despesas: (window.DESPESAS_REG||[]),
+        config: (typeof CONFIG!=='undefined'?CONFIG:{}),
+        settings: (typeof ESCOLA_SETTINGS!=='undefined'?ESCOLA_SETTINGS:{})
+      };
+      var ok = lsSet('scholaris-cache-'+eid(), JSON.stringify(snap));
+      if(ok) marcarOnline();
+    }catch(e){ /* quota ou outro — ignora, B degrada sem partir online */ }
+  };
+  function lerCache(){ try{ var raw=lsGet('scholaris-cache-'+eid()); return raw?JSON.parse(raw):null; }catch(e){ return null; } }
+  function restaurarArray(arr, dados){ if(!Array.isArray(arr)||!Array.isArray(dados)) return; arr.length=0; dados.forEach(function(x){ arr.push(x); }); }
+  window.__restaurarCache = function(){
+    var c = lerCache(); if(!c) return false;
+    try{
+      if(typeof ALUNOS!=='undefined') restaurarArray(ALUNOS, c.alunos);
+      if(typeof TURMAS!=='undefined') restaurarArray(TURMAS, c.turmas);
+      if(typeof PROFS!=='undefined') restaurarArray(PROFS, c.profs);
+      if(c.despesas){ window.DESPESAS_REG = window.DESPESAS_REG||[]; restaurarArray(window.DESPESAS_REG, c.despesas); }
+      if(c.config && typeof CONFIG!=='undefined') Object.assign(CONFIG, c.config);
+      if(c.settings && typeof ESCOLA_SETTINGS!=='undefined') Object.assign(ESCOLA_SETTINGS, c.settings);
+      return true;
+    }catch(e){ return false; }
+  };
+
+  /* ---------- Sessao em cache (para entrar offline) ---------- */
+  function guardarSessao(userData){ try{ lsSet('scholaris-sessao', JSON.stringify({userData:userData, ts:Date.now()})); }catch(e){} }
+  function lerSessao(){ try{ var raw=lsGet('scholaris-sessao'); return raw?JSON.parse(raw):null; }catch(e){ return null; } }
+
+  /* ---------- Banner offline ---------- */
+  function banner(msg, cor){
+    var b=document.getElementById('off-banner');
+    if(!b){ b=document.createElement('div'); b.id='off-banner';
+      b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:100000;text-align:center;padding:7px 14px;font-size:13px;font-weight:600;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+      document.body.appendChild(b);
+    }
+    b.style.background=cor||'#b45309'; b.innerHTML=msg; b.style.display='block';
+  }
+  function escBanner(){ var b=document.getElementById('off-banner'); if(b) b.style.display='none'; }
+
+  /* ---------- Bloqueio de escrita offline (so-leitura) ---------- */
+  window.__offlineModo=false;
+  function instalarGuard(){
+    if(!window._supabase || window.__supaGuarded) return; window.__supaGuarded=true;
+    var origFrom = window._supabase.from.bind(window._supabase);
+    window._supabase.from = function(tbl){
+      var q = origFrom(tbl);
+      if(window.__offlineModo){
+        ['insert','update','delete','upsert'].forEach(function(m){
+          if(q && typeof q[m]==='function'){
+            q[m]=function(){ if(typeof toast==='function') toast('Sem internet — modo só leitura'); return Promise.resolve({data:null, error:{message:'offline'}}); };
+          }
+        });
+      }
+      return q;
+    };
+  }
+
+  /* ---------- Transicoes online/offline ---------- */
+  function entrarOffline(){
+    window.__offlineModo=true; instalarGuard();
+    var dias = Math.floor(msOffline()/(24*60*60*1000));
+    if(!dentroDoPrazo() && parseInt(lsGet('scholaris-last-online')||'0',10)){
+      banner('<i class="ti ti-wifi-off"></i> Sem internet há mais de 7 dias — ligue-se à internet para continuar.', '#b91c1c');
+    } else {
+      banner('<i class="ti ti-wifi-off"></i> Modo offline (só leitura) — pode consultar os dados. Alterações não são guardadas até voltar a internet.', '#b45309');
+    }
+  }
+  function sairOffline(){
+    window.__offlineModo=false; escBanner(); marcarOnline();
+    if(typeof toast==='function') toast('Internet de volta — pode guardar normalmente');
+  }
+  window.addEventListener('online', sairOffline);
+  window.addEventListener('offline', entrarOffline);
+
+  /* ---------- Embrulhar _entrarNaApp: guardar sessao no login ---------- */
+  if(typeof window._entrarNaApp==='function'){
+    var _origEntrar = window._entrarNaApp;
+    window._entrarNaApp = function(userData){
+      try{ if(userData) guardarSessao(userData); }catch(e){}
+      return _origEntrar.apply(this, arguments);
+    };
+  }
+
+  /* ---------- Embrulhar loadDadosEscola: offline restaura cache; online carrega e guarda ---------- */
+  if(typeof window.loadDadosEscola==='function'){
+    var _origLoad = window.loadDadosEscola;
+    window.loadDadosEscola = async function(){
+      if(!navigator.onLine){
+        window.__restaurarCache();
+        entrarOffline();
+        return;
+      }
+      var r = await _origLoad.apply(this, arguments);
+      window.__cacheDados();
+      return r;
+    };
+  }
+
+  /* ---------- Arranque offline: entrar com a sessao em cache ---------- */
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      if(navigator.onLine){ marcarOnline(); return; }
+      // Sem internet ao abrir
+      var s = lerSessao();
+      var temApp = document.getElementById('app') && document.getElementById('app').classList.contains('visible');
+      if(temApp) { entrarOffline(); return; }
+      if(s && s.userData && dentroDoPrazo()){
+        try{ if(typeof window._entrarNaApp==='function'){ window._entrarNaApp(s.userData); } }catch(e){}
+      } else {
+        // Sem sessao guardada (ou prazo expirado): nao da para entrar offline
+        var le = document.getElementById('login-screen'); if(le) le.style.display='flex';
+        if(s && !dentroDoPrazo()){ banner('<i class="ti ti-wifi-off"></i> Offline há mais de 7 dias — ligue-se à internet uma vez para continuar a usar.', '#b91c1c'); }
+        else { banner('<i class="ti ti-wifi-off"></i> Sem internet — o primeiro acesso neste dispositivo precisa de ligação.', '#b91c1c'); }
+      }
+    }, 400);
+  });
+
+  window.__finPWA=true;
+})();
+
+</script>
+<script>
+/* ===== PATCH v48: Exportar Backup (JSON + Excel) — só Gestor/Director ===== */
+(function(){
+  if(window.__finBackup) return;
+  var TABELAS=['escolas','perfis','staff','alunos','encarregados','matriculas','turmas','disciplinas','atribuicoes','horarios','pagamentos','despesas','planos_tematicos','graduacoes','comunicados','licencas'];
+
+  function podeBackup(){ try{ return curRole==='gestor'||curRole==='director'; }catch(e){ return false; } }
+
+  async function fetchTabela(t){
+    try{
+      var eid=window._escolaId;
+      var col=(t==='escolas')?'id':'escola_id';
+      var q=window._supabase.from(t).select('*');
+      if(eid && eid!=='escola_demo') q=q.eq(col, eid);
+      var r=await q;
+      if(r && r.error){ var r2=await window._supabase.from(t).select('*'); return (r2&&r2.data)||[]; }
+      return (r&&r.data)||[];
+    }catch(e){ return []; }
+  }
+
+  function dl(blob, nome){ var u=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=u; a.download=nome; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
+  function baixarJSON(obj, nome){ dl(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}), nome); }
+  function carregarSheetJS(){ return new Promise(function(res,rej){ if(window.XLSX) return res(); var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; s.onload=function(){res();}; s.onerror=function(){rej(new Error('cdn'));}; document.head.appendChild(s); }); }
+  function achatar(obj){ var o={}; Object.keys(obj||{}).forEach(function(k){ var v=obj[k]; o[k]=(v&&typeof v==='object')?JSON.stringify(v):v; }); return o; }
+  async function baixarExcel(dump, nome){
+    try{ await carregarSheetJS(); }catch(e){ if(typeof toast==='function') toast('Sem net para a biblioteca Excel — guardei só o JSON'); baixarJSON(dump, nome.replace('.xlsx','.json')); return; }
+    var wb=XLSX.utils.book_new();
+    Object.keys(dump.tabelas).forEach(function(t){
+      var rows=dump.tabelas[t]||[];
+      var ws = rows.length ? XLSX.utils.json_to_sheet(rows.map(achatar)) : XLSX.utils.aoa_to_sheet([['(sem dados)']]);
+      XLSX.utils.book_append_sheet(wb, ws, t.slice(0,31));
+    });
+    XLSX.writeFile(wb, nome);
+  }
+
+  window.__exportarBackup=async function(fmt){
+    if(!podeBackup()){ if(typeof toast==='function') toast('Apenas Gestor ou Director'); return; }
+    if(!navigator.onLine){ if(typeof toast==='function') toast('Precisa de internet para o backup'); return; }
+    var btns=document.querySelectorAll('.backup-btn'); btns.forEach(function(b){ b.disabled=true; b.style.opacity=.6; });
+    if(typeof toast==='function') toast('A preparar backup... aguarde');
+    try{
+      var dump={ _meta:{ app:'Scholaris', escola_id:window._escolaId||'', escola:((typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nome)||''), exportado_em:new Date().toISOString() }, tabelas:{} };
+      var total=0;
+      for(var i=0;i<TABELAS.length;i++){ var dados=await fetchTabela(TABELAS[i]); dump.tabelas[TABELAS[i]]=dados; total+=dados.length; }
+      dump._meta.total_registos=total;
+      var stamp=new Date().toISOString().slice(0,10);
+      var nomeEsc=((dump._meta.escola)||'escola').replace(/[^a-z0-9]/gi,'_').slice(0,30);
+      var base='backup_scholaris_'+nomeEsc+'_'+stamp;
+      if(fmt==='json'||fmt==='ambos') baixarJSON(dump, base+'.json');
+      if(fmt==='excel'||fmt==='ambos') await baixarExcel(dump, base+'.xlsx');
+      if(typeof toast==='function') toast('Backup concluído — '+total+' registos');
+    }catch(e){ if(typeof toast==='function') toast('Erro no backup: '+(e&&e.message||e)); }
+    btns=document.querySelectorAll('.backup-btn'); btns.forEach(function(b){ b.disabled=false; b.style.opacity=1; });
+  };
+
+  function cartaoBackup(){
+    var c=document.getElementById('config-sys'); if(!c) return;
+    if(document.getElementById('backup-card')) return;
+    var Q=String.fromCharCode(39);
+    var div=document.createElement('div'); div.id='backup-card';
+    div.innerHTML=''
+      +'<div style="border-top:1px solid var(--b);margin:18px 0 12px;font-size:11px;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.06em">Backup / Cópia de Segurança</div>'
+      +'<div class="ib-box ib-blue" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> Descarrega uma cópia completa dos dados da escola (alunos, propinas, despesas, notas, etc.). Guarde-a num local seguro (ex.: Google Drive). Recomendado fazer regularmente.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<button class="btn btn-p btn-sm backup-btn" onclick="window.__exportarBackup('+Q+'ambos'+Q+')"><i class="ti ti-download"></i> Exportar backup (JSON + Excel)</button>'
+        +'<button class="btn btn-g btn-sm backup-btn" onclick="window.__exportarBackup('+Q+'json'+Q+')"><i class="ti ti-file-code"></i> Só JSON</button>'
+        +'<button class="btn btn-g btn-sm backup-btn" onclick="window.__exportarBackup('+Q+'excel'+Q+')"><i class="ti ti-file-spreadsheet"></i> Só Excel</button>'
+      +'</div>';
+    c.appendChild(div);
+  }
+
+  if(typeof window.rConfigSys==='function'){
+    var _orig=window.rConfigSys;
+    window.rConfigSys=function(){ var r=_orig.apply(this,arguments); try{ setTimeout(cartaoBackup,30); }catch(e){} return r; };
+  }
+
+  window.__finBackup=true;
+})();
+
+</script>
+<script>
+/* ===== PATCH v49: Orçamento — gestor edita, persiste/tranca, resultado real correcto ===== */
+(function(){
+  if(window.__finOrc) return;
+  function persist(){ try{ if(typeof CONFIG!=='undefined'){ CONFIG.orcamento=window.ORCAMENTO_ANUAL; if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); else if(typeof saveConfigToFirestore==='function') saveConfigToFirestore(); } }catch(e){} }
+  window.__persistOrcamento=persist;
+  ['guardarOrcamento','submeterOrcamento','aprovarOrcamento','devolverOrcamento','desbloquearOrcamento','iniciarOrcamento'].forEach(function(fn){
+    if(typeof window[fn]==='function'){ var orig=window[fn]; window[fn]=function(){ var r=orig.apply(this,arguments); try{ persist(); }catch(e){} return r; }; }
+  });
+  if(typeof window.rOrcamento==='function'){ var _ro=window.rOrcamento; window.rOrcamento=function(){ try{ if(typeof CONFIG!=='undefined' && CONFIG.orcamento && !window.__orcHydrated){ window.ORCAMENTO_ANUAL=CONFIG.orcamento; window.__orcHydrated=true; } }catch(e){} return _ro.apply(this,arguments); }; }
+  // Resultado real: receita real (com bolsas) e despesas reais (sem duplicar salários)
+  window.orcTotaisReais=function(){
+    try{
+      var recReal=(typeof ALUNOS!=='undefined'?ALUNOS:[]).reduce(function(s,a){ return s+((a.propinas||[]).filter(function(p){return p.st==='pago';}).reduce(function(ss,p){return ss+(p.v||0);},0)); },0);
+      var despReal=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG.reduce(function(s,d){return s+(d.valor||0);},0):0;
+      return { recReal:recReal, despReal:despReal, resultado:recReal-despReal };
+    }catch(e){ return {recReal:0,despReal:0,resultado:0}; }
+  };
+  window.__finOrc=true;
 })();
 
 </script>
