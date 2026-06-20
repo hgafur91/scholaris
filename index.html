@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.21</span>
+    <span class="logo-ver">v5.23</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1814,7 +1814,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="mbod">
     <div class="fg">
       <div class="fgr full"><label class="fl">Título</label><input class="ffi" id="com-titulo" placeholder="Ex: Reunião de Pais — 28 Maio 2026"></div>
-      <div class="fgr"><label class="fl">Destinatários</label><select class="ffi" id="com-para"><option value="todos">Toda a escola</option><option value="7A">Turma 7A</option><option value="10A">Turma 10A</option><option value="11B">Turma 11B</option><option value="professores">Professores</option></select></div>
+      <div class="fgr"><label class="fl">Destinatários</label><select class="ffi" id="com-para"><option value="todos">Toda a escola</option><option value="pais">Pais / Encarregados</option><option value="alunos">Alunos</option><option value="professores">Professores</option></select></div>
       <div class="fgr"><label class="fl">Prioridade</label><select class="ffi" id="com-prio"><option value="normal">Normal</option><option value="urgente"><i class="ti ti-circle-filled" style="color:#ef4444"></i> Urgente</option><option value="info">ℹ Informação</option></select></div>
       <div class="fgr full"><label class="fl">Mensagem</label><textarea class="ffi" id="com-corpo" rows="4" placeholder="Texto do comunicado..."></textarea></div>
     </div>
@@ -2766,6 +2766,8 @@ console.log('[Scholaris] Supabase v2 inicializado');
         <input class="ffi" id="na-ebi" placeholder="BI do encarregado"></div>
       <div class="fgr"><label class="fl">Telefone *</label>
         <input class="ffi" id="na-etel" placeholder="+258 84..."></div>
+      <div class="fgr"><label class="fl">Email do Encarregado</label>
+        <input class="ffi" id="na-eemail" type="email" placeholder="email@exemplo.com"></div>
       <div class="fgr"><label class="fl">Profissão</label>
         <input class="ffi" id="na-eprof" placeholder="Ex: Professor, Comerciante..."></div>
       <div class="fgr full"><label class="fl">Endereço do Encarregado</label>
@@ -4560,7 +4562,7 @@ async function guardarNovoEnc(){
   const id=ENCS.length+1;
   const num='ENC'+String(id).padStart(6,'0');
   const tel=document.getElementById('nenc-tel')?.value?.trim()||'';
-  const email=document.getElementById('nenc-email')?.value?.trim()||'N/A';
+  const email=document.getElementById('nenc-email')?.value?.trim()||'';
   const prof=document.getElementById('nenc-prof')?.value?.trim()||'';
   const rel=document.getElementById('nenc-rel')?.value||'Pai';
   const bi=document.getElementById('nenc-bi')?.value?.trim()||'';
@@ -10945,10 +10947,7 @@ console.log('[Scholaris] Scholaris v1.9 — Cartão Prof/Staff + Dashboard Cards
 // ════════════════════════════════════════════════════════════
 
 // ── MENSAGENS ────────────────────────────────────────────────
-let MENSAGENS = [
-  {id:1,de:'Egídio Chaimite',para:'secretario',assunto:'Propinas de Maio',corpo:'Bom dia, gostaria de saber o estado das propinas do meu filho Aaron. Obrigado.',data:'2026-05-20',lida:true,resposta:'As propinas de Maio estão pendentes. Por favor dirija-se à secretaria.'},
-  {id:2,de:'António Tajú',para:'director',assunto:'Faltas injustificadas da Yasmin',corpo:'Director, a minha filha tem muitas faltas a Inglês. Posso falar consigo?',data:'2026-05-22',lida:false,resposta:null},
-];
+let MENSAGENS = [];
 
 function enviarMensagem() {
   const assunto = document.getElementById('msg-assunto')?.value.trim();
@@ -12199,14 +12198,7 @@ openAluno = function(id) {
 //  COMUNICAÇÃO BIDIRECIONAL
 // ════════════════════════════════════════════════════════════
 
-let CONVERSAS = [
-  {id:1, participantes:['Egídio Chaimite','Dr. João Machava'],assunto:'Faltas do Aaron',
-   msgs:[
-    {de:'Egídio Chaimite',texto:'Bom dia Director, gostaria de perceber melhor as faltas do meu filho Aaron a Inglês.',data:'2026-05-20 09:15',lida:true},
-    {de:'Dr. João Machava',texto:'Bom dia Sr. Egídio. Sim, o Aaron teve 3 faltas injustificadas. Recomendo uma conversa com a Professora Celina.',data:'2026-05-20 10:30',lida:true},
-    {de:'Egídio Chaimite',texto:'Obrigado Director. Pode marcar uma reunião?',data:'2026-05-21 08:00',lida:false},
-  ]},
-];
+let CONVERSAS = [];
 
 function rComunicacaoBidirec() {
   const el = document.getElementById('comunicacao-c');
@@ -17994,6 +17986,8 @@ function toggleEncManual(val) {
     if (enc) {
       const etelEl = document.getElementById('na-etel');
       if (etelEl) etelEl.value = enc.tel || '';
+      const eemEl = document.getElementById('na-eemail');
+      if (eemEl) eemEl.value = enc.email || '';
     }
   }
 }
@@ -33188,6 +33182,37 @@ window.__finV30=true;})();
 
   if(typeof RENDER_MAP!=='undefined') RENDER_MAP['orcamento']=function(){ return window.rOrcamento(); };
   window.__finOrc3=true;
+})();
+
+</script>
+<script>
+/* ===== PATCH v52: comunicados — turmas reais nos destinatários + rótulos ===== */
+(function(){
+  if(window.__finCom) return;
+  window.__popularDestinos=function(){
+    try{
+      var sel=document.getElementById('com-para'); if(!sel) return;
+      if(sel.getAttribute('data-turmas')) return; // já populado
+      var turmas=(typeof TURMAS!=='undefined'?TURMAS:[]).slice().sort(function(a,b){return (parseInt(a.classe)||99)-(parseInt(b.classe)||99);});
+      turmas.forEach(function(t){ var o=document.createElement('option'); o.value='turma:'+t.id; o.textContent='Turma '+(t.classe||'')+'ª '+(t.letra||''); sel.appendChild(o); });
+      sel.setAttribute('data-turmas','1');
+    }catch(e){}
+  };
+  // rótulo amigável do destinatário
+  window.__destinoLabel=function(p){
+    if(p==='todos') return 'Toda a escola';
+    if(p==='pais') return 'Pais / Encarregados';
+    if(p==='alunos') return 'Alunos';
+    if(p==='professores') return 'Professores';
+    if(p && p.indexOf('turma:')===0){ var id=p.slice(6); var t=(typeof TURMAS!=='undefined'?TURMAS:[]).find(function(x){return x.id===id;}); return t?('Turma '+(t.classe||'')+'ª '+(t.letra||'')):'Turma'; }
+    return p||'—';
+  };
+  // popular quando o modal abre (delegação simples: popular a cada clique no botão de novo comunicado)
+  document.addEventListener('click', function(e){
+    var t=e.target&&e.target.closest&&e.target.closest('[onclick]');
+    if(t && /ncomunicado|novoComunicado|m-ncomunicado/i.test(t.getAttribute('onclick')||'')){ setTimeout(window.__popularDestinos, 60); }
+  }, true);
+  window.__finCom=true;
 })();
 
 </script>
