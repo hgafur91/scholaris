@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.25</span>
+    <span class="logo-ver">v5.26</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3355,7 +3355,7 @@ const ROLES={
     sidebar:[
       {sl:'Principal',flat:[{i:'ti-layout-dashboard',l:'Dashboard',id:'dash'}]},
       {sl:'Académico',sub:[{i:'ti-layout-grid',l:'Turmas',id:'turmas'},{i:'ti-users',l:'Alunos',id:'alunos'},{i:'ti-heart',l:'Encarregados',id:'encarregados'},{i:'ti-calendar',l:'Horário',id:'horario'},{i:'ti-check',l:'Presenças',id:'presencas'},{i:'ti-star',l:'Notas Finais',id:'notas'},{i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'}]},
-      {sl:'Financeiro',sub:[{i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},{i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},{i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'}]},
       {sl:'Gestão Curricular',sub:[
         {i:'ti-circles',l:'Ciclos',id:'ciclos'},
         {i:'ti-clock',l:'Períodos Lectivos',id:'periodos'},
@@ -33272,6 +33272,31 @@ window.__finV30=true;})();
     };
   }
   window.__finMatr=true;
+})();
+
+</script>
+<script>
+/* ===== PATCH v54: esconder botoes "Fechar Mes/Ano" para quem nao e gestor/director ===== */
+(function(){
+  if(window.__finFecharGuard) return;
+  function podeFechar(){ try{ return curRole==='gestor'||curRole==='director'; }catch(e){ return false; } }
+  function esconder(){
+    if(podeFechar()) return;
+    try{
+      var bs=document.querySelectorAll('button, a');
+      for(var i=0;i<bs.length;i++){
+        var el=bs[i];
+        var tx=(el.textContent||'');
+        var oc=(el.getAttribute&&el.getAttribute('onclick'))||'';
+        if(/Fechar\s+(M[eê]s|Ano)/i.test(tx) || /__fecharMes|iniciarFechoAno|fecharAno/.test(oc)){
+          el.style.display='none';
+        }
+      }
+    }catch(e){}
+  }
+  try{ var mo=new MutationObserver(function(){ esconder(); }); mo.observe(document.body,{childList:true,subtree:true}); }catch(e){}
+  setInterval(esconder, 1000); setTimeout(esconder, 400);
+  window.__finFecharGuard=true;
 })();
 
 </script>
