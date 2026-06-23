@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.24</span>
+    <span class="logo-ver">v5.25</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3355,7 +3355,7 @@ const ROLES={
     sidebar:[
       {sl:'Principal',flat:[{i:'ti-layout-dashboard',l:'Dashboard',id:'dash'}]},
       {sl:'Académico',sub:[{i:'ti-layout-grid',l:'Turmas',id:'turmas'},{i:'ti-users',l:'Alunos',id:'alunos'},{i:'ti-heart',l:'Encarregados',id:'encarregados'},{i:'ti-calendar',l:'Horário',id:'horario'},{i:'ti-check',l:'Presenças',id:'presencas'},{i:'ti-star',l:'Notas Finais',id:'notas'},{i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'}]},
-      {sl:'Financeiro',sub:[{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-cash',l:'Emolumentos',id:'emolumentos'}]},
+      {sl:'Financeiro',sub:[{i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},{i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'}]},
       {sl:'Gestão Curricular',sub:[
         {i:'ti-circles',l:'Ciclos',id:'ciclos'},
         {i:'ti-clock',l:'Períodos Lectivos',id:'periodos'},
@@ -30088,7 +30088,7 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
   function injectPagSidebar(){
     var sb=document.getElementById('sb-content'); if(!sb) return;
     var role=(typeof curRole!=='undefined')?curRole:'';
-    if(['gestor','secretario'].indexOf(role)<0) return;
+    if(['gestor','secretario','director'].indexOf(role)<0) return;
     if(!document.getElementById('si-pagamentos')){
       var ref=document.getElementById('si-propinas')||document.getElementById('si-despesas');
       var btn=document.createElement('button'); btn.className='si'; btn.id='si-pagamentos'; btn.setAttribute('onclick',"go('pagamentos')"); btn.innerHTML='<i class="ti ti-credit-card" style="font-size:16px"></i><span>Pagamentos</span>';
