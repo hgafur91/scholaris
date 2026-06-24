@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.26</span>
+    <span class="logo-ver">v5.28</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5762,6 +5762,7 @@ async function loadDadosEscola() {
           dep: p.dep || 'academico',
           regime: p.regime || 'inteiro',
           salario: p.salario || 0,
+          subsidioCargo: p.subsidio_cargo || 0,
           nota: p.nota || 0,
           form: p.form || '',
           area: p.area || '',
@@ -32401,7 +32402,9 @@ window.__finV30=true;})();
     var linhas={};
     (PROFS||[]).filter(function(p){return (p.salario||0)>0;}).forEach(function(p){
       var prev=(ex&&ex.linhas&&ex.linhas[p.id])||{};
-      linhas[p.id]={ base:p.salario||0, subsidios:prev.subsidios||[], descontos:prev.descontos||[] };
+      var subs=(prev.subsidios)?prev.subsidios.slice():[];
+      if((p.subsidioCargo||0)>0 && !subs.some(function(s){return s.nome==='Cargo';})){ subs.push({nome:'Cargo', valor:p.subsidioCargo}); }
+      linhas[p.id]={ base:p.salario||0, subsidios:subs, descontos:prev.descontos||[] };
     });
     F[a][m]={ status:'rascunho', linhas:linhas, geradaEm:new Date().toISOString(), aprovadaPor:null, aprovadaEm:null };
     persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' gerada (rascunho)'); window.__folhaRerender();
@@ -32416,7 +32419,7 @@ window.__finV30=true;})();
       var bruto=(typeof window.__folhaBrutoMes==='function')?window.__folhaBrutoMes(m,a):0;
       if(typeof DESPESAS_REG!=='undefined' && Array.isArray(DESPESAS_REG)){
         for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dmm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(dmm===m) DESPESAS_REG.splice(i,1); } }
-        var rec={ id:'SAL'+a+'-'+m, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha de Salários '+nomeMes(m), valor:bruto, ref:'FOLHA-'+m, registadoEm:new Date().toISOString() };
+        var rec={ id:'SAL'+a+'-'+m, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha de Salários '+nomeMes(m)+' (inclui INSS empresa 4%)', valor:Math.round(bruto*1.04), ref:'FOLHA-'+m, registadoEm:new Date().toISOString() };
         DESPESAS_REG.push(rec);
         try{ if(typeof window.__salvarDespesaFolha==='function') window.__salvarDespesaFolha(rec); else if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(rec); }catch(e){}
       }
@@ -32494,15 +32497,17 @@ window.__finV30=true;})();
       var subs=(L.subsidios||[]).reduce(function(s,x){return s+(x.valor||0);},0);
       var bruto=(L.base||0)+subs; var inss=Math.round(bruto*0.03); var irps=calcIRPSl(bruto);
       var dm=(L.descontos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
-      return {pid:pid,p:p,L:L,bruto:bruto,inss:inss,irps:irps,dm:dm,liquido:bruto-inss-irps-dm};
+      return {pid:pid,p:p,L:L,bruto:bruto,inss:inss,irps:irps,dm:dm,liquido:bruto-inss-irps-dm,empresa:Math.round(bruto*0.04),custo:bruto+Math.round(bruto*0.04)};
     }).sort(function(x,y){return (x.p.nome||'').localeCompare(y.p.nome||'');});
     var tBase=rows.reduce(function(s,r){return s+(r.L.base||0);},0);
     var tBruto=rows.reduce(function(s,r){return s+r.bruto;},0);
     var tINSS=rows.reduce(function(s,r){return s+r.inss;},0), tIRPS=rows.reduce(function(s,r){return s+r.irps;},0);
     var tDM=rows.reduce(function(s,r){return s+r.dm;},0), tLiq=rows.reduce(function(s,r){return s+r.liquido;},0);
+    var tEmpresa=rows.reduce(function(s,r){return s+r.empresa;},0);
+    var tCusto=rows.reduce(function(s,r){return s+r.custo;},0);
 
-    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Bruto',tBruto,'var(--a)')+kpi('INSS + IRPS',tINSS+tIRPS,'var(--am)')+kpi('Outros Descontos',tDM,'var(--r)')+kpi('Total Líquido',tLiq,'var(--g)')+'</div>';
-    h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Descontos</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th style="text-align:right">Líquido</th></tr></thead><tbody>';
+    h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Bruto',tBruto,'var(--a)')+kpi('INSS + IRPS',tINSS+tIRPS,'var(--am)')+kpi('Total Líquido',tLiq,'var(--g)')+kpi('INSS Empresa (4%)',tEmpresa,'var(--am)')+kpi('Custo Total Escola',tCusto,'var(--r)')+'</div>';
+    h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Descontos</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th style="text-align:right">Líquido</th><th style="text-align:right">INSS Empresa (4%)</th><th style="text-align:right">Custo Total</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var subC=(r.L.subsidios||[]).map(function(s,si){return '<div style="color:var(--g);font-size:10px">+'+fmtN(s.valor)+' '+s.nome+(canEdit?' <a onclick="window.__rmSubsidio('+m+','+Q+r.pid+Q+','+si+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addSubsidio('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ subsídio</a>':'');
       var desC=(r.L.descontos||[]).map(function(d,di){return '<div style="color:var(--r);font-size:10px">-'+fmtN(d.valor)+' '+d.nome+(canEdit?' <a onclick="window.__rmDesconto('+m+','+Q+r.pid+Q+','+di+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addDesconto('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ desconto</a>':'');
@@ -32511,9 +32516,11 @@ window.__finV30=true;})();
         +'<td>'+(subC||'—')+'</td><td>'+(desC||'—')+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">-'+fmtN(r.inss)+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">-'+fmtN(r.irps)+'</td>'
-        +'<td style="text-align:right;font-family:var(--fm);font-weight:800;color:var(--g)">'+fmtN(r.liquido)+'</td></tr>';
+        +'<td style="text-align:right;font-family:var(--fm);font-weight:800;color:var(--g)">'+fmtN(r.liquido)+'</td>'
+        +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">'+fmtN(r.empresa)+'</td>'
+        +'<td style="text-align:right;font-family:var(--fm);font-weight:700;color:var(--r)">'+fmtN(r.custo)+'</td></tr>';
     });
-    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td>TOTAIS</td><td style="text-align:right">'+fmtN(tBase)+'</td><td></td><td style="text-align:right;color:var(--r)">-'+fmtN(tDM)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tINSS)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tIRPS)+'</td><td style="text-align:right;color:var(--g)">'+fmtN(tLiq)+'</td></tr>';
+    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td>TOTAIS</td><td style="text-align:right">'+fmtN(tBase)+'</td><td></td><td style="text-align:right;color:var(--r)">-'+fmtN(tDM)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tINSS)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tIRPS)+'</td><td style="text-align:right;color:var(--g)">'+fmtN(tLiq)+'</td><td style="text-align:right;color:var(--am)">'+fmtN(tEmpresa)+'</td><td style="text-align:right;color:var(--r)">'+fmtN(tCusto)+'</td></tr>';
     h+='</tbody></table></div></div>';
     el.innerHTML=h;
   };
