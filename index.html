@@ -33308,115 +33308,107 @@ window.__finV30=true;})();
 
 </script>
 <script>
-/* ===== PATCH v56: Folha de Professores Parciais (pago por aula) ===== */
+/* ===== PATCH v57: Salários com abas (Tempo Inteiro / Tempo Parcial) ===== */
 (function(){
   if(window.__parciaisInit) return;
   function persistC(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
   function anoL(){ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||2026; }
-  var MESESP=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  function mesNome(m){ try{ if(typeof nomeMes==='function') return nomeMes(m); }catch(e){} return MESESP[m]||(''+m); }
+  var MP=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function mesNome(m){ try{ if(typeof nomeMes==='function') return nomeMes(m); }catch(e){} return MP[m]||(''+m); }
   try{ if(typeof CONFIG!=='undefined'){ if(CONFIG.valorAula==null) CONFIG.valorAula=140; if(CONFIG.diaFecho==null) CONFIG.diaFecho=22; } }catch(e){}
 
-  var _calMap=null;
-  function calMap(){
-    if(_calMap) return _calMap; _calMap={};
-    try{
-      var C=(typeof CALENDARIO_ESCOLAR!=='undefined'&&CALENDARIO_ESCOLAR)?CALENDARIO_ESCOLAR:(window.CALENDARIO_ESCOLAR||null);
-      if(C){ (Array.isArray(C)?C:Object.values(C)).forEach(function(sem){
-        (Array.isArray(sem)?sem:((sem&&sem.dias)||[])).forEach(function(dia){ if(dia&&dia.data) _calMap[dia.data]=dia.tipo; });
-      }); }
-    }catch(e){}
-    return _calMap;
-  }
+  var _cal=null;
+  function calMap(){ if(_cal) return _cal; _cal={};
+    try{ var C=(typeof CALENDARIO_ESCOLAR!=='undefined'&&CALENDARIO_ESCOLAR)?CALENDARIO_ESCOLAR:(window.CALENDARIO_ESCOLAR||null);
+      if(C){ (Array.isArray(C)?C:Object.values(C)).forEach(function(sem){ (Array.isArray(sem)?sem:((sem&&sem.dias)||[])).forEach(function(d){ if(d&&d.data)_cal[d.data]=d.tipo; }); }); }
+    }catch(e){} return _cal; }
   function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-  function diaSemAulas(d){
-    var dow=d.getDay(); if(dow===0||dow===6) return true;
-    var s=iso(d);
+  function semAulas(d){ var w=d.getDay(); if(w===0||w===6) return true; var s=iso(d);
     try{ if((typeof FERIADOS_MZ_2026!=='undefined'?FERIADOS_MZ_2026:[]).some(function(f){return f.data===s;})) return true; }catch(e){}
-    var t=calMap()[s]; if(t&&(t==='ferias'||t==='feriado'||t==='fimAno')) return true;
-    return false;
-  }
+    var t=calMap()[s]; if(t&&(t==='ferias'||t==='feriado'||t==='fimAno')) return true; return false; }
+
   window.__contarAulasParcial=function(profNum,a,m){
-    var diaFecho=(CONFIG.diaFecho||22);
-    var fim=new Date(a,m-1,diaFecho), ini=new Date(a,m-2,diaFecho+1);
-    var porDia={1:0,2:0,3:0,4:0,5:0}, map={seg:1,ter:2,qua:3,qui:4,sex:5};
+    var df=(CONFIG.diaFecho||22), fim=new Date(a,m-1,df), ini=new Date(a,m-2,df+1);
+    var pd={1:0,2:0,3:0,4:0,5:0}, mp={seg:1,ter:2,qua:3,qui:4,sex:5};
     try{ var H=(typeof HORARIO!=='undefined'&&HORARIO)?HORARIO:(window.HORARIO||{});
-      Object.keys(H).forEach(function(t){ (H[t]||[]).forEach(function(row){
-        ['seg','ter','qua','qui','sex'].forEach(function(dia){ var c=row[dia]; if(c&&String(c.p)===String(profNum)) porDia[map[dia]]++; });
-      }); });
+      Object.keys(H).forEach(function(t){ (H[t]||[]).forEach(function(r){ ['seg','ter','qua','qui','sex'].forEach(function(dia){ var c=r[dia]; if(c&&String(c.p)===String(profNum)) pd[mp[dia]]++; }); }); });
     }catch(e){}
-    var total=0;
-    for(var d=new Date(ini); d<=fim; d.setDate(d.getDate()+1)){ if(diaSemAulas(d)) continue; total+=porDia[d.getDay()]||0; }
-    return {total:total, porDia:porDia, ini:iso(ini), fim:iso(fim)};
+    var tot=0; for(var d=new Date(ini); d<=fim; d.setDate(d.getDate()+1)){ if(semAulas(d)) continue; tot+=pd[d.getDay()]||0; }
+    return {total:tot, porDia:pd, ini:iso(ini), fim:iso(fim)};
   };
   function getF(m){ try{ var a=anoL(); return (CONFIG.folhas&&CONFIG.folhas[a]&&CONFIG.folhas[a][m])||null; }catch(e){ return null; } }
   function podeEd(){ try{ return curRole==='gestor'||curRole==='director'; }catch(e){ return false; } }
+  function parciais(){ return (PROFS||[]).filter(function(p){return p.regime==='parcial';}).sort(function(x,y){return (x.nome||'').localeCompare(y.nome||'');}); }
 
-  window.__setAulasParcial=function(m,pid,val){
-    var f=getF(m); if(!f||f.status!=='rascunho'||!podeEd()) return;
-    if(!f.parciais) f.parciais={};
-    var n=parseInt(val,10); if(isNaN(n)||n<0) n=0;
-    f.parciais[pid]={aulas:n, manual:true}; persistC(); if(window.__folhaRerender) window.__folhaRerender();
-  };
-  window.__setValorAula=function(){ var v=prompt('Valor por aula (MZN):',CONFIG.valorAula||140); if(v==null)return; var n=parseFloat(v); if(isNaN(n)||n<0)return; CONFIG.valorAula=n; persistC(); if(window.__folhaRerender) window.__folhaRerender(); };
-  window.__setDiaFecho=function(){ var v=prompt('Dia de fecho (1-28):',CONFIG.diaFecho||22); if(v==null)return; var n=parseInt(v,10); if(isNaN(n)||n<1||n>28)return; CONFIG.diaFecho=n; _calMap=null; persistC(); if(window.__folhaRerender) window.__folhaRerender(); };
+  window.__aulasParcial=function(pid,a,m){ var f=getF(m); var p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);}); if(!p) return 0;
+    if(f&&f.parciais&&f.parciais[pid]&&f.parciais[pid].aulas!=null) return f.parciais[pid].aulas;
+    return window.__contarAulasParcial(p.num,a,m).total; };
+  window.__setAulasParcial=function(m,pid,val){ var f=getF(m); if(!f||f.status!=='rascunho'||!podeEd()) return; if(!f.parciais)f.parciais={};
+    var n=parseInt(val,10); if(isNaN(n)||n<0)n=0; f.parciais[pid]={aulas:n,manual:true}; persistC(); window.__folhaTab='parcial'; if(window.__folhaRerender) window.__folhaRerender(); };
+  window.__setValorAula=function(){ var v=prompt('Valor por aula (MZN):',CONFIG.valorAula||140); if(v==null)return; var n=parseFloat(v); if(isNaN(n)||n<0)return; CONFIG.valorAula=n; persistC(); window.__folhaTab='parcial'; if(window.__folhaRerender) window.__folhaRerender(); };
+  window.__setDiaFecho=function(){ var v=prompt('Dia de fecho (1-28):',CONFIG.diaFecho||22); if(v==null)return; var n=parseInt(v,10); if(isNaN(n)||n<1||n>28)return; CONFIG.diaFecho=n; _cal=null; persistC(); window.__folhaTab='parcial'; if(window.__folhaRerender) window.__folhaRerender(); };
+  window.__totalParciais=function(a,m){ var val=CONFIG.valorAula||140, tot=0; parciais().forEach(function(p){ tot+=window.__aulasParcial(p.id,a,m)*val; }); return tot; };
 
-  window.__totalParciais=function(a,m){
-    var f=(CONFIG.folhas&&CONFIG.folhas[a]&&CONFIG.folhas[a][m]); if(!f) return 0;
-    var val=CONFIG.valorAula||140, tot=0;
-    (PROFS||[]).filter(function(p){return p.regime==='parcial';}).forEach(function(p){
-      var pid=p.id, aulas;
-      if(f.parciais&&f.parciais[pid]&&f.parciais[pid].aulas!=null) aulas=f.parciais[pid].aulas;
-      else aulas=window.__contarAulasParcial(p.num,a,m).total;
-      tot+=aulas*val;
-    });
-    return tot;
-  };
-  function renderParciais(cid){
-    var el=document.getElementById(cid||'folha-sal-c'); if(!el) return;
-    var a=anoL(), m=window.__folhaMes||(new Date().getMonth()+1);
-    var f=getF(m); if(!f) return;
-    var canEdit=f.status==='rascunho'&&podeEd(), val=CONFIG.valorAula||140;
-    var parc=(PROFS||[]).filter(function(p){return p.regime==='parcial';}).sort(function(x,y){return (x.nome||'').localeCompare(y.nome||'');});
-    if(!parc.length) return;
-    var Q=String.fromCharCode(39), totAulas=0, totVal=0, body='', per=null;
-    parc.forEach(function(p){
-      var pid=p.id, auto=window.__contarAulasParcial(p.num,a,m); if(!per) per=auto;
-      var aulas, manual=false;
-      if(f.parciais&&f.parciais[pid]&&f.parciais[pid].aulas!=null){ aulas=f.parciais[pid].aulas; manual=!!f.parciais[pid].manual; } else aulas=auto.total;
-      var tot=aulas*val; totAulas+=aulas; totVal+=tot;
-      var cell=canEdit?'<input type="number" value="'+aulas+'" min="0" style="width:64px;text-align:right;padding:4px;border:1px solid var(--b);border-radius:6px;background:var(--card);color:var(--t)" onchange="window.__setAulasParcial('+m+','+Q+pid+Q+',this.value)">':'<b>'+aulas+'</b>';
+  function buildParcialHTML(a,m,canEdit){
+    var val=CONFIG.valorAula||140, parc=parciais(), Q=String.fromCharCode(39);
+    if(!parc.length) return '<div class="ib-box ib-am" style="margin-top:8px"><i class="ti ti-info-circle"></i> Não há professores a tempo parcial registados.</div>';
+    var totA=0,totV=0,body='',per=null;
+    parc.forEach(function(p){ var auto=window.__contarAulasParcial(p.num,a,m); if(!per)per=auto;
+      var f=getF(m), aulas, manual=false;
+      if(f&&f.parciais&&f.parciais[p.id]&&f.parciais[p.id].aulas!=null){ aulas=f.parciais[p.id].aulas; manual=!!f.parciais[p.id].manual; } else aulas=auto.total;
+      var tot=aulas*val; totA+=aulas; totV+=tot;
+      var cell=canEdit?'<input type="number" value="'+aulas+'" min="0" style="width:64px;text-align:right;padding:4px;border:1px solid var(--b);border-radius:6px;background:var(--card);color:var(--t)" onchange="window.__setAulasParcial('+m+','+Q+p.id+Q+',this.value)">':'<b>'+aulas+'</b>';
       var hint=manual?'<span style="font-size:9px;color:var(--am)"> (man.)</span>':'<span style="font-size:9px;color:var(--t2)"> (auto)</span>';
-      body+='<tr><td><div style="font-weight:700">'+p.nome+'</div><div style="font-size:10px;color:var(--t2)">'+(p.num||'')+' · Parcial</div></td>'
-        +'<td style="text-align:right">'+cell+hint+'</td>'
-        +'<td style="text-align:right;font-family:var(--fm)">'+fmtN(val)+'</td>'
-        +'<td style="text-align:right;font-family:var(--fm);font-weight:800;color:var(--g)">'+fmtN(tot)+'</td></tr>';
+      body+='<tr><td><div style="font-weight:700">'+p.nome+'</div><div style="font-size:10px;color:var(--t2)">'+(p.num||'')+' · Parcial</div></td><td style="text-align:right">'+cell+hint+'</td><td style="text-align:right;font-family:var(--fm)">'+fmtN(val)+'</td><td style="text-align:right;font-family:var(--fm);font-weight:800;color:var(--g)">'+fmtN(tot)+'</td></tr>';
     });
     var cfg=podeEd()?'<a onclick="window.__setValorAula()" style="cursor:pointer;color:var(--a);font-size:11px">valor/aula: '+fmtN(val)+' ✎</a> · <a onclick="window.__setDiaFecho()" style="cursor:pointer;color:var(--a);font-size:11px">fecho dia '+(CONFIG.diaFecho||22)+' ✎</a>':'Valor/aula: '+fmtN(val);
-    var card='<div class="card" style="margin-top:16px"><div class="ch"><span class="ct"><i class="ti ti-clock-hour-4" style="color:var(--am)"></i> Professores a Tempo Parcial — '+mesNome(m)+'</span><span style="font-size:11px">'+cfg+'</span></div>'
+    return '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">'+kpi('Total de Aulas',totA,'var(--a)')+kpi('Total a Pagar (Parciais)',totV,'var(--g)')+'</div>'
+      +'<div class="card"><div class="ch"><span class="ct"><i class="ti ti-clock-hour-4" style="color:var(--am)"></i> Tempo Parcial — '+mesNome(m)+'</span><span style="font-size:11px">'+cfg+'</span></div>'
       +'<div class="tw"><table><thead><tr><th>Professor</th><th style="text-align:right">Nº Aulas</th><th style="text-align:right">Valor/Aula</th><th style="text-align:right">Total a Pagar</th></tr></thead><tbody>'
-      +body+'<tr style="border-top:2px solid var(--b);font-weight:800"><td>TOTAIS ('+parc.length+')</td><td style="text-align:right">'+totAulas+'</td><td></td><td style="text-align:right;color:var(--g)">'+fmtN(totVal)+'</td></tr>'
+      +body+'<tr style="border-top:2px solid var(--b);font-weight:800"><td>TOTAIS ('+parc.length+')</td><td style="text-align:right">'+totA+'</td><td></td><td style="text-align:right;color:var(--g)">'+fmtN(totV)+'</td></tr>'
       +'</tbody></table></div><div class="cb" style="font-size:11px;color:var(--t2)">Período: '+(per?per.ini+' a '+per.fim:'')+' · fins-de-semana, feriados e férias excluídos · contagem automática editável antes de fechar.</div></div>';
-    el.insertAdjacentHTML('beforeend', card);
+  }
+  window.__folhaTab2=function(tab){ window.__folhaTab=tab;
+    var pi=document.getElementById('folha-pane-inteiro'), pp=document.getElementById('folha-pane-parcial');
+    var bi=document.getElementById('folha-tab-inteiro'), bp=document.getElementById('folha-tab-parcial');
+    if(pi)pi.style.display=(tab==='inteiro')?'':'none'; if(pp)pp.style.display=(tab==='parcial')?'':'none';
+    if(bi)bi.className='chip'+(tab==='inteiro'?' on':''); if(bp)bp.className='chip'+(tab==='parcial'?' on':'');
+  };
+  function restructure(cid){
+    var el=document.getElementById(cid||'folha-sal-c'); if(!el) return;
+    var a=anoL(), m=window.__folhaMes||(new Date().getMonth()+1); var f=getF(m); if(!f) return;
+    if(document.getElementById('folha-pane-inteiro')) return; // já reestruturado
+    var canEdit=f.status==='rascunho'&&podeEd();
+    var inteiro=el.innerHTML;
+    var tab=window.__folhaTab||'inteiro';
+    var bar='<div style="display:flex;gap:8px;margin-bottom:14px">'
+      +'<div class="chip'+(tab==='inteiro'?' on':'')+'" id="folha-tab-inteiro" style="padding:8px 16px;cursor:pointer" onclick="window.__folhaTab2('+String.fromCharCode(39)+'inteiro'+String.fromCharCode(39)+')"><i class="ti ti-briefcase"></i> Tempo Inteiro</div>'
+      +'<div class="chip'+(tab==='parcial'?' on':'')+'" id="folha-tab-parcial" style="padding:8px 16px;cursor:pointer" onclick="window.__folhaTab2('+String.fromCharCode(39)+'parcial'+String.fromCharCode(39)+')"><i class="ti ti-clock-hour-4"></i> Tempo Parcial</div>'
+      +'</div>';
+    el.innerHTML=bar
+      +'<div id="folha-pane-inteiro" style="display:'+(tab==='inteiro'?'':'none')+'">'+inteiro+'</div>'
+      +'<div id="folha-pane-parcial" style="display:'+(tab==='parcial'?'':'none')+'">'+buildParcialHTML(a,m,canEdit)+'</div>';
   }
   function wrapRender(){ if(typeof window.__folhaRender!=='function') return false; if(window.__folhaRender.__pw) return true;
-    var orig=window.__folhaRender; window.__folhaRender=function(cid,sf){ var r=orig.apply(this,arguments); try{ renderParciais(cid); }catch(e){} return r; }; window.__folhaRender.__pw=true; return true; }
+    var orig=window.__folhaRender; window.__folhaRender=function(cid,sf){ var r=orig.apply(this,arguments); try{ restructure(cid); }catch(e){} return r; }; window.__folhaRender.__pw=true; return true; }
   function wrapAprovar(){ if(typeof window.__aprovarFolha!=='function') return false; if(window.__aprovarFolha.__pw) return true;
     var orig=window.__aprovarFolha; window.__aprovarFolha=function(m){ var r=orig.apply(this,arguments);
       try{ var a=anoL(), f=getF(m);
         if(f&&f.status==='aprovada'&&typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG)){
-          var tot=window.__totalParciais(a,m);
-          for(var i=DESPESAS_REG.length-1;i>=0;i--){ if(DESPESAS_REG[i]&&DESPESAS_REG[i].id==='SALPARC'+a+'-'+m) DESPESAS_REG.splice(i,1); }
-          if(tot>0){ var rec={id:'SALPARC'+a+'-'+m, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha Professores Parciais '+mesNome(m), valor:tot, ref:'FOLHAPARC-'+m, registadoEm:new Date().toISOString()};
-            DESPESAS_REG.push(rec);
+          var totP=window.__totalParciais(a,m); var id='SAL'+a+'-'+m; var rec=null;
+          for(var i=0;i<DESPESAS_REG.length;i++){ if(DESPESAS_REG[i]&&DESPESAS_REG[i].id===id){ rec=DESPESAS_REG[i]; break; } }
+          for(var j=DESPESAS_REG.length-1;j>=0;j--){ if(DESPESAS_REG[j]&&DESPESAS_REG[j].id==='SALPARC'+a+'-'+m) DESPESAS_REG.splice(j,1); }
+          if(rec){ rec.valor=(rec.valor||0)+totP; rec.descricao='Folha de Salários '+mesNome(m)+' (inteiros c/ 4% + parciais)';
             try{ if(typeof window.__salvarDespesaFolha==='function') window.__salvarDespesaFolha(rec); else if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(rec); }catch(e){}
-            persistC();
+          } else if(totP>0){ var nrec={id:id, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha de Salários '+mesNome(m)+' (parciais)', valor:totP, ref:'FOLHA-'+m, registadoEm:new Date().toISOString()};
+            DESPESAS_REG.push(nrec); try{ if(typeof window.__salvarDespesaFolha==='function') window.__salvarDespesaFolha(nrec); else if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(nrec); }catch(e){}
           }
+          persistC();
         }
       }catch(e){}
       return r;
     }; window.__aprovarFolha.__pw=true; return true; }
-  var tries=0, iv=setInterval(function(){ tries++; var a=wrapRender(), b=wrapAprovar(); if((a&&b)||tries>40) clearInterval(iv); },250);
+  var tr=0, iv=setInterval(function(){ tr++; var x=wrapRender(), y=wrapAprovar(); if((x&&y)||tr>40) clearInterval(iv); },250);
   wrapRender(); wrapAprovar(); window.__parciaisInit=true;
 })();
 
