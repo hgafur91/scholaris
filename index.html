@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.31</span>
+    <span class="logo-ver">v5.32</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33332,7 +33332,7 @@ window.__finV30=true;})();
     var df=(CONFIG.diaFecho||22), fim=new Date(a,m-1,df), ini=new Date(a,m-2,df+1);
     var pd={1:0,2:0,3:0,4:0,5:0}, mp={seg:1,ter:2,qua:3,qui:4,sex:5};
     try{ var H=(typeof HORARIO!=='undefined'&&HORARIO)?HORARIO:(window.HORARIO||{});
-      Object.keys(H).forEach(function(t){ (H[t]||[]).forEach(function(r){ ['seg','ter','qua','qui','sex'].forEach(function(dia){ var c=r[dia]; if(c&&String(c.p)===String(profNum)) pd[mp[dia]]++; }); }); });
+      Object.keys(H).forEach(function(t){ (H[t]||[]).forEach(function(r){ ['seg','ter','qua','qui','sex'].forEach(function(dia){ var c=r[dia]; if(c&&String(c.p)===String(profNum)){ var dn=(c.d||'').toLowerCase(); if(dn.indexOf('moral')>=0||dn.indexOf('religi')>=0) return; pd[mp[dia]]++; } }); }); });
     }catch(e){}
     var tot=0; for(var d=new Date(ini); d<=fim; d.setDate(d.getDate()+1)){ if(semAulas(d)) continue; tot+=pd[d.getDay()]||0; }
     return {total:tot, ini:iso(ini), fim:iso(fim)};
