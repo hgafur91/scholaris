@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.32</span>
+    <span class="logo-ver">v5.33</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33340,7 +33340,7 @@ window.__finV30=true;})();
   function curMes(){ return window.__folhaMes||(new Date().getMonth()+1); }
   function getF(m){ try{ var a=anoL(); return (CONFIG.folhas&&CONFIG.folhas[a]&&CONFIG.folhas[a][m])||null; }catch(e){ return null; } }
   function podeEd(){ try{ return curRole==='gestor'||curRole==='director'; }catch(e){ return false; } }
-  function parciais(){ return (PROFS||[]).filter(function(p){return p.regime==='parcial';}).sort(function(x,y){return (x.nome||'').localeCompare(y.nome||'');}); }
+  function parciais(){ return (PROFS||[]).filter(function(p){ if(p.regime!=='parcial') return false; var n=(p.nome||'').toLowerCase(); if(n.indexOf('nora ismael')>=0) return false; return true; }).sort(function(x,y){return (x.nome||'').localeCompare(y.nome||'');}); }
 
   window.__aulasParcial=function(pid,a,m){ var f=getF(m); var p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);}); if(!p) return 0;
     if(f&&f.parciais&&f.parciais[pid]&&f.parciais[pid].aulas!=null) return f.parciais[pid].aulas;
@@ -33389,7 +33389,15 @@ window.__finV30=true;})();
   }
   function injectTabs(){
     var el=activeC(); if(!el) return;
-    if(el.querySelector('#folha-tabbar')) return;
+    if(el.querySelector('#folha-tabbar')){
+      var pp=document.getElementById('folha-pane-parcial');
+      if(!pp) return;
+      if(document.activeElement && pp.contains(document.activeElement)) return; // a editar, não mexer
+      var a2=anoL(), m2=curMes(), f2=getF(m2), ce2=f2&&f2.status==='rascunho'&&podeEd();
+      var novo=buildParcialHTML(a2,m2,ce2);
+      if(pp.getAttribute('data-sig')!==novo.length+''){ pp.innerHTML=novo; pp.setAttribute('data-sig', novo.length+''); }
+      return;
+    }
     var a=anoL(), m=curMes(), f=getF(m), canEdit=f&&f.status==='rascunho'&&podeEd();
     var inteiro=el.innerHTML, tab=window.__folhaTab||'inteiro';
     el.innerHTML=tabBar(tab)
