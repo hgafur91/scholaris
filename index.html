@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-:root{h
+:root{
   --bg:#080d18;--bg2:#0d1526;--bg3:#131e33;--card:#101828;--card2:#18243c;
   --b:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.14);
   --a:#4f8ef7;--a2:#7c6af7;--g:#22c55e;--am:#f59e0b;--r:#ef4444;--pi:#ec4899;--tl:#06b6d4;
@@ -28,7 +28,7 @@ body.day-mode{
   --t:#1a2540;--t2:#4a5a7a;--t3:#8a9ab8;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);font-family:var(--ff);color:var(--t);overflow:hidden}
+html,body{height:100%;background:var(--bg,#080d18);font-family:var(--ff);color:var(--t);overflow:hidden}
 button,input,select,textarea{font-family:var(--ff);outline:none}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.35);border-radius:99px}::-webkit-scrollbar-thumb:hover{background:rgba(128,128,128,.55)}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-corner{background:transparent}html,#app,#main{scrollbar-color:rgba(128,128,128,.35) transparent;scrollbar-width:thin}
 
@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.44</span>
+    <span class="logo-ver">v5.45</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1943,7 +1943,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 #setup-wizard{position:fixed;inset:0;background:linear-gradient(135deg,#f0f6ff 0%,#e8f0fe 50%,#fef9f0 100%);
   display:flex;flex-direction:column;z-index:99999;font-family:'Sora',sans-serif}
 .wiz-topbar{display:flex;align-items:center;gap:16px;padding:16px 32px;
-  background:rgba(255,255,255,.8);backdrop-filter:blur(12px);
+  background:var(--bg2);backdrop-filter:blur(12px);
   border-bottom:1px solid rgba(24,95,165,.1)}
 .wiz-logo-inline{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:800;
   color:#185FA5;letter-spacing:-.02em}
@@ -1951,22 +1951,22 @@ console.log('[Scholaris] Supabase v2 inicializado');
 .wiz-progress-track{flex:1;height:4px;background:#dbeafe;border-radius:99px;overflow:hidden}
 .wiz-progress-fill{height:100%;background:linear-gradient(90deg,#185FA5,#378ADD);
   border-radius:99px;transition:width .4s cubic-bezier(.4,0,.2,1)}
-.wiz-step-counter{font-size:12px;font-weight:700;color:#64748b;white-space:nowrap}
+.wiz-step-counter{font-size:12px;font-weight:700;color:var(--t2);white-space:nowrap}
 .wiz-main{flex:1;overflow-y:scroll;padding:24px}
-.wiz-card{background:white;border-radius:24px;box-shadow:0 8px 40px rgba(24,95,165,.12),
+.wiz-card{background:var(--card);border-radius:24px;box-shadow:0 8px 40px rgba(24,95,165,.12),
   0 2px 8px rgba(24,95,165,.06);width:100%;max-width:600px;padding:40px;margin:auto}
 .wiz-step-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:28px;
   padding-bottom:20px;border-bottom:1px solid #f1f5f9}
 .wiz-step-icon{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#185FA5,#378ADD);
   display:flex;align-items:center;justify-content:center;color:white;font-size:22px;flex-shrink:0}
-.wiz-step-title{font-size:20px;font-weight:800;color:#0f172a;letter-spacing:-.02em}
-.wiz-step-sub{font-size:13px;color:#64748b;margin-top:4px}
+.wiz-step-title{font-size:20px;font-weight:800;color:var(--t);letter-spacing:-.02em}
+.wiz-step-sub{font-size:13px;color:var(--t2);margin-top:4px}
 .wiz-fields{display:flex;flex-direction:column;gap:16px}
 .wiz-field{display:flex;flex-direction:column;gap:6px}
-.wiz-label{font-size:13px;font-weight:600;color:#374151}
+.wiz-label{font-size:13px;font-weight:600;color:var(--t2)}
 .wiz-input{border:1.5px solid #e2e8f0;border-radius:10px;padding:11px 14px;
-  font-size:14px;font-family:'Sora',sans-serif;color:#0f172a;outline:none;
-  transition:border .2s;background:white}
+  font-size:14px;font-family:'Sora',sans-serif;color:var(--t);outline:none;
+  transition:border .2s;background:var(--card)}
 .wiz-input:focus{border-color:#185FA5;box-shadow:0 0 0 3px rgba(24,95,165,.1)}
 .wiz-input.wiz-error{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.1)}
 .wiz-nav{display:flex;align-items:center;margin-top:32px;padding-top:20px;
@@ -1976,7 +1976,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s;
   display:flex;align-items:center;gap:8px}
 .wiz-btn-primary:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 16px rgba(24,95,165,.3)}
-.wiz-btn-secondary{background:white;color:#374151;border:1.5px solid #e2e8f0;
+.wiz-btn-secondary{background:var(--card);color:var(--t2);border:1.5px solid #e2e8f0;
   border-radius:10px;padding:11px 20px;font-size:14px;font-weight:600;
   cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s;
   display:flex;align-items:center;gap:6px}
@@ -1987,11 +1987,11 @@ console.log('[Scholaris] Supabase v2 inicializado');
 .wiz-welcome-logo{display:flex;justify-content:center;margin-bottom:16px}
 .wiz-welcome-brand{font-size:36px;font-weight:900;color:#185FA5;letter-spacing:-.04em;
   font-family:Georgia,serif;margin-bottom:6px}
-.wiz-welcome-tagline{font-size:14px;color:#64748b;font-weight:600;
+.wiz-welcome-tagline{font-size:14px;color:var(--t2);font-weight:600;
   letter-spacing:.04em;text-transform:uppercase;margin-bottom:20px}
-.wiz-welcome-desc{font-size:15px;color:#374151;line-height:1.6;margin-bottom:24px}
+.wiz-welcome-desc{font-size:15px;color:var(--t2);line-height:1.6;margin-bottom:24px}
 .wiz-welcome-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
-.wiz-welcome-chips span{background:#f0f6ff;color:#185FA5;border:1px solid #bfdbfe;
+.wiz-welcome-chips span{background:var(--bg3);color:#185FA5;border:1px solid #bfdbfe;
   border-radius:99px;padding:6px 14px;font-size:12px;font-weight:600;
   display:flex;align-items:center;gap:6px}
 
@@ -2003,16 +2003,16 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 /* Turmas selector */
 .wiz-turmas{display:flex;flex-direction:column;gap:12px}
-.wiz-turmas-hint{font-size:13px;color:#64748b;margin-bottom:4px}
+.wiz-turmas-hint{font-size:13px;color:var(--t2);margin-bottom:4px}
 .wiz-turma-row{display:flex;align-items:center;gap:12px}
-.wiz-turma-class{font-size:13px;font-weight:700;color:#374151;width:80px;flex-shrink:0}
+.wiz-turma-class{font-size:13px;font-weight:700;color:var(--t2);width:80px;flex-shrink:0}
 .wiz-turma-btns{display:flex;gap:6px;flex-wrap:wrap}
 .wiz-turma-btn{background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:8px;
   padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;
-  font-family:'Sora',sans-serif;transition:all .15s;color:#64748b}
+  font-family:'Sora',sans-serif;transition:all .15s;color:var(--t2)}
 .wiz-turma-btn.on{background:#185FA5;border-color:#185FA5;color:white}
 .wiz-turma-btn:hover:not(.on){border-color:#185FA5;color:#185FA5}
-.wiz-turma-add{background:white;border:1.5px dashed #e2e8f0;border-radius:8px;
+.wiz-turma-add{background:var(--card);border:1.5px dashed #e2e8f0;border-radius:8px;
   padding:6px 10px;cursor:pointer;color:#94a3b8;transition:all .15s}
 .wiz-turma-add:hover{border-color:#185FA5;color:#185FA5}
 
@@ -2024,8 +2024,8 @@ console.log('[Scholaris] Supabase v2 inicializado');
 .wiz-import-icon{font-size:20px;color:#185FA5;width:28px;flex-shrink:0}
 .wiz-import-card.done .wiz-import-icon{color:#22c55e}
 .wiz-import-info{flex:1;min-width:0}
-.wiz-import-label{font-size:13px;font-weight:700;color:#0f172a}
-.wiz-import-desc{font-size:11px;color:#64748b;margin-top:2px}
+.wiz-import-label{font-size:13px;font-weight:700;color:var(--t)}
+.wiz-import-desc{font-size:11px;color:var(--t2);margin-top:2px}
 .wiz-import-btn{background:linear-gradient(135deg,#185FA5,#378ADD);color:white;
   border:none;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:14px;
   display:flex;align-items:center;flex-shrink:0}
@@ -2040,24 +2040,24 @@ console.log('[Scholaris] Supabase v2 inicializado');
 @keyframes dash{to{stroke-dashoffset:0}}
 .wiz-done-title{font-size:26px;font-weight:900;color:#185FA5;
   letter-spacing:-.03em;margin-bottom:10px}
-.wiz-done-sub{font-size:15px;color:#374151;line-height:1.6;margin-bottom:24px}
+.wiz-done-sub{font-size:15px;color:var(--t2);line-height:1.6;margin-bottom:24px}
 .wiz-done-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.wiz-done-stat{background:#f0f6ff;border:1px solid #bfdbfe;border-radius:12px;
+.wiz-done-stat{background:var(--bg3);border:1px solid #bfdbfe;border-radius:12px;
   padding:16px 8px;text-align:center}
 .wiz-done-stat span{display:block;font-size:28px;font-weight:900;color:#185FA5;line-height:1}
-.wiz-done-stat{font-size:11px;color:#64748b;font-weight:600;margin-top:4px}
+.wiz-done-stat{font-size:11px;color:var(--t2);font-weight:600;margin-top:4px}
 
 
 /* ── Propinas por turma wizard ──────────────────────── */
 .wiz-fees-header{display:flex;align-items:center;margin-bottom:6px;
-  font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em}
+  font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em}
 .wiz-fees-cols{flex:1;display:grid;grid-template-columns:1fr 140px 160px 160px;gap:8px;align-items:center}
 .wiz-turma-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9}
 .wiz-turma-row .wiz-fees-cols{flex:1;display:grid;grid-template-columns:1fr 140px 160px 160px;gap:8px;align-items:center}
 .wiz-fee-input{border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 10px;
   font-size:13px;font-family:'Sora',sans-serif;width:100%;outline:none}
 .wiz-fee-input:focus{border-color:#185FA5}
-.wiz-fee-isc{display:flex;align-items:center;gap:4px;font-size:11px;color:#64748b;cursor:pointer;white-space:nowrap}
+.wiz-fee-isc{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);cursor:pointer;white-space:nowrap}
 .wiz-fee-isc input{accent-color:#185FA5}
 .wiz-fees-note{background:#fef9f0;border:1px solid #fed7aa;border-radius:10px;
   padding:10px 14px;font-size:12px;color:#92400e;
@@ -2066,7 +2066,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 .insc-row{display:flex;align-items:center;gap:10px;padding:10px 0;
   border-bottom:1px solid #f1f5f9;flex-wrap:wrap}
 .insc-row:last-child{border-bottom:none}
-.insc-label{font-size:13px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px;width:110px;flex-shrink:0}
+.insc-label{font-size:13px;font-weight:700;color:var(--t);display:flex;align-items:center;gap:6px;width:110px;flex-shrink:0}
 .insc-valor{font-size:13px;font-family:var(--fm);color:#185FA5;font-weight:700;width:100px;flex-shrink:0}
 .badge-isento{background:#f3e8ff;color:#7e22ce;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700}
 .badge-pago{background:#dcfce7;color:#166534;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700}
