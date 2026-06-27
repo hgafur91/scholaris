@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.37</span>
+    <span class="logo-ver">v5.38</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33444,6 +33444,46 @@ window.__finV30=true;})();
   window.__propFalta=function(a){ try{ return Math.max(0, window.__propAnual(a)-window.__propPago11(a)); }catch(e){ return 0; } };
   window.__propCompleto=function(a){ try{ return a.propinas.slice(0,11).every(function(p){return p.st==='pago'||p.st==='isento';}); }catch(e){ return false; } };
   window.__propHelpers11=true;
+})();
+
+</script>
+<script>
+/* ===== PATCH v60: Botão "back" do browser navega dentro da app ===== */
+(function(){
+  if(window.__navHistInit) return;
+  function init(){
+    if(window.__navHistInit || typeof window.go!=='function') return false;
+    var stack=['dash'], suppress=false;
+    try{ history.replaceState({sa:1,id:'dash'},''); }catch(e){}
+    var origGo=window.go;
+    window.go=function(id){
+      var r=origGo.apply(this,arguments);
+      try{
+        if(!suppress){
+          if(stack[stack.length-1]!==id) stack.push(id);
+          history.pushState({sa:1,id:id},'');
+        }
+      }catch(e){}
+      return r;
+    };
+    window.addEventListener('popstate', function(ev){
+      try{
+        // 1) Se há um modal aberto, fechar primeiro (e manter na app)
+        var om=document.querySelector('.modal-ov.op');
+        if(om){ om.classList.remove('op'); try{ history.pushState({sa:1,id:stack[stack.length-1]||'dash'},''); }catch(e){} return; }
+        // 2) Navegar para a tela anterior dentro da app
+        if(stack.length>1){
+          stack.pop();
+          var prev=stack[stack.length-1]||'dash';
+          suppress=true; try{ origGo(prev); }catch(e){} suppress=false;
+        }
+        // 3) Na raiz: não re-empurra → o próximo back sai normalmente
+      }catch(e){}
+    });
+    window.__navHistInit=true;
+    return true;
+  }
+  if(!init()){ var t=setInterval(function(){ if(init()) clearInterval(t); },300); setTimeout(function(){clearInterval(t);},15000); }
 })();
 
 </script>
