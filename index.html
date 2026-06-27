@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.38</span>
+    <span class="logo-ver">v5.39</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5873,10 +5873,20 @@ async function loadDadosEscola() {
 
     // 6b. Carregar pagamentos (propinas) e reflectir nos alunos
     try {
-      const { data: pagsDB } = await window._supabase
-        .from('pagamentos')
-        .select('*')
-        .eq('escola_id', eid);
+      let pagsDB = [];
+      { let _from = 0; const _step = 1000;
+        while (true) {
+          const { data: _batch } = await window._supabase
+            .from('pagamentos')
+            .select('*')
+            .eq('escola_id', eid)
+            .range(_from, _from + _step - 1);
+          if (!_batch || !_batch.length) break;
+          pagsDB = pagsDB.concat(_batch);
+          if (_batch.length < _step) break;
+          _from += _step;
+        }
+      }
       if (pagsDB && pagsDB.length) {
         if (typeof PAGAMENTOS !== 'undefined') PAGAMENTOS.length = 0;
         pagsDB.forEach(row => {
