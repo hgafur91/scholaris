@@ -30,7 +30,7 @@ body.day-mode{
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);font-family:var(--ff);color:var(--t);overflow:hidden}
 button,input,select,textarea{font-family:var(--ff);outline:none}
-::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:99px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-corner{background:var(--bg)}*{scrollbar-color:var(--bg3) var(--bg)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.35);border-radius:99px}::-webkit-scrollbar-thumb:hover{background:rgba(128,128,128,.55)}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-corner{background:transparent}html,#app,#main{scrollbar-color:rgba(128,128,128,.35) transparent;scrollbar-width:thin}
 
 /* ── LOGIN ── */
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:0}
@@ -52,7 +52,7 @@ button,input,select,textarea{font-family:var(--ff);outline:none}
 .login-btn:hover{opacity:.88}
 
 /* ── APP SHELL ── */
-#app{display:none;flex-direction:column;height:100vh}
+#app{display:none;flex-direction:column;height:100vh;overflow:hidden}
 #app.visible{display:flex}
 #topbar{display:flex;align-items:center;gap:12px;padding:0 22px;height:56px;background:var(--bg2);border-bottom:1px solid var(--b);flex-shrink:0;z-index:300;position:relative}#sb-toggle{display:none}
 #body{display:flex;flex:1;overflow:hidden}
@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.43</span>
+    <span class="logo-ver">v5.44</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
