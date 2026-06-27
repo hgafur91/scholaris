@@ -658,7 +658,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.36</span>
+    <span class="logo-ver">v5.37</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5179,11 +5179,14 @@ function rPropTurmas(){
     const al=ALUNOS.filter(a=>a.turma===t.id);
     const comDiv=al.filter(a=>a.propinas.some(p=>p.st==='npago')).length;
     const totP=al.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
+    const totE=al.reduce((s,a)=>s+(window.__propAnual?window.__propAnual(a):0),0);
+    const pctT=totE>0?Math.min(100,Math.round(totP/totE*100)):0;
     return`<div class="tc" onclick="openPropTurma('${t.id}')">
       <div class="tc-num">${t.cl}${t.t}</div><div class="tc-nome">${t.curso}</div>
       <div class="tc-info">${al.length} aluno(s)</div>
       <div style="margin-top:10px">${comDiv?`<span class="badge ber" style="width:100%;justify-content:center">${comDiv} em atraso</span>`:`<span class="badge bok" style="width:100%;justify-content:center">Todos em dia</span>`}</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center">${(totP/1000).toFixed(1)}K MZM</div>
+      <div style="margin-top:8px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pctT}%;background:var(--g)"></div></div>
+      <div style="font-size:11px;color:var(--t2);margin-top:5px;text-align:center"><b style="color:var(--g)">${(totP/1000).toFixed(0)}K</b> <span style="color:var(--t3)">/ ${(totE/1000).toFixed(0)}K esperado</span></div>
     </div>`;
   }).join('');
 }
@@ -5229,8 +5232,8 @@ function openPA(id){
   const pago=a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
   const div=a.propinas.filter(p=>{var e=(window.__estadoPropina?window.__estadoPropina(p):p.st);return e==='divida';}).reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
   document.getElementById('pa-hero').innerHTML=`
-    <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><div style="width:56px;height:56px;border-radius:14px;background:${c}18;color:${c};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0">${ini(a.nome)}</div><div><div style="font-size:18px;font-weight:800;color:var(--t)">${a.nome}</div><div style="font-size:11px;color:var(--t2);font-family:var(--fm)">${a.num} · Turma ${a.turma} · Enc: ${a.enome} (${a.enc})</div></div></div>
-    <div class="pkpis"><div class="pkpi"><div class="pkpiv" style="color:var(--a)">${a.propinas.reduce((s,p)=>s+(p.v||0),0).toLocaleString()}</div><div class="pkpil">Total Ano (MZM)</div></div><div class="pkpi"><div class="pkpiv" style="color:var(--g)">${pago.toLocaleString()}</div><div class="pkpil">Total Pago</div></div><div class="pkpi"><div class="pkpiv" style="color:${div?'var(--r)':'var(--g)'}">${div?div.toLocaleString():'0'}</div><div class="pkpil">Em Dívida (MZM)</div></div><div class="pkpi"><div class="pkpiv" style="color:var(--am)">${a.propinas.filter(p=>p.st==='multa').length}</div><div class="pkpil">Multas</div></div></div>`;
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><div style="width:56px;height:56px;border-radius:14px;background:${c}18;color:${c};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0">${ini(a.nome)}</div><div><div style="font-size:18px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px">${a.nome}${(window.__propCompleto&&window.__propCompleto(a))?`<span class="badge bok" style="font-size:10px"><i class="ti ti-circle-check"></i> Propina Completa</span>`:''}</div><div style="font-size:11px;color:var(--t2);font-family:var(--fm)">${a.num} · Turma ${a.turma} · Enc: ${a.enome} (${a.enc})</div></div></div>
+    <div class="pkpis"><div class="pkpi"><div class="pkpiv" style="color:var(--a)">${(window.__propAnual?window.__propAnual(a):a.propinas.slice(0,11).reduce((s,p)=>s+(p.v||0),0)).toLocaleString()}</div><div class="pkpil">Total Ano · 11 meses (MZM)</div></div><div class="pkpi"><div class="pkpiv" style="color:var(--g)">${pago.toLocaleString()}</div><div class="pkpil">Total Pago</div></div><div class="pkpi"><div class="pkpiv" style="color:${(window.__propFalta&&window.__propFalta(a)>0)?'var(--r)':'var(--g)'}">${(window.__propFalta?window.__propFalta(a):0).toLocaleString()}</div><div class="pkpil">Falta p/ Completar</div></div><div class="pkpi"><div class="pkpiv" style="color:var(--am)">${a.propinas.filter(p=>p.st==='multa').length}</div><div class="pkpil">Multas</div></div></div>`;
   
   const _ims=document.getElementById('pa-insc-mat');if(_ims)_ims.innerHTML=rInscricaoMatricula(a);
 document.getElementById('prop-meses').innerHTML=a.propinas.map((p,mi)=>{
@@ -16963,7 +16966,7 @@ renderPropTabela = function(list) {
       <td style="font-weight:700">${a.nome}</td>
       ${meses6}
       <td style="font-weight:700;color:var(--g)">${pago.toLocaleString()} MZM</td>
-      <td style="font-weight:700;color:${div?'var(--r)':'var(--g)'}">${div?'-'+div.toLocaleString()+' MZM':'OK'}</td>
+      <td style="font-weight:700;color:${(window.__propCompleto&&window.__propCompleto(a))?'var(--g)':'var(--r)'}">${(window.__propCompleto&&window.__propCompleto(a))?'<span class="badge bok" style="font-size:10px"><i class="ti ti-circle-check"></i> Completo</span>':'-'+(window.__propFalta?window.__propFalta(a):0).toLocaleString()+' MZM'}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-g btn-sm" onclick="event.stopPropagation();openPA(${a.id})"><i class="ti ti-eye"></i></button>
         ${canPay && a.propinas.some(p=>p.st!=='pago'&&p.st!=='isento') ? `<button class="btn btn-p btn-sm" onclick="event.stopPropagation();abrirRegistarPagamento(${a.id})"><i class="ti ti-plus"></i> Pagar</button>` : ''}
@@ -33428,6 +33431,19 @@ window.__finV30=true;})();
   setInterval(function(){ injectTabs(); wrapAprovar(); }, 800);
   setTimeout(function(){ injectTabs(); wrapAprovar(); }, 400);
   window.__parciaisInit=true;
+})();
+
+</script>
+<script>
+/* ===== PATCH v59: Propinas modelo 11 meses (Jan-Nov) + Completo ===== */
+(function(){
+  if(window.__propHelpers11) return;
+  function val(a){ try{ return (typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):4500; }catch(e){ return 4500; } }
+  window.__propAnual=function(a){ try{ return a.propinas.slice(0,11).reduce(function(s,p){return s+(p.v||val(a));},0); }catch(e){ return 0; } };
+  window.__propPago11=function(a){ try{ return a.propinas.slice(0,11).reduce(function(s,p){return s+((p.st==='pago'||p.st==='isento')?(p.v||0):0);},0); }catch(e){ return 0; } };
+  window.__propFalta=function(a){ try{ return Math.max(0, window.__propAnual(a)-window.__propPago11(a)); }catch(e){ return 0; } };
+  window.__propCompleto=function(a){ try{ return a.propinas.slice(0,11).every(function(p){return p.st==='pago'||p.st==='isento';}); }catch(e){ return false; } };
+  window.__propHelpers11=true;
 })();
 
 </script>
