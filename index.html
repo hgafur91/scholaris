@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.47</span>
+    <span class="logo-ver">v5.49</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3779,8 +3779,9 @@ function rDash(){
 
 // ══ EXECUTIVO ══
 function rExec(){
-  const totalR=(typeof PAGAMENTOS!=='undefined'&&Array.isArray(PAGAMENTOS))?PAGAMENTOS.filter(p=>p.estado==='confirmado').reduce((s,p)=>s+(p.valorTotal||0),0):0;
-  const totalD=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG.reduce((s,d)=>s+(+d.valor||0),0):0;
+  const __finExec=(typeof calcFinanceiroMensal==='function')?calcFinanceiroMensal():[];
+  const totalR=__finExec.reduce((s,m)=>s+(m.entradas||0),0);
+  const totalD=__finExec.reduce((s,m)=>s+(m.saidas||0),0);
   const aprov=ALUNOS.filter(a=>a.notas.t1.length&&a.notas.t1.reduce((s,n)=>s+(n.n||0),0)/a.notas.t1.length>=CONFIG.mediaAprovacao).length;
   document.getElementById('exec-kpis').innerHTML=[
     {l:'Taxa de Aprovação T1',v:`${Math.round(aprov/ALUNOS.length*100)}%`,c:'var(--g)',ic:'ti-award'},
