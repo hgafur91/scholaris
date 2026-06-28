@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.55</span>
+    <span class="logo-ver">v5.56</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5471,8 +5471,17 @@ function rBib(){
 function swBib(t,btn){document.querySelectorAll('#v-bib .tp').forEach(p=>p.classList.remove('on'));document.querySelectorAll('#v-bib .tab').forEach(b=>b.classList.remove('on'));document.getElementById('bt-'+t).classList.add('on');if(btn)btn.classList.add('on')}
 
 // ══ PORTAL ALUNO / ENCARREGADO ══
+function resolverMeuAluno(){
+  var id = window._meuAlunoId;
+  if(id && Array.isArray(window.ALUNOS)){
+    var a = ALUNOS.find(function(x){ return x._dbId===id; });
+    if(a) return a;
+  }
+  return (Array.isArray(window.ALUNOS) && ALUNOS[0]) || null; // fallback (pré-visualização do gestor)
+}
 function rPortalAluno(){
-  const a=ALUNOS[0];// demo: Aaron
+  const a=(typeof resolverMeuAluno==='function' && resolverMeuAluno()) || ALUNOS[0];
+  if(!a){ var pc=document.getElementById('portal-c'); if(pc) pc.innerHTML='<div class="ib-box ib-am"><i class="ti ti-alert-triangle"></i> Aluno não encontrado. Peça à secretaria para activar o seu acesso.</div>'; return; }
   document.getElementById('portal-title').textContent=`Portal — ${a.nome}`;
   const f=calcFaltas(a.id);
   document.getElementById('portal-c').innerHTML=`
@@ -5627,6 +5636,7 @@ async function fbLogin() {
         userData.role = normalizarPapel(perfil.perfil) || userData.role;
         userData.escolaId = perfil.escola_id || userData.escolaId;
         window._meuStaffId = perfil.staff_id || null; // ligação conta <-> pessoa (staff)
+        window._meuAlunoId = perfil.aluno_id || null; // ligação conta <-> aluno
       }
     } catch(pe) {
       console.warn('[Login] Sem perfil na BD — a usar defaults');
