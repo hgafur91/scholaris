@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.51</span>
+    <span class="logo-ver">v5.52</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33522,7 +33522,7 @@ window.__finV30=true;})();
 /* ===== PATCH v62: criar contas em massa para professores SEM conta ===== */
 (function(){
   window.criarContasProfsSemConta = async function(){
-    var sb = (typeof supa==='function')?supa():null;
+    var sb = window._supabase || window._supa || ((typeof supa==='function')?supa():null);
     if(!sb || !sb.functions){ toast('Sem ligação ao servidor'); return; }
     // 1) staff_ids que JÁ têm perfil/conta
     var pr;
