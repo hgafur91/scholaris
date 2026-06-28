@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.49</span>
+    <span class="logo-ver">v5.51</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3779,9 +3779,9 @@ function rDash(){
 
 // ══ EXECUTIVO ══
 function rExec(){
-  const __finExec=(typeof calcFinanceiroMensal==='function')?calcFinanceiroMensal():[];
-  const totalR=__finExec.reduce((s,m)=>s+(m.entradas||0),0);
-  const totalD=__finExec.reduce((s,m)=>s+(m.saidas||0),0);
+  const __ftE=(window.__finTotais?window.__finTotais():{entradas:0,saidas:0});
+  const totalR=__ftE.entradas;
+  const totalD=__ftE.saidas;
   const aprov=ALUNOS.filter(a=>a.notas.t1.length&&a.notas.t1.reduce((s,n)=>s+(n.n||0),0)/a.notas.t1.length>=CONFIG.mediaAprovacao).length;
   document.getElementById('exec-kpis').innerHTML=[
     {l:'Taxa de Aprovação T1',v:`${Math.round(aprov/ALUNOS.length*100)}%`,c:'var(--g)',ic:'ti-award'},
@@ -17621,13 +17621,14 @@ function rFinDashboard() {
   const totalAlunos = ALUNOS.length;
   // Receita prevista: soma da propina real de cada aluno (já com bolsa/isenção) x 12 meses
   const receitaPrev = ALUNOS.reduce((s,a)=>s+a.propinas.reduce((ss,p)=>ss+(p.st==='isento'?0:(p.v||0)),0),0);
-  // Entradas: todos os pagamentos registados (nao estornados)
+  // Entradas/Saidas: fonte ÚNICA partilhada com o Painel Executivo
+  const __ftD = (window.__finTotais?window.__finTotais():{entradas:0,entradasConf:0,entradasPorConf:0,saidas:0});
   const pagsValidos = PAGAMENTOS.filter(p=>p.estado!=='estornado' && (p.valorTotal||0)>0);
-  const totalEntradas = pagsValidos.reduce((s,p)=>s+(p.valorTotal||0),0);
-  const entradasConf = PAGAMENTOS.filter(p=>p.estado==='confirmado').reduce((s,p)=>s+(p.valorTotal||0),0);
-  const entradasPorConf = PAGAMENTOS.filter(p=>p.estado==='por_confirmar').reduce((s,p)=>s+(p.valorTotal||0),0);
+  const totalEntradas = __ftD.entradas;
+  const entradasConf = __ftD.entradasConf;
+  const entradasPorConf = __ftD.entradasPorConf;
   // Saidas: despesas registadas
-  const totalSaidas = (typeof DESPESAS_REG!=='undefined'?DESPESAS_REG:[]).reduce((s,d)=>s+(d.valor||0),0);
+  const totalSaidas = __ftD.saidas;
   // Dividas: propinas VENCIDAS e nao pagas (valor real + multa)
   const totalDivida = ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((ss,p)=>ss+(window.__totalProp?window.__totalProp(p):(p.v||0)),0),0);
   // Por vencer (meses futuros, nao sao divida) - propina real com bolsa
@@ -32105,6 +32106,7 @@ window.__finV30=true;})();
       + 'A password inicial é o telefone; o utilizador deve alterá-la após o primeiro acesso.</div></div>'
       + '<div class="card"><div class="ch"><span class="ct">Utilizadores com Acesso</span>'
       + (canEdit ? '<button class="btn btn-p btn-sm" onclick="criarUtilizadorManual()"><i class="ti ti-plus"></i> Criar Utilizador</button>' : '')
+      + (canEdit ? '<button class="btn btn-g btn-sm" style="margin-left:8px" onclick="criarContasProfsSemConta()"><i class="ti ti-users-plus"></i> Criar contas (professores)</button>' : '')
       + '</div><div class="tw"><table><thead><tr><th>Nº / ID</th><th>Nome</th><th>Perfil</th><th>Email (login)</th><th>Estado</th>'
       + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody id="v35-tbody"><tr><td colspan="6" style="color:var(--t3);padding:14px">A carregar...</td></tr></tbody></table></div></div>';
     var sb = supa();
@@ -33497,6 +33499,90 @@ window.__finV30=true;})();
     return true;
   }
   if(!init()){ var t=setInterval(function(){ if(init()) clearInterval(t); },300); setTimeout(function(){clearInterval(t);},15000); }
+})();
+
+</script>
+<script>
+/* ===== PATCH v61: fonte ÚNICA de totais financeiros (Dashboard = Executivo) ===== */
+(function(){
+  if(window.__finTotais) return;
+  window.__finTotais=function(){
+    var P=(typeof PAGAMENTOS!=='undefined'&&Array.isArray(PAGAMENTOS))?PAGAMENTOS:[];
+    var D=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG:[];
+    var entradas=P.filter(function(p){return p.estado!=='estornado'&&(p.valorTotal||0)>0;}).reduce(function(s,p){return s+(p.valorTotal||0);},0);
+    var entradasConf=P.filter(function(p){return p.estado==='confirmado';}).reduce(function(s,p){return s+(p.valorTotal||0);},0);
+    var entradasPorConf=P.filter(function(p){return p.estado==='por_confirmar';}).reduce(function(s,p){return s+(p.valorTotal||0);},0);
+    var saidas=D.reduce(function(s,d){return s+(d.valor||0);},0);
+    return {entradas:entradas,entradasConf:entradasConf,entradasPorConf:entradasPorConf,saidas:saidas,saldo:entradas-saidas};
+  };
+})();
+
+</script>
+<script>
+/* ===== PATCH v62: criar contas em massa para professores SEM conta ===== */
+(function(){
+  window.criarContasProfsSemConta = async function(){
+    var sb = (typeof supa==='function')?supa():null;
+    if(!sb || !sb.functions){ toast('Sem ligação ao servidor'); return; }
+    // 1) staff_ids que JÁ têm perfil/conta
+    var pr;
+    try { pr = await sb.from('perfis').select('staff_id'); } catch(e){ toast('Erro a ler perfis'); return; }
+    var comConta = {}; (((pr||{}).data)||[]).forEach(function(p){ if(p.staff_id) comConta[p.staff_id]=true; });
+    // 2) professores (docentes) sem conta
+    var alvos = (Array.isArray(window.PROFS)?window.PROFS:[]).filter(function(p){
+      var ehProf = (p.dep==='academico') || /professor|docente|educador/i.test(p.cargo||'');
+      return p._dbId && ehProf && !comConta[p._dbId] && p.ativo!==false;
+    });
+    if(!alvos.length){ toast('Todos os professores já têm conta.'); return; }
+    if(!confirm('Vão ser criadas contas para '+alvos.length+' professor(es) sem conta.\n\nPassword inicial = telefone de cada um (ou temporária se não houver). Continuar?')) return;
+    toast('A criar '+alvos.length+' conta(s)… aguarde.');
+    var ok = [], erros = [];
+    for (var i=0;i<alvos.length;i++){
+      var p = alvos[i];
+      try {
+        var res = await sb.functions.invoke('gerir-utilizador', { body: { action:'criar-conta-staff', staff_id: p._dbId } });
+        if (res && res.error){ var d=''; try{ var j=await res.error.context.json(); d=(j&&j.error)?j.error:''; }catch(e){} erros.push({nome:p.nome, erro:d||res.error.message||'erro'}); continue; }
+        var data = res && res.data;
+        if (data && data.error){ erros.push({nome:p.nome, erro:data.error}); continue; }
+        if (data && data.ok){ ok.push(data); } else { erros.push({nome:p.nome, erro:'resposta inesperada'}); }
+      } catch(e){ erros.push({nome:p.nome, erro:String((e&&e.message)||e)}); }
+    }
+    mostrarResultadoContas(ok, erros);
+    if (typeof rUtilizadores==='function') rUtilizadores();
+  };
+
+  window.__baixarCredenciais = function(){
+    var csv = window.__ultimasCredenciais||''; if(!csv){ return; }
+    var b = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+    var a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download='credenciais_professores.csv'; a.click();
+  };
+
+  window.mostrarResultadoContas = function(ok, erros){
+    var E = (typeof esc==='function')?esc:function(x){return String(x==null?'':x);};
+    window.__ultimasCredenciais = 'Num,Nome,Email,Password\n'+ok.map(function(r){
+      return '"'+(r.num||'')+'","'+(r.nome||'')+'","'+(r.email||'')+'","'+(r.password||'')+'"';
+    }).join('\n');
+    var linhas = ok.map(function(r){
+      return '<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+E(r.num||'—')+'</td>'
+        + '<td style="font-weight:600">'+E(r.nome||'')+'</td>'
+        + '<td style="font-family:var(--fm);font-size:11px">'+E(r.email||'')+'</td>'
+        + '<td style="font-family:var(--fm);font-size:11px">'+E(r.password||'')+'</td>'
+        + '<td>'+(r.pass_temporaria?'<span class="badge bam" style="font-size:10px">temp</span>':'')+'</td></tr>';
+    }).join('');
+    var linhasErr = (erros||[]).map(function(e){
+      return '<tr><td colspan="5" style="color:var(--r);font-size:12px;padding:4px 6px">'+E(e.nome)+' — '+E(e.erro)+'</td></tr>';
+    }).join('');
+    var html = '<div id="m-res-contas" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)this.remove()">'
+      + '<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:22px;width:700px;max-width:94vw;max-height:88vh;overflow:auto">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;font-size:18px;color:var(--t)">Contas criadas ('+ok.length+')</h3><span style="cursor:pointer;font-size:22px;color:var(--t3)" onclick="document.getElementById(\'m-res-contas\').remove()">&times;</span></div>'
+      + '<p style="margin:0 0 14px;font-size:12px;color:var(--t2)">Distribui estas credenciais a cada professor. A password inicial deve ser alterada no primeiro acesso.'+((erros&&erros.length)?(' <strong style="color:var(--r)">'+erros.length+' não criada(s) — ver abaixo.</strong>'):'')+'</p>'
+      + '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;color:var(--t2);border-bottom:1px solid var(--b)"><th style="padding:4px 6px">Nº</th><th style="padding:4px 6px">Nome</th><th style="padding:4px 6px">Email (login)</th><th style="padding:4px 6px">Password</th><th></th></tr></thead><tbody>'+linhas+linhasErr+'</tbody></table></div>'
+      + '<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">'
+      + (ok.length?'<button class="btn btn-g btn-sm" onclick="__baixarCredenciais()"><i class="ti ti-download"></i> Descarregar CSV</button>':'')
+      + '<button class="btn btn-p btn-sm" onclick="document.getElementById(\'m-res-contas\').remove()">Fechar</button>'
+      + '</div></div></div>';
+    var wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstChild);
+  };
 })();
 
 </script>
