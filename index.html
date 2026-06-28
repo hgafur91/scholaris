@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.53</span>
+    <span class="logo-ver">v5.54</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32107,6 +32107,7 @@ window.__finV30=true;})();
       + '<div class="card"><div class="ch"><span class="ct">Utilizadores com Acesso</span>'
       + (canEdit ? '<button class="btn btn-p btn-sm" onclick="criarUtilizadorManual()"><i class="ti ti-plus"></i> Criar Utilizador</button>' : '')
       + (canEdit ? '<button class="btn btn-g btn-sm" style="margin-left:8px" onclick="criarContasProfsSemConta()"><i class="ti ti-users-plus"></i> Criar contas (professores)</button>' : '')
+      + (canEdit ? '<button class="btn btn-am btn-sm" style="margin-left:8px" onclick="definirPasswordsProfs()"><i class="ti ti-key"></i> Definir passwords</button>' : '')
       + '</div><div class="tw"><table><thead><tr><th>Nº / ID</th><th>Nome</th><th>Perfil</th><th>Email (login)</th><th>Estado</th>'
       + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody id="v35-tbody"><tr><td colspan="6" style="color:var(--t3);padding:14px">A carregar...</td></tr></tbody></table></div></div>';
     var sb = supa();
@@ -33588,6 +33589,43 @@ window.__finV30=true;})();
       + '<button class="btn btn-p btn-sm" onclick="document.getElementById(\'m-res-contas\').remove()">Fechar</button>'
       + '</div></div></div>';
     var wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstChild);
+  };
+})();
+
+</script>
+<script>
+/* ===== PATCH v63: definir password padrão em massa (contas de staff) ===== */
+(function(){
+  window.definirPasswordsProfs = async function(){
+    var sb = window._supabase || window._supa || ((typeof supa==='function')?supa():null);
+    if(!sb || !sb.functions){ toast('Sem ligação ao servidor'); return; }
+    var escolaId = window._escolaId || '9c61db13-068f-4893-897e-a572d8677207';
+    var nova = prompt('Password inicial para TODAS as contas de staff (professores, secretárias, direcção)?\n\nMínimo 6 caracteres. Todos devem trocá-la no 1º acesso.', 'iqra2026');
+    if(nova===null) return;
+    nova = (nova||'').trim();
+    if(nova.length < 6){ toast('Password mínima: 6 caracteres'); return; }
+    // contas de staff (com staff_id), excepto a minha própria conta
+    var meuId = (window._currentUser && window._currentUser.id) || null;
+    var pr;
+    try { pr = await sb.from('perfis').select('id,nome,nome_completo,email,perfil,staff_id').eq('escola_id', escolaId); }
+    catch(e){ toast('Erro a ler perfis: '+(e&&e.message||e)); return; }
+    var contas = (((pr||{}).data)||[]).filter(function(p){ return p.id && p.staff_id && p.id!==meuId; });
+    if(!contas.length){ toast('Não há contas de staff para definir.'); return; }
+    if(!confirm('Vai definir a password "'+nova+'" para '+contas.length+' conta(s) de staff.\n\nContinuar?')) return;
+    toast('A definir passwords… aguarde.');
+    var ok=0, erros=[];
+    for(var i=0;i<contas.length;i++){
+      var c=contas[i];
+      try{
+        var res=await sb.functions.invoke('gerir-utilizador',{ body:{ action:'reset-password', alvo_id:c.id, password:nova } });
+        if(res&&res.error){ var d=''; try{ var j=await res.error.context.json(); d=(j&&j.error)?j.error:''; }catch(e){} erros.push((c.nome||c.email||c.id)+': '+(d||res.error.message)); continue; }
+        var data=res&&res.data;
+        if(data&&data.error){ erros.push((c.nome||c.email||c.id)+': '+data.error); continue; }
+        ok++;
+      }catch(e){ erros.push((c.nome||c.email||c.id)+': '+String(e&&e.message||e)); }
+    }
+    if(erros.length) alert('Concluído.\n\n✅ Definidas: '+ok+'\n❌ Erros ('+erros.length+'):\n'+erros.join('\n'));
+    else alert('✅ Password "'+nova+'" definida para '+ok+' conta(s).\n\nDistribui aos colaboradores: cada um entra com o seu email (prfXXXXXX@iqra.local) e esta password, e deve trocá-la no primeiro acesso.');
   };
 })();
 
