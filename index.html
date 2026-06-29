@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.60</span>
+    <span class="logo-ver">v5.62</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1461,6 +1461,13 @@ console.log('[Scholaris] Supabase v2 inicializado');
 </div>
 
 <!-- ════ TRABALHOS / AVALIAÇÕES ════ -->
+<div class="view" id="v-trabalhos-prof">
+  <div class="ph">
+    <div><div class="ph-title">Trabalhos</div>
+    <div class="ph-sub">Crie trabalhos e acompanhe as entregas das turmas</div></div>
+  </div>
+  <div id="trabalhos-prof-c"></div>
+</div>
 <div class="view" id="v-portal-enc">
   <div class="ph">
     <div>
@@ -33830,48 +33837,51 @@ window.__finV30=true;})();
 </script>
 
 <script>
-/* ===== PATCH v66c: render LIMPO da lista de trabalhos do professor (robusto) ===== */
+/* ===== PATCH v66e: render UNICA de trabalhos (aba + menu lateral), da base ===== */
 (function(){
   function _esc(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function _err(c,msg){ c.innerHTML='<div class="card"><div class="cb" style="padding:22px;color:var(--r);font-size:13px">'+msg+'</div></div>'; }
 
-  window.rPPortalTrabalhos = async function(){
-    var c = document.getElementById('portal-prof-c');
-    if(!c){ return; }
-    c.innerHTML = '<div style="padding:30px;color:var(--t2)">A carregar trabalhos...</div>';
-    try{ if(window.TB) await TB.sincronizar(); }catch(e){ console.error('sync trabalhos', e); }
-    var trabs = window.TRABALHOS || [];
-    var head = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
-      + '<div><div style="font-size:20px;font-weight:800;color:var(--t)">Trabalhos</div>'
-      + '<div style="font-size:13px;color:var(--t2)">'+trabs.length+' trabalho(s) publicado(s)</div></div>'
+  window.__renderTrabalhosLista = async function(c){
+    if(!c) return;
+    c.innerHTML = '<div style="padding:28px;color:var(--t2)">A carregar trabalhos...</div>';
+    var trabs=[];
+    if(!window.TB){ _err(c,'Camada de dados nao carregada (verifique a versao).'); return; }
+    try { await TB.sincronizar(); trabs=window.TRABALHOS||[]; }
+    catch(e){ _err(c,'Erro ao ler trabalhos:<br><b>'+_esc((e&&e.message)||e)+'</b>'); return; }
+    var head='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+      + '<div style="font-size:13px;color:var(--t2)">'+trabs.length+' trabalho(s)</div>'
       + '<button class="btn btn-p btn-sm" onclick="openM(\'m-novo-trabalho-prof\')"><i class="ti ti-plus"></i> Novo Trabalho</button></div>';
-    if(!trabs.length){
-      c.innerHTML = head + '<div class="card"><div class="cb" style="text-align:center;padding:44px;color:var(--t2)"><i class="ti ti-clipboard-list" style="font-size:42px;display:block;margin-bottom:12px;color:var(--t3)"></i>Ainda nao ha trabalhos. Clique em "Novo Trabalho".</div></div>';
-      return;
-    }
-    var cards = trabs.map(function(t){
-      var ents = t.entregas||{};
-      var total = Object.keys(ents).length;
-      var entregues = Object.keys(ents).filter(function(k){ var e=ents[k]; return e && (e.estado==='entregue'||e.estado==='corrigido'); }).length;
-      var anexo = t.anexo_url ? '<a href="#" onclick="TB.link(\''+t.anexo_url+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px"><i class="ti ti-paperclip"></i> Material</a>' : '';
-      var prazo = t.prazo ? new Date(t.prazo).toLocaleDateString('pt-PT') : '-';
-      return '<div class="card" style="margin-bottom:10px"><div class="cb" style="padding:14px 16px">'
-        + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">'
-        + '<div style="min-width:0"><div style="font-weight:700;color:var(--t)">'+_esc(t.titulo)+'</div>'
-        + '<div style="font-size:12px;color:var(--t2);margin-top:2px">'+_esc(t.turma)+' &middot; '+_esc(t.tipo||'')+' &middot; prazo '+prazo+'</div>'
-        + (t.descricao?'<div style="font-size:12px;color:var(--t3);margin-top:6px">'+_esc(t.descricao)+'</div>':'')
-        + (anexo?'<div style="margin-top:8px">'+anexo+'</div>':'')
-        + '</div>'
-        + '<div style="text-align:right;flex-shrink:0"><div style="font-size:20px;font-weight:800;color:var(--a)">'+entregues+'/'+total+'</div><div style="font-size:11px;color:var(--t2)">entregues</div>'
-        + '<button class="btn btn-g btn-sm" style="margin-top:8px" onclick="verEntregasTrab(\''+t._dbId+'\')">Ver entregas</button></div>'
-        + '</div></div></div>';
-    }).join('');
-    c.innerHTML = head + cards;
+    if(!trabs.length){ c.innerHTML=head+'<div class="card"><div class="cb" style="text-align:center;padding:44px;color:var(--t2)"><i class="ti ti-clipboard-list" style="font-size:42px;display:block;margin-bottom:12px;color:var(--t3)"></i>Ainda nao ha trabalhos. Clique em "Novo Trabalho".</div></div>'; return; }
+    try{
+      var cards=trabs.map(function(t){
+        var ents=t.entregas||{}; var total=Object.keys(ents).length;
+        var entregues=Object.keys(ents).filter(function(k){var e=ents[k];return e&&(e.estado==='entregue'||e.estado==='corrigido');}).length;
+        var anexo=t.anexo_url?'<a href="#" onclick="TB.link(\''+t.anexo_url+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px"><i class="ti ti-paperclip"></i> Material</a>':'';
+        var prazo=t.prazo?new Date(t.prazo).toLocaleDateString('pt-PT'):'-';
+        return '<div class="card" style="margin-bottom:10px"><div class="cb" style="padding:14px 16px">'
+          +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">'
+          +'<div style="min-width:0"><div style="font-weight:700;color:var(--t)">'+_esc(t.titulo)+'</div>'
+          +'<div style="font-size:12px;color:var(--t2);margin-top:2px">'+_esc(t.turma)+' &middot; '+_esc(t.tipo||'')+' &middot; prazo '+prazo+'</div>'
+          +(t.descricao?'<div style="font-size:12px;color:var(--t3);margin-top:6px">'+_esc(t.descricao)+'</div>':'')
+          +(anexo?'<div style="margin-top:8px">'+anexo+'</div>':'')+'</div>'
+          +'<div style="text-align:right;flex-shrink:0"><div style="font-size:20px;font-weight:800;color:var(--a)">'+entregues+'/'+total+'</div><div style="font-size:11px;color:var(--t2)">entregues</div>'
+          +'<button class="btn btn-g btn-sm" style="margin-top:8px" onclick="verEntregasTrab(\''+t._dbId+'\')">Ver entregas</button></div>'
+          +'</div></div></div>';
+      }).join('');
+      c.innerHTML=head+cards;
+    }catch(e2){ _err(c,'Erro a desenhar:<br><b>'+_esc((e2&&e2.message)||e2)+'</b>'); }
   };
 
-  // Stub temporario (a correccao/notas vem na proxima etapa)
-  if(!window.verEntregasTrab){
-    window.verEntregasTrab = function(id){ toast('Ver/corrigir entregas chega na proxima etapa.'); };
-  }
+  // Aba dentro de "As Minhas Aulas"
+  window.rPPortalTrabalhos = function(){ return window.__renderTrabalhosLista(document.getElementById('portal-prof-c')); };
+  // Item do menu lateral (Comunicação > Trabalhos)
+  window.rTrabalhosProfView = function(){
+    var c=document.getElementById('trabalhos-prof-c')||document.getElementById('v-trabalhos-prof');
+    return window.__renderTrabalhosLista(c);
+  };
+
+  if(!window.verEntregasTrab){ window.verEntregasTrab=function(id){ toast('Ver/corrigir entregas chega na proxima etapa.'); }; }
 })();
 </script>
 </body>
