@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.58</span>
+    <span class="logo-ver">v5.59</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -2609,11 +2609,14 @@ console.log('[Scholaris] Supabase v2 inicializado');
       <div class="fgr full"><label class="fl">Descrição / Enunciado</label>
         <textarea class="ffi" id="ntprof-descr" rows="3" placeholder="Descreva o trabalho..."></textarea>
       </div>
+      <div class="fgr full"><label class="fl">Anexo / Material (opcional)</label>
+        <input type="file" class="ffi" id="ntprof-anexo" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+      </div>
     </div>
   </div>
   <div class="mft">
     <button class="btn btn-g" onclick="closeM('m-novo-trabalho-prof')">Cancelar</button>
-    <button class="btn btn-p" onclick="publicarTrabalhoProf()"><i class="ti ti-send"></i> Publicar</button>
+    <button class="btn btn-p" onclick="publicarTrabalhoProf(event)"><i class="ti ti-send"></i> Publicar</button>
   </div>
 </div></div>
 
@@ -15884,31 +15887,26 @@ rPPortalTrabalhos = function() {
 };
 
 // Modal novo trabalho para professor
-function publicarTrabalhoProf() {
-  const p = PROFS.find(x=>x.nome===curUser.nome) || PROFS[0];
-  const titulo  = document.getElementById('ntprof-titulo')?.value.trim();
-  const tipo    = document.getElementById('ntprof-tipo')?.value;
-  const turma   = document.getElementById('ntprof-turma')?.value;
-  const prazo   = document.getElementById('ntprof-prazo')?.value;
-  const descr   = document.getElementById('ntprof-descr')?.value.trim();
-
-  if (!titulo || !prazo) { toast('Preencha o título e o prazo'); return; }
-
-  // Build entregas for all students in turma
-  const alunos = ALUNOS.filter(a=>turma==='todas'||a.turma===turma);
-  const entregas = {};
-  alunos.forEach(a=>{ entregas[a.id]='pendente'; });
-
-  const novo = {
-    id: Date.now(), titulo, tipo: tipo||'outro', turma, prazo,
-    descricao: descr, prof: p.num, profNome: p.nome,
-    criado: new Date().toLocaleDateString('pt-PT'),
-    entregas,
-  };
-  TRABALHOS.push(novo);
-  closeM('m-novo-trabalho-prof');
-  rPPortalTrabalhos();
-  toast(`Trabalho "${titulo}" publicado para turma ${turma}!`);
+async function publicarTrabalhoProf(ev){
+  var titulo = document.getElementById('ntprof-titulo')?.value.trim();
+  var tipo   = document.getElementById('ntprof-tipo')?.value;
+  var turma  = document.getElementById('ntprof-turma')?.value;
+  var prazo  = document.getElementById('ntprof-prazo')?.value;
+  var descr  = document.getElementById('ntprof-descr')?.value.trim();
+  var fin    = document.getElementById('ntprof-anexo');
+  var anexoFile = (fin&&fin.files&&fin.files[0])||null;
+  if(!titulo || !prazo){ toast('Preencha o titulo e o prazo'); return; }
+  if(!turma || turma==='todas' || !turma.trim()){ toast('Escolha uma turma'); return; }
+  var btn=(ev&&ev.target)?ev.target.closest('button'):null;
+  if(btn){ btn.disabled=true; btn.style.opacity=.6; }
+  try{
+    await TB.criarTrabalho({ turma:turma, disciplina:(tipo||null), titulo:titulo, tipo:tipo, descricao:descr, prazo:prazo, anexoFile:anexoFile });
+    await TB.sincronizar();
+    closeM('m-novo-trabalho-prof');
+    if(typeof rPPortalTrabalhos==='function') rPPortalTrabalhos();
+    toast('Trabalho "'+titulo+'" publicado!');
+  }catch(e){ toast('Erro ao publicar: '+((e&&e.message)||e)); }
+  finally{ if(btn){ btn.disabled=false; btn.style.opacity=1; } }
 }
 
 function abrirCorrigirTrabalho(trabId) {
@@ -33730,6 +33728,115 @@ window.__finV30=true;})();
     var m=document.getElementById('m-cca'); if(m) m.remove();
     if(typeof mostrarResultadoContas==='function') mostrarResultadoContas(ok, erros);
     else alert('Criadas: '+ok.length+' - Erros: '+erros.length);
+  };
+})();
+</script>
+<script>
+/* ===== PATCH v66: MÓDULO TRABALHOS/MATERIAIS — camada de dados (Supabase + Storage) ===== */
+(function(){
+  var BUCKET='escola-ficheiros';
+  function sb(){ return window._supabase || window._supa; }
+  function escola(){ return window._escolaId; }
+  function turmaUuid(nome){ var t=(window.TURMAS||[]).find(function(x){return x.nome===nome;}); return t?t._dbId:null; }
+  function turmaNome(uuid){ var t=(window.TURMAS||[]).find(function(x){return x._dbId===uuid;}); return t?t.nome:''; }
+  function alunoLocalId(uuid){ var a=(window.ALUNOS||[]).find(function(x){return x._dbId===uuid;}); return a?a.id:null; }
+  function alunoUuid(localId){ var a=(window.ALUNOS||[]).find(function(x){return x.id===localId;}); return a?a._dbId:null; }
+
+  window.TB = {
+    // ─── Storage ───
+    async upload(file, sub){
+      if(!file) return null;
+      var safe=(file.name||'ficheiro').replace(/[^A-Za-z0-9._-]/g,'_');
+      var path=escola()+'/'+sub+'/'+Date.now()+'_'+safe;
+      var r=await sb().storage.from(BUCKET).upload(path, file, {upsert:false});
+      if(r.error) throw r.error;
+      return path;
+    },
+    async link(path){
+      if(!path) return null;
+      var r=await sb().storage.from(BUCKET).createSignedUrl(path, 3600);
+      return (r&&r.data)?r.data.signedUrl:null;
+    },
+    // ─── Trabalhos ───
+    async criarTrabalho(o){
+      var anexo=o.anexoFile? await TB.upload(o.anexoFile,'trabalhos') : null;
+      var row={ escola_id:escola(), turma_id:turmaUuid(o.turma), disciplina:o.disciplina||null,
+        professor_id:(window._meuStaffId||null), titulo:o.titulo, tipo:o.tipo||'outro',
+        descricao:o.descricao||null, prazo:o.prazo||null, cotacao:o.cotacao||20, anexo_url:anexo };
+      var r=await sb().from('trabalhos').insert(row).select().single();
+      if(r.error) throw r.error;
+      return r.data;
+    },
+    // Carrega trabalhos da escola + entregas, e converte para o formato em memória (TRABALHOS)
+    async sincronizar(){
+      var esc=escola(); if(!esc) return;
+      var tr=await sb().from('trabalhos').select('*').eq('escola_id',esc).order('criado_em',{ascending:false});
+      var trabs=((tr&&tr.data)||[]);
+      var ids=trabs.map(function(t){return t.id;});
+      var entregasPorTrab={};
+      if(ids.length){
+        var er=await sb().from('entregas').select('*').in('trabalho_id',ids);
+        ((er&&er.data)||[]).forEach(function(e){ (entregasPorTrab[e.trabalho_id]=entregasPorTrab[e.trabalho_id]||[]).push(e); });
+      }
+      window.TRABALHOS = trabs.map(function(t){
+        var entregas={};
+        (entregasPorTrab[t.id]||[]).forEach(function(e){
+          var lid=alunoLocalId(e.aluno_id);
+          if(lid!=null) entregas[lid]={ estado:e.estado, nota:e.nota, feedback:e.feedback, ficheiro:e.ficheiro_url, _entregaId:e.id, _alunoUuid:e.aluno_id };
+        });
+        var tn=turmaNome(t.turma_id);
+        return { id:t.id, _dbId:t.id, titulo:t.titulo, tipo:t.tipo, disc:t.disciplina, disciplina:t.disciplina,
+          turma:tn, prazo:t.prazo, desc:t.descricao, descricao:t.descricao, valor:t.cotacao, cotacao:t.cotacao,
+          anexo_url:t.anexo_url, prof:t.professor_id, profNome:'', entregas:entregas };
+      });
+      return window.TRABALHOS;
+    },
+    // ─── Entregas ───
+    async entregar(o){ // {trabalhoId, alunoUuid, file, texto}
+      var fic=o.file? await TB.upload(o.file,'entregas') : null;
+      var row={ trabalho_id:o.trabalhoId, aluno_id:o.alunoUuid, estado:'entregue',
+        ficheiro_url:fic, texto:o.texto||null, entregue_em:new Date().toISOString() };
+      var r=await sb().from('entregas').upsert(row,{onConflict:'trabalho_id,aluno_id'}).select().single();
+      if(r.error) throw r.error;
+      return r.data;
+    },
+    async corrigir(o){ // {entregaId?, trabalhoId, alunoUuid, nota, feedback}
+      var patch={ estado:'corrigido', nota:o.nota, feedback:o.feedback||null, corrigido_em:new Date().toISOString() };
+      var q;
+      if(o.entregaId){ q=sb().from('entregas').update(patch).eq('id',o.entregaId); }
+      else { // garante a linha (aluno pode não ter entregue)
+        var up={ trabalho_id:o.trabalhoId, aluno_id:o.alunoUuid, estado:'corrigido', nota:o.nota, feedback:o.feedback||null, corrigido_em:new Date().toISOString() };
+        var r=await sb().from('entregas').upsert(up,{onConflict:'trabalho_id,aluno_id'}).select().single();
+        if(r.error) throw r.error; return r.data;
+      }
+      var r2=await q.select().single(); if(r2.error) throw r2.error; return r2.data;
+    },
+    // ─── Materiais (Biblioteca) ───
+    async criarMaterial(o){ // {turma(nome|''), disciplina, titulo, descricao, file}
+      var fic=await TB.upload(o.file,'materiais');
+      var row={ escola_id:escola(), turma_id:o.turma?turmaUuid(o.turma):null, disciplina:o.disciplina||null,
+        professor_id:(window._meuStaffId||null), titulo:o.titulo, descricao:o.descricao||null, ficheiro_url:fic };
+      var r=await sb().from('materiais').insert(row).select().single();
+      if(r.error) throw r.error; return r.data;
+    },
+    async materiais(){
+      var r=await sb().from('materiais').select('*').eq('escola_id',escola()).order('criado_em',{ascending:false});
+      return ((r&&r.data)||[]).map(function(m){ m._turmaNome=m.turma_id?turmaNome(m.turma_id):'Todas'; return m; });
+    },
+    _alunoUuid: alunoUuid, _alunoLocalId: alunoLocalId
+  };
+})();
+
+</script>
+
+<script>
+/* ===== PATCH v66b: lista de trabalhos do professor sincroniza da base ===== */
+(function(){
+  var orig = window.rPPortalTrabalhos;
+  window.rPPortalTrabalhos = async function(){
+    try{ if(window.TB) await TB.sincronizar(); }catch(e){ console.error('sync trabalhos', e); }
+    (window.TRABALHOS||[]).forEach(function(t){ t.prof='PRF000001'; }); // tornar visíveis na render legada
+    if(typeof orig==='function') return orig();
   };
 })();
 </script>
