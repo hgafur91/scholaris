@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.57</span>
+    <span class="logo-ver">v5.58</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33655,15 +33655,36 @@ window.__finV30=true;})();
 
 </script>
 <script>
-/* ===== PATCH v65: criar contas em massa para ALUNOS (por turma ou todos) ===== */
+/* ===== PATCH v65b: criar contas em massa para ALUNOS (lê da base) ===== */
 (function(){
-  window.abrirCriarContasAlunos = function(){
-    var turmas = (Array.isArray(window.TURMAS)?window.TURMAS:[]).map(function(t){return t.nome;}).filter(Boolean);
-    var opts = '<option value="__ALL__">Todas as turmas</option>' + turmas.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
+  window.__ccaCarregar = async function(){
+    var sb = window._supabase || window._supa;
+    var escolaId = window._escolaId || '9c61db13-068f-4893-897e-a572d8677207';
+    var tRes = await sb.from('turmas').select('id,nome').eq('escola_id', escolaId);
+    var turmasDB = ((tRes||{}).data)||[];
+    var mapaTurma = {}; turmasDB.forEach(function(t){ mapaTurma[t.id]=t.nome; });
+    var aRes = await sb.from('alunos').select('id,numero_aluno,nome_completo,ativo, matriculas(turma_id)').eq('escola_id', escolaId).eq('ativo', true);
+    var alunosDB = ((aRes||{}).data)||[];
+    var alunos = alunosDB.map(function(a){
+      var m = (a.matriculas&&a.matriculas[0])||null;
+      return { id:a.id, num:a.numero_aluno, nome:a.nome_completo, turma: m?(mapaTurma[m.turma_id]||''):'' };
+    });
+    return { alunos: alunos, turmas: turmasDB.map(function(t){return t.nome;}).filter(Boolean) };
+  };
+
+  window.abrirCriarContasAlunos = async function(){
+    var sb = window._supabase || window._supa;
+    if(!sb || !sb.functions){ toast('Sem ligacao ao servidor'); return; }
+    toast('A carregar alunos...');
+    var dados;
+    try { dados = await window.__ccaCarregar(); }
+    catch(e){ toast('Erro a carregar: '+(e&&e.message||e)); return; }
+    window.__ccaDados = dados;
+    var opts = '<option value="__ALL__">Todas as turmas</option>' + dados.turmas.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
     var html = '<div id="m-cca" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)this.remove()">'
       + '<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:22px;width:480px;max-width:94vw">'
       + '<h3 style="margin:0 0 6px;font-size:18px;color:var(--t)">Criar contas de alunos</h3>'
-      + '<p style="margin:0 0 14px;font-size:12px;color:var(--t2)">Login = número do aluno (ex. <b>alu000123@iqra.local</b>). Password = o mesmo número. Alunos sem número válido ou que já tenham conta são ignorados.</p>'
+      + '<p style="margin:0 0 14px;font-size:12px;color:var(--t2)">Login = numero do aluno (ex. <b>alu000123@iqra.local</b>). Password = o mesmo numero. <b>'+dados.alunos.length+'</b> alunos activos carregados. Alunos sem numero ou ja com conta sao ignorados.</p>'
       + '<label style="font-size:12px;color:var(--t2);display:block;margin-bottom:6px">Turma</label>'
       + '<select id="cca-turma" class="ffi" style="width:100%;margin-bottom:16px">'+opts+'</select>'
       + '<div id="cca-prog" style="display:none;margin-bottom:14px"><div style="height:8px;background:var(--bg3);border-radius:99px;overflow:hidden"><div id="cca-bar" style="height:100%;width:0;background:var(--a);transition:width .25s"></div></div><div id="cca-prog-txt" style="font-size:11px;color:var(--t2);margin-top:6px"></div></div>'
@@ -33676,24 +33697,21 @@ window.__finV30=true;})();
 
   window.executarCriarContasAlunos = async function(){
     var sb = window._supabase || window._supa;
-    if(!sb || !sb.functions){ toast('Sem ligação ao servidor'); return; }
-    var escolaId = window._escolaId || '9c61db13-068f-4893-897e-a572d8677207';
+    if(!sb || !sb.functions){ toast('Sem ligacao ao servidor'); return; }
     var sel = document.getElementById('cca-turma');
     var turma = sel ? sel.value : '__ALL__';
-    // 1) alunos com conta (perfis.aluno_id)
+    var dados = window.__ccaDados || (await window.__ccaCarregar());
     var pr;
     try { pr = await sb.from('perfis').select('aluno_id').not('aluno_id','is',null); }
     catch(e){ toast('Erro a ler perfis: '+(e&&e.message||e)); return; }
     var comConta = {}; (((pr||{}).data)||[]).forEach(function(p){ if(p.aluno_id) comConta[p.aluno_id]=true; });
-    // 2) alvos: alunos activos, com número válido, da turma escolhida, sem conta
-    var alvos = (Array.isArray(window.ALUNOS)?window.ALUNOS:[]).filter(function(a){
+    var alvos = (dados.alunos||[]).filter(function(a){
       var numOk = a.num && /^[A-Za-z]{2,4}\d{3,}$/.test(a.num);
       var turmaOk = (turma==='__ALL__') || (a.turma===turma);
-      return a._dbId && numOk && turmaOk && a.ativo!==false && !comConta[a._dbId];
+      return a.id && numOk && turmaOk && !comConta[a.id];
     });
-    if(!alvos.length){ toast('Não há alunos elegíveis sem conta'+(turma==='__ALL__'?'':' nesta turma')+'.'); return; }
-    if(!confirm('Vão ser criadas contas para '+alvos.length+' aluno(s)'+(turma==='__ALL__'?'':' da turma '+turma)+'.\n\nLogin e password = número de cada aluno. Continuar?')) return;
-
+    if(!alvos.length){ toast('Nao ha alunos elegiveis sem conta'+(turma==='__ALL__'?'':' nesta turma')+'.'); return; }
+    if(!confirm('Vao ser criadas contas para '+alvos.length+' aluno(s)'+(turma==='__ALL__'?'':' da turma '+turma)+'.\n\nLogin e password = numero de cada aluno. Continuar?')) return;
     var prog=document.getElementById('cca-prog'), bar=document.getElementById('cca-bar'), txt=document.getElementById('cca-prog-txt'), go=document.getElementById('cca-go');
     if(prog) prog.style.display='block'; if(go){ go.disabled=true; go.style.opacity=.5; }
     var ok=[], erros=[];
@@ -33701,20 +33719,19 @@ window.__finV30=true;})();
     for(var i=0;i<alvos.length;i++){
       var a=alvos[i];
       try{
-        var res=await sb.functions.invoke('gerir-utilizador',{ body:{ action:'criar-conta-aluno', aluno_id:a._dbId } });
+        var res=await sb.functions.invoke('gerir-utilizador',{ body:{ action:'criar-conta-aluno', aluno_id:a.id } });
         if(res&&res.error){ var d=''; try{ var j=await res.error.context.json(); d=(j&&j.error)?j.error:''; }catch(e){} if((d||'').indexOf('ja tem conta')<0) erros.push({nome:a.nome, erro:d||res.error.message||'erro'}); }
         else { var data=res&&res.data; if(data&&data.ok){ ok.push({num:data.numero, nome:data.nome, email:data.email, password:data.password}); } else if(data&&data.error){ if((data.error||'').indexOf('ja tem conta')<0) erros.push({nome:a.nome, erro:data.error}); } }
       }catch(e){ erros.push({nome:a.nome, erro:String((e&&e.message)||e)}); }
       if(bar) bar.style.width=Math.round((i+1)/alvos.length*100)+'%';
-      if(txt) txt.textContent=(i+1)+' / '+alvos.length+'  ·  criadas: '+ok.length+(erros.length?('  ·  erros: '+erros.length):'');
+      if(txt) txt.textContent=(i+1)+' / '+alvos.length+'  -  criadas: '+ok.length+(erros.length?('  -  erros: '+erros.length):'');
       if((i+1)%LOTE===0){ await new Promise(function(r){setTimeout(r,PAUSA);}); }
     }
     var m=document.getElementById('m-cca'); if(m) m.remove();
     if(typeof mostrarResultadoContas==='function') mostrarResultadoContas(ok, erros);
-    else alert('Criadas: '+ok.length+' · Erros: '+erros.length);
+    else alert('Criadas: '+ok.length+' - Erros: '+erros.length);
   };
 })();
-
 </script>
 </body>
 </html>
