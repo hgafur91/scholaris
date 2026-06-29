@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.62</span>
+    <span class="logo-ver">v5.63</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33765,9 +33765,24 @@ window.__finV30=true;})();
       return (r&&r.data)?r.data.signedUrl:null;
     },
     // ─── Trabalhos ───
+    async resolverTurmaId(nome){
+      if(!nome) return null;
+      var id=turmaUuid(nome); if(id) return id;
+      // fallback: procurar na base (por nome exacto, depois aproximado)
+      try{
+        var r=await sb().from('turmas').select('id,nome').eq('escola_id',escola());
+        var lst=((r&&r.data)||[]);
+        var alvo=(''+nome).trim().toLowerCase();
+        var t=lst.find(function(x){return (''+x.nome).trim().toLowerCase()===alvo;})
+              || lst.find(function(x){return (''+x.nome).trim().toLowerCase().replace(/\s+/g,'')===alvo.replace(/\s+/g,'');});
+        return t?t.id:null;
+      }catch(e){ return null; }
+    },
     async criarTrabalho(o){
       var anexo=o.anexoFile? await TB.upload(o.anexoFile,'trabalhos') : null;
-      var row={ escola_id:escola(), turma_id:turmaUuid(o.turma), disciplina:o.disciplina||null,
+      var tid=await TB.resolverTurmaId(o.turma);
+      if(!tid){ throw new Error('Turma "'+(o.turma||'')+'" nao encontrada. Recarregue a pagina e tente de novo.'); }
+      var row={ escola_id:escola(), turma_id:tid, disciplina:o.disciplina||null,
         professor_id:(window._meuStaffId||null), titulo:o.titulo, tipo:o.tipo||'outro',
         descricao:o.descricao||null, prazo:o.prazo||null, cotacao:o.cotacao||20, anexo_url:anexo };
       var r=await sb().from('trabalhos').insert(row).select().single();
