@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.66</span>
+    <span class="logo-ver">v5.67</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33961,15 +33961,16 @@ window.__finV30=true;})();
   };
 
   window.submeterEntregaAluno=async function(trabId,ev){
+    var alunoUuid = window._meuAlunoId || ((typeof resolverMeuAluno==='function' && resolverMeuAluno()||{})._dbId) || null;
+    if(!alunoUuid){ toast('Aluno não identificado'); return; }
     var a=(typeof resolverMeuAluno==='function')?resolverMeuAluno():null;
-    if(!a){ toast('Aluno não identificado'); return; }
     var texto=(document.getElementById('ent-texto')||{}).value||'';
     var fin=document.getElementById('ent-file');
     var file=(fin&&fin.files&&fin.files[0])||null;
     if(!texto.trim() && !file){ toast('Escreve algo ou anexa um ficheiro'); return; }
     var btn=(ev&&ev.target)?ev.target.closest('button'):null; if(btn){btn.disabled=true;btn.style.opacity=.6;}
     try{
-      await TB.entregar({ trabalhoId:trabId, alunoUuid:a._dbId, file:file, texto:texto });
+      await TB.entregar({ trabalhoId:trabId, alunoUuid:alunoUuid, file:file, texto:texto });
       var m=document.getElementById('m-entrega'); if(m) m.remove();
       toast('Trabalho entregue!');
       if(typeof rPortalTrabalhos==='function') rPortalTrabalhos(a);
