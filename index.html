@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.65</span>
+    <span class="logo-ver">v5.66</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33912,7 +33912,8 @@ window.__finV30=true;})();
     if(!a){ c.innerHTML='<div class="card"><div class="cb" style="padding:24px;color:var(--t2)">Aluno não identificado.</div></div>'; return; }
     c.innerHTML='<div style="padding:28px;color:var(--t2)">A carregar trabalhos...</div>';
     try{ if(window.TB) await TB.sincronizar(); }catch(e){ c.innerHTML='<div class="card"><div class="cb" style="padding:22px;color:var(--r)">Erro ao carregar: '+_esc((e&&e.message)||e)+'</div></div>'; return; }
-    var todos=(window.TRABALHOS||[]).filter(function(t){ return t.turma===a.turma || t.turma==='todas'; });
+    // RLS já restringe os trabalhos à turma do aluno — mostrar todos os carregados.
+    var todos=(window.TRABALHOS||[]);
     var head='<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:var(--t)">Os Meus Trabalhos</div>'
       +'<div style="font-size:13px;color:var(--t2)">'+a.turma+' · '+todos.length+' trabalho(s)</div></div>';
     if(!todos.length){ c.innerHTML=head+'<div class="card"><div class="cb" style="text-align:center;padding:44px;color:var(--t2)"><i class="ti ti-clipboard-check" style="font-size:42px;display:block;margin-bottom:12px;color:var(--t3)"></i>Sem trabalhos por agora.</div></div>'; return; }
