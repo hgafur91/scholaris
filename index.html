@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.68</span>
+    <span class="logo-ver">v5.69</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33998,6 +33998,69 @@ window.__finV30=true;})();
       }
     }catch(e){}
     return r;
+  };
+})();
+
+</script>
+<script>
+/* ===== PATCH v69: ETAPA 4 — professor vê entregas e dá nota/feedback ===== */
+(function(){
+  function _esc(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function sb(){ return window._supabase || window._supa; }
+
+  // Carrega entregas de um trabalho, com nome do aluno
+  window.__entregasDoTrabalho = async function(trabId){
+    var r = await sb().from('entregas').select('*, alunos(nome_completo, numero_aluno)').eq('trabalho_id', trabId);
+    if(r.error) throw r.error;
+    return (r.data||[]);
+  };
+
+  window.verEntregasTrab = async function(trabId){
+    var t=(window.TRABALHOS||[]).find(function(x){return x._dbId===trabId;});
+    var titulo=t?t.titulo:'Trabalho';
+    var html='<div id="m-entregas" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:22px;width:640px;max-width:94vw;max-height:88vh;overflow:auto">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;font-size:18px;color:var(--t)">Entregas — '+_esc(titulo)+'</h3><span style="cursor:pointer;font-size:22px;color:var(--t3)" onclick="document.getElementById(\'m-entregas\').remove()">&times;</span></div>'
+      +'<div id="entregas-body" style="margin-top:14px"><div style="padding:20px;color:var(--t2)">A carregar entregas...</div></div>'
+      +'</div></div>';
+    var w=document.createElement('div'); w.innerHTML=html; document.body.appendChild(w.firstChild);
+    var body=document.getElementById('entregas-body');
+    var lista;
+    try{ lista=await window.__entregasDoTrabalho(trabId); }
+    catch(e){ body.innerHTML='<div style="color:var(--r);padding:12px">Erro: '+_esc((e&&e.message)||e)+'</div>'; return; }
+    if(!lista.length){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t2)">Ainda não há entregas para este trabalho.</div>'; return; }
+    body.innerHTML = lista.map(function(e){
+      var al=e.alunos||{};
+      var nome=al.nome_completo||al.numero_aluno||'Aluno';
+      var estado=e.estado||'pendente';
+      var cor=estado==='corrigido'?'#22c55e':estado==='entregue'?'#3B82F6':'var(--t2)';
+      var fic=e.ficheiro_url?'<a href="#" onclick="TB.link(\''+e.ficheiro_url+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px"><i class="ti ti-paperclip"></i> Ficheiro</a>':'';
+      var txt=e.texto?'<div style="font-size:12px;color:var(--t3);margin-top:4px;padding:6px 8px;background:var(--bg3);border-radius:6px">'+_esc(e.texto)+'</div>':'';
+      return '<div class="card" style="margin-bottom:10px"><div class="cb" style="padding:12px 14px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:700;color:var(--t)">'+_esc(nome)+'</div>'
+        +'<span style="font-size:11px;font-weight:700;color:'+cor+'">'+estado+'</span></div>'
+        +'<div style="margin-top:4px">'+fic+'</div>'+txt
+        +'<div style="display:flex;gap:8px;margin-top:10px;align-items:center">'
+        +'<input id="nota-'+e.id+'" class="ffi" type="number" min="0" max="20" step="0.5" placeholder="Nota" value="'+(e.nota!=null?e.nota:'')+'" style="width:80px">'
+        +'<input id="fb-'+e.id+'" class="ffi" placeholder="Feedback (opcional)" value="'+_esc(e.feedback||'')+'" style="flex:1">'
+        +'<button class="btn btn-p btn-sm" onclick="guardarNotaEntrega(\''+e.id+'\',event)">Guardar</button>'
+        +'</div></div></div>';
+    }).join('');
+  };
+
+  window.guardarNotaEntrega = async function(entregaId, ev){
+    var nota=parseFloat((document.getElementById('nota-'+entregaId)||{}).value);
+    var fb=(document.getElementById('fb-'+entregaId)||{}).value||'';
+    if(isNaN(nota)){ toast('Escreve uma nota'); return; }
+    if(nota<0||nota>20){ toast('Nota entre 0 e 20'); return; }
+    var btn=(ev&&ev.target)?ev.target.closest('button'):null; if(btn){btn.disabled=true;btn.style.opacity=.6;}
+    try{
+      var r=await sb().from('entregas').update({ estado:'corrigido', nota:nota, feedback:fb||null, corrigido_em:new Date().toISOString() }).eq('id',entregaId).select();
+      if(r.error) throw r.error;
+      if(!r.data||!r.data.length) throw new Error('Não gravou (permissão?).');
+      toast('Nota guardada!');
+      if(btn){ btn.textContent='Guardado'; }
+    }catch(e){ toast('Erro: '+((e&&e.message)||e)); if(btn){btn.disabled=false;btn.style.opacity=1;} }
   };
 })();
 
