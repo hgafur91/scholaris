@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.71</span>
+    <span class="logo-ver">v5.73</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34075,14 +34075,21 @@ window.__finV30=true;})();
 
   window.NT = {
     async turmas(){
-      if(window.TURMAS && TURMAS.length) return TURMAS.map(function(t){return {id:t._dbId||t.id, nome:t.nome};}).filter(function(t){return t.id;});
+      // Ler SEMPRE da base — garante o turma_id real (o de window.TURMAS pode divergir)
       var r=await sb().from('turmas').select('id,nome').eq('escola_id',escola()).order('nome');
-      return (r.data||[]);
+      if(r&&r.data&&r.data.length) return r.data;
+      // fallback só se a base falhar
+      if(window.TURMAS && TURMAS.length) return TURMAS.map(function(t){return {id:t._dbId||t.id, nome:t.nome};}).filter(function(t){return t.id;});
+      return [];
     },
     async disciplinas(turmaId){
-      var r=await sb().from('notas').select('disciplina').eq('turma_id',turmaId);
-      var set=[]; ((r&&r.data)||[]).forEach(function(x){ if(set.indexOf(x.disciplina)<0) set.push(x.disciplina); });
-      if(!set.length) set=DISC_PADRAO.slice();
+      var set=[];
+      try{
+        var r=await sb().from('notas').select('disciplina').eq('turma_id',turmaId);
+        ((r&&r.data)||[]).forEach(function(x){ if(x.disciplina && set.indexOf(x.disciplina)<0) set.push(x.disciplina); });
+      }catch(e){}
+      // garantir sempre as disciplinas padrão disponíveis
+      DISC_PADRAO.forEach(function(d){ if(set.indexOf(d)<0) set.push(d); });
       return set.sort();
     },
     async alunos(turmaId){
@@ -34130,9 +34137,12 @@ window.__finV30=true;})();
 
   window.ntAbrirTurma=async function(turmaId,nome){
     _st.turmaId=turmaId; _st.turmaNome=nome; _st.trimestre=1;
-    var discs=await NT.disciplinas(turmaId);
+    var discs;
+    try{ discs=await NT.disciplinas(turmaId); }catch(e){ discs=null; }
+    if(!discs || !discs.length) discs=DISC_PADRAO.slice();
     _st.disciplina=discs[0];
-    ntRender(discs);
+    try{ ntRender(discs); }
+    catch(e){ var c=cont(); if(c) c.innerHTML='<div class="card"><div class="cb" style="padding:20px;color:var(--r)">Erro ao abrir a turma: '+esc((e&&e.message)||e)+'</div></div>'; }
   };
 
   async function ntRender(discs){
