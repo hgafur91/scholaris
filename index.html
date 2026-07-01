@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.69</span>
+    <span class="logo-ver">v5.70</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3391,7 +3391,7 @@ const ROLES={
       {sl:'Portal Professor',flat:[{i:'ti-layout-dashboard',l:'As Minhas Aulas',id:'portal-prof'},{i:'ti-id-badge',l:'O Meu Perfil',id:'meu-perfil-prof'},{i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},{i:'ti-star',l:'Lançar Notas',id:'notas'},{i:'ti-calendar',l:'O Meu Horário',id:'horario'}]},
       {sl:'Consulta',flat:[{i:'ti-school',l:'Planos Analíticos',id:'curr-planos'},{i:'ti-books',l:'Biblioteca',id:'bib'}]},{sl:'Comunicação',flat:[{i:'ti-speakerphone',l:'Comunicados',id:'comunicados-prof'},{i:'ti-clipboard-list',l:'Trabalhos',id:'trabalhos-prof'}]},
     ]},
-  aluno:{nome:'Aaron Chaimite',cargo:'Aluno — 10ª Classe, Turma 10A',avt:'AC',color:'var(--am)',badge:'Aluno',
+  aluno:{nome:'Aaron Chaimite',cargo:'Aluno',avt:'AC',color:'var(--am)',badge:'Aluno',
     sidebar:[
       {sl:'Portal do Aluno',flat:[
         {i:'ti-layout-dashboard',l:'O Meu Portal',      id:'portal',tab:'inicio'},
@@ -3509,10 +3509,10 @@ function isIsento(aluno, tipo) {
 }
 
 function doLogout(){
-  document.getElementById('app').classList.remove('visible');
-  document.getElementById('login-screen').style.display='flex';
-  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('on'));
-  curRole='';curUser={};
+  try{ if(window._supabase&&window._supabase.auth){ window._supabase.auth.signOut(); } }catch(e){}
+  // Limpa estado e recarrega para não arrastar dados da sessão anterior (sem lag)
+  try{ curRole=''; curUser={}; window._meuAlunoId=null; window._meuStaffId=null; window._currentUser=null; }catch(e){}
+  location.reload();
 }
 
 function setupRole(){
