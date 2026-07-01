@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.76</span>
+    <span class="logo-ver">v5.77</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34074,7 +34074,13 @@ window.__finV30=true;})();
   var DISC_PADRAO=['Português','Matemática','Inglês','Educação Física'];
 
   window.NT = {
-    _souProfessor(){ return window.curRole==='professor' && window._meuStaffId; },
+    _souProfessor(){
+      // Robusto: se o utilizador tem alocações carregadas, é professor com turmas.
+      // (curRole pode estar vazio neste contexto; não dependemos só dele.)
+      if(!window._meuStaffId) return false;
+      if(window.curRole==='gestor' || window.curRole==='director' || window.curRole==='dir-pedagogico') return false;
+      return !!(this.__alocCache && this.__alocCache.length);
+    },
     async _minhasAloc(){
       // alocações do professor logado (turma_id + disciplina nome)
       if(this.__alocCache) return this.__alocCache;
@@ -34090,9 +34096,10 @@ window.__finV30=true;})();
         lista=TURMAS.map(function(t){return {id:t._dbId||t.id, nome:t.nome};}).filter(function(t){return t.id;});
       }
       // Professor: só as turmas onde tem alocações
+      try{ await this._minhasAloc(); }catch(e){}
       if(this._souProfessor()){
         try{
-          var al=await this._minhasAloc();
+          var al=this.__alocCache||[];
           var ids={}; al.forEach(function(a){ ids[a.turma_id]=1; });
           lista=lista.filter(function(t){ return ids[t.id]; });
         }catch(e){}
@@ -34101,9 +34108,10 @@ window.__finV30=true;})();
     },
     async disciplinas(turmaId){
       // Professor: só as disciplinas que lecciona nesta turma
+      try{ await this._minhasAloc(); }catch(e){}
       if(this._souProfessor()){
         try{
-          var al=await this._minhasAloc();
+          var al=this.__alocCache||[];
           var ds=al.filter(function(a){return a.turma_id===turmaId;})
                    .map(function(a){return a.disciplinas&&a.disciplinas.nome;}).filter(Boolean);
           // normalizar nomes p/ os usados nas notas (Ed. Física, etc.) — usar como vêm
