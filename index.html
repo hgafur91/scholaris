@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.79</span>
+    <span class="logo-ver">v5.80</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34160,6 +34160,11 @@ window.__finV30=true;})();
     async reabrir(turmaId, discId, trimestre){
       var r=await sb().from('fechos').delete().eq('turma_id',turmaId).eq('disciplina_id',discId).eq('trimestre',trimestre);
       if(r.error) throw r.error; return true;
+    },
+    // Todas as notas da turma num trimestre (para a pauta trimestral)
+    async notasTurmaTrim(turmaId, trimestre){
+      var r=await sb().from('notas').select('aluno_id, disciplina, as1, as2, ap').eq('turma_id',turmaId).eq('trimestre',trimestre);
+      if(r.error) throw r.error; return r.data||[];
     }
   };
 
@@ -34204,7 +34209,8 @@ window.__finV30=true;})();
     if(!discs) discs=await NT.disciplinas(_st.turmaId);
     c.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
       +'<button class="btn btn-g btn-sm" onclick="rNotasTurmas()"><i class="ti ti-arrow-left"></i></button>'
-      +'<div style="font-size:16px;font-weight:800;color:var(--t)">Turma '+esc(_st.turmaNome)+'</div></div>'
+      +'<div style="font-size:16px;font-weight:800;color:var(--t)">Turma '+esc(_st.turmaNome)+'</div>'
+      +'<button class="btn btn-g btn-sm" style="margin-left:auto" onclick="ntPautaTrimestral()"><i class="ti ti-printer"></i> Pauta trimestral</button></div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+discs.map(function(d){
         return '<button class="btn btn-sm '+(d===_st.disciplina?'btn-p':'btn-g')+'" onclick="ntSetDisc(\''+esc(d)+'\')">'+esc(d)+'</button>';
       }).join('')+'</div>'
@@ -34331,6 +34337,77 @@ window.__finV30=true;})();
     var btn=ev&&ev.target?ev.target.closest('button'):null; if(btn){btn.disabled=true;btn.style.opacity=.6;}
     try{ await NT.reabrir(_st.turmaId, _st.discId, _st.trimestre); toast('Trimestre reaberto.'); ntTabela(); }
     catch(e){ toast('Erro ao reabrir: '+((e&&e.message)||e)); if(btn){btn.disabled=false;btn.style.opacity=1;} }
+  };
+
+  // ===== PAUTA TRIMESTRAL (consolidada: alunos x disciplinas, M(T)) =====
+  window.ntPautaTrimestral=async function(){
+    var tri=_st.trimestre, turmaId=_st.turmaId, turmaNome=_st.turmaNome;
+    var alunos, dados;
+    try{ alunos=await NT.alunos(turmaId); dados=await NT.notasTurmaTrim(turmaId, tri); }
+    catch(e){ toast('Erro ao gerar pauta: '+((e&&e.message)||e)); return; }
+    if(!alunos.length){ toast('Sem alunos nesta turma.'); return; }
+    // disciplinas presentes (ordenadas)
+    var discs=[]; dados.forEach(function(n){ if(n.disciplina && discs.indexOf(n.disciplina)<0) discs.push(n.disciplina); }); discs.sort();
+    if(!discs.length){ toast('Sem notas lançadas neste trimestre.'); return; }
+    // mapa aluno -> disciplina -> M(T)
+    function mt(n){ var a=parseFloat(n.as1),b=parseFloat(n.as2),c=parseFloat(n.ap); if([a,b,c].some(isNaN)) return null; return (a+b+c)/3; }
+    var mapa={}; dados.forEach(function(n){ (mapa[n.aluno_id]=mapa[n.aluno_id]||{})[n.disciplina]=mt(n); });
+
+    var escolaNome='Colégio iQRA';
+    var trimTxt=tri+'º Trimestre';
+    var hoje=new Date().toLocaleDateString('pt-PT');
+
+    // cabeçalho de colunas
+    var ths=discs.map(function(d){ return '<th class="disc">'+d.replace(/ /g,'<br>')+'</th>'; }).join('');
+    // linhas
+    var linhas=alunos.map(function(a,i){
+      var md=mapa[a.id]||{};
+      var vals=discs.map(function(d){
+        var v=md[d];
+        var cor = v==null?'#999':(v>=10?'#111':'#c00');
+        return '<td style="text-align:center;color:'+cor+'">'+(v==null?'—':v.toFixed(1))+'</td>';
+      }).join('');
+      // média geral do trimestre (média das M(T) disponíveis)
+      var got=discs.map(function(d){return md[d];}).filter(function(v){return v!=null;});
+      var media=got.length? (got.reduce(function(s,v){return s+v;},0)/got.length):null;
+      var mcor=media==null?'#999':(media>=10?'#111':'#c00');
+      return '<tr><td class="num">'+(i+1)+'</td><td class="nome">'+esc(a.nome_completo)+'</td>'+vals
+        +'<td style="text-align:center;font-weight:800;color:'+mcor+'">'+(media==null?'—':media.toFixed(1))+'</td></tr>';
+    }).join('');
+
+    var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pauta '+turmaNome+' - '+trimTxt+'</title>'
+      +'<style>'
+      +'@page{size:A4 landscape;margin:12mm}'
+      +'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:16px}'
+      +'.cab{text-align:center;margin-bottom:14px}'
+      +'.cab h2{margin:0;font-size:16px}.cab .rep{font-size:11px;color:#555}'
+      +'.cab h3{margin:6px 0 0;font-size:14px}'
+      +'.meta{display:flex;justify-content:space-between;font-size:12px;margin:10px 4px}'
+      +'table{width:100%;border-collapse:collapse;font-size:11px}'
+      +'th,td{border:1px solid #333;padding:3px 4px}'
+      +'th{background:#f0f0f0;text-align:center;font-size:10px}'
+      +'th.disc{writing-mode:vertical-rl;transform:rotate(180deg);height:70px;white-space:nowrap;vertical-align:bottom}'
+      +'td.num{text-align:center;width:26px}td.nome{text-align:left;min-width:150px;white-space:nowrap}'
+      +'th.mg,td.mg{background:#eef}'
+      +'.ass{margin-top:30px;display:flex;justify-content:space-between;font-size:12px}'
+      +'.ass div{border-top:1px solid #333;padding-top:4px;width:200px;text-align:center}'
+      +'@media print{.noprint{display:none}}'
+      +'.noprint{margin:10px 0;text-align:center}'
+      +'.btn{padding:8px 16px;font-size:13px;cursor:pointer;border:1px solid #333;background:#fff;border-radius:4px}'
+      +'</style></head><body>'
+      +'<div class="noprint"><button class="btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>'
+      +'<div class="cab"><div class="rep">República de Moçambique — Ministério da Educação e Desenvolvimento Humano</div>'
+      +'<h2>'+escolaNome+'</h2>'
+      +'<h3>Pauta Trimestral de Aproveitamento</h3></div>'
+      +'<div class="meta"><span><b>Turma:</b> '+turmaNome+'</span><span><b>'+trimTxt+'</b></span><span><b>Ano Lectivo:</b> 2026</span><span><b>Data:</b> '+hoje+'</span></div>'
+      +'<table><thead><tr><th>Nº</th><th>Nome do Aluno</th>'+ths+'<th class="mg">Média</th></tr></thead>'
+      +'<tbody>'+linhas+'</tbody></table>'
+      +'<div class="ass"><div>O Director de Turma</div><div>O Director Pedagógico</div><div>Data ___/___/______</div></div>'
+      +'</body></html>';
+
+    var w=window.open('','_blank');
+    if(!w){ toast('Permite pop-ups para abrir a pauta.'); return; }
+    w.document.write(html); w.document.close();
   };
 })();
 
