@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.89</span>
+    <span class="logo-ver">v5.90</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34808,42 +34808,65 @@ window.__finV30=true;})();
     if(r.error) throw r.error; return r.data||[];
   }
 
-  // Sobrepõe a aba Notas do aluno assim que abrir o perfil
+  // Sobrepõe a aba Notas do aluno assim que abrir o perfil.
+  // Hook na openAluno GLOBAL (não window) via redefinição encadeada.
+  try{
+    if(typeof openAluno==='function' && !window.__hookedOpenAlunoNotas){
+      var _globalOpen = openAluno;
+      openAluno = function(id){
+        var r=_globalOpen.apply(this, arguments);
+        try{ setTimeout(function(){ carregarNotasReaisAluno(id); }, 120); }catch(e){}
+        return r;
+      };
+      window.__hookedOpenAlunoNotas = true;
+    }
+  }catch(e){}
+  // Fallback adicional: também embrulhar window.openAluno se existir
   var _origOpenAluno = window.openAluno;
   window.openAluno = function(id){
-    var r = _origOpenAluno ? _origOpenAluno.apply(this, arguments) : undefined;
-    try{ setTimeout(function(){ carregarNotasReaisAluno(id); }, 60); }catch(e){}
+    var r = _origOpenAluno ? _origOpenAluno.apply(this, arguments) : (typeof openAluno==='function'?openAluno(id):undefined);
+    try{ setTimeout(function(){ carregarNotasReaisAluno(id); }, 120); }catch(e){}
     return r;
   };
+
+  // Lê o número do aluno do DOM (#ap-num tem "ALU000187 · Encarregado")
+  function numAlunoDOM(){
+    var el=document.getElementById('ap-num'); if(!el) return null;
+    var txt=(el.textContent||'').trim();
+    var m=txt.match(/ALU\d+/i);
+    return m? m[0].toUpperCase() : null;
+  }
+  function nomeAlunoDOM(){
+    var el=document.getElementById('ap-nome'); return el?(el.textContent||'').trim():'';
+  }
+
+  // Resolve o uuid do aluno na base a partir do número lido do DOM
+  async function resolverAlunoPorDOM(){
+    var num=numAlunoDOM();
+    var escId=window._escolaId||'9c61db13-068f-4893-897e-a572d8677207';
+    if(num){
+      try{ var r=await sb().from('alunos').select('id,numero_aluno,nome_completo').eq('escola_id',escId).eq('numero_aluno',num).limit(1);
+        if(r&&r.data&&r.data[0]) return {id:r.data[0].id, num:num, nome:r.data[0].nome_completo}; }catch(e){}
+    }
+    var nome=nomeAlunoDOM();
+    if(nome){
+      try{ var r2=await sb().from('alunos').select('id,numero_aluno,nome_completo').eq('escola_id',escId).ilike('nome_completo',nome).limit(1);
+        if(r2&&r2.data&&r2.data[0]) return {id:r2.data[0].id, num:r2.data[0].numero_aluno, nome:r2.data[0].nome_completo}; }catch(e){}
+    }
+    return null;
+  }
 
   window.carregarNotasReaisAluno = async function(localId){
     var host=document.getElementById('ap-nt-c'); if(!host) return;
     host.innerHTML='<div style="padding:16px;color:var(--t2)">A carregar notas...</div>';
-    // usar curAlunoId como fonte fiável
-    var idUse = (window.curAlunoId!=null)?window.curAlunoId:localId;
-    var a=(window.ALUNOS||[]).find(function(x){return x.id===idUse;})
-        || (window.ALUNOS||[]).find(function(x){return String(x.id)===String(idUse);});
-    var diag='<div style="background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--t2)">'
-      +'<b>Diag:</b> arg='+esc(String(localId))+' · curAlunoId='+esc(String(window.curAlunoId))+' · ALUNOS.length='+((window.ALUNOS||[]).length)
-      +' · encontrado=<b>'+(a?'sim':'NÃO')+'</b>'
-      +(a?(' · num=<b>'+esc(String(a.num))+'</b> · _dbId=<b>'+(a._dbId?esc(String(a._dbId)).slice(0,8)+'…':'(vazio)')+'</b>'):'')+'</div>';
-    if(!a){ host.innerHTML=diag+'<div class="ib-box ib-am">Aluno não encontrado na lista.</div>'; return; }
-    var dbId=a._dbId||null;
-    if(!dbId){
-      try{
-        var escId=window._escolaId||'9c61db13-068f-4893-897e-a572d8677207';
-        if(a.num){ var r=await sb().from('alunos').select('id').eq('escola_id',escId).eq('numero_aluno',a.num).limit(1); if(r&&r.data&&r.data[0]){dbId=r.data[0].id;a._dbId=dbId;} }
-      }catch(e){}
-    }
-    diag+='<div style="background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--t2)">dbId=<b>'+(dbId?esc(String(dbId)).slice(0,8)+'…':'(NULO)')+'</b></div>';
-    if(!dbId){ host.innerHTML=diag+'<div class="ib-box ib-am">Aluno sem ligação à base.</div>'; return; }
+    var alu=await resolverAlunoPorDOM();
+    if(!alu){ host.innerHTML='<div class="ib-box ib-am">Não foi possível identificar o aluno.</div>'; return; }
+    window._alunoAtualReal = alu; // guardar p/ declaração
     var dados;
-    try{ dados=await notasAluno(dbId); }
-    catch(e){ host.innerHTML=diag+'<div class="ib-box ib-am">Erro: '+esc((e&&e.message)||e)+'</div>'; return; }
-    diag+='<div style="background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--t2)">notas lidas=<b>'+dados.length+'</b></div>';
-    window._alNotas={ localId:idUse, dbId:dbId, dados:dados };
+    try{ dados=await notasAluno(alu.id); }
+    catch(e){ host.innerHTML='<div class="ib-box ib-am">Erro: '+esc((e&&e.message)||e)+'</div>'; return; }
+    window._alNotas={ dbId:alu.id, dados:dados };
     alNotasDraw(1);
-    var h=document.getElementById('ap-nt-c'); if(h) h.innerHTML=diag+h.innerHTML;
   };
 
   function alNotasDraw(tri){
@@ -34896,14 +34919,12 @@ window.__finV30=true;})();
 
   // ===== DECLARAÇÃO DE APROVEITAMENTO (notas reais, PDF MINEDH) =====
   window.emitirDeclaracaoAproveitamento = async function(localId){
-    localId = localId || window.curAlunoId;
-    var a=alunoObj(localId);
-    if(!a){ toast('Aluno não encontrado.'); return; }
-    var dbId=await resolverAlunoDbId(localId);
-    if(!dbId){ toast('Este aluno ainda não está ligado à base.'); return; }
+    var alu = window._alunoAtualReal || await resolverAlunoPorDOM();
+    if(!alu){ toast('Não foi possível identificar o aluno.'); return; }
     var dados;
-    try{ dados=await notasAluno(dbId); }catch(e){ toast('Erro: '+((e&&e.message)||e)); return; }
+    try{ dados=await notasAluno(alu.id); }catch(e){ toast('Erro: '+((e&&e.message)||e)); return; }
     if(!dados.length){ toast('Este aluno não tem notas lançadas.'); return; }
+    var a={ nome:alu.nome, num:alu.num, turma:(window._alunoTurmaDOM?window._alunoTurmaDOM():'') };
 
     var discs=[]; dados.forEach(function(n){ if(discs.indexOf(n.disciplina)<0) discs.push(n.disciplina); }); discs.sort();
     var byd={}; dados.forEach(function(n){ (byd[n.disciplina]=byd[n.disciplina]||{})[n.trimestre]=mtOf(n); });
