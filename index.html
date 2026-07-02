@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.90</span>
+    <span class="logo-ver">v5.91</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -778,34 +778,6 @@ console.log('[Scholaris] Supabase v2 inicializado');
     <div><div class="bc"><span style="cursor:pointer;color:var(--t2)" onclick="go('alunos')">Alunos</span><span>›</span><span class="cr" id="ap-bc">—</span></div></div>
     <div class="ph-right">
       <button class="btn btn-g btn-sm" onclick="go('alunos')"><i class="ti ti-arrow-left"></i> Voltar</button>
-      <button class="btn btn-tl btn-sm" id="btn-ap-cartao" onclick="abrirCartaoAluno(curAlunoId)"><i class="ti ti-id"></i> Cartão</button>
-      <div style="position:relative;display:inline-block" id="aluno-export-wrap">
-        <button class="btn btn-tl btn-sm" id="btn-exp-aluno-static"
-          onclick="document.getElementById('aluno-export-menu').style.display=document.getElementById('aluno-export-menu').style.display==='block'?'none':'block'">
-          <i class="ti ti-file-export"></i> Exportar <i class="ti ti-chevron-down" style="font-size:10px"></i>
-        </button>
-        <div id="aluno-export-menu" style="display:none;position:absolute;right:0;top:calc(100% + 5px);
-          background:var(--card);border:1px solid var(--b);border-radius:var(--rad);
-          box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:999;padding:6px;min-width:250px">
-          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:6px 10px 3px">Documentos Académicos</div>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirBoletimCiclo(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-certificate" style="margin-right:8px"></i>Boletim de Ciclo</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirHistoricoAcademico(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-history" style="margin-right:8px"></i>Histórico Académico</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirDeclaracaoAproveitamento(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-award" style="margin-right:8px"></i>Declaração de Aproveitamento</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirDeclaracaoMatricula(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-school" style="margin-right:8px"></i>Declaração de Matrícula</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirCertificadoFrequencia(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-clipboard-check" style="margin-right:8px"></i>Certificado de Frequência</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirRegistoDisciplinar(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-shield-exclamation" style="margin-right:8px"></i>Registo Disciplinar</button>
-          <div style="border-top:1px solid var(--b);margin:3px 0"></div>
-          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:6px 10px 3px">Boletins Trimestrais</div>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirBoletimTrimestral(curAlunoId,1);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-report" style="margin-right:8px"></i>Boletim T1</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirBoletimTrimestral(curAlunoId,2);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-report" style="margin-right:8px"></i>Boletim T2</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirBoletimTrimestral(curAlunoId,3);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-report" style="margin-right:8px"></i>Boletim T3 / Final</button>
-          <div style="border-top:1px solid var(--b);margin:3px 0"></div>
-          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:6px 10px 3px">Documentos Financeiros</div>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirExtractoPropinas(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-receipt" style="margin-right:8px"></i>Extracto de Propinas</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirDeclaracaoNaoDivida(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-circle-check" style="margin-right:8px"></i>Declaração de Não Dívida</button>
-          <button class="btn btn-g" style="width:100%;text-align:left;padding:7px 10px;border-radius:5px;margin-bottom:2px;font-size:12px" onclick="emitirReciboUltimoPag(curAlunoId);this.closest('#aluno-export-menu').style.display='none'"><i class="ti ti-currency-dollar" style="margin-right:8px"></i>Recibo Última Propina</button>
-        </div>
-      </div>
       <button class="btn btn-p btn-sm" id="btn-ap-pag" onclick="abrirRegistarPagamento(curAlunoId)">Novo Pagamento</button>
     </div>
   </div>
@@ -20388,6 +20360,8 @@ openAluno = function(id) {
   _origOpenAlunoV18(id);
   // Use retry to ensure view is rendered
   function injectAlunoExport(attempts) {
+    return; // v91: neutralizado — botões movidos para a aba Documentos
+
     const right = document.querySelector('#v-aluno-p .ph-right');
     if (!right) {
       if (attempts > 0) setTimeout(() => injectAlunoExport(attempts-1), 50);
@@ -34975,5 +34949,86 @@ window.__finV30=true;})();
 })();
 
 </script>
+
+<script>
+/* ===== PATCH v91: Aba Documentos — Emitir Documentos (botões movidos do cabeçalho) ===== */
+(function(){
+  var GRUPOS = [
+    { titulo:'Identificação', docs:[
+      {ic:'ti-id', label:'Cartão de Estudante', fn:'abrirCartaoAluno'}
+    ]},
+    { titulo:'Documentos Académicos', docs:[
+      {ic:'ti-award', label:'Declaração de Aproveitamento', fn:'emitirDeclaracaoAproveitamento'},
+      {ic:'ti-school', label:'Declaração de Matrícula', fn:'emitirDeclaracaoMatricula'},
+      {ic:'ti-clipboard-check', label:'Certificado de Frequência', fn:'emitirCertificadoFrequencia'},
+      {ic:'ti-shield-exclamation', label:'Registo Disciplinar', fn:'emitirRegistoDisciplinar'},
+      {ic:'ti-certificate', label:'Boletim de Ciclo', fn:'emitirBoletimCiclo'},
+      {ic:'ti-history', label:'Histórico Académico', fn:'emitirHistoricoAcademico'}
+    ]},
+    { titulo:'Boletins Trimestrais', docs:[
+      {ic:'ti-report', label:'Boletim — 1º Trimestre', fn:'emitirBoletimTrimestral', arg:1},
+      {ic:'ti-report', label:'Boletim — 2º Trimestre', fn:'emitirBoletimTrimestral', arg:2},
+      {ic:'ti-report', label:'Boletim — 3º Trim / Final', fn:'emitirBoletimTrimestral', arg:3}
+    ]},
+    { titulo:'Documentos Financeiros', docs:[
+      {ic:'ti-receipt', label:'Extracto de Propinas', fn:'emitirExtractoPropinas'},
+      {ic:'ti-circle-check', label:'Declaração de Não Dívida', fn:'emitirDeclaracaoNaoDivida'},
+      {ic:'ti-currency-dollar', label:'Recibo Última Propina', fn:'emitirReciboUltimoPag'}
+    ]}
+  ];
+
+  window.docV91 = function(fn, arg){
+    var id = window._docsAlunoLocalId;
+    if(id==null){ if(typeof toast==='function') toast('Aluno não identificado. Reabra o perfil.'); return; }
+    try{
+      var f = window[fn] || (typeof eval(fn)==='function' ? eval(fn) : null);
+      if(!f){ if(typeof toast==='function') toast('Documento indisponível.'); return; }
+      if(arg!=null) f(id, arg); else f(id);
+    }catch(e){ if(typeof toast==='function') toast('Erro: '+((e&&e.message)||e)); }
+  };
+
+  function cardHtml(d){
+    var argJs = (d.arg!=null? ','+d.arg : '');
+    return '<button class="btn btn-g" style="display:flex;align-items:center;gap:10px;justify-content:flex-start;'
+      + 'padding:12px 14px;border-radius:8px;font-size:12px;font-weight:600;text-align:left;width:100%"'
+      + ' onclick="docV91(\''+d.fn+'\''+argJs+')">'
+      + '<i class="ti '+d.ic+'" style="font-size:18px;color:var(--a)"></i><span>'+d.label+'</span></button>';
+  }
+
+  function renderEmitirDocs(){
+    var grid = document.getElementById('ap-dc-c');
+    if(!grid) return;
+    var old = document.getElementById('ap-dc-emitir');
+    if(old) old.remove();
+    var html = '<div id="ap-dc-emitir" style="margin-bottom:18px">'
+      + GRUPOS.map(function(g){
+          return '<div style="margin-bottom:14px">'
+            + '<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">'+g.titulo+'</div>'
+            + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">'
+            + g.docs.map(cardHtml).join('')
+            + '</div></div>';
+        }).join('')
+      + '<div style="border-top:1px solid var(--b);margin-top:4px;padding-top:12px">'
+      + '<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Documentos Entregues (dossier do aluno)</div>'
+      + '</div></div>';
+    grid.insertAdjacentHTML('beforebegin', html);
+  }
+
+  // Hook na openAluno GLOBAL (redefinição encadeada — padrão v86/v90)
+  try{
+    if(typeof openAluno==='function' && !window.__hookedOpenAlunoDocsV91){
+      var _prevOpen = openAluno;
+      openAluno = function(id){
+        var r = _prevOpen.apply(this, arguments);
+        window._docsAlunoLocalId = id;
+        try{ setTimeout(renderEmitirDocs, 150); }catch(e){}
+        return r;
+      };
+      window.__hookedOpenAlunoDocsV91 = true;
+    }
+  }catch(e){}
+})();
+</script>
+
 </body>
 </html>
