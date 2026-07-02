@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.78</span>
+    <span class="logo-ver">v5.79</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34141,6 +34141,25 @@ window.__finV30=true;})();
         as1:(o.as1===''||o.as1==null)?null:o.as1, as2:(o.as2===''||o.as2==null)?null:o.as2, ap:(o.ap===''||o.ap==null)?null:o.ap };
       var r=await sb().from('notas').upsert(row,{onConflict:'aluno_id,disciplina,trimestre'}).select();
       if(r.error) throw r.error; return r.data&&r.data[0];
+    },
+    // Resolve o disciplina_id a partir das notas já existentes desta turma+disciplina
+    async discId(turmaId, disciplinaNome){
+      var r=await sb().from('notas').select('disciplina_id').eq('turma_id',turmaId).eq('disciplina',disciplinaNome).not('disciplina_id','is',null).limit(1);
+      return (r&&r.data&&r.data[0]&&r.data[0].disciplina_id)||null;
+    },
+    async estaFechado(turmaId, discId, trimestre){
+      if(!discId) return false;
+      var r=await sb().from('fechos').select('id, fechado_em').eq('turma_id',turmaId).eq('disciplina_id',discId).eq('trimestre',trimestre).limit(1);
+      return (r&&r.data&&r.data.length)? r.data[0] : false;
+    },
+    async fechar(turmaId, discId, trimestre){
+      var row={ escola_id:escola(), turma_id:turmaId, disciplina_id:discId, trimestre:trimestre, fechado_por: window._meuStaffId||null };
+      var r=await sb().from('fechos').insert(row).select();
+      if(r.error) throw r.error; return r.data&&r.data[0];
+    },
+    async reabrir(turmaId, discId, trimestre){
+      var r=await sb().from('fechos').delete().eq('turma_id',turmaId).eq('disciplina_id',discId).eq('trimestre',trimestre);
+      if(r.error) throw r.error; return true;
     }
   };
 
@@ -34200,22 +34219,48 @@ window.__finV30=true;})();
 
   async function ntTabela(){
     var box=document.getElementById('nt-tabela'); if(!box) return;
-    var alunos, notas;
-    try{ alunos=await NT.alunos(_st.turmaId); notas=await NT.notas(_st.turmaId,_st.disciplina,_st.trimestre); }
+    var alunos, notas, discId, fecho;
+    try{
+      alunos=await NT.alunos(_st.turmaId);
+      notas=await NT.notas(_st.turmaId,_st.disciplina,_st.trimestre);
+      discId=await NT.discId(_st.turmaId,_st.disciplina);
+      _st.discId=discId;
+      fecho=await NT.estaFechado(_st.turmaId, discId, _st.trimestre);
+      _st.fechado=!!fecho;
+    }
     catch(e){ box.innerHTML='<div style="color:var(--r);padding:12px">Erro: '+esc((e&&e.message)||e)+'</div>'; return; }
     if(!alunos.length){ box.innerHTML='<div style="padding:20px;color:var(--t2)">Sem alunos nesta turma.</div>'; return; }
+    var bloq = _st.fechado;
+    var dis = bloq ? 'disabled' : '';
     var rows=alunos.map(function(a,i){
       var n=notas[a.id]||{};
       return '<tr data-aluno="'+a.id+'">'
         +'<td style="padding:8px 10px;color:var(--t2)">'+(i+1)+'</td>'
         +'<td style="padding:8px 10px;color:var(--t);font-weight:600">'+esc(a.nome_completo)+'</td>'
-        +'<td style="padding:6px"><input class="ffi nt-in" data-f="as1" type="number" min="0" max="20" step="0.5" value="'+(n.as1!=null?n.as1:'')+'" style="width:64px" oninput="ntCalc(this)"></td>'
-        +'<td style="padding:6px"><input class="ffi nt-in" data-f="as2" type="number" min="0" max="20" step="0.5" value="'+(n.as2!=null?n.as2:'')+'" style="width:64px" oninput="ntCalc(this)"></td>'
+        +'<td style="padding:6px"><input class="ffi nt-in" '+dis+' data-f="as1" type="number" min="0" max="20" step="0.5" value="'+(n.as1!=null?n.as1:'')+'" style="width:64px" oninput="ntCalc(this)"></td>'
+        +'<td style="padding:6px"><input class="ffi nt-in" '+dis+' data-f="as2" type="number" min="0" max="20" step="0.5" value="'+(n.as2!=null?n.as2:'')+'" style="width:64px" oninput="ntCalc(this)"></td>'
         +'<td style="padding:6px 10px;color:var(--a);font-weight:700" data-m>'+ntM(n.as1,n.as2)+'</td>'
-        +'<td style="padding:6px"><input class="ffi nt-in" data-f="ap" type="number" min="0" max="20" step="0.5" value="'+(n.ap!=null?n.ap:'')+'" style="width:64px" oninput="ntCalc(this)"></td>'
+        +'<td style="padding:6px"><input class="ffi nt-in" '+dis+' data-f="ap" type="number" min="0" max="20" step="0.5" value="'+(n.ap!=null?n.ap:'')+'" style="width:64px" oninput="ntCalc(this)"></td>'
         +'<td style="padding:6px 10px;color:#22c55e;font-weight:800" data-mt>'+ntMT(n.as1,n.as2,n.ap)+'</td>'
         +'</tr>';
     }).join('');
+
+    // Barra de estado + acções
+    var ehGestor = (window.curRole==='gestor'||window.curRole==='director'||window.curRole==='dir-pedagogico') || (window._meuStaffId && !NT._souProfessor());
+    var barra;
+    if(bloq){
+      var quando = fecho&&fecho.fechado_em? (' em '+new Date(fecho.fechado_em).toLocaleDateString('pt-PT')) : '';
+      barra='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">'
+        +'<div style="color:#f59e0b;font-size:13px;font-weight:600"><i class="ti ti-lock"></i> Trimestre fechado'+quando+' — notas oficiais</div>'
+        +(ehGestor?'<button class="btn btn-g btn-sm" onclick="ntReabrir(event)"><i class="ti ti-lock-open"></i> Reabrir (gestão)</button>':'')
+        +'</div>';
+    } else {
+      barra='<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">'
+        +'<button class="btn btn-p" onclick="ntGuardarTudo(event)"><i class="ti ti-device-floppy"></i> Guardar notas</button>'
+        +(discId?'<button class="btn btn-w" onclick="ntFechar(event)"><i class="ti ti-lock"></i> Fechar trimestre</button>':'')
+        +'</div>';
+    }
+
     box.innerHTML='<div class="card"><div class="cb" style="padding:0;overflow:auto">'
       +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
       +'<thead><tr style="border-bottom:1px solid var(--b);color:var(--t2);font-size:11px;text-align:left">'
@@ -34223,7 +34268,7 @@ window.__finV30=true;})();
       +'<th style="padding:8px">AS1</th><th style="padding:8px">AS2</th><th style="padding:8px 10px">M</th>'
       +'<th style="padding:8px">AP</th><th style="padding:8px 10px">M(T)</th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table></div></div>'
-      +'<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-p" onclick="ntGuardarTudo(event)"><i class="ti ti-device-floppy"></i> Guardar notas</button></div>';
+      + barra;
   }
 
   function num(v){ v=parseFloat(v); return isNaN(v)?null:v; }
@@ -34250,6 +34295,42 @@ window.__finV30=true;})();
     }
     if(btn){btn.disabled=false;btn.style.opacity=1;btn.innerHTML='<i class="ti ti-device-floppy"></i> Guardar notas';}
     toast(erros?('Guardado '+ok+', '+erros+' erro(s)'):('Notas guardadas! ('+ok+')'));
+  };
+
+  window.ntFechar=async function(ev){
+    // contar quantos alunos têm notas completas vs em falta
+    var trs=document.querySelectorAll('#nt-tabela tr[data-aluno]');
+    var total=trs.length, completos=0;
+    trs.forEach(function(tr){
+      var a1=tr.querySelector('[data-f="as1"]').value, a2=tr.querySelector('[data-f="as2"]').value, ap=tr.querySelector('[data-f="ap"]').value;
+      if(a1!==''&&a2!==''&&ap!=='') completos++;
+    });
+    var faltam=total-completos;
+    var msg='Fechar o '+_st.trimestre+'º trimestre de '+_st.disciplina+' ('+_st.turmaNome+')?\n\nDepois de fechado, as notas ficam OFICIAIS e não poderás alterá-las (só a gestão pode reabrir).';
+    if(faltam>0) msg+='\n\n⚠️ ATENÇÃO: faltam notas de '+faltam+' de '+total+' alunos. Podes fechar à mesma, mas esses alunos ficam sem nota.';
+    if(!confirm(msg)) return;
+    // guardar primeiro o que está na tabela (para não perder), depois fechar
+    var btn=ev&&ev.target?ev.target.closest('button'):null; if(btn){btn.disabled=true;btn.style.opacity=.6;btn.textContent='A fechar...';}
+    try{
+      // gravar notas pendentes
+      for(var i=0;i<trs.length;i++){
+        var tr=trs[i], aid=tr.getAttribute('data-aluno');
+        var a1=tr.querySelector('[data-f="as1"]').value, a2=tr.querySelector('[data-f="as2"]').value, ap=tr.querySelector('[data-f="ap"]').value;
+        if(a1===''&&a2===''&&ap==='') continue;
+        try{ await NT.guardar({turmaId:_st.turmaId, alunoId:aid, disciplina:_st.disciplina, trimestre:_st.trimestre, as1:num(a1), as2:num(a2), ap:num(ap)}); }catch(e){}
+      }
+      if(!_st.discId){ toast('Não foi possível identificar a disciplina para fechar.'); if(btn){btn.disabled=false;btn.style.opacity=1;} return; }
+      await NT.fechar(_st.turmaId, _st.discId, _st.trimestre);
+      toast('Trimestre fechado. Notas oficiais.');
+      ntTabela();
+    }catch(e){ toast('Erro ao fechar: '+((e&&e.message)||e)); if(btn){btn.disabled=false;btn.style.opacity=1;btn.innerHTML='<i class="ti ti-lock"></i> Fechar trimestre';} }
+  };
+
+  window.ntReabrir=async function(ev){
+    if(!confirm('Reabrir o '+_st.trimestre+'º trimestre de '+_st.disciplina+' ('+_st.turmaNome+')?\n\nAs notas voltam a ficar editáveis.')) return;
+    var btn=ev&&ev.target?ev.target.closest('button'):null; if(btn){btn.disabled=true;btn.style.opacity=.6;}
+    try{ await NT.reabrir(_st.turmaId, _st.discId, _st.trimestre); toast('Trimestre reaberto.'); ntTabela(); }
+    catch(e){ toast('Erro ao reabrir: '+((e&&e.message)||e)); if(btn){btn.disabled=false;btn.style.opacity=1;} }
   };
 })();
 
