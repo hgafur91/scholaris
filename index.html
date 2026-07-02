@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.82</span>
+    <span class="logo-ver">v5.83</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -16493,7 +16493,9 @@ function closeExportDrop(el) {
 const _origOpenTurmaExport = openTurma;
 openTurma = async function(turmaId) {
   await _origOpenTurmaExport(turmaId);
-  // Add export dropdown to ph-right after the page renders
+  // (Exportação demo desactivada — as pautas reais estão no botão "Pautas", patch v82)
+  return;
+  // eslint-disable-next-line no-unreachable
   setTimeout(() => {
     const right = document.getElementById('turma-p-right');
     if (!right) return;
