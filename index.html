@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.77</span>
+    <span class="logo-ver">v5.78</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34158,20 +34158,11 @@ window.__finV30=true;})();
   window.rNotasTurmas = async function(){
     var c=cont(); if(!c) return;
     c.innerHTML='<div style="padding:24px;color:var(--t2)">A carregar turmas...</div>';
-    // DIAGNÓSTICO temporário
-    var diag='';
-    try{
-      var papel=window.curRole; var sid=window._meuStaffId;
-      var alc=[]; try{ alc=await NT._minhasAloc(); }catch(e){ alc=[{erro:(e&&e.message)||e}]; }
-      var ehprof=NT._souProfessor();
-      diag='<div style="background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--t2)">'
-        +'<b>Diagnóstico:</b> curRole=<b>'+esc(papel)+'</b> · _meuStaffId=<b>'+(sid?esc(String(sid)).slice(0,8)+'…':'(vazio)')+'</b> · éProfessor=<b>'+ehprof+'</b> · alocações lidas=<b>'+(alc&&alc.length?alc.length:0)+'</b>'
-        +(alc&&alc[0]&&alc[0].erro?(' · <span style="color:var(--r)">ERRO: '+esc(alc[0].erro)+'</span>'):'')+'</div>';
-    }catch(e){}
+    try{ await NT._minhasAloc(); }catch(e){}
     var ts;
-    try{ ts=await NT.turmas(); }catch(e){ c.innerHTML=diag+'<div class="card"><div class="cb" style="padding:20px;color:var(--r)">Erro: '+esc((e&&e.message)||e)+'</div></div>'; return; }
-    if(!ts.length){ c.innerHTML=diag+'<div class="card"><div class="cb" style="padding:30px;text-align:center;color:var(--t2)">Sem turmas.</div></div>'; return; }
-    c.innerHTML=diag+'<div style="font-size:15px;font-weight:700;color:var(--t);margin-bottom:12px">Escolhe a turma</div>'
+    try{ ts=await NT.turmas(); }catch(e){ c.innerHTML='<div class="card"><div class="cb" style="padding:20px;color:var(--r)">Erro: '+esc((e&&e.message)||e)+'</div></div>'; return; }
+    if(!ts.length){ c.innerHTML='<div class="card"><div class="cb" style="padding:30px;text-align:center;color:var(--t2)">Sem turmas.</div></div>'; return; }
+    c.innerHTML='<div style="font-size:15px;font-weight:700;color:var(--t);margin-bottom:12px">Escolhe a turma</div>'
       +'<div class="tc-grid">'+ts.map(function(t){
         return '<div class="card" style="cursor:pointer" onclick="ntAbrirTurma(\''+t.id+'\',\''+esc(t.nome)+'\')"><div class="cb" style="padding:18px;text-align:center">'
           +'<i class="ti ti-users" style="font-size:26px;color:var(--a);display:block;margin-bottom:8px"></i>'
