@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.80</span>
+    <span class="logo-ver">v5.82</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34210,7 +34210,7 @@ window.__finV30=true;})();
     c.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
       +'<button class="btn btn-g btn-sm" onclick="rNotasTurmas()"><i class="ti ti-arrow-left"></i></button>'
       +'<div style="font-size:16px;font-weight:800;color:var(--t)">Turma '+esc(_st.turmaNome)+'</div>'
-      +'<button class="btn btn-g btn-sm" style="margin-left:auto" onclick="ntPautaTrimestral()"><i class="ti ti-printer"></i> Pauta trimestral</button></div>'
+      +'</div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+discs.map(function(d){
         return '<button class="btn btn-sm '+(d===_st.disciplina?'btn-p':'btn-g')+'" onclick="ntSetDisc(\''+esc(d)+'\')">'+esc(d)+'</button>';
       }).join('')+'</div>'
@@ -34481,6 +34481,180 @@ window.__finV30=true;})();
       +'<th style="padding:10px 12px;text-align:center">M(T)</th></tr></thead>'
       +'<tbody>'+linhas+'</tbody></table></div></div>'
       +'<div style="font-size:11px;color:var(--t3);margin-top:8px">M = (AS1+AS2)/2 · M(T) = (AS1+AS2+AP)/3</div>';
+  };
+})();
+
+</script>
+<script>
+/* ===== PATCH v82: Pautas na Visão da Turma (trimestral + anual + PDF) ===== */
+(function(){
+  function sb(){ return window._supabase; }
+  function esc(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function num(v){ v=parseFloat(v); return isNaN(v)?null:v; }
+  function mtOf(n){ var a=num(n.as1),b=num(n.as2),c=num(n.ap); if(a==null||b==null||c==null) return null; return (a+b+c)/3; }
+
+  // Embrulha openTurma para acrescentar o botão "Pautas" e guardar o dbId real
+  var _orig = window.openTurma;
+  window.openTurma = async function(turmaId){
+    var r = _orig ? await _orig.apply(this, arguments) : undefined;
+    try{
+      var t = (window.TURMAS||[]).find(function(x){return x.id===turmaId;});
+      var dbId = t && t._dbId;
+      var nome = t ? (t.classe+'ª'+t.letra) : 'Turma';
+      window._pautaTurma = { id:dbId, nome: (t?(t.nome|| (t.classe+t.letra)) : nome) };
+      var right = document.getElementById('turma-p-right');
+      if(right && dbId && right.querySelector('[data-pautas]')==null){
+        var b=document.createElement('button');
+        b.className='btn btn-g btn-sm'; b.setAttribute('data-pautas','1');
+        b.style.marginLeft='6px';
+        b.innerHTML='<i class="ti ti-file-spreadsheet"></i> Pautas';
+        b.onclick=function(){ abrirPautasTurma(dbId, window._pautaTurma.nome); };
+        right.appendChild(b);
+      }
+    }catch(e){}
+    return r;
+  };
+
+  // Buscar notas da turma (opcionalmente de um trimestre)
+  async function notasTurma(turmaDbId, trimestre){
+    var q = sb().from('notas').select('aluno_id, disciplina, trimestre, as1, as2, ap').eq('turma_id', turmaDbId);
+    if(trimestre) q = q.eq('trimestre', trimestre);
+    var r = await q; if(r.error) throw r.error; return r.data||[];
+  }
+  async function alunosTurma(turmaDbId){
+    var r = await sb().from('matriculas').select('aluno_id, alunos(id,nome_completo,numero_aluno)').eq('turma_id', turmaDbId);
+    if(r.error) throw r.error;
+    var l=(r.data||[]).map(function(m){return m.alunos;}).filter(Boolean);
+    l.sort(function(a,b){return (a.nome_completo||'').localeCompare(b.nome_completo||'');});
+    return l;
+  }
+
+  window.abrirPautasTurma = async function(turmaDbId, turmaNome){
+    var el = document.getElementById('turma-p-c'); if(!el) return;
+    window._pautaTurma = { id:turmaDbId, nome:turmaNome };
+    el.innerHTML = '<div style="padding:24px;color:var(--t2)">A carregar pautas...</div>';
+    var alunos, dados;
+    try{ alunos=await alunosTurma(turmaDbId); dados=await notasTurma(turmaDbId); }
+    catch(e){ el.innerHTML='<div class="card"><div class="cb" style="padding:20px;color:var(--r)">Erro: '+esc((e&&e.message)||e)+'</div></div>'; return; }
+    window._pautaDados = { alunos:alunos, dados:dados };
+    renderPautaView('tri', 1);
+  };
+
+  function discsDe(dados, trimestre){
+    var s=[]; dados.forEach(function(n){ if((!trimestre||n.trimestre===trimestre) && n.disciplina && s.indexOf(n.disciplina)<0) s.push(n.disciplina); });
+    return s.sort();
+  }
+  // mapa aluno->disc->mt para um trimestre
+  function mapaTri(dados, tri){
+    var m={}; dados.forEach(function(n){ if(n.trimestre===tri){ (m[n.aluno_id]=m[n.aluno_id]||{})[n.disciplina]=mtOf(n); } }); return m;
+  }
+
+  window.renderPautaView = function(modo, tri){
+    var el = document.getElementById('turma-p-c'); if(!el) return;
+    var P = window._pautaDados; if(!P){ return; }
+    var alunos=P.alunos, dados=P.dados, nome=window._pautaTurma.nome;
+    window._pautaModo = modo; window._pautaTri = tri||1;
+
+    var head='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
+      +'<button class="btn btn-g btn-sm" onclick="verTurma(\''+ (window.TURMAS.find(function(x){return x._dbId===window._pautaTurma.id;})||{}).id +'\')"><i class="ti ti-arrow-left"></i> Voltar à turma</button>'
+      +'<div style="font-size:16px;font-weight:800;color:var(--t)">Pautas — '+esc(nome)+'</div>'
+      +'<div style="margin-left:auto;display:flex;gap:6px">'
+      +'<button class="btn btn-sm '+(modo==='tri'?'btn-p':'btn-g')+'" onclick="renderPautaView(\'tri\','+(tri||1)+')">Trimestral</button>'
+      +'<button class="btn btn-sm '+(modo==='anual'?'btn-p':'btn-g')+'" onclick="renderPautaView(\'anual\')">Anual</button>'
+      +'<button class="btn btn-p btn-sm" onclick="exportarPautaTurmaPDF()"><i class="ti ti-file-type-pdf"></i> Exportar PDF</button>'
+      +'</div></div>';
+
+    if(modo==='tri'){
+      var trbtns='<div style="display:flex;gap:6px;margin-bottom:12px">'+[1,2,3].map(function(x){
+        return '<button class="btn btn-sm '+(x===tri?'btn-p':'btn-g')+'" onclick="renderPautaView(\'tri\','+x+')">'+x+'º Trimestre</button>';
+      }).join('')+'</div>';
+      var discs=discsDe(dados, tri);
+      if(!discs.length){ el.innerHTML=head+trbtns+'<div class="card"><div class="cb" style="padding:24px;color:var(--t2)">Sem notas lançadas no '+tri+'º trimestre.</div></div>'; return; }
+      var mapa=mapaTri(dados, tri);
+      var ths=discs.map(function(d){return '<th style="padding:6px 4px;font-size:10px;text-align:center;color:var(--t2);border-bottom:1px solid var(--b)">'+esc(d)+'</th>';}).join('');
+      var linhas=alunos.map(function(a,i){
+        var md=mapa[a.id]||{};
+        var vals=discs.map(function(d){var v=md[d];var col=v==null?'var(--t3)':(v>=10?'var(--t)':'#ef4444');return '<td style="padding:6px;text-align:center;color:'+col+'">'+(v==null?'—':v.toFixed(1))+'</td>';}).join('');
+        var got=discs.map(function(d){return md[d];}).filter(function(v){return v!=null;});
+        var media=got.length?got.reduce(function(s,v){return s+v;},0)/got.length:null;
+        var mcol=media==null?'var(--t3)':(media>=10?'#22c55e':'#ef4444');
+        return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:6px 8px;color:var(--t2)">'+(i+1)+'</td><td style="padding:6px 8px;color:var(--t);font-weight:600;white-space:nowrap">'+esc(a.nome_completo)+'</td>'+vals+'<td style="padding:6px 8px;text-align:center;font-weight:800;color:'+mcol+'">'+(media==null?'—':media.toFixed(1))+'</td></tr>';
+      }).join('');
+      el.innerHTML=head+trbtns+'<div class="card"><div class="cb" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left"><th style="padding:6px 8px;color:var(--t2);border-bottom:1px solid var(--b)">Nº</th><th style="padding:6px 8px;color:var(--t2);border-bottom:1px solid var(--b)">Nome</th>'+ths+'<th style="padding:6px 8px;color:var(--t2);border-bottom:1px solid var(--b);text-align:center">Média</th></tr></thead><tbody>'+linhas+'</tbody></table></div></div>';
+    } else {
+      // ANUAL: por disciplina, médias dos 3 trimestres + média final anual
+      var discs=discsDe(dados, null);
+      if(!discs.length){ el.innerHTML=head+'<div class="card"><div class="cb" style="padding:24px;color:var(--t2)">Sem notas lançadas.</div></div>'; return; }
+      var m1=mapaTri(dados,1), m2=mapaTri(dados,2), m3=mapaTri(dados,3);
+      // média anual por aluno = média das médias-finais-de-disciplina; cada disc final = média dos 3 trimestres disponíveis
+      var ths=discs.map(function(d){return '<th style="padding:6px 4px;font-size:10px;text-align:center;color:var(--t2);border-bottom:1px solid var(--b)">'+esc(d)+'</th>';}).join('');
+      var linhas=alunos.map(function(a,i){
+        var finais=[];
+        var vals=discs.map(function(d){
+          var vs=[ (m1[a.id]||{})[d], (m2[a.id]||{})[d], (m3[a.id]||{})[d] ].filter(function(v){return v!=null;});
+          var fin=vs.length? vs.reduce(function(s,v){return s+v;},0)/vs.length : null;
+          if(fin!=null) finais.push(fin);
+          var col=fin==null?'var(--t3)':(fin>=10?'var(--t)':'#ef4444');
+          return '<td style="padding:6px;text-align:center;color:'+col+'">'+(fin==null?'—':fin.toFixed(1))+'</td>';
+        }).join('');
+        var mediaAnual=finais.length? finais.reduce(function(s,v){return s+v;},0)/finais.length : null;
+        var mcol=mediaAnual==null?'var(--t3)':(mediaAnual>=10?'#22c55e':'#ef4444');
+        var sit=mediaAnual==null?'—':(mediaAnual>=10?'Aprovado':'Reprovado');
+        return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:6px 8px;color:var(--t2)">'+(i+1)+'</td><td style="padding:6px 8px;color:var(--t);font-weight:600;white-space:nowrap">'+esc(a.nome_completo)+'</td>'+vals+'<td style="padding:6px 8px;text-align:center;font-weight:800;color:'+mcol+'">'+(mediaAnual==null?'—':mediaAnual.toFixed(1))+'</td><td style="padding:6px 8px;text-align:center;font-size:11px;color:'+mcol+'">'+sit+'</td></tr>';
+      }).join('');
+      el.innerHTML=head+'<div style="font-size:12px;color:var(--t3);margin-bottom:10px">Cada disciplina = média dos 3 trimestres. Média Anual = média das disciplinas.</div><div class="card"><div class="cb" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left"><th style="padding:6px 8px;color:var(--t2);border-bottom:1px solid var(--b)">Nº</th><th style="padding:6px 8px;color:var(--t2);border-bottom:1px solid var(--b)">Nome</th>'+ths+'<th style="padding:6px 8px;color:var(--t2);border-bottom:1px solid var(--b);text-align:center">Média</th><th style="padding:6px 8px;color:var(--t2);border-bottom:1px solid var(--b);text-align:center">Situação</th></tr></thead><tbody>'+linhas+'</tbody></table></div></div>';
+    }
+  };
+
+  // Exportar (usa o modo actual)
+  window.exportarPautaTurmaPDF = function(){
+    var P=window._pautaDados; if(!P) return;
+    var modo=window._pautaModo, tri=window._pautaTri, nome=window._pautaTurma.nome;
+    var alunos=P.alunos, dados=P.dados;
+    var hoje=new Date().toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric'});
+    var titulo, ths, linhas;
+    if(modo==='tri'){
+      var discs=discsDe(dados,tri); var mapa=mapaTri(dados,tri);
+      titulo='Pauta Trimestral de Aproveitamento — '+tri+'º Trimestre';
+      ths=discs.map(function(d){return '<th class="disc">'+esc(d)+'</th>';}).join('')+'<th>Média</th>';
+      linhas=alunos.map(function(a,i){
+        var md=mapa[a.id]||{};
+        var vals=discs.map(function(d){var v=md[d];var col=v==null?'#999':(v>=10?'#000':'#c00');return '<td style="text-align:center;color:'+col+'">'+(v==null?'—':v.toFixed(1))+'</td>';}).join('');
+        var got=discs.map(function(d){return md[d];}).filter(function(v){return v!=null;});
+        var media=got.length?got.reduce(function(s,v){return s+v;},0)/got.length:null;
+        return '<tr><td class="num">'+(i+1)+'</td><td class="nome">'+esc(a.nome_completo)+'</td>'+vals+'<td style="text-align:center;font-weight:800">'+(media==null?'—':media.toFixed(1))+'</td></tr>';
+      }).join('');
+    } else {
+      var discs=discsDe(dados,null); var m1=mapaTri(dados,1),m2=mapaTri(dados,2),m3=mapaTri(dados,3);
+      titulo='Pauta Anual de Aproveitamento';
+      ths=discs.map(function(d){return '<th class="disc">'+esc(d)+'</th>';}).join('')+'<th>Média</th><th>Situação</th>';
+      linhas=alunos.map(function(a,i){
+        var finais=[];
+        var vals=discs.map(function(d){var vs=[(m1[a.id]||{})[d],(m2[a.id]||{})[d],(m3[a.id]||{})[d]].filter(function(v){return v!=null;});var fin=vs.length?vs.reduce(function(s,v){return s+v;},0)/vs.length:null;if(fin!=null)finais.push(fin);var col=fin==null?'#999':(fin>=10?'#000':'#c00');return '<td style="text-align:center;color:'+col+'">'+(fin==null?'—':fin.toFixed(1))+'</td>';}).join('');
+        var ma=finais.length?finais.reduce(function(s,v){return s+v;},0)/finais.length:null;
+        var sit=ma==null?'—':(ma>=10?'Aprovado':'Reprovado');
+        return '<tr><td class="num">'+(i+1)+'</td><td class="nome">'+esc(a.nome_completo)+'</td>'+vals+'<td style="text-align:center;font-weight:800">'+(ma==null?'—':ma.toFixed(1))+'</td><td style="text-align:center">'+sit+'</td></tr>';
+      }).join('');
+    }
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+titulo+'</title>'
+      +'<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet"><style>'
+      +'*{box-sizing:border-box;margin:0;padding:0}body{font-family:Sora,Arial,sans-serif;background:#f5f5f5;padding:16px;font-size:10px}'
+      +'.no-print{text-align:center;margin-bottom:14px}.no-print button{padding:9px 20px;background:#0D1526;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;margin:0 5px}'
+      +'.page{width:297mm;background:#fff;margin:0 auto;padding:10mm;box-shadow:0 4px 20px rgba(0,0,0,.12)}'
+      +'.hd{text-align:center;border-bottom:2px solid #0D1526;padding-bottom:10px;margin-bottom:10px}'
+      +'.hd .rep{font-size:11px;font-weight:700;color:#1e293b}.hd .min{font-size:9px;color:#64748b;margin-top:2px}.hd .dt{font-size:15px;font-weight:800;color:#0D1526;margin-top:6px;text-transform:uppercase}'
+      +'.meta{display:flex;gap:20px;flex-wrap:wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:8px 12px;margin-bottom:10px;font-size:10px}.meta b{color:#0D1526}'
+      +'table{width:100%;border-collapse:collapse;font-size:9px}th,td{border:0.5px solid #333;padding:3px 4px}th{background:#0D1526;color:#fff;text-align:center;font-size:8px}'
+      +'th.disc{writing-mode:vertical-rl;transform:rotate(180deg);height:64px;white-space:nowrap;vertical-align:bottom}td.num{text-align:center;width:24px}td.nome{text-align:left;white-space:nowrap;font-weight:600}'
+      +'.sig{margin-top:26px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;text-align:center;font-size:9px}.sig .l{border-top:0.5px solid #000;padding-top:4px;margin-top:34px;color:#555}'
+      +'@media print{body{background:#fff;padding:0}.no-print{display:none!important}.page{box-shadow:none;padding:8mm}@page{size:A4 landscape;margin:0}}'
+      +'</style></head><body><div class="no-print"><button onclick="window.print()">Imprimir / Guardar PDF</button><button onclick="window.close()">Fechar</button></div>'
+      +'<div class="page"><div class="hd"><div class="rep">REPÚBLICA DE MOÇAMBIQUE</div><div class="min">MINISTÉRIO DA EDUCAÇÃO E DESENVOLVIMENTO HUMANO — MINEDH</div><div class="dt">'+titulo+'</div></div>'
+      +'<div class="meta"><span><b>Escola:</b> Colégio iQRA</span><span><b>Turma:</b> '+esc(nome)+'</span><span><b>Ano Lectivo:</b> 2026</span><span><b>Data:</b> '+hoje+'</span></div>'
+      +'<table><thead><tr><th>Nº</th><th>Nome do Aluno</th>'+ths+'</tr></thead><tbody>'+linhas+'</tbody></table>'
+      +'<div class="sig"><div class="l">O Director de Turma</div><div class="l">O Director Pedagógico</div><div class="l">Data ___/___/______</div></div></div></body></html>';
+    var w=window.open('','_blank'); if(!w){ toast('Permite pop-ups para exportar.'); return; }
+    w.document.write(html); w.document.close();
   };
 })();
 
