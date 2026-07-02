@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.87</span>
+    <span class="logo-ver">v5.88</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34819,13 +34819,21 @@ window.__finV30=true;})();
   window.carregarNotasReaisAluno = async function(localId){
     var host=document.getElementById('ap-nt-c'); if(!host) return;
     host.innerHTML='<div style="padding:16px;color:var(--t2)">A carregar notas...</div>';
+    var a=alunoObj(localId);
+    var diag='<div style="background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--t2)">'
+      +'<b>Diag:</b> localId=<b>'+esc(String(localId))+'</b> · encontrado=<b>'+(a?'sim':'NÃO')+'</b>'
+      +(a?(' · num=<b>'+esc(String(a.num))+'</b> · _dbId=<b>'+(a._dbId?esc(String(a._dbId)).slice(0,8)+'…':'(vazio)')+'</b>'):'')+'</div>';
     var dbId=await resolverAlunoDbId(localId);
-    if(!dbId){ host.innerHTML='<div class="ib-box ib-am">Este aluno ainda não está ligado à base de dados (sem notas reais).</div>'; return; }
+    diag+='<div style="background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--t2)">após resolver: dbId=<b>'+(dbId?esc(String(dbId)).slice(0,8)+'…':'(NULO)')+'</b></div>';
+    if(!dbId){ host.innerHTML=diag+'<div class="ib-box ib-am">Este aluno ainda não está ligado à base de dados (sem notas reais).</div>'; return; }
     var dados;
     try{ dados=await notasAluno(dbId); }
-    catch(e){ host.innerHTML='<div class="ib-box ib-am">Erro: '+esc((e&&e.message)||e)+'</div>'; return; }
+    catch(e){ host.innerHTML=diag+'<div class="ib-box ib-am">Erro: '+esc((e&&e.message)||e)+'</div>'; return; }
+    diag+='<div style="background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--t2)">notas lidas=<b>'+dados.length+'</b></div>';
     window._alNotas={ localId:localId, dbId:dbId, dados:dados };
     alNotasDraw(1);
+    // manter o diag acima da tabela
+    var h=document.getElementById('ap-nt-c'); if(h) h.innerHTML=diag+h.innerHTML;
   };
 
   function alNotasDraw(tri){
