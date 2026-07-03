@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.92</span>
+    <span class="logo-ver">v5.93</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -8076,7 +8076,7 @@ function salvarCalendarioEscolar() {
 // ── RENDER PLANO ANUAL ────────────────────────────────────────
 function rCalendarioEscolar() {
   loadCalendarioEscolar();
-  const canEdit = curRole === 'gestor';
+  const canEdit = (curRole === 'gestor' || curRole === 'director');
   const editInfo = document.getElementById('calendario-edit-info');
   const btnSalvar = document.getElementById('btn-salvar-calendario');
   if (editInfo) editInfo.style.display = canEdit ? '' : 'none';
@@ -8167,13 +8167,13 @@ function renderCalendarioTabela(plano, canEdit, filtro) {
 
 function filterCalendario(val) {
   if (!CALENDARIO_ESCOLAR) loadCalendarioEscolar();
-  renderCalendarioTabela(CALENDARIO_ESCOLAR, curRole==='gestor', val === 'todos' ? null : val);
+  renderCalendarioTabela(CALENDARIO_ESCOLAR, (curRole==='gestor'||curRole==='director'), val === 'todos' ? null : val);
 }
 
 // Edit cell popup
 let _editingSemCal = null, _editingDiaCal = null;
 function editCalendarioCell(semKey, diaIdx) {
-  if (curRole !== 'gestor') return;
+  if (curRole !== 'gestor' && curRole !== 'director') return;
   _editingSemCal = semKey; _editingDiaCal = diaIdx;
   const dia = CALENDARIO_ESCOLAR[semKey][diaIdx];
   const tp = PLANO_TIPOS[dia.tipo] || PLANO_TIPOS.aulas;
@@ -10647,7 +10647,7 @@ rCalendarioEscolar = function() {
       loadCalendarioEscolar();
     }
   }
-  const canEdit = curRole === 'gestor';
+  const canEdit = (curRole === 'gestor' || curRole === 'director');
   const editInfo = document.getElementById('calendario-edit-info');
   const btnSalvar = document.getElementById('btn-salvar-calendario');
   if (editInfo) editInfo.style.display = canEdit ? '' : 'none';
@@ -10751,7 +10751,7 @@ if (typeof renderCalendarioTabela === 'function') {
 // filterCalendario override for Excel style
 filterCalendario = function(val) {
   if (!CALENDARIO_ESCOLAR) return;
-  renderCalendarioExcel(CALENDARIO_ESCOLAR, curRole==='gestor', val==='todos'?null:val);
+  renderCalendarioExcel(CALENDARIO_ESCOLAR, (curRole==='gestor'||curRole==='director'), val==='todos'?null:val);
 };
 
 // ── DASHBOARD CARD (cartão do próprio utilizador) ─────────────
