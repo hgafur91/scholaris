@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.91</span>
+    <span class="logo-ver">v5.92</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5698,6 +5698,13 @@ async function loadDadosEscola() {
           try { localStorage.setItem('educare-escola-settings', JSON.stringify(ESCOLA_SETTINGS)); } catch(e){}
         }
       } catch(e){}
+      // Carregar calendário escolar (plano_anual) do Supabase se existir
+      try {
+        if (escola.plano_anual && typeof escola.plano_anual === 'object' && Object.keys(escola.plano_anual).length) {
+          window.CALENDARIO_ESCOLAR = escola.plano_anual;
+          try { localStorage.setItem('educare-calendario-escolar-2026', JSON.stringify(escola.plano_anual)); } catch(e){}
+        }
+      } catch(e){}
       // Carregar CONFIG persistido (periodos lectivos, trancamento, etc.)
       if (escola.config && typeof escola.config === 'object') {
         try { Object.assign(CONFIG, escola.config); } catch(e){}
@@ -8054,14 +8061,16 @@ function loadCalendarioEscolar() {
 }
 
 function salvarCalendarioEscolar() {
-  localStorage.setItem('educare-calendario-escolar-2026', JSON.stringify(CALENDARIO_ESCOLAR));
-  // Also Firestore
+  try { localStorage.setItem('educare-calendario-escolar-2026', JSON.stringify(CALENDARIO_ESCOLAR)); } catch(e){}
   if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
-    try {
-      window._supabase.from('escolas').update({plano_anual: CALENDARIO_ESCOLAR}).eq('id', window._escolaId);
-    } catch(e) {}
+    window._supabase.from('escolas').update({plano_anual: CALENDARIO_ESCOLAR}).eq('id', window._escolaId)
+      .then(function(res){
+        if (res && res.error) { toast('Guardado localmente, mas falhou no servidor: ' + (res.error.message||'erro')); }
+        else { toast('Plano anual guardado!'); }
+      }, function(err){ toast('Guardado localmente, mas falhou no servidor.'); });
+  } else {
+    toast('Plano anual guardado!');
   }
-  toast('Plano anual guardado!');
 }
 
 // ── RENDER PLANO ANUAL ────────────────────────────────────────
@@ -8170,7 +8179,8 @@ function editCalendarioCell(semKey, diaIdx) {
   const tp = PLANO_TIPOS[dia.tipo] || PLANO_TIPOS.aulas;
 
   // Create inline editor
-  const cellEl = document.getElementById(`pc-${semKey}-${diaIdx}`);
+  const cellEl = document.getElementById(`cc-${semKey}-${diaIdx}`)
+               || document.getElementById(`pc-${semKey}-${diaIdx}`);
   if (!cellEl) return;
 
   const popup = document.createElement('div');
