@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.96</span>
+    <span class="logo-ver">v5.97</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32813,7 +32813,7 @@ window.__finV30=true;})();
       if(!navigator.onLine) return;
       var snap = {
         ts: Date.now(),
-        alunos: (window.ALUNOS||[]),
+        alunos: (typeof ALUNOS!=='undefined'?ALUNOS:[]),
         turmas: (typeof TURMAS!=='undefined'?TURMAS:[]),
         profs: (typeof PROFS!=='undefined'?PROFS:[]),
         despesas: (window.DESPESAS_REG||[]),
@@ -33786,8 +33786,8 @@ window.__finV30=true;})();
   function escola(){ return window._escolaId; }
   function turmaUuid(nome){ var t=(window.TURMAS||[]).find(function(x){return x.nome===nome;}); return t?t._dbId:null; }
   function turmaNome(uuid){ var t=(window.TURMAS||[]).find(function(x){return x._dbId===uuid;}); return t?t.nome:''; }
-  function alunoLocalId(uuid){ var a=(window.ALUNOS||[]).find(function(x){return x._dbId===uuid;}); return a?a.id:null; }
-  function alunoUuid(localId){ var a=(window.ALUNOS||[]).find(function(x){return x.id===localId;}); return a?a._dbId:null; }
+  function alunoLocalId(uuid){ var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x._dbId===uuid;}); return a?a.id:null; }
+  function alunoUuid(localId){ var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x.id===localId;}); return a?a._dbId:null; }
 
   window.TB = {
     // ─── Storage ───
@@ -34818,10 +34818,10 @@ window.__finV30=true;})();
   function mtOf(n){ var a=num(n.as1),b=num(n.as2),c=num(n.ap); if(a==null||b==null||c==null) return null; return (a+b+c)/3; }
 
   function alunoDbId(localId){
-    var a=(window.ALUNOS||[]).find(function(x){return x.id===localId;});
+    var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x.id===localId;});
     return a? (a._dbId||null) : null;
   }
-  function alunoObj(localId){ return (window.ALUNOS||[]).find(function(x){return x.id===localId;}); }
+  function alunoObj(localId){ return (typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x.id===localId;}); }
 
   // Resolve o uuid real do aluno: usa _dbId; se faltar, procura na base pelo número (ALU...)
   async function resolverAlunoDbId(localId){
@@ -35137,7 +35137,9 @@ window.trimestreActual = function(d){
       if(!turmas.length) return;
       var sb = document.getElementById('sb-content');
       if(!sb) return;
-      if(document.getElementById('dt-menu-sec')) return; // já injectado
+      // remover duplicados existentes antes de reinjectar
+      var existentes = sb.querySelectorAll('#dt-menu-sec');
+      if(existentes.length){ return; } // já lá está exactamente um
 
       var wrap = document.createElement('div');
       wrap.id = 'dt-menu-sec';
@@ -35198,12 +35200,12 @@ window.trimestreActual = function(d){
       if(res.error){ console.warn('[DT] faltas load:', res.error.message); return; }
       var rows = res.data || [];
       // limpar faltas em memória (alunos)
-      (window.ALUNOS||[]).forEach(function(a){ a.faltas = {t1:[],t2:[],t3:[]}; });
+      (typeof ALUNOS!=='undefined'?ALUNOS:[]).forEach(function(a){ a.faltas = {t1:[],t2:[],t3:[]}; });
       window._FALTAS_PROF = {}; // staff_id -> array
       rows.forEach(function(r){
         var trim = 't'+(r.trimestre||1);
         if(r.aluno_id){
-          var a = (window.ALUNOS||[]).find(function(x){ return x._dbId===r.aluno_id; });
+          var a = (typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){ return x._dbId===r.aluno_id; });
           if(a){ if(!a.faltas[trim]) a.faltas[trim]=[];
             a.faltas[trim].push({ _id:r.id, disc:r.disciplina||'', data:r.data, tipo:r.tipo||'F', justif:!!r.justif, motivo:r.motivo||'' });
           }
@@ -35241,7 +35243,7 @@ window.trimestreActual = function(d){
 
   // ── Aba "Professores" na vista da turma (via hook swTurmaTab) ──
   window.renderTurmaTabProfs = function(turmaId){
-    var alocs = (window.ALOCACOES||[]).filter(function(a){ return a.turma===turmaId; });
+    var alocs = (typeof ALOCACOES!=='undefined'?ALOCACOES:[]).filter(function(a){ return a.turma===turmaId; });
     // agrupar por professor
     var porProf = {};
     alocs.forEach(function(a){
@@ -35251,7 +35253,7 @@ window.trimestreActual = function(d){
     var nums = Object.keys(porProf);
     if(!nums.length) return '<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem professores alocados a esta turma.</div>';
     var linhas = nums.map(function(num){
-      var p = (window.PROFS||[]).find(function(x){ return x.num===num; });
+      var p = (typeof PROFS!=='undefined'?PROFS:[]).find(function(x){ return x.num===num; });
       var nome = p ? p.nome : num;
       var faltasP = (p && p._dbId && window._FALTAS_PROF) ? (window._FALTAS_PROF[p._dbId]||[]).length : 0;
       return '<tr>'
@@ -35295,7 +35297,7 @@ window.trimestreActual = function(d){
 
   // ── Modal: lançar falta de ALUNO ──────────────────────────────
   window.abrirLancarFaltaAluno = function(turmaId){
-    var alunos = (window.ALUNOS||[]).filter(function(a){ return a.turma===turmaId; });
+    var alunos = (typeof ALUNOS!=='undefined'?ALUNOS:[]).filter(function(a){ return a.turma===turmaId; });
     if(!alunos.length){ toast('Sem alunos nesta turma.'); return; }
     var opts = alunos.map(function(a){ return '<option value="'+a._dbId+'">'+a.num+' — '+a.nome+'</option>'; }).join('');
     _abrirModalFalta('Falta de Aluno', 'aluno', turmaId, opts);
@@ -35380,7 +35382,7 @@ window.trimestreActual = function(d){
     var _tent = 0;
     var iv = setInterval(function(){
       _tent++;
-      if(window._supabase && window._escolaId && window.ALUNOS && window.ALUNOS.length){
+      if(window._supabase && window._escolaId && typeof ALUNOS!=='undefined' && ALUNOS.length){
         clearInterval(iv);
         if(typeof window.carregarFaltasReais==='function') window.carregarFaltasReais();
       }
@@ -35492,7 +35494,7 @@ window.trimestreActual = function(d){
             var nomeTd = tr.querySelector('td');
             if(!nomeTd) return;
             var nome = nomeTd.textContent.trim();
-            var aluno = (window.ALUNOS||[]).find(function(a){ return a.nome===nome && a.turma===turmaId; });
+            var aluno = (typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(a){ return a.nome===nome && a.turma===turmaId; });
             if(aluno && aluno._dbId){
               tr.style.cursor='pointer';
               tr.onclick=function(){ window.verFaltasAluno(aluno._dbId, aluno.nome, turmaId); };
