@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.09</span>
+    <span class="logo-ver">v6.10</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5619,6 +5619,7 @@ async function fbLogin() {
         userData.escolaId = perfil.escola_id || userData.escolaId;
         window._meuStaffId = perfil.staff_id || null; // ligação conta <-> pessoa (staff)
         window._meuAlunoId = perfil.aluno_id || null; // ligação conta <-> aluno
+        window._meuPerfilId = perfil.id || null; // = auth.uid(), para autor_id
       }
     } catch(pe) {
       console.warn('[Login] Sem perfil na BD — a usar defaults');
@@ -6481,7 +6482,8 @@ async function criarComunicado() {
     try {
       const payload = {
         titulo, corpo, para, prio, turma_alvo: turmaAlvo,
-        escola_id: window._escolaId, criado_em: new Date().toISOString()
+        escola_id: window._escolaId, criado_em: new Date().toISOString(),
+        autor_id: window._meuPerfilId || window._meuStaffId || null
       };
       // tentar com autor/data; se a coluna não existir, o catch tenta sem
       let res = await window._supabase.from('comunicados').insert({
@@ -14472,12 +14474,15 @@ openM = function(id) {
     const hoje = new Date().toISOString().split('T')[0];
     const dateEl = document.getElementById('oc-data');
     if (dateEl) dateEl.value = hoje;
-    const sel = document.getElementById('oc-aluno');
-    if (sel) {
-      sel.innerHTML = '<option value="">Seleccionar aluno...</option>' +
-        ALUNOS.sort((a,b)=>a.nome.localeCompare(b.nome))
-          .map(a=>`<option value="${a.id}">${a.nome} — Turma ${a.turma||'?'}</option>`).join('');
+    // Popular a search bar (datalist) com alunos reais
+    const dl = document.getElementById('oc-aluno-list');
+    if (dl) {
+      dl.innerHTML = ALUNOS.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''))
+        .map(a=>`<option value="${(a.nome||'')} — ${(a.num||'')}">`).join('');
     }
+    const sBar = document.getElementById('oc-aluno-search'); if (sBar) sBar.value = '';
+    const hid = document.getElementById('oc-aluno'); if (hid) hid.value = '';
+    const hint = document.getElementById('oc-aluno-hint'); if (hint) hint.textContent = '';
     return;
   }
   if (id === 'm-novo-trabalho-prof') {
