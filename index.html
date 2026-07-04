@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.97</span>
+    <span class="logo-ver">v5.98</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -35161,29 +35161,22 @@ window.trimestreActual = function(d){
     else toast('Vista da turma indisponível.');
   };
 
-  // ── Reinjecção robusta: MutationObserver no sidebar ───────────
-  // (à prova de qualquer reconstrução do buildSidebar por outros patches)
-  function ligarObserverDT(){
-    var sb = document.getElementById('sb-content');
-    if(!sb) { setTimeout(ligarObserverDT, 300); return; }
-    if(window.__dtObserver) return;
-    // injecção inicial
-    window.injectarMenuDT();
-    var mo = new MutationObserver(function(){
-      // se o sidebar mudou e o menu DT desapareceu, reinjectar
-      if(curRole==='professor' && window.souDT && window.souDT() && !document.getElementById('dt-menu-sec')){
-        window.injectarMenuDT();
-      }
-    });
-    mo.observe(sb, { childList:true });
-    window.__dtObserver = mo;
+  // ── Reinjecção robusta: intervalo persistente (à prova de timing) ──
+  // Verifica continuamente; injecta o menu DT assim que o professor-DT
+  // está logado e o sidebar existe. Sobrevive a qualquer reconstrução.
+  if(!window.__dtGuardInterval){
+    window.__dtGuardInterval = setInterval(function(){
+      try{
+        if(typeof curRole==='undefined' || curRole!=='professor') return;
+        if(!(window.souDT && window.souDT())) return;
+        var sb = document.getElementById('sb-content');
+        if(!sb) return;
+        if(!document.getElementById('dt-menu-sec')){
+          window.injectarMenuDT();
+        }
+      }catch(e){}
+    }, 400);
   }
-
-  // arrancar o observer (repete até o sidebar existir)
-  try{ ligarObserverDT(); }catch(e){}
-  // também tentar já e depois do login
-  try{ setTimeout(function(){ if(window.injectarMenuDT) window.injectarMenuDT(); }, 800); }catch(e){}
-  try{ setTimeout(function(){ if(window.injectarMenuDT) window.injectarMenuDT(); }, 2000); }catch(e){}
 
 })();
 </script>
