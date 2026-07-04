@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.02</span>
+    <span class="logo-ver">v6.03</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -27786,8 +27786,9 @@ function iniciarOrcamento() {
   ORCAMENTO_ANUAL.alunosEsperados    = ALUNOS.length;
   ORCAMENTO_ANUAL.valorPropinaMensal = CONFIG.valorPropina || 4500;
   // Auto-fill salaries
-  const salAcad  = PROFS.filter(p=>p.dep==='academico').reduce((s,p)=>s+(p.salario||0),0)*12;
-  const salAdmin  = PROFS.filter(p=>p.dep==='gestao').reduce((s,p)=>s+(p.salario||0),0)*12;
+  // v6.03: valor MENSAL (o display multiplica pelos meses lectivos; ×12 causava dupla contagem)
+  const salAcad  = PROFS.filter(p=>p.dep==='academico').reduce((s,p)=>s+(p.salario||0),0);
+  const salAdmin  = PROFS.filter(p=>p.dep==='gestao').reduce((s,p)=>s+(p.salario||0),0);
   if (salAcad)  ORCAMENTO_ANUAL.despesas.find(d=>d.id==='d1').valor = salAcad;
   if (salAdmin) ORCAMENTO_ANUAL.despesas.find(d=>d.id==='d2').valor = salAdmin;
   abrirEditorOrcamento();
@@ -33067,7 +33068,22 @@ window.__finV30=true;})();
   ['guardarOrcamento','submeterOrcamento','aprovarOrcamento','devolverOrcamento','desbloquearOrcamento','iniciarOrcamento'].forEach(function(fn){
     if(typeof window[fn]==='function'){ var orig=window[fn]; window[fn]=function(){ var r=orig.apply(this,arguments); try{ persist(); }catch(e){} return r; }; }
   });
-  if(typeof window.rOrcamento==='function'){ var _ro=window.rOrcamento; window.rOrcamento=function(){ try{ if(typeof CONFIG!=='undefined' && CONFIG.orcamento && !window.__orcHydrated){ window.ORCAMENTO_ANUAL=CONFIG.orcamento; window.__orcHydrated=true; } }catch(e){} return _ro.apply(this,arguments); }; }
+  // v6.03: saneador — corrige salário anual entalado num campo mensal (bug antigo ×12)
+  window.__sanearOrcamentoSalarios=function(){
+    try{
+      var o=window.ORCAMENTO_ANUAL; if(!o||!o.despesas) return;
+      var folhaMensalReal=(typeof PROFS!=='undefined'?PROFS:[]).reduce(function(s,p){return s+(p.salario||0);},0);
+      if(!folhaMensalReal) return;
+      o.despesas.forEach(function(d){
+        if(d.modo==='mensal' && /sal[aá]rio/i.test(d.label||'') && d.valor > folhaMensalReal*3){
+          // valor claramente anual (>=3× a folha mensal) → converter para mensal
+          d.valor = Math.round(d.valor/12);
+        }
+      });
+      if(typeof window.__persistOrcamento==='function') window.__persistOrcamento();
+    }catch(e){}
+  };
+  if(typeof window.rOrcamento==='function'){ var _ro=window.rOrcamento; window.rOrcamento=function(){ try{ if(typeof CONFIG!=='undefined' && CONFIG.orcamento && !window.__orcHydrated){ window.ORCAMENTO_ANUAL=CONFIG.orcamento; window.__orcHydrated=true; } window.__sanearOrcamentoSalarios(); }catch(e){} return _ro.apply(this,arguments); }; }
   // Resultado real: receita real (com bolsas) e despesas reais (sem duplicar salários)
   window.orcTotaisReais=function(){
     try{
@@ -33147,9 +33163,19 @@ window.__finV30=true;})();
     o.estado='rascunho'; o.mesesLetivos=o.mesesLetivos||10;
     o.receitaClasses=classesInfo();
     o.outrasReceitas=(o.outrasReceitas&&o.outrasReceitas.length)?o.outrasReceitas:[{id:'r'+Date.now(),label:'Matrículas / Inscrições',valor:0}];
+    // v6.03: folha mensal real (despesas de salário / meses com folha), para sugerir valor
+    var _folhaMensal = 0;
+    try{
+      var _sal = (typeof DESPESAS_REG!=='undefined'?DESPESAS_REG:[]).filter(function(d){return d.categoria==='salarios';});
+      var _mesesFolha = {};
+      _sal.forEach(function(d){ var m=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.substring(5,7)):0); if(m) _mesesFolha[m]=(_mesesFolha[m]||0)+(d.valor||0); });
+      var _keys=Object.keys(_mesesFolha);
+      if(_keys.length){ _folhaMensal = Math.round(_keys.reduce(function(s,k){return s+_mesesFolha[k];},0)/_keys.length); }
+      else { _folhaMensal = (typeof PROFS!=='undefined'?PROFS:[]).reduce(function(s,p){return s+(p.salario||0);},0); }
+    }catch(e){}
     if(!o.despesas || !o.despesas.length || !o.despesas[0].modo){
       o.despesas=[
-        {id:'d1',label:'Salários (folha)',modo:'mensal',valor:0},
+        {id:'d1',label:'Salários (folha)',modo:'mensal',valor:_folhaMensal},
         {id:'d2',label:'Renda',modo:'mensal',valor:0},
         {id:'d3',label:'Água e Electricidade',modo:'mensal',valor:0},
         {id:'d4',label:'Limpeza e Higiene',modo:'mensal',valor:0},
