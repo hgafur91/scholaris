@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.94</span>
+    <span class="logo-ver">v5.95</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5850,7 +5850,7 @@ async function loadDadosEscola() {
           bolseiro: _bolsaPct>0?'sim':'nao',
           bolsaPct: _bolsaPct,
           isencoes: {matricula: a.isento_matricula===true, inscricao: a.isento_inscricao===true},
-          faltas: [],
+          faltas: {t1:[], t2:[], t3:[]},
           notas: {t1:[], t2:[], t3:[]},
           propinas: Array.from({length:12},(_,i)=>({m:i+1,st:'npago',v:_propComBolsa,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente'})),
           hist: [], transferencias: [],
@@ -14767,6 +14767,7 @@ async function openTurma(turmaId) {
       <button class="tab on" onclick="swTurmaTab('alunos',this,'${turmaId}')"><i class="ti ti-users"></i> Alunos</button>
       <button class="tab" onclick="swTurmaTab('aproveitamento',this,'${turmaId}')"><i class="ti ti-star"></i> Aproveitamento</button>
       <button class="tab" onclick="swTurmaTab('faltas',this,'${turmaId}')"><i class="ti ti-alert-circle"></i> Faltas</button>
+      <button class="tab" onclick="swTurmaTab('profs',this,'${turmaId}')"><i class="ti ti-chalkboard"></i> Professores</button>
       <button class="tab" onclick="swTurmaTab('analise',this,'${turmaId}')"><i class="ti ti-chart-bar"></i> Análise Gráfica</button>
       <button class="tab" onclick="swTurmaTab('analitico',this,'${turmaId}')"><i class="ti ti-notebook"></i> Plano Analítico</button>
       <button class="tab" onclick="swTurmaTab('tematico',this,'${turmaId}')"><i class="ti ti-book"></i> Plano Temático</button>
@@ -24227,26 +24228,45 @@ function getFaltosos() {
 }
 
 // Register faltas in ALUNOS
-function registarFaltas(turmaId, disc, hora, data) {
+async function registarFaltas(turmaId, disc, hora, data) {
   const faltosos = getFaltosos();
   if (!faltosos.length) return;
 
-  faltosos.forEach(alunoId => {
+  const trim = window.trimestreActual ? window.trimestreActual(data) : 1;
+  const trimKey = 't' + trim;
+  const meuStaff = window._meuStaffId || null;
+  let okCount = 0;
+
+  for (const alunoId of faltosos) {
     const aluno = ALUNOS.find(a => a.id === alunoId);
-    if (!aluno) return;
-    if (!Array.isArray(aluno.faltas)) aluno.faltas = [];
-    // Avoid duplicate
-    const jaExiste = aluno.faltas.some(f =>
-      typeof f === 'object' && f.data===data && f.disc===disc && f.hora===hora
-    );
-    if (!jaExiste) {
-      aluno.faltas.push({
-        data, disc, hora, turma: turmaId,
-        tipo: 'F', justif: false
-      });
-    }
-  });
-  if (faltosos.length) toast(`${faltosos.length} falta(s) registada(s)`);
+    if (!aluno) continue;
+
+    // memória (objecto {t1,t2,t3}) para reflexo imediato na UI
+    if (!aluno.faltas || Array.isArray(aluno.faltas)) aluno.faltas = {t1:[],t2:[],t3:[]};
+    if (!aluno.faltas[trimKey]) aluno.faltas[trimKey] = [];
+    const jaMem = aluno.faltas[trimKey].some(f => f.data===data && f.disc===disc);
+    if (!jaMem) aluno.faltas[trimKey].push({ data, disc, hora, turma:turmaId, tipo:'F', justif:false });
+
+    // persistir no Supabase (tabela faltas)
+    if (aluno._dbId && window._supabase && window._escolaId && window._escolaId!=='escola_demo') {
+      try {
+        const res = await window._supabase.from('faltas').upsert({
+          escola_id: window._escolaId,
+          aluno_id: aluno._dbId,
+          turma: turmaId,
+          disciplina: disc || null,
+          data: data,
+          trimestre: trim,
+          tipo: 'F',
+          justif: false,
+          registado_por: meuStaff
+        }, { onConflict: 'escola_id,aluno_id,data,disciplina' });
+        if (!res.error) okCount++;
+        else console.warn('[chamada] falta:', res.error.message);
+      } catch(e){ console.warn('[chamada]', e && e.message); }
+    } else { okCount++; }
+  }
+  if (faltosos.length) toast(`${okCount}/${faltosos.length} falta(s) registada(s)`);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -24457,8 +24477,8 @@ function guardarObsTurma(turmaId, texto, tipo) {
 // ════════════════════════════════════════════════════════════
 const _origMaRegistar = maRegistar;
 maRegistar = function() {
-  const { dentro } = getPeriodoActual();
-  if (!dentro) { toast('Fora da janela de registo (±10 minutos do período)'); return; }
+  // v5.95: janela alargada — regista durante todo o dia da aula (não só ±10min)
+  // (Moçambique: nem todos têm telefone no momento exacto da aula)
 
   const turmaId = document.getElementById('ma-turma')?.value;
   const disc    = document.getElementById('ma-disc')?.value;
@@ -35071,6 +35091,409 @@ window.__finV30=true;})();
       window.__hookedOpenAlunoDocsV91 = true;
     }
   }catch(e){}
+})();
+</script>
+
+
+<script>
+/* v5.95 — trimestre actual por data (Moçambique: T1 jan-abr, T2 mai-ago, T3 set-dez aprox.) */
+window.trimestreActual = function(d){
+  try{
+    var m = (d ? new Date(d) : new Date()).getMonth()+1; // 1-12
+    if(m<=4) return 1;
+    if(m<=8) return 2;
+    return 3;
+  }catch(e){ return 1; }
+};
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PATCH v5.95 — DIRECTOR DE TURMA (DT)
+   - Detecta professor com cargo dir-turma-*
+   - Adiciona secção "Direcção de Turma" ao menu do professor-DT
+   - Dá acesso à vista da turma (openTurma) com permissão de DT
+   - Carrega faltas reais (alunos+profs) do Supabase
+   - DT lança faltas de alunos e professores da sua turma
+   ═══════════════════════════════════════════════════════════════ */
+(function(){
+
+  // ── Helpers de identidade DT ──────────────────────────────────
+  window.minhasTurmasDT = function(){
+    try{
+      var p = (typeof resolverMeuProf==='function') ? resolverMeuProf() : null;
+      if(!p || !p.cargos) return [];
+      return p.cargos.filter(function(c){ return c.indexOf('dir-turma-')===0; })
+                     .map(function(c){ return c.replace('dir-turma-',''); });
+    }catch(e){ return []; }
+  };
+  window.souDT = function(){ return window.minhasTurmasDT().length > 0; };
+
+  // ── Item de menu para o professor-DT ──────────────────────────
+  function injectarMenuDT(){
+    try{
+      if(curRole !== 'professor') return;
+      var turmas = window.minhasTurmasDT();
+      if(!turmas.length) return;
+      var sb = document.getElementById('sb-content');
+      if(!sb) return;
+      if(document.getElementById('dt-menu-sec')) return; // já injectado
+
+      var wrap = document.createElement('div');
+      wrap.id = 'dt-menu-sec';
+      var itens = turmas.map(function(tid){
+        return '<button class="si" onclick="abrirMinhaTurmaDT(\''+tid+'\')">'
+             + '<i class="ti ti-users-group" style="font-size:16px"></i><span>Turma '+tid+'</span></button>';
+      }).join('');
+      wrap.innerHTML = '<div class="sl">Direcção de Turma</div>'
+        + itens
+        + '<button class="si" onclick="abrirFaltasDT()"><i class="ti ti-clipboard-check" style="font-size:16px"></i><span>Lançar Faltas</span></button>';
+      sb.appendChild(wrap);
+    }catch(e){ console.warn('[DT] menu:', e && e.message); }
+  }
+
+  // ── Abrir a turma do DT (reusa openTurma) ─────────────────────
+  window.abrirMinhaTurmaDT = function(turmaId){
+    window._dtModo = true; // sinaliza que quem abre é DT
+    if(typeof openTurma==='function') openTurma(turmaId);
+    else toast('Vista da turma indisponível.');
+  };
+
+  // Hook: quando o buildSidebar corre, injectar o menu DT
+  if(typeof buildSidebar==='function' && !window.__hookedSidebarDT){
+    var _bsDT = buildSidebar;
+    buildSidebar = function(){
+      var r = _bsDT.apply(this, arguments);
+      try{ setTimeout(injectarMenuDT, 60); }catch(e){}
+      return r;
+    };
+    window.__hookedSidebarDT = true;
+  }
+  // também correr depois do login
+  try{ setTimeout(injectarMenuDT, 500); }catch(e){}
+
+})();
+</script>
+
+<script>
+/* ═══ PATCH v5.95 (parte 2) — Faltas reais + aba Professores + lançamento DT ═══ */
+(function(){
+
+  // ── Carregar faltas reais do Supabase para memória ────────────
+  window.carregarFaltasReais = async function(){
+    try{
+      if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')) return;
+      var res = await window._supabase.from('faltas').select('*').eq('escola_id', window._escolaId);
+      if(res.error){ console.warn('[DT] faltas load:', res.error.message); return; }
+      var rows = res.data || [];
+      // limpar faltas em memória (alunos)
+      (window.ALUNOS||[]).forEach(function(a){ a.faltas = {t1:[],t2:[],t3:[]}; });
+      window._FALTAS_PROF = {}; // staff_id -> array
+      rows.forEach(function(r){
+        var trim = 't'+(r.trimestre||1);
+        if(r.aluno_id){
+          var a = (window.ALUNOS||[]).find(function(x){ return x._dbId===r.aluno_id; });
+          if(a){ if(!a.faltas[trim]) a.faltas[trim]=[];
+            a.faltas[trim].push({ _id:r.id, disc:r.disciplina||'', data:r.data, tipo:r.tipo||'F', justif:!!r.justif, motivo:r.motivo||'' });
+          }
+        } else if(r.staff_id){
+          if(!window._FALTAS_PROF[r.staff_id]) window._FALTAS_PROF[r.staff_id]=[];
+          window._FALTAS_PROF[r.staff_id].push({ _id:r.id, disc:r.disciplina||'', data:r.data, tipo:r.tipo||'F', justif:!!r.justif, motivo:r.motivo||'', trimestre:r.trimestre||1 });
+        }
+      });
+      console.log('[DT] Faltas carregadas:', rows.length);
+    }catch(e){ console.warn('[DT] faltas:', e && e.message); }
+  };
+
+  // ── Persistir uma falta ───────────────────────────────────────
+  window.lancarFalta = async function(payload){
+    // payload: {aluno_id|staff_id, turma, disciplina, data, trimestre, tipo, motivo}
+    try{
+      if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')){
+        toast('Sem ligação ao servidor.'); return false;
+      }
+      var meuStaff = window._meuStaffId || null;
+      var row = Object.assign({
+        escola_id: window._escolaId,
+        trimestre: payload.trimestre || (window.trimestreActual ? window.trimestreActual(payload.data) : 1),
+        tipo: payload.tipo || 'F',
+        justif: (payload.tipo==='J'),
+        registado_por: meuStaff
+      }, payload);
+      var res = await window._supabase.from('faltas').upsert(row, {
+        onConflict: payload.aluno_id ? 'escola_id,aluno_id,data,disciplina' : 'escola_id,staff_id,data,disciplina'
+      });
+      if(res.error){ toast('Erro ao guardar falta: '+res.error.message); return false; }
+      return true;
+    }catch(e){ toast('Erro: '+(e&&e.message)); return false; }
+  };
+
+  // ── Aba "Professores" na vista da turma (via hook swTurmaTab) ──
+  window.renderTurmaTabProfs = function(turmaId){
+    var alocs = (window.ALOCACOES||[]).filter(function(a){ return a.turma===turmaId; });
+    // agrupar por professor
+    var porProf = {};
+    alocs.forEach(function(a){
+      if(!porProf[a.prof]) porProf[a.prof]=[];
+      porProf[a.prof].push(a.disc);
+    });
+    var nums = Object.keys(porProf);
+    if(!nums.length) return '<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem professores alocados a esta turma.</div>';
+    var linhas = nums.map(function(num){
+      var p = (window.PROFS||[]).find(function(x){ return x.num===num; });
+      var nome = p ? p.nome : num;
+      var faltasP = (p && p._dbId && window._FALTAS_PROF) ? (window._FALTAS_PROF[p._dbId]||[]).length : 0;
+      return '<tr>'
+        + '<td style="font-weight:700">'+nome+'</td>'
+        + '<td style="font-size:12px;color:var(--t2)">'+porProf[num].join(', ')+'</td>'
+        + '<td style="text-align:center"><span class="badge '+(faltasP>2?'ber':faltasP>0?'bwn':'bok')+'">'+faltasP+'</span></td>'
+        + '<td style="text-align:center">'+(p && window.souDT && window.souDT()
+            ? '<button class="btn btn-g btn-sm" onclick="abrirLancarFaltaProf(\''+turmaId+'\',\''+(p._dbId||'')+'\',\''+nome.replace(/'/g,"")+'\')"><i class="ti ti-plus"></i> Falta</button>'
+            : '—')+'</td>'
+      + '</tr>';
+    }).join('');
+    return '<div class="card"><div class="ch"><span class="ct">Professores da Turma</span></div>'
+      + '<div class="tw"><table><thead><tr><th>Professor</th><th>Disciplina(s)</th><th style="text-align:center">Faltas</th><th style="text-align:center">Acção</th></tr></thead>'
+      + '<tbody>'+linhas+'</tbody></table></div></div>';
+  };
+
+  // Hook swTurmaTab para adicionar caso 'profs'
+  if(typeof swTurmaTab==='function' && !window.__hookedSwTurmaTabDT){
+    var _swT = swTurmaTab;
+    window.swTurmaTab = swTurmaTab = function(tab, btn, turmaId){
+      if(tab==='profs'){
+        document.querySelectorAll('#turma-p-tabs .tab').forEach(function(t){ t.classList.remove('on'); });
+        if(btn) btn.classList.add('on');
+        var el = document.getElementById('turma-p-tab-content');
+        if(el) el.innerHTML = window.renderTurmaTabProfs(turmaId);
+        return;
+      }
+      return _swT.apply(this, arguments);
+    };
+    window.__hookedSwTurmaTabDT = true;
+  }
+
+})();
+</script>
+
+<script>
+/* ═══ PATCH v5.95 (parte 3) — UI de lançar faltas (alunos + profs) ═══ */
+(function(){
+  var TRIM = function(){ return window.trimestreActual ? window.trimestreActual() : 1; };
+  var hojeISO = function(){ return new Date().toISOString().slice(0,10); };
+
+  // ── Modal: lançar falta de ALUNO ──────────────────────────────
+  window.abrirLancarFaltaAluno = function(turmaId){
+    var alunos = (window.ALUNOS||[]).filter(function(a){ return a.turma===turmaId; });
+    if(!alunos.length){ toast('Sem alunos nesta turma.'); return; }
+    var opts = alunos.map(function(a){ return '<option value="'+a._dbId+'">'+a.num+' — '+a.nome+'</option>'; }).join('');
+    _abrirModalFalta('Falta de Aluno', 'aluno', turmaId, opts);
+  };
+
+  // ── Modal: lançar falta de PROFESSOR ──────────────────────────
+  window.abrirLancarFaltaProf = function(turmaId, staffDbId, nome){
+    var opts = '<option value="'+staffDbId+'">'+nome+'</option>';
+    _abrirModalFalta('Falta de Professor', 'prof', turmaId, opts, staffDbId);
+  };
+
+  function _abrirModalFalta(titulo, alvo, turmaId, opts, fixStaff){
+    var ex = document.getElementById('m-lancar-falta'); if(ex) ex.remove();
+    var m = document.createElement('div');
+    m.id='m-lancar-falta'; m.className='modal-ov'; m.style.display='flex';
+    m.innerHTML =
+      '<div class="modal" style="max-width:440px"><div class="mhd">'
+      + '<span class="mt"><i class="ti ti-clipboard-plus"></i> '+titulo+' — Turma '+turmaId+'</span>'
+      + '<button class="mclose" onclick="document.getElementById(\'m-lancar-falta\').remove()"><i class="ti ti-x"></i></button></div>'
+      + '<div class="mbod"><div class="fg">'
+      + '<div class="fgr full"><label class="fl">'+(alvo==='aluno'?'Aluno':'Professor')+'</label><select class="ffi" id="lf-alvo">'+opts+'</select></div>'
+      + '<div class="fgr"><label class="fl">Data</label><input class="ffi" type="date" id="lf-data" value="'+hojeISO()+'"></div>'
+      + '<div class="fgr"><label class="fl">Tipo</label><select class="ffi" id="lf-tipo"><option value="F">Falta</option><option value="J">Justificada</option><option value="A">Atraso</option></select></div>'
+      + '<div class="fgr full"><label class="fl">Disciplina / Aula (opcional)</label><input class="ffi" id="lf-disc" placeholder="ex.: Matemática"></div>'
+      + '<div class="fgr full"><label class="fl">Motivo (opcional)</label><textarea class="ffi" id="lf-motivo" rows="2" placeholder="Justificação ou observação..."></textarea></div>'
+      + '</div></div><div class="mft">'
+      + '<button class="btn btn-g" onclick="document.getElementById(\'m-lancar-falta\').remove()">Cancelar</button>'
+      + '<button class="btn btn-p" onclick="confirmarLancarFalta(\''+alvo+'\',\''+turmaId+'\')"><i class="ti ti-check"></i> Registar</button>'
+      + '</div></div>';
+    document.body.appendChild(m);
+  }
+
+  window.confirmarLancarFalta = async function(alvo, turmaId){
+    var alvoId = document.getElementById('lf-alvo').value;
+    var data   = document.getElementById('lf-data').value;
+    var tipo   = document.getElementById('lf-tipo').value;
+    var disc   = (document.getElementById('lf-disc').value||'').trim();
+    var motivo = (document.getElementById('lf-motivo').value||'').trim();
+    if(!alvoId || !data){ toast('Preencha o alvo e a data.'); return; }
+    var payload = { turma:turmaId, data:data, disciplina:disc||null, tipo:tipo, motivo:motivo||null, trimestre:TRIM() };
+    if(alvo==='aluno') payload.aluno_id = alvoId; // uuid (a._dbId)
+    else payload.staff_id = alvoId; // uuid (staff.id)
+    var ok = await window.lancarFalta(payload);
+    if(ok){
+      toast('Falta registada.');
+      document.getElementById('m-lancar-falta').remove();
+      await window.carregarFaltasReais();
+      // refrescar vista se estiver na turma
+      if(document.getElementById('v-turma-p') && document.getElementById('v-turma-p').classList.contains('on')){
+        if(typeof openTurma==='function') openTurma(turmaId);
+      }
+    }
+  };
+
+  // ── Página "Lançar Faltas" do menu DT ─────────────────────────
+  window.abrirFaltasDT = function(){
+    var turmas = window.minhasTurmasDT();
+    if(!turmas.length){ toast('Não é Director de Turma.'); return; }
+    // usar a primeira turma; se várias, deixa escolher
+    var tid = turmas[0];
+    // reusar a vista da turma na aba faltas + botões de lançar
+    window.abrirMinhaTurmaDT(tid);
+    setTimeout(function(){
+      var content = document.getElementById('turma-p-tab-content');
+      if(content){
+        // injectar barra de acções de lançamento no topo
+        var bar = document.createElement('div');
+        bar.className='card'; bar.style.marginBottom='12px';
+        bar.innerHTML='<div class="ch"><span class="ct"><i class="ti ti-clipboard-plus"></i> Lançar Faltas — Turma '+tid+'</span></div>'
+          + '<div style="display:flex;gap:8px;padding:12px;flex-wrap:wrap">'
+          + '<button class="btn btn-p btn-sm" onclick="abrirLancarFaltaAluno(\''+tid+'\')"><i class="ti ti-user"></i> Falta de Aluno</button>'
+          + '<button class="btn btn-tl btn-sm" onclick="swTurmaTab(\'profs\',null,\''+tid+'\')"><i class="ti ti-chalkboard"></i> Faltas de Professores</button>'
+          + '</div>';
+        content.parentNode.insertBefore(bar, content);
+      }
+    }, 400);
+  };
+
+  // ── Carregar faltas reais após login ──────────────────────────
+  if(!window.__dtFaltasArranque){
+    window.__dtFaltasArranque = true;
+    var _tent = 0;
+    var iv = setInterval(function(){
+      _tent++;
+      if(window._supabase && window._escolaId && window.ALUNOS && window.ALUNOS.length){
+        clearInterval(iv);
+        if(typeof window.carregarFaltasReais==='function') window.carregarFaltasReais();
+      }
+      if(_tent>40) clearInterval(iv);
+    }, 500);
+  }
+
+  // ── Botão "Lançar falta de aluno" também na aba Faltas da turma ─
+  if(typeof swTurmaTab==='function' && !window.__hookedFaltasBtnDT){
+    var _sw2 = window.swTurmaTab;
+    window.swTurmaTab = swTurmaTab = function(tab, btn, turmaId){
+      var r = _sw2.apply(this, arguments);
+      if(tab==='faltas' && window.souDT && window.souDT() && window.minhasTurmasDT().indexOf(turmaId)>=0){
+        setTimeout(function(){
+          var el = document.getElementById('turma-p-tab-content');
+          if(el && !document.getElementById('dt-add-falta-btn')){
+            var b = document.createElement('button');
+            b.id='dt-add-falta-btn'; b.className='btn btn-p btn-sm';
+            b.style.margin='0 0 12px 0';
+            b.innerHTML='<i class="ti ti-plus"></i> Lançar Falta de Aluno';
+            b.onclick=function(){ window.abrirLancarFaltaAluno(turmaId); };
+            el.insertBefore(b, el.firstChild);
+          }
+        }, 50);
+      }
+      return r;
+    };
+    window.__hookedFaltasBtnDT = true;
+  }
+
+})();
+</script>
+
+
+<script>
+/* ═══ PATCH v5.95 (parte 4) — DT/gestor edita faltas (retirar/justificar) ═══ */
+(function(){
+
+  window.podeEditarFaltas = function(){
+    return ['gestor','director','dir-pedagogico'].includes(curRole)
+           || (window.souDT && window.souDT());
+  };
+
+  // Detalhe de faltas de um aluno (modal) com opção de remover/justificar
+  window.verFaltasAluno = async function(alunoDbId, nome, turmaId){
+    if(!(window._supabase && window._escolaId)) { toast('Sem ligação.'); return; }
+    var res = await window._supabase.from('faltas').select('*')
+      .eq('escola_id', window._escolaId).eq('aluno_id', alunoDbId)
+      .order('data', {ascending:false});
+    if(res.error){ toast('Erro: '+res.error.message); return; }
+    var rows = res.data || [];
+    var pode = window.podeEditarFaltas();
+    var linhas = rows.length ? rows.map(function(f){
+      return '<tr>'
+        + '<td style="font-family:var(--fm);font-size:11px">'+f.data+'</td>'
+        + '<td>'+(f.disciplina||'—')+'</td>'
+        + '<td style="text-align:center"><span class="badge '+(f.tipo==='J'||f.justif?'bok':f.tipo==='A'?'bwn':'ber')+'">'+(f.justif?'Justif.':f.tipo==='A'?'Atraso':'Falta')+'</span></td>'
+        + (pode?('<td style="text-align:center;white-space:nowrap">'
+            + (f.justif?'':'<button class="btn btn-g btn-sm" title="Justificar" onclick="justificarFalta(\''+f.id+'\',\''+alunoDbId+'\',\''+nome.replace(/\x27/g,"")+'\',\''+turmaId+'\')"><i class="ti ti-check"></i></button> ')
+            + '<button class="btn btn-re btn-sm" title="Retirar" onclick="retirarFalta(\''+f.id+'\',\''+alunoDbId+'\',\''+nome.replace(/\x27/g,"")+'\',\''+turmaId+'\')"><i class="ti ti-trash"></i></button>'
+          + '</td>'):'')
+      + '</tr>';
+    }).join('') : '<tr><td colspan="'+(pode?4:3)+'" style="text-align:center;color:var(--t3);padding:16px">Sem faltas registadas.</td></tr>';
+
+    var ex=document.getElementById('m-faltas-aluno'); if(ex) ex.remove();
+    var m=document.createElement('div');
+    m.id='m-faltas-aluno'; m.className='modal-ov'; m.style.display='flex';
+    m.innerHTML='<div class="modal" style="max-width:520px"><div class="mhd">'
+      + '<span class="mt"><i class="ti ti-user-x"></i> Faltas — '+nome+'</span>'
+      + '<button class="mclose" onclick="document.getElementById(\'m-faltas-aluno\').remove()"><i class="ti ti-x"></i></button></div>'
+      + '<div class="mbod"><div class="tw"><table><thead><tr><th>Data</th><th>Disciplina</th><th style="text-align:center">Tipo</th>'
+      + (pode?'<th style="text-align:center">Acção</th>':'')+'</tr></thead><tbody>'+linhas+'</tbody></table></div></div>'
+      + (pode?('<div class="mft"><button class="btn btn-p btn-sm" onclick="document.getElementById(\'m-faltas-aluno\').remove();abrirLancarFaltaAluno(\''+turmaId+'\')"><i class="ti ti-plus"></i> Adicionar Falta</button></div>'):'')
+      + '</div>';
+    document.body.appendChild(m);
+  };
+
+  window.retirarFalta = async function(faltaId, alunoDbId, nome, turmaId){
+    if(!window.podeEditarFaltas()){ toast('Sem permissão.'); return; }
+    if(!confirm('Retirar esta falta? Esta acção não pode ser desfeita.')) return;
+    var res = await window._supabase.from('faltas').delete().eq('id', faltaId);
+    if(res.error){ toast('Erro: '+res.error.message); return; }
+    toast('Falta retirada.');
+    if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais();
+    window.verFaltasAluno(alunoDbId, nome, turmaId);
+  };
+
+  window.justificarFalta = async function(faltaId, alunoDbId, nome, turmaId){
+    if(!window.podeEditarFaltas()){ toast('Sem permissão.'); return; }
+    var motivo = prompt('Motivo da justificação:') || '';
+    var res = await window._supabase.from('faltas')
+      .update({ justif:true, tipo:'J', motivo:motivo }).eq('id', faltaId);
+    if(res.error){ toast('Erro: '+res.error.message); return; }
+    toast('Falta justificada.');
+    if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais();
+    window.verFaltasAluno(alunoDbId, nome, turmaId);
+  };
+
+  // Tornar a aba Faltas da turma clicável (abre detalhe do aluno)
+  if(typeof swTurmaTab==='function' && !window.__hookedFaltasClickDT){
+    var _sw = window.swTurmaTab;
+    window.swTurmaTab = swTurmaTab = function(tab, btn, turmaId){
+      var r = _sw.apply(this, arguments);
+      if(tab==='faltas'){
+        setTimeout(function(){
+          var el=document.getElementById('turma-p-tab-content');
+          if(!el) return;
+          el.querySelectorAll('table tbody tr').forEach(function(tr){
+            var nomeTd = tr.querySelector('td');
+            if(!nomeTd) return;
+            var nome = nomeTd.textContent.trim();
+            var aluno = (window.ALUNOS||[]).find(function(a){ return a.nome===nome && a.turma===turmaId; });
+            if(aluno && aluno._dbId){
+              tr.style.cursor='pointer';
+              tr.onclick=function(){ window.verFaltasAluno(aluno._dbId, aluno.nome, turmaId); };
+            }
+          });
+        }, 80);
+      }
+      return r;
+    };
+    window.__hookedFaltasClickDT = true;
+  }
+
 })();
 </script>
 
