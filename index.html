@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.93</span>
+    <span class="logo-ver">v5.94</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5773,7 +5773,7 @@ async function loadDadosEscola() {
           area: p.area || '',
           disc: p.disc || [],
           turmas: [],
-          cargos: [],
+          cargos: Array.isArray(p.cargos) ? p.cargos : [],
           nasc: p.nasc || '',
           genero: p.genero || '',
           bi: p.bi || '',
@@ -5788,6 +5788,24 @@ async function loadDadosEscola() {
         });
       });
       console.log('[Scholaris] Staff carregado:', PROFS.length);
+      // v5.94: reconstruir espelhos DT/Dir-Ciclo a partir dos cargos persistidos
+      try {
+        TURMAS.forEach(function(t){ t.dirTurma = null; });
+        if (typeof CICLOS !== 'undefined') CICLOS.forEach(function(c){ c.directorId = null; });
+        PROFS.forEach(function(p){
+          (p.cargos || []).forEach(function(c){
+            if (c.indexOf('dir-turma-') === 0) {
+              var tid = c.replace('dir-turma-', '');
+              var turma = TURMAS.find(function(t){ return t.id === tid; });
+              if (turma) turma.dirTurma = p.num;
+            } else if (c.indexOf('dir-ciclo-') === 0 && typeof CICLOS !== 'undefined') {
+              var cid = c.split('-')[2];
+              var ciclo = CICLOS.find(function(x){ return String(x.id) === String(cid); });
+              if (ciclo) ciclo.directorId = p.id;
+            }
+          });
+        });
+      } catch(e){ console.warn('[Scholaris] reconstruir cargos:', e && e.message); }
     }
 
     // 4. Carregar disciplinas
@@ -15172,6 +15190,20 @@ buildSidebar = function() {
 // ════════════════════════════════════════════════════════════
 
 // ── FIX guardarCargo — also update TURMAS.dirTurma ───────────
+// ── v5.94: persistência de cargos no Supabase ────────────────
+function __persistCargos(prof) {
+  try {
+    if (!prof || !prof._dbId) return;
+    if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+      window._supabase.from('staff')
+        .update({ cargos: prof.cargos || [] })
+        .eq('id', prof._dbId)
+        .then(function(res){
+          if (res && res.error) { try{ toast('Cargo guardado localmente, falhou no servidor: ' + (res.error.message||'erro')); }catch(e){} }
+        }, function(){ try{ toast('Cargo guardado localmente, falhou no servidor.'); }catch(e){} });
+    }
+  } catch(e){}
+}
 const _origGuardarCargo = guardarCargo;
 guardarCargo = function() {
   const profId = parseInt(document.getElementById('cargo-prof-sel')?.value);
@@ -15187,6 +15219,7 @@ guardarCargo = function() {
   p.cargos = p.cargos.filter(c => !c.startsWith(tipo));
   const cargoKey = ref ? `${tipo}-${ref}` : tipo;
   p.cargos.push(cargoKey);
+  __persistCargos(p);
 
   // ── KEY FIX: update TURMAS.dirTurma ──────────────────────
   if (tipo === 'dir-turma' && ref) {
@@ -15236,6 +15269,7 @@ removerCargo = function(profId, tipo) {
   }
 
   p.cargos = (p.cargos || []).filter(c => !c.startsWith(tipo));
+  __persistCargos(p);
   rCargos();
   toast('Cargo removido');
 };
