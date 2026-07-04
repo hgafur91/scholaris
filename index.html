@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.95</span>
+    <span class="logo-ver">v5.96</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -35129,8 +35129,8 @@ window.trimestreActual = function(d){
   };
   window.souDT = function(){ return window.minhasTurmasDT().length > 0; };
 
-  // ── Item de menu para o professor-DT ──────────────────────────
-  function injectarMenuDT(){
+  // ── Item de menu para o professor-DT (GLOBAL + à prova de timing) ──
+  window.injectarMenuDT = function(){
     try{
       if(curRole !== 'professor') return;
       var turmas = window.minhasTurmasDT();
@@ -35150,7 +35150,7 @@ window.trimestreActual = function(d){
         + '<button class="si" onclick="abrirFaltasDT()"><i class="ti ti-clipboard-check" style="font-size:16px"></i><span>Lançar Faltas</span></button>';
       sb.appendChild(wrap);
     }catch(e){ console.warn('[DT] menu:', e && e.message); }
-  }
+  };
 
   // ── Abrir a turma do DT (reusa openTurma) ─────────────────────
   window.abrirMinhaTurmaDT = function(turmaId){
@@ -35159,18 +35159,29 @@ window.trimestreActual = function(d){
     else toast('Vista da turma indisponível.');
   };
 
-  // Hook: quando o buildSidebar corre, injectar o menu DT
-  if(typeof buildSidebar==='function' && !window.__hookedSidebarDT){
-    var _bsDT = buildSidebar;
-    buildSidebar = function(){
-      var r = _bsDT.apply(this, arguments);
-      try{ setTimeout(injectarMenuDT, 60); }catch(e){}
-      return r;
-    };
-    window.__hookedSidebarDT = true;
+  // ── Reinjecção robusta: MutationObserver no sidebar ───────────
+  // (à prova de qualquer reconstrução do buildSidebar por outros patches)
+  function ligarObserverDT(){
+    var sb = document.getElementById('sb-content');
+    if(!sb) { setTimeout(ligarObserverDT, 300); return; }
+    if(window.__dtObserver) return;
+    // injecção inicial
+    window.injectarMenuDT();
+    var mo = new MutationObserver(function(){
+      // se o sidebar mudou e o menu DT desapareceu, reinjectar
+      if(curRole==='professor' && window.souDT && window.souDT() && !document.getElementById('dt-menu-sec')){
+        window.injectarMenuDT();
+      }
+    });
+    mo.observe(sb, { childList:true });
+    window.__dtObserver = mo;
   }
-  // também correr depois do login
-  try{ setTimeout(injectarMenuDT, 500); }catch(e){}
+
+  // arrancar o observer (repete até o sidebar existir)
+  try{ ligarObserverDT(); }catch(e){}
+  // também tentar já e depois do login
+  try{ setTimeout(function(){ if(window.injectarMenuDT) window.injectarMenuDT(); }, 800); }catch(e){}
+  try{ setTimeout(function(){ if(window.injectarMenuDT) window.injectarMenuDT(); }, 2000); }catch(e){}
 
 })();
 </script>
