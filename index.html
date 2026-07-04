@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.00</span>
+    <span class="logo-ver">v6.01</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -24250,17 +24250,27 @@ async function registarFaltas(turmaId, disc, hora, data) {
     // persistir no Supabase (tabela faltas)
     if (aluno._dbId && window._supabase && window._escolaId && window._escolaId!=='escola_demo') {
       try {
-        const res = await window._supabase.from('faltas').upsert({
-          escola_id: window._escolaId,
-          aluno_id: aluno._dbId,
-          turma: turmaId,
-          disciplina: disc || null,
-          data: data,
-          trimestre: trim,
-          tipo: 'F',
-          justif: false,
-          registado_por: meuStaff
-        }, { onConflict: 'escola_id,aluno_id,data,disciplina' });
+        // dedupe no cliente + insert (evita erro de on_conflict com índice de expressão)
+        let q = window._supabase.from('faltas').select('id')
+          .eq('escola_id', window._escolaId).eq('aluno_id', aluno._dbId).eq('data', data);
+        if (disc) q = q.eq('disciplina', disc); else q = q.is('disciplina', null);
+        const dup = await q;
+        let res;
+        if (!dup.error && dup.data && dup.data.length) {
+          res = { error: null }; // já registada, não duplicar
+        } else {
+          res = await window._supabase.from('faltas').insert({
+            escola_id: window._escolaId,
+            aluno_id: aluno._dbId,
+            turma: turmaId,
+            disciplina: disc || null,
+            data: data,
+            trimestre: trim,
+            tipo: 'F',
+            justif: false,
+            registado_por: meuStaff
+          });
+        }
         if (!res.error) okCount++;
         else console.warn('[chamada] falta:', res.error.message);
       } catch(e){ console.warn('[chamada]', e && e.message); }
@@ -35226,9 +35236,23 @@ window.trimestreActual = function(d){
         justif: (payload.tipo==='J'),
         registado_por: meuStaff
       }, payload);
-      var res = await window._supabase.from('faltas').upsert(row, {
-        onConflict: payload.aluno_id ? 'escola_id,aluno_id,data,disciplina' : 'escola_id,staff_id,data,disciplina'
-      });
+      // verificar duplicado no cliente (evita erro de on_conflict com índice de expressão)
+      var q = window._supabase.from('faltas').select('id')
+        .eq('escola_id', window._escolaId)
+        .eq('data', row.data);
+      if(payload.aluno_id) q = q.eq('aluno_id', payload.aluno_id);
+      else q = q.eq('staff_id', payload.staff_id);
+      if(row.disciplina) q = q.eq('disciplina', row.disciplina); else q = q.is('disciplina', null);
+      var dup = await q;
+      if(!dup.error && dup.data && dup.data.length){
+        // já existe → actualizar (justif/tipo/motivo)
+        var res = await window._supabase.from('faltas')
+          .update({ tipo: row.tipo, justif: row.justif, motivo: row.motivo||null })
+          .eq('id', dup.data[0].id);
+        if(res.error){ toast('Erro ao actualizar falta: '+res.error.message); return false; }
+        return true;
+      }
+      var res = await window._supabase.from('faltas').insert(row);
       if(res.error){ toast('Erro ao guardar falta: '+res.error.message); return false; }
       return true;
     }catch(e){ toast('Erro: '+(e&&e.message)); return false; }
