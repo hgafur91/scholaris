@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.03</span>
+    <span class="logo-ver">v6.04</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -35863,6 +35863,157 @@ window.trimestreActual = function(d){
     };
     window.__hookGoRelat = true;
   }
+})();
+</script>
+
+
+<script>
+/* ═══ PATCH v6.04 — Orçamento vs Real reconstruído (2 partes claras) ═══
+   Parte 1: Orçamento Previsto do ano (só gestor/director edita)
+   Parte 2: Estado Actual vs Orçamento + projecção de fim de ano
+   Corrige de vez o bug do salário anual entalado em campo mensal (44M). */
+(function(){
+  if(window.__finOrc604) return;
+
+  function fmtN(n){ try{ return (typeof fmt==='function')?fmt(Math.round(n||0)):Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return ''+Math.round(n||0); } }
+  function mesesLetivos(){ var o=window.ORCAMENTO_ANUAL; return (o&&o.mesesLetivos)||10; }
+  function mesActual(){ return new Date().getMonth()+1; }
+  function nomeClasse(c){ if(c==='0'||/pre/i.test(c)) return 'Pré'; return c+'ª classe'; }
+
+  // ── Saneador definitivo do salário entalado (anual em campo mensal) ──
+  window.__corrigirSalarioEntalado=function(){
+    try{
+      var o=window.ORCAMENTO_ANUAL; if(!o||!o.despesas) return;
+      var folhaMensalReal=(typeof PROFS!=='undefined'?PROFS:[]).reduce(function(s,p){return s+(p.salario||0);},0);
+      o.despesas.forEach(function(d){
+        if(d.modo==='mensal' && /sal[aá]rio|folha/i.test(d.label||'')){
+          // se o valor mensal é >= 10× a folha real, ou (sem folha real) > 1 milhão, é claramente anual
+          var suspeito = (folhaMensalReal>0 && d.valor > folhaMensalReal*6) || (folhaMensalReal===0 && d.valor > 1000000);
+          if(suspeito){ d.valor = Math.round(d.valor/12); }
+        }
+      });
+      if(typeof window.__persistOrcamento==='function') window.__persistOrcamento();
+    }catch(e){}
+  };
+
+  // ── Totais previstos (corrige mensal×meses) ──
+  function totaisPrevistos(){
+    var o=window.ORCAMENTO_ANUAL, m=mesesLetivos();
+    var recPropinas=(o.receitaClasses||[]).reduce(function(s,c){ return s+((c.alunos||0)*(c.propina||0)*m); },0);
+    var recOutras=(o.outrasReceitas||[]).reduce(function(s,r){ return s+(r.valor||0); },0);
+    var totalRec=recPropinas+recOutras;
+    var totalDesp=(o.despesas||[]).reduce(function(s,d){ return s+((d.modo==='mensal')?(d.valor||0)*m:(d.valor||0)); },0);
+    return { recPropinas:recPropinas, recOutras:recOutras, totalRec:totalRec, totalDesp:totalDesp, resultado:totalRec-totalDesp };
+  }
+
+  // ── Totais reais até hoje ──
+  function totaisReais(){
+    var recReal=(typeof ALUNOS!=='undefined'?ALUNOS:[]).reduce(function(s,a){ return s+((a.propinas||[]).filter(function(p){return p.st==='pago';}).reduce(function(ss,p){return ss+(p.v||0);},0)); },0);
+    var despReal=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG.reduce(function(s,d){return s+(d.valor||0);},0):0;
+    return { recReal:recReal, despReal:despReal, resultado:recReal-despReal };
+  }
+
+  // ── Projecção fim de ano (ritmo actual → total esperado) ──
+  function projeccao(real){
+    var mAtual=mesActual();
+    var mesesDecorridos=Math.max(1, Math.min(mAtual, mesesLetivos()));
+    var mediaRecMes=real.recReal/mesesDecorridos;
+    var mediaDespMes=real.despReal/mesesDecorridos;
+    var m=mesesLetivos();
+    return {
+      recProj: Math.round(mediaRecMes*m),
+      despProj: Math.round(mediaDespMes*m),
+      resultProj: Math.round((mediaRecMes-mediaDespMes)*m),
+      mesesDecorridos: mesesDecorridos
+    };
+  }
+
+  window.rOrcamento=function(){
+    var el=document.getElementById('orcamento-c'); if(!el) return;
+    var podeEditar=['gestor','director'].includes(curRole);
+    if(!['gestor','director','dir-pedagogico','secretario'].includes(curRole)){
+      el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return;
+    }
+    try{ if(typeof CONFIG!=='undefined' && CONFIG.orcamento && !window.__orcHydrated){ window.ORCAMENTO_ANUAL=CONFIG.orcamento; window.__orcHydrated=true; } }catch(e){}
+    window.__corrigirSalarioEntalado(); // corrige o 44M à força
+
+    var o=window.ORCAMENTO_ANUAL;
+    var t=totaisPrevistos(), r=totaisReais(), pj=projeccao(r), m=mesesLetivos();
+    var iniciado=!!o.criadoPor;
+
+    function kp(l,v,c,sub){ return '<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--t2)">'+l+'</div><div style="font-size:20px;font-weight:800;color:'+c+';margin-top:3px">'+v+'</div>'+(sub?'<div style="font-size:10px;color:var(--t3);margin-top:2px">'+sub+'</div>':'')+'</div>'; }
+    function card(title,inner,color){ return '<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"'+(color?' style="color:'+color+'"':'')+'>'+title+'</span></div><div class="cb">'+inner+'</div></div>'; }
+    function pct(real,prev){ if(!prev) return '—'; return Math.round(real/prev*100)+'%'; }
+
+    // ═══ PARTE 1 — ORÇAMENTO PREVISTO ═══
+    var recRows=(o.receitaClasses||[]).filter(function(c){return c.alunos;}).map(function(c){ return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b);font-size:13px"><span>'+nomeClasse(c.classe)+' — '+(c.alunos||0)+' alunos × '+fmtN(c.propina)+' × '+m+'m</span><span style="font-weight:700">'+fmtN((c.alunos||0)*(c.propina||0)*m)+'</span></div>'; }).join('')
+      + (o.outrasReceitas||[]).filter(function(x){return x.valor;}).map(function(x){ return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b);font-size:13px"><span>'+(x.label||'Outra receita')+'</span><span style="font-weight:700">'+fmtN(x.valor)+'</span></div>'; }).join('')
+      + '<div style="display:flex;justify-content:space-between;padding:8px 0;font-weight:800;color:var(--g)"><span>Total Receita Prevista (ano)</span><span>'+fmtN(t.totalRec)+' MZM</span></div>';
+    if(!recRows || !(o.receitaClasses||[]).some(function(c){return c.alunos;})) recRows='<div style="color:var(--t3);font-size:13px;padding:10px 0">Sem receitas previstas. Clique em Editar para preencher.</div>'+recRows;
+
+    var despRows=(o.despesas||[]).filter(function(d){return d.valor;}).map(function(d){ var anual=(d.modo==='mensal')?(d.valor||0)*m:(d.valor||0); return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b);font-size:13px"><span>'+(d.label||'')+' <span style="font-size:10px;color:var(--t2);border:1px solid var(--b);border-radius:4px;padding:0 5px">'+(d.modo==='mensal'?(fmtN(d.valor)+'/mês ×'+m):'anual')+'</span></span><span style="font-weight:700">'+fmtN(anual)+'</span></div>'; }).join('')
+      + '<div style="display:flex;justify-content:space-between;padding:8px 0;font-weight:800;color:var(--r)"><span>Total Despesa Prevista (ano)</span><span>'+fmtN(t.totalDesp)+' MZM</span></div>';
+    if(!(o.despesas||[]).some(function(d){return d.valor;})) despRows='<div style="color:var(--t3);font-size:13px;padding:10px 0">Sem despesas previstas. Clique em Editar para preencher.</div>'+despRows;
+
+    // ═══ PARTE 2 — ESTADO ACTUAL vs ORÇAMENTO ═══
+    var estadoRec = pct(r.recReal, t.totalRec);
+    var estadoDesp = pct(r.despReal, t.totalDesp);
+    var dentroDespesa = (t.totalDesp>0 && r.despReal <= t.totalDesp*(pj.mesesDecorridos/m)*1.05); // 5% tolerância
+    var vaiCumprirResultado = pj.resultProj >= t.resultado;
+
+    var estadoTable='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);font-size:11px;text-align:left"><th style="padding:6px">Item</th><th style="padding:6px;text-align:right">Previsto (ano)</th><th style="padding:6px;text-align:right">Real (até hoje)</th><th style="padding:6px;text-align:right">Execução</th><th style="padding:6px;text-align:right">Projecção (fim de ano)</th></tr></thead><tbody>'
+      +'<tr><td style="padding:6px">Receitas</td><td style="padding:6px;text-align:right">'+fmtN(t.totalRec)+'</td><td style="padding:6px;text-align:right;color:var(--g)">'+fmtN(r.recReal)+'</td><td style="padding:6px;text-align:right;font-weight:700">'+estadoRec+'</td><td style="padding:6px;text-align:right;color:var(--t2)">'+fmtN(pj.recProj)+'</td></tr>'
+      +'<tr><td style="padding:6px">Despesas</td><td style="padding:6px;text-align:right">'+fmtN(t.totalDesp)+'</td><td style="padding:6px;text-align:right;color:var(--r)">'+fmtN(r.despReal)+'</td><td style="padding:6px;text-align:right;font-weight:700">'+estadoDesp+'</td><td style="padding:6px;text-align:right;color:var(--t2)">'+fmtN(pj.despProj)+'</td></tr>'
+      +'<tr style="border-top:2px solid var(--b);font-weight:800"><td style="padding:6px">Resultado</td><td style="padding:6px;text-align:right;color:'+(t.resultado>=0?'var(--g)':'var(--r)')+'">'+(t.resultado>=0?'+':'')+fmtN(t.resultado)+'</td><td style="padding:6px;text-align:right;color:'+(r.resultado>=0?'var(--g)':'var(--r)')+'">'+(r.resultado>=0?'+':'')+fmtN(r.resultado)+'</td><td style="padding:6px;text-align:right">'+(t.resultado?Math.round(r.resultado/t.resultado*100)+'%':'—')+'</td><td style="padding:6px;text-align:right;color:'+(pj.resultProj>=0?'var(--g)':'var(--r)')+'">'+(pj.resultProj>=0?'+':'')+fmtN(pj.resultProj)+'</td></tr>'
+      +'</tbody></table></div>';
+
+    var veredicto;
+    if(!iniciado || t.totalDesp===0){
+      veredicto='<div class="ib-box ib-blue" style="margin-top:12px"><i class="ti ti-info-circle"></i> Defina o orçamento previsto (botão Editar) para comparar com o estado actual.</div>';
+    } else {
+      var msgs=[];
+      msgs.push(dentroDespesa
+        ? '<i class="ti ti-circle-check"></i> Despesas <strong>dentro do orçamento</strong> para esta altura do ano.'
+        : '<i class="ti ti-alert-triangle"></i> Despesas <strong>acima do ritmo orçamentado</strong> — atenção ao controlo de custos.');
+      msgs.push(vaiCumprirResultado
+        ? '<i class="ti ti-target"></i> Ao ritmo actual, <strong>vamos cumprir (ou superar)</strong> o resultado previsto.'
+        : '<i class="ti ti-trending-down"></i> Ao ritmo actual, <strong>ficaremos abaixo</strong> do resultado previsto em ~'+fmtN(t.resultado-pj.resultProj)+' MZM.');
+      veredicto='<div class="ib-box '+(dentroDespesa&&vaiCumprirResultado?'ib-g':'ib-am')+'" style="margin-top:12px;line-height:1.8">'+msgs.join('<br>')+'</div>';
+    }
+
+    // ── Cabeçalho + botões ──
+    var badge=(typeof estadoBadge==='function')?estadoBadge(o.estado):'';
+    var botoes='';
+    if(podeEditar){
+      if(!iniciado) botoes='<button class="btn btn-p btn-sm" onclick="iniciarOrcamento()"><i class="ti ti-plus"></i> Criar Orçamento</button>';
+      else botoes='<button class="btn btn-p btn-sm" onclick="abrirEditorOrcamento()"><i class="ti ti-edit"></i> Editar Orçamento</button>';
+    }
+
+    el.innerHTML=''
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'
+        +'<div><div style="font-size:16px;font-weight:800">Orçamento '+(o.ano||new Date().getFullYear())+'</div><div style="font-size:11px;color:var(--t2);margin-top:2px">'+(iniciado?'Criado por '+o.criadoPor:'Ainda não definido')+' · '+m+' meses lectivos</div></div>'
+        +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+badge+' '+botoes+'</div>'
+      +'</div>'
+      // KPIs
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+        +kp('Receita Prevista',fmtN(t.totalRec)+' MZM','var(--g)','ano inteiro')
+        +kp('Despesa Prevista',fmtN(t.totalDesp)+' MZM','var(--r)','ano inteiro')
+        +kp('Resultado Previsto',(t.resultado>=0?'+':'')+fmtN(t.resultado)+' MZM',t.resultado>=0?'var(--g)':'var(--r)','meta do ano')
+        +kp('Resultado Actual',(r.resultado>=0?'+':'')+fmtN(r.resultado)+' MZM',r.resultado>=0?'var(--g)':'var(--r)','até hoje')
+      +'</div>'
+      // PARTE 1
+      +'<div style="font-size:13px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 10px">1 · Orçamento Previsto para o Ano'+(podeEditar?'':' (definido pela direcção)')+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px">'
+        +card('<i class="ti ti-arrow-down-circle"></i> Receitas Previstas',recRows,'var(--g)')
+        +card('<i class="ti ti-arrow-up-circle"></i> Despesas Previstas',despRows,'var(--r)')
+      +'</div>'
+      // PARTE 2
+      +'<div style="font-size:13px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 10px">2 · Estado Actual vs Orçamento</div>'
+      +card('<i class="ti ti-chart-bar"></i> Execução e Projecção',estadoTable+veredicto);
+  };
+
+  if(typeof RENDER_MAP!=='undefined') RENDER_MAP['orcamento']=function(){ return window.rOrcamento(); };
+  window.__finOrc604=true;
 })();
 </script>
 
