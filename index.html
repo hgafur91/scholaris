@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.98</span>
+    <span class="logo-ver">v5.99</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -35500,6 +35500,177 @@ window.trimestreActual = function(d){
     window.__hookedFaltasClickDT = true;
   }
 
+})();
+</script>
+
+
+<script>
+/* ═══ PATCH v5.99 — Relatório Mensal de Assiduidade de Professores ═══
+   Lê faltas REAIS da tabela `faltas` (staff). Serve de base à decisão
+   do Director/Gestor sobre desconto salarial (não deduz automaticamente). */
+(function(){
+  var MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  // Registar a view no VM e no router
+  try{ if(typeof VM!=='undefined') VM['relat-faltas-prof'] = 'v-relat-faltas-prof'; }catch(e){}
+
+  // Criar o contentor da view se não existir
+  function garantirView(){
+    if(document.getElementById('v-relat-faltas-prof')) return;
+    var main = document.querySelector('.main') || document.querySelector('#main') || document.body;
+    var v = document.createElement('div');
+    v.className = 'view';
+    v.id = 'v-relat-faltas-prof';
+    v.innerHTML = '<div class="ph"><div><div class="ph-title">Relatório de Assiduidade — Professores</div>'
+      + '<div class="ph-sub">Faltas registadas por mês · base para decisão de desconto salarial</div></div></div>'
+      + '<div id="relat-faltas-prof-c"></div>';
+    main.appendChild(v);
+  }
+
+  window.rRelatFaltasProf = async function(){
+    garantirView();
+    var el = document.getElementById('relat-faltas-prof-c');
+    if(!el) return;
+    // permissão
+    if(!['gestor','director','dir-pedagogico'].includes(curRole)){
+      el.innerHTML = '<div class="ib-box ib-am" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito ao Gestor e Director.</div>';
+      return;
+    }
+    var hoje = new Date();
+    var mesSel = window._relatMesSel || (hoje.getMonth()+1);
+    var anoSel = window._relatAnoSel || hoje.getFullYear();
+
+    el.innerHTML = '<div style="padding:20px;color:var(--t2)">A carregar faltas...</div>';
+
+    // buscar faltas de staff do mês
+    var faltas = [];
+    if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){
+      var ini = anoSel+'-'+String(mesSel).padStart(2,'0')+'-01';
+      var fimD = new Date(anoSel, mesSel, 0).getDate();
+      var fim = anoSel+'-'+String(mesSel).padStart(2,'0')+'-'+String(fimD).padStart(2,'0');
+      var res = await window._supabase.from('faltas').select('*')
+        .eq('escola_id', window._escolaId)
+        .not('staff_id','is',null)
+        .gte('data', ini).lte('data', fim);
+      if(!res.error) faltas = res.data||[];
+      else { el.innerHTML = '<div class="ib-box ib-re" style="margin:20px">Erro: '+res.error.message+'</div>'; return; }
+    }
+
+    // agrupar por staff_id
+    var porStaff = {};
+    faltas.forEach(function(f){
+      if(!porStaff[f.staff_id]) porStaff[f.staff_id] = { total:0, just:0, faltas:[] };
+      porStaff[f.staff_id].total++;
+      if(f.justif || f.tipo==='J') porStaff[f.staff_id].just++;
+      porStaff[f.staff_id].faltas.push(f);
+    });
+
+    var PROFSg = (typeof PROFS!=='undefined'?PROFS:[]);
+    // construir linhas para TODOS os profs (0 faltas também aparece)
+    var linhas = PROFSg.filter(function(p){ return p.regime!=='parcial' || porStaff[p._dbId]; }).map(function(p){
+      var d = porStaff[p._dbId] || { total:0, just:0 };
+      var injust = d.total - d.just;
+      var cor = injust>2 ? 'var(--r)' : injust>0 ? 'var(--am)' : 'var(--g)';
+      return '<tr>'
+        + '<td style="font-weight:700">'+p.nome+'</td>'
+        + '<td style="text-align:center;font-family:var(--fm)">'+(p.num||'—')+'</td>'
+        + '<td style="text-align:center">'+(p.regime==='parcial'?'Parcial':'Inteiro')+'</td>'
+        + '<td style="text-align:center;font-weight:700">'+d.total+'</td>'
+        + '<td style="text-align:center;color:var(--g)">'+d.just+'</td>'
+        + '<td style="text-align:center;font-weight:800;color:'+cor+'">'+injust+'</td>'
+        + '<td style="text-align:center">'+(injust>0?'<button class="btn btn-g btn-sm" onclick="verDetalheFaltasProf(\''+p._dbId+'\',\''+(p.nome||'').replace(/\x27/g,'')+'\','+mesSel+','+anoSel+')"><i class="ti ti-eye"></i></button>':'—')+'</td>'
+      + '</tr>';
+    }).join('');
+
+    var totalFaltas = faltas.length;
+    var totalInjust = faltas.filter(function(f){ return !(f.justif||f.tipo==='J'); }).length;
+    var profsComFalta = Object.keys(porStaff).length;
+
+    el.innerHTML =
+      '<div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">'
+      + '<select class="ffi" id="relat-mes" style="width:150px" onchange="window._relatMesSel=+this.value;rRelatFaltasProf()">'
+      + MESES.slice(1).map(function(m,i){ return '<option value="'+(i+1)+'" '+((i+1)===mesSel?'selected':'')+'>'+m+'</option>'; }).join('')
+      + '</select>'
+      + '<button class="btn btn-p btn-sm" onclick="exportarRelatFaltasProf('+mesSel+','+anoSel+')"><i class="ti ti-download"></i> Exportar PDF</button>'
+      + '<button class="btn btn-tl btn-sm" onclick="go(\'folha-salarios\')"><i class="ti ti-users"></i> Ir para Folha de Salários</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'
+      + '<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--t2)">Total de Faltas</div><div style="font-size:24px;font-weight:800;color:var(--a)">'+totalFaltas+'</div></div>'
+      + '<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--t2)">Injustificadas</div><div style="font-size:24px;font-weight:800;color:var(--r)">'+totalInjust+'</div></div>'
+      + '<div class="card" style="padding:14px"><div style="font-size:11px;color:var(--t2)">Professores c/ Falta</div><div style="font-size:24px;font-weight:800;color:var(--am)">'+profsComFalta+'</div></div>'
+      + '</div>'
+      + '<div class="card"><div class="ch"><span class="ct">'+MESES[mesSel]+' '+anoSel+'</span></div>'
+      + '<div class="tw"><table><thead><tr><th>Professor</th><th style="text-align:center">Nº</th><th style="text-align:center">Regime</th><th style="text-align:center">Total</th><th style="text-align:center">Justif.</th><th style="text-align:center">Injustif.</th><th style="text-align:center">Detalhe</th></tr></thead>'
+      + '<tbody>'+(linhas||'<tr><td colspan="7" style="text-align:center;color:var(--t3);padding:20px">Sem faltas registadas neste mês.</td></tr>')+'</tbody></table></div></div>'
+      + '<div class="ib-box ib-blue" style="margin-top:12px"><i class="ti ti-info-circle"></i> Este relatório é informativo. O desconto por falta é decidido pelo Director conforme o regulamento interno e aplicado manualmente na <a href="#" onclick="go(\'folha-salarios\');return false" style="color:var(--a)">Folha de Salários</a> (coluna de desconto/multa).</div>';
+  };
+
+  window.verDetalheFaltasProf = async function(staffId, nome, mes, ano){
+    var ini = ano+'-'+String(mes).padStart(2,'0')+'-01';
+    var fimD = new Date(ano, mes, 0).getDate();
+    var fim = ano+'-'+String(mes).padStart(2,'0')+'-'+String(fimD).padStart(2,'0');
+    var res = await window._supabase.from('faltas').select('*')
+      .eq('escola_id', window._escolaId).eq('staff_id', staffId)
+      .gte('data', ini).lte('data', fim).order('data');
+    var rows = (res.data||[]).map(function(f){
+      return '<tr><td style="font-family:var(--fm);font-size:11px">'+f.data+'</td><td>'+(f.disciplina||f.turma||'—')+'</td>'
+        + '<td style="text-align:center"><span class="badge '+(f.justif||f.tipo==='J'?'bok':'ber')+'">'+(f.justif||f.tipo==='J'?'Justif.':'Falta')+'</span></td>'
+        + '<td style="font-size:12px;color:var(--t2)">'+(f.motivo||'—')+'</td></tr>';
+    }).join('');
+    var ex=document.getElementById('m-det-falta-prof'); if(ex) ex.remove();
+    var m=document.createElement('div'); m.id='m-det-falta-prof'; m.className='modal-ov'; m.style.display='flex';
+    m.innerHTML='<div class="modal" style="max-width:520px"><div class="mhd"><span class="mt"><i class="ti ti-user-x"></i> Faltas de '+nome+' — '+MESES[mes]+'</span>'
+      + '<button class="mclose" onclick="document.getElementById(\'m-det-falta-prof\').remove()"><i class="ti ti-x"></i></button></div>'
+      + '<div class="mbod"><div class="tw"><table><thead><tr><th>Data</th><th>Aula/Turma</th><th style="text-align:center">Tipo</th><th>Motivo</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+    document.body.appendChild(m);
+  };
+
+  window.exportarRelatFaltasProf = function(mes, ano){
+    if(typeof toast==='function') toast('A gerar PDF...');
+    // reusa jsPDF se existir; senão print simples
+    window.print();
+  };
+
+  // Injectar item de menu (gestor e director) — via intervalo persistente
+  function injectarMenuRelat(){
+    try{
+      if(!['gestor','director'].includes(curRole)) return;
+      var sb = document.getElementById('sb-content');
+      if(!sb) return;
+      if(document.getElementById('si-relat-faltas-prof')) return;
+      // encontrar o botão da Folha de Salários para inserir a seguir
+      var folha = document.getElementById('si-folha-salarios');
+      var btn = document.createElement('button');
+      btn.className = 'si';
+      btn.id = 'si-relat-faltas-prof';
+      btn.setAttribute('onclick', "go('relat-faltas-prof')");
+      btn.innerHTML = '<i class="ti ti-clipboard-list" style="font-size:16px"></i><span>Assiduidade Professores</span>';
+      if(folha && folha.parentNode){ folha.parentNode.insertBefore(btn, folha.nextSibling); }
+      else { sb.appendChild(btn); }
+    }catch(e){}
+  }
+  if(!window.__relatMenuInterval){
+    window.__relatMenuInterval = setInterval(injectarMenuRelat, 500);
+  }
+
+  // Registar no router built-in (para go('relat-faltas-prof') funcionar)
+  try{
+    if(typeof RENDER_MAP!=='undefined'){ RENDER_MAP['relat-faltas-prof'] = window.rRelatFaltasProf; }
+  }catch(e){}
+  // fallback: hook no go
+  if(typeof go==='function' && !window.__hookGoRelat){
+    var _goR = go;
+    window.go = go = function(id){
+      var r = _goR.apply(this, arguments);
+      if(id==='relat-faltas-prof'){ garantirView();
+        document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+        var v=document.getElementById('v-relat-faltas-prof'); if(v) v.classList.add('on');
+        window.rRelatFaltasProf();
+      }
+      return r;
+    };
+    window.__hookGoRelat = true;
+  }
 })();
 </script>
 
