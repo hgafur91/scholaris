@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v5.99</span>
+    <span class="logo-ver">v6.00</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -35296,11 +35296,121 @@ window.trimestreActual = function(d){
     _abrirModalFalta('Falta de Aluno', 'aluno', turmaId, opts);
   };
 
-  // ── Modal: lançar falta de PROFESSOR ──────────────────────────
-  window.abrirLancarFaltaProf = function(turmaId, staffDbId, nome){
-    var opts = '<option value="'+staffDbId+'">'+nome+'</option>';
-    _abrirModalFalta('Falta de Professor', 'prof', turmaId, opts, staffDbId);
+  // ── Extrair as aulas de um professor numa turma (do horário) ──
+  window.aulasDoProfNaTurma = function(turmaId, profNum){
+    var DIAS = {seg:'Segunda', ter:'Terça', qua:'Quarta', qui:'Quinta', sex:'Sexta'};
+    var horario = (typeof HORARIO!=='undefined' && HORARIO[turmaId]) ? HORARIO[turmaId] : [];
+    var aulas = [];
+    horario.forEach(function(linha){
+      ['seg','ter','qua','qui','sex'].forEach(function(dk){
+        var cell = linha[dk];
+        if(cell && cell.p===profNum){
+          aulas.push({ dia:dk, diaNome:DIAS[dk], hora:linha.h, disc:cell.d });
+        }
+      });
+    });
+    return aulas;
   };
+
+  // Mapa dia->offset para calcular a data da próxima ocorrência desse dia
+  var DIA_IDX = { seg:1, ter:2, qua:3, qui:4, sex:5 };
+
+  // ── Modal: lançar falta de PROFESSOR (com grid de aulas) ──────
+  window.abrirLancarFaltaProf = function(turmaId, staffDbId, nome){
+    // resolver o num do professor pelo _dbId
+    var prof = (typeof PROFS!=='undefined'?PROFS:[]).find(function(p){ return p._dbId===staffDbId; });
+    var profNum = prof ? prof.num : null;
+    var aulas = profNum ? window.aulasDoProfNaTurma(turmaId, profNum) : [];
+
+    var ex = document.getElementById('m-lancar-falta'); if(ex) ex.remove();
+    var m = document.createElement('div');
+    m.id='m-lancar-falta'; m.className='modal-ov'; m.style.display='flex';
+
+    var grid;
+    if(aulas.length){
+      grid = '<div class="fgr full"><label class="fl">Escolha a aula em que faltou</label>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:4px">'
+        + aulas.map(function(a, i){
+            return '<button type="button" class="falta-aula-btn" data-i="'+i+'" data-dia="'+a.dia+'" data-hora="'+a.hora+'" data-disc="'+a.disc+'" '
+              + 'onclick="selecionarAulaFalta(this)" '
+              + 'style="text-align:left;padding:10px;border:1.5px solid var(--b);border-radius:8px;background:var(--bg2);cursor:pointer">'
+              + '<div style="font-weight:700;font-size:13px">'+a.diaNome+'</div>'
+              + '<div style="font-size:11px;color:var(--t2)">'+a.hora+' · '+a.disc+'</div></button>';
+          }).join('')
+        + '</div></div>';
+    } else {
+      grid = '<div class="ib-box ib-am" style="margin:4px 0"><i class="ti ti-info-circle"></i> Sem aulas deste professor no horário da turma. Preencha manualmente abaixo.</div>'
+        + '<div class="fgr full"><label class="fl">Disciplina</label><input class="ffi" id="lf-disc-man" placeholder="ex.: Matemática"></div>';
+    }
+
+    m.innerHTML =
+      '<div class="modal" style="max-width:480px"><div class="mhd">'
+      + '<span class="mt"><i class="ti ti-clipboard-plus"></i> Falta de Professor — '+nome+'</span>'
+      + '<button class="mclose" onclick="document.getElementById(\'m-lancar-falta\').remove()"><i class="ti ti-x"></i></button></div>'
+      + '<div class="mbod"><div class="fg">'
+      + '<input type="hidden" id="lf-alvo" value="'+staffDbId+'">'
+      + '<input type="hidden" id="lf-dia-sel" value=""><input type="hidden" id="lf-disc-sel" value="">'
+      + grid
+      + '<div class="fgr"><label class="fl">Data</label><input class="ffi" type="date" id="lf-data" value="'+hojeISO()+'"></div>'
+      + '<div class="fgr"><label class="fl">Tipo</label><select class="ffi" id="lf-tipo"><option value="F">Falta</option><option value="J">Justificada</option><option value="A">Atraso</option></select></div>'
+      + '<div class="fgr full"><label class="fl">Motivo (opcional)</label><textarea class="ffi" id="lf-motivo" rows="2" placeholder="Justificação ou observação..."></textarea></div>'
+      + '</div></div><div class="mft">'
+      + '<button class="btn btn-g" onclick="document.getElementById(\'m-lancar-falta\').remove()">Cancelar</button>'
+      + '<button class="btn btn-p" onclick="confirmarLancarFaltaProf(\''+turmaId+'\')"><i class="ti ti-check"></i> Registar</button>'
+      + '</div></div>';
+    document.body.appendChild(m);
+  };
+
+  // Seleccionar uma aula da grid → preenche dia/disciplina e ajusta a data
+  window.selecionarAulaFalta = function(btn){
+    document.querySelectorAll('.falta-aula-btn').forEach(function(b){
+      b.style.borderColor='var(--b)'; b.style.background='var(--bg2)';
+    });
+    btn.style.borderColor='var(--a)'; btn.style.background='rgba(79,142,247,.12)';
+    var dia = btn.getAttribute('data-dia');
+    var disc = btn.getAttribute('data-disc');
+    document.getElementById('lf-dia-sel').value = dia;
+    document.getElementById('lf-disc-sel').value = disc;
+    // ajustar a data para a última ocorrência desse dia da semana (dentro da semana actual)
+    try{
+      var alvoIdx = DIA_IDX[dia];
+      var hoje = new Date();
+      var diff = hoje.getDay() - alvoIdx; // dias desde o dia-alvo
+      if(diff < 0) diff += 7; // se ainda não chegou esta semana, usa a passada
+      var d = new Date(hoje); d.setDate(hoje.getDate() - diff);
+      document.getElementById('lf-data').value = d.toISOString().slice(0,10);
+    }catch(e){}
+  };
+
+  window.confirmarLancarFaltaProf = async function(turmaId){
+    var staffId = document.getElementById('lf-alvo').value;
+    var data    = document.getElementById('lf-data').value;
+    var tipo    = document.getElementById('lf-tipo').value;
+    var motivo  = (document.getElementById('lf-motivo').value||'').trim();
+    var disc    = document.getElementById('lf-disc-sel').value
+               || (document.getElementById('lf-disc-man') ? document.getElementById('lf-disc-man').value.trim() : '');
+    if(!staffId || !data){ toast('Escolha a aula e a data.'); return; }
+    var payload = { staff_id:staffId, turma:turmaId, data:data, disciplina:disc||null,
+                    tipo:tipo, motivo:motivo||null,
+                    trimestre: window.trimestreActual ? window.trimestreActual(data) : 1 };
+    var ok = await window.lancarFalta(payload);
+    if(ok){
+      toast('Falta de professor registada.');
+      document.getElementById('m-lancar-falta').remove();
+      await window.carregarFaltasReais();
+      if(document.getElementById('v-turma-p') && document.getElementById('v-turma-p').classList.contains('on')){
+        if(typeof swTurmaTab==='function') swTurmaTab('profs', null, turmaId);
+      }
+    }
+  };
+
+  // disciplinas leccionadas na turma (das alocações) para dropdown
+  function _discOptsTurma(turmaId){
+    var alocs = (typeof ALOCACOES!=='undefined'?ALOCACOES:[]).filter(function(a){ return a.turma===turmaId; });
+    var discs = [];
+    alocs.forEach(function(a){ if(a.disc && discs.indexOf(a.disc)<0) discs.push(a.disc); });
+    return discs.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
+  }
 
   function _abrirModalFalta(titulo, alvo, turmaId, opts, fixStaff){
     var ex = document.getElementById('m-lancar-falta'); if(ex) ex.remove();
@@ -35314,7 +35424,7 @@ window.trimestreActual = function(d){
       + '<div class="fgr full"><label class="fl">'+(alvo==='aluno'?'Aluno':'Professor')+'</label><select class="ffi" id="lf-alvo">'+opts+'</select></div>'
       + '<div class="fgr"><label class="fl">Data</label><input class="ffi" type="date" id="lf-data" value="'+hojeISO()+'"></div>'
       + '<div class="fgr"><label class="fl">Tipo</label><select class="ffi" id="lf-tipo"><option value="F">Falta</option><option value="J">Justificada</option><option value="A">Atraso</option></select></div>'
-      + '<div class="fgr full"><label class="fl">Disciplina / Aula (opcional)</label><input class="ffi" id="lf-disc" placeholder="ex.: Matemática"></div>'
+      + '<div class="fgr full"><label class="fl">Disciplina (opcional)</label><select class="ffi" id="lf-disc"><option value="">— Todas / dia inteiro —</option>'+_discOptsTurma(turmaId)+'</select></div>'
       + '<div class="fgr full"><label class="fl">Motivo (opcional)</label><textarea class="ffi" id="lf-motivo" rows="2" placeholder="Justificação ou observação..."></textarea></div>'
       + '</div></div><div class="mft">'
       + '<button class="btn btn-g" onclick="document.getElementById(\'m-lancar-falta\').remove()">Cancelar</button>'
