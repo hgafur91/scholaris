@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.10</span>
+    <span class="logo-ver">v6.12</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3611,7 +3611,7 @@ function go(id){
   document.querySelectorAll('.si,.ssi').forEach(s=>s.classList.remove('on'));
   const ve=document.getElementById(VM[id]);if(ve)ve.classList.add('on');
   const se=document.getElementById('si-'+id);if(se)se.classList.add('on');
-  const _builtIn={dash:rDash,exec:rExec,config:rConfig,'curr-planos':()=>rCurrPlanos(null),turmas:rTurmas,alunos:rAl,professores:rPr,encarregados:rEncs,alocacao:rAlocacao,horario:rHorTurmas,presencas:setupPresencas,notas:rNotasTurmas,exames:rExames,propinas:rPropTurmas,despesas:rDespesas,emolumentos:rEmol,staff:()=>rStaff('todos'),'aval-dep':rAvalDep,bib:rBib,portal:rPortalAluno,'portal-prof':rPortalProf,faltas:rFaltas,'minha-aula':rMinhaAulaCompleta,'comunicados-prof':rComunicadosProf,'trabalhos-prof':rTrabalhosProfView,'desempenho-acad':rDesempenhoAcademico,'alertas-ciclo':rAlertasCiclo,'reunioes':rReunioes,'monitor-ciclo':rMonitorCiclo,'dividas':rDividasConsolidadas,'folha-salarios':rFolhaSalarios,'fluxo-caixa':rFluxoCaixa,'orcamento':rOrcamento,'previsao-receita':rPrevisaoReceita,'despesas-cat':rDespesasCategoria,'gestao-ano':rGestaoAno};
+  const _builtIn={dash:rDash,exec:rExec,config:rConfig,'curr-planos':()=>rCurrPlanos(null),turmas:rTurmas,alunos:rAl,professores:rPr,encarregados:rEncs,alocacao:rAlocacao,horario:rHorTurmas,presencas:setupPresencas,notas:rNotasTurmas,exames:rExames,propinas:rPropTurmas,despesas:rDespesas,emolumentos:rEmol,staff:()=>rStaff('todos'),'aval-dep':rAvalDep,bib:rBib,portal:rPortalAluno,'portal-prof':rPortalProf,faltas:rFaltas,'minha-aula':rMinhaAulaCompleta,'comunicados-prof':rComunicadosProf,'trabalhos-prof':rTrabalhosProfView,'desempenho-acad':rDesempenhoAcademico,'alertas-ciclo':rAlertasCiclo,'reunioes':rReunioes,'monitor-ciclo':rMonitorCiclo,'dividas':rDividasConsolidadas,'folha-salarios':rFolhaSalarios,'fluxo-caixa':rFluxoCaixa,'orcamento':rOrcamento,'previsao-receita':rPrevisaoReceita,'despesas-cat':rDespesasCategoria,'gestao-ano':()=>window.rGestaoAno()};
   const _fn=_builtIn[id]||(typeof RENDER_MAP!=='undefined'&&RENDER_MAP[id])||null;
   if(_fn)_fn(id);
 }
@@ -36913,6 +36913,166 @@ window.trimestreActual = function(d){
   }
 
   window.__finComTurmas609=true;
+})();
+</script>
+
+
+<script>
+/* ═══ FASE 2 — Fecho Seguro do Ano (apuramento + conselho + confirmação) ═══ */
+(function(){
+  if(window.__finFecho2) return;
+  function sb(){ return window._supabase; }
+  function fmtN(n){ try{ return Math.round((n||0)).toLocaleString('pt-PT'); }catch(e){ return ''+n; } }
+  var ANO_ID='b2000000-0000-0000-0000-000000000026'; // 2026 iQRA (fundação)
+
+  // Classes de fim de ciclo (exame): 4ª e 6ª
+  function ehAnoExame(classe){ var c=parseInt(classe); return c===4||c===6; }
+
+  // ── APURAMENTO: calcula o estado sugerido de cada aluno ──
+  window.apurarFechoAno=function(){
+    var minNota=(CONFIG&&CONFIG.mediaAprovacao)||10;
+    var res=[];
+    (typeof ALUNOS!=='undefined'?ALUNOS:[]).forEach(function(a){
+      var discs=(a.notas&&Array.isArray(a.notas.t1))?a.notas.t1.map(function(n){return n.d;}):[];
+      if(!discs.length){ res.push({a:a, media:null, negativas:0, discs:[], estado:'pendente', motivo:'Sem notas lançadas'}); return; }
+      var detalhes=[], negativas=0, soma=0, cont=0, incompleto=false;
+      discs.forEach(function(d){
+        var m=(typeof calcMedia==='function')?calcMedia(a.id,d):null;
+        if(m==null){ incompleto=true; }
+        else { detalhes.push({disc:d, media:m}); soma+=m; cont++; if(m<minNota) negativas++; }
+      });
+      var mediaGeral=cont?Math.round(soma/cont*10)/10:null;
+      var estado, motivo;
+      if(incompleto){ estado='pendente'; motivo='Notas incompletas'; }
+      else if(negativas===0){ estado='aprovado'; motivo='Média ≥ '+minNota+' a todas'; }
+      else if(ehAnoExame(a.classe)){ estado='aguarda_exame'; motivo=negativas+' negativa(s) · '+a.classe+'ª classe (exame de ciclo)'; }
+      else { estado='reprovado'; motivo=negativas+' negativa(s) · conselho decide recorrência'; }
+      res.push({a:a, media:mediaGeral, negativas:negativas, discs:detalhes, estado:estado, motivo:motivo});
+    });
+    return res;
+  };
+
+  window._fechoDados=null;
+  window._fechoAjustes={}; // alunoId -> estado_final ajustado pelo conselho
+
+  window.rGestaoAno=function(){
+    var el=document.getElementById('gestao-ano-c'); if(!el) return;
+    if(!['gestor','director','dir-pedagogico'].includes(curRole)){
+      el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito à direcção.</div>'; return;
+    }
+    var anoFechado = (CONFIG && CONFIG.anoEstado==='fechado');
+    var dados=window.apurarFechoAno(); window._fechoDados=dados;
+
+    var apr=dados.filter(function(d){return efEstado(d)==='aprovado';}).length;
+    var rep=dados.filter(function(d){return efEstado(d)==='reprovado';}).length;
+    var exa=dados.filter(function(d){return efEstado(d)==='aguarda_exame';}).length;
+    var pen=dados.filter(function(d){return efEstado(d)==='pendente';}).length;
+    var rec=dados.filter(function(d){return efEstado(d)==='recorrencia';}).length;
+
+    function efEstado(d){ return window._fechoAjustes[d.a.id]||d.estado; }
+    window._efEstado=efEstado;
+
+    function kpi(l,v,c){ return '<div class="card" style="padding:12px;text-align:center"><div style="font-size:24px;font-weight:800;color:'+c+'">'+v+'</div><div style="font-size:11px;color:var(--t2)">'+l+'</div></div>'; }
+    function badge(est){
+      var map={aprovado:['Aprovado','bok'],reprovado:['Reprovado','ber'],aguarda_exame:['Aguarda Exame','bwn'],pendente:['Pendente','bne'],recorrencia:['Recorrência','bam']};
+      var m=map[est]||['?','bne']; return '<span class="badge '+m[1]+'">'+m[0]+'</span>';
+    }
+
+    var linhas=dados.map(function(d){
+      var est=efEstado(d);
+      var opts=['aprovado','reprovado','recorrencia','aguarda_exame','pendente'].map(function(o){
+        var lbl={aprovado:'Aprovado',reprovado:'Reprovado',recorrencia:'Recorrência',aguarda_exame:'Aguarda Exame',pendente:'Pendente'}[o];
+        return '<option value="'+o+'"'+(o===est?' selected':'')+'>'+lbl+'</option>';
+      }).join('');
+      return '<tr style="border-bottom:1px solid var(--b)">'
+        +'<td style="padding:6px 8px"><div style="font-weight:600;font-size:13px">'+d.a.nome+'</div><div style="font-size:10px;color:var(--t3)">'+(d.a.num||'')+' · '+(d.a.classe||'?')+'ª · Turma '+(d.a.turma||'?')+'</div></td>'
+        +'<td style="padding:6px 8px;text-align:center;font-weight:700;color:'+(d.media==null?'var(--t3)':(d.media>=10?'var(--g)':'var(--r)'))+'">'+(d.media==null?'—':d.media)+'</td>'
+        +'<td style="padding:6px 8px;text-align:center">'+(d.negativas||0)+'</td>'
+        +'<td style="padding:6px 8px;font-size:11px;color:var(--t2)">'+d.motivo+'</td>'
+        +'<td style="padding:6px 8px">'+(anoFechado?badge(est):'<select class="ffi" style="padding:4px 8px;font-size:12px" onchange="window.__fechoAjustar('+d.a.id+',this.value)">'+opts+'</select>')+'</td>'
+        +'</tr>';
+    }).join('');
+
+    el.innerHTML=''
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'
+        +'<div><div style="font-size:16px;font-weight:800">Ano Lectivo '+((CONFIG&&CONFIG.anoLectivo)||2026)+'</div>'
+        +'<div style="font-size:11px;color:var(--t2);margin-top:2px">'+(anoFechado?'<span style="color:var(--r)">● FECHADO</span>':'<span style="color:var(--g)">● Activo</span>')+' · '+dados.length+' alunos</div></div>'
+        +(anoFechado
+          ? '<button class="btn btn-g btn-sm" onclick="window.__reabrirAno()"><i class="ti ti-lock-open"></i> Reabrir Ano</button>'
+          : '<button class="btn btn-p btn-sm" onclick="window.__confirmarFecho()"><i class="ti ti-lock"></i> Fechar Ano '+((CONFIG&&CONFIG.anoLectivo)||2026)+'</button>')
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">'
+        +kpi('Aprovados',apr,'var(--g)')+kpi('Reprovados',rep,'var(--r)')+kpi('Recorrência',rec,'var(--am)')+kpi('Aguarda Exame',exa,'var(--a)')+kpi('Pendentes',pen,'var(--t3)')
+      +'</div>'
+      +'<div class="ib-box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> O sistema <strong>calcula e sugere</strong> com base nas médias dos 3 trimestres. A decisão final é do <strong>conselho de turma</strong> — ajuste cada caso na coluna Estado. Nada é apagado ao fechar.</div>'
+      +'<div class="card"><div class="ch"><span class="ct">Apuramento de Fim de Ano</span><span style="font-size:11px;color:var(--t3)">Média mínima: '+((CONFIG&&CONFIG.mediaAprovacao)||10)+' valores</span></div>'
+      +'<div class="cb" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);font-size:11px;text-align:left"><th style="padding:6px 8px">Aluno</th><th style="padding:6px 8px;text-align:center">Média</th><th style="padding:6px 8px;text-align:center">Neg.</th><th style="padding:6px 8px">Situação</th><th style="padding:6px 8px">Estado (conselho)</th></tr></thead><tbody>'+linhas+'</tbody></table></div></div>';
+  };
+
+  window.__fechoAjustar=function(alunoId,estado){ window._fechoAjustes[alunoId]=estado; window.rGestaoAno(); };
+
+  window.__confirmarFecho=function(){
+    var dados=window._fechoDados||[];
+    var pendentes=dados.filter(function(d){ var e=window._efEstado(d); return e==='pendente'||e==='aguarda_exame'; });
+    var aviso=pendentes.length?('\n\nATENÇÃO: '+pendentes.length+' aluno(s) ainda em Pendente/Aguarda Exame. O fecho fica pendente para esses até haver decisão/resultado.'):'';
+    if(!confirm('Fechar o ano lectivo '+((CONFIG&&CONFIG.anoLectivo)||2026)+'?\n\n• As matrículas passam a "concluída"\n• O resultado de cada aluno fica gravado\n• As notas NÃO são apagadas (ficam para consulta)\n• O ano fica só-leitura'+aviso+'\n\nÉ reversível até inscrever alunos no ano seguinte.')) return;
+    window.__executarFecho();
+  };
+
+  window.__executarFecho=async function(){
+    var dados=window._fechoDados||[];
+    if(!(sb()&&window._escolaId)){ toast('Sem ligação ao servidor.'); return; }
+    toast('A gravar fecho...');
+    var ok=0, erros=0;
+    for(var i=0;i<dados.length;i++){
+      var d=dados[i]; var est=window._efEstado(d); var a=d.a;
+      try{
+        var row={
+          escola_id:window._escolaId, ano_lectivo_id:ANO_ID, aluno_id:a._dbId,
+          classe:String(a.classe||''), media_geral:d.media, n_negativas:d.negativas,
+          disciplinas:d.discs, estado_sugerido:d.estado, estado_final:est,
+          decidido_por:((typeof curUser!=='undefined'&&curUser)?curUser.nome:''), decidido_em:new Date().toISOString()
+        };
+        var res=await sb().from('fechos_aluno').upsert(row,{onConflict:'escola_id,ano_lectivo_id,aluno_id'});
+        if(res.error){ erros++; console.warn('[fecho]',res.error.message); }
+        else {
+          ok++;
+          // matrícula -> concluida (só para os decididos, não pendentes)
+          if(est!=='pendente' && est!=='aguarda_exame' && a._dbId){
+            var motivo=est; // aprovado/reprovado/recorrencia
+            await sb().from('matriculas').update({ estado:'concluida', data_saida:new Date().toISOString().slice(0,10), motivo_saida:motivo })
+              .eq('aluno_id',a._dbId).eq('ano_lectivo_id',ANO_ID).eq('estado','activa');
+          }
+        }
+      }catch(e){ erros++; console.warn('[fecho]',e&&e.message); }
+    }
+    // marcar ano como fechado
+    try{
+      await sb().from('anos_lectivos').update({ativo:false}).eq('id',ANO_ID);
+      CONFIG.anoEstado='fechado';
+      if(sb()&&window._escolaId) await sb().from('escolas').update({config:CONFIG}).eq('id',window._escolaId);
+    }catch(e){}
+    toast('Fecho concluído: '+ok+' gravados'+(erros?(' · '+erros+' erros'):''));
+    window.rGestaoAno();
+  };
+
+  window.__reabrirAno=async function(){
+    if(!confirm('Reabrir o ano lectivo? As matrículas voltam a "activa" e o ano fica editável.\n\nSó é possível se ainda não inscreveste alunos no ano seguinte.')) return;
+    if(!(sb()&&window._escolaId)) return;
+    try{
+      await sb().from('anos_lectivos').update({ativo:true}).eq('id',ANO_ID);
+      await sb().from('matriculas').update({estado:'activa',data_saida:null,motivo_saida:null}).eq('ano_lectivo_id',ANO_ID).eq('estado','concluida');
+      CONFIG.anoEstado='activo';
+      if(sb()&&window._escolaId) await sb().from('escolas').update({config:CONFIG}).eq('id',window._escolaId);
+      toast('Ano reaberto.');
+      window.rGestaoAno();
+    }catch(e){ toast('Erro: '+(e&&e.message)); }
+  };
+
+  // registar no RENDER_MAP
+  if(typeof RENDER_MAP!=='undefined') RENDER_MAP['gestao-ano']=window.rGestaoAno;
+
+  window.__finFecho2=true;
 })();
 </script>
 
