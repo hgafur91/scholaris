@@ -36978,19 +36978,36 @@ window.trimestreActual = function(d){
       var m=map[est]||['?','bne']; return '<span class="badge '+m[1]+'">'+m[0]+'</span>';
     }
 
-    var linhas=dados.map(function(d){
+    // Agrupar por turma (como um conselho de turma real)
+    function linhaAluno(d){
       var est=efEstado(d);
       var opts=['aprovado','reprovado','recorrencia','aguarda_exame','pendente'].map(function(o){
         var lbl={aprovado:'Aprovado',reprovado:'Reprovado',recorrencia:'Recorrência',aguarda_exame:'Aguarda Exame',pendente:'Pendente'}[o];
         return '<option value="'+o+'"'+(o===est?' selected':'')+'>'+lbl+'</option>';
       }).join('');
       return '<tr style="border-bottom:1px solid var(--b)">'
-        +'<td style="padding:6px 8px"><div style="font-weight:600;font-size:13px">'+d.a.nome+'</div><div style="font-size:10px;color:var(--t3)">'+(d.a.num||'')+' · '+(d.a.classe||'?')+'ª · Turma '+(d.a.turma||'?')+'</div></td>'
+        +'<td style="padding:6px 8px"><div style="font-weight:600;font-size:13px">'+d.a.nome+'</div><div style="font-size:10px;color:var(--t3)">'+(d.a.num||'')+'</div></td>'
         +'<td style="padding:6px 8px;text-align:center;font-weight:700;color:'+(d.media==null?'var(--t3)':(d.media>=10?'var(--g)':'var(--r)'))+'">'+(d.media==null?'—':d.media)+'</td>'
         +'<td style="padding:6px 8px;text-align:center">'+(d.negativas||0)+'</td>'
         +'<td style="padding:6px 8px;font-size:11px;color:var(--t2)">'+d.motivo+'</td>'
         +'<td style="padding:6px 8px">'+(anoFechado?badge(est):'<select class="ffi" style="padding:4px 8px;font-size:12px" onchange="window.__fechoAjustar('+d.a.id+',this.value)">'+opts+'</select>')+'</td>'
         +'</tr>';
+    }
+    var porTurma={};
+    dados.forEach(function(d){ var t=d.a.turma||'(sem turma)'; if(!porTurma[t]) porTurma[t]=[]; porTurma[t].push(d); });
+    var turmasOrd=Object.keys(porTurma).sort(function(a,b){ return a.localeCompare(b,'pt',{numeric:true}); });
+    var linhas=turmasOrd.map(function(tid){
+      var alunosT=porTurma[tid].sort(function(x,y){ return (x.a.nome||'').localeCompare(y.a.nome||''); });
+      var aprT=alunosT.filter(function(d){return efEstado(d)==='aprovado';}).length;
+      var repT=alunosT.filter(function(d){var e=efEstado(d);return e==='reprovado'||e==='recorrencia';}).length;
+      var penT=alunosT.filter(function(d){var e=efEstado(d);return e==='pendente'||e==='aguarda_exame';}).length;
+      var classe=alunosT[0]?alunosT[0].a.classe:'';
+      return '<tr style="background:var(--bg3)"><td colspan="5" style="padding:8px 10px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+        +'<span style="font-weight:800;font-size:14px"><i class="ti ti-layout-grid" style="color:var(--a)"></i> Turma '+tid+(classe?' · '+classe+'ª classe':'')+' <span style="font-size:11px;color:var(--t3);font-weight:400">('+alunosT.length+' alunos)</span></span>'
+        +'<span style="font-size:11px;display:flex;gap:10px"><span style="color:var(--g)">'+aprT+' aprov.</span><span style="color:var(--r)">'+repT+' reprov.</span><span style="color:var(--t3)">'+penT+' pend.</span></span>'
+        +'</div></td></tr>'
+        + alunosT.map(linhaAluno).join('');
     }).join('');
 
     el.innerHTML=''
