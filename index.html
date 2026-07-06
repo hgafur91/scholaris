@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.14</span>
+    <span class="logo-ver">v6.15</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5162,9 +5162,11 @@ function rPropTurmas(){
   document.getElementById('prop-sub').textContent='Seleccione uma turma';
   document.getElementById('prop-turmas').innerHTML=TURMAS.map(t=>{
     const al=ALUNOS.filter(a=>a.turma===t.id);
-    const comDiv=al.filter(a=>a.propinas.some(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida')).length;
+    const _ep=p=>(window.__estadoPropina?window.__estadoPropina(p):p.st);
+    const comDiv=al.filter(a=>a.propinas.some(p=>_ep(p)==='divida')).length;
     const totP=al.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
     const totE=al.reduce((s,a)=>s+(window.__propAnual?window.__propAnual(a):0),0);
+    const totDiv=al.reduce((s,a)=>s+a.propinas.filter(p=>_ep(p)==='divida').reduce((ss,p)=>ss+(window.__totalProp?window.__totalProp(p):(p.v||getPropinaTurma(t.id))),0),0);
     const pctT=totE>0?Math.min(100,Math.round(totP/totE*100)):0;
     return`<div class="tc" onclick="openPropTurma('${t.id}')">
       <div class="tc-num">${t.cl}${t.t}</div><div class="tc-nome">${t.curso}</div>
@@ -5172,6 +5174,7 @@ function rPropTurmas(){
       <div style="margin-top:10px">${comDiv?`<span class="badge ber" style="width:100%;justify-content:center">${comDiv} em atraso</span>`:`<span class="badge bok" style="width:100%;justify-content:center">Todos em dia</span>`}</div>
       <div style="margin-top:8px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pctT}%;background:var(--g)"></div></div>
       <div style="font-size:11px;color:var(--t2);margin-top:5px;text-align:center"><b style="color:var(--g)">${(totP/1000).toFixed(0)}K</b> <span style="color:var(--t3)">/ ${(totE/1000).toFixed(0)}K esperado</span></div>
+      <div style="font-size:11px;margin-top:4px;text-align:center;color:${totDiv>0?'var(--r)':'var(--t3)'}">${totDiv>0?`Em dívida: <b>${totDiv.toLocaleString()} MZM</b>`:'Sem dívidas'}</div>
     </div>`;
   }).join('');
 }
@@ -5196,7 +5199,7 @@ function renderPropTabela(list){
     const pago=a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
     const _ep=p=>(window.__estadoPropina?window.__estadoPropina(p):(p.st==='npago'?'divida':p.st));
     const div=a.propinas.filter(p=>_ep(p)==='divida').reduce((s,p)=>s+(p.v||getPropinaTurma(a.turma)),0);
-    const m6=a.propinas.slice(0,6).map(p=>{var e=_ep(p);var cls=e==='pago'?'bok':e==='divida'?(p.st==='multa'?'bwn':'ber'):e==='por_pagar'?'bne':e==='isento'?'bok':'bne';var lt=e==='pago'?'P':e==='divida'?(p.st==='multa'?'M':'D'):e==='por_pagar'?'○':e==='isento'?'I':'—';return`<td style="text-align:center"><span class="badge ${cls}" style="font-size:9px">${lt}</span></td>`;}).join('');
+    const m6=a.propinas.slice(0,6).map(p=>{var e=_ep(p);var cls=e==='pago'?'bok':e==='divida'?(p.st==='multa'?'bwn':'ber'):e==='isento'?'bok':'bne';var lt=e==='pago'?'P':e==='divida'?(p.st==='multa'?'M':'D'):e==='isento'?'I':'○';return`<td style="text-align:center"><span class="badge ${cls}" style="font-size:9px">${lt}</span></td>`;}).join('');
     return`<tr onclick="openPA(${a.id})"><td>${mkAv(a.nome,24,ALUNOS.indexOf(a),false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${a.num}</td><td style="font-weight:700">${a.nome}</td>${m6}<td style="font-weight:700;color:var(--g)">${pago.toLocaleString()}</td><td style="font-weight:700;color:${div?'var(--r)':'var(--g)'}">${div?'-'+div.toLocaleString():'OK'}</td><td style="white-space:nowrap"><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openPA(${a.id})">Gerir</button> ${['gestor','secretario'].includes(curRole)?`<button class="btn btn-p btn-sm" onclick="event.stopPropagation();curAlunoId=${a.id};gerarFactura()"><i class="ti ti-file-invoice"></i></button>`:''}</td></tr>`;
   }).join('');
 }
@@ -30180,18 +30183,22 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
       var cn=p.categoriaNome||(p.tipo||'Propinas'); porCat[cn]=(porCat[cn]||0)+v;
     });
     var totalAno=porFam.propina+porFam.taxa_fixa+porFam.avulso;
+    var despMes={}; var totalDespAno=0;
+    var _despArr=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG:[];
+    for(var dm=1;dm<=12;dm++){ despMes[dm]=0; }
+    _despArr.forEach(function(d){ var mm2=d.data?parseInt(String(d.data).slice(5,7),10):(d.mes||0); if(mm2>=1&&mm2<=12){ despMes[mm2]+=(+d.valor||0); totalDespAno+=(+d.valor||0); } });
     var salMes={}; var totalSalAno=0;
-    for(var sm=1;sm<=12;sm++){ salMes[sm]=(typeof window.__folhaBrutoMes==='function')?window.__folhaBrutoMes(sm,ANO):0; totalSalAno+=salMes[sm]; }
+    for(var sm=1;sm<=12;sm++){ salMes[sm]=despMes[sm]>0?despMes[sm]:((typeof window.__folhaBrutoMes==='function')?window.__folhaBrutoMes(sm,ANO):0); totalSalAno+=salMes[sm]; }
     var html='';
     html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">';
     ['propina','taxa_fixa','avulso'].forEach(function(f){
       html += '<div style="flex:1;min-width:170px;background:var(--card);border:1px solid var(--b);border-left:4px solid '+famCor[f]+';border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">'+famNome[f]+'</div><div style="font-size:20px;font-weight:800">'+money(porFam[f])+' MZM</div></div>';
     });
     html += '<div style="flex:1;min-width:170px;background:var(--a);color:#fff;border-radius:var(--rad);padding:14px"><div style="font-size:12px;opacity:.85">Receita '+ANO+'</div><div style="font-size:20px;font-weight:800">'+money(totalAno)+' MZM</div></div>';
-    html += '<div style="flex:1;min-width:170px;background:var(--card);border:1px solid var(--b);border-left:4px solid #dc2626;border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">Salários (aprovados)</div><div style="font-size:20px;font-weight:800;color:#dc2626">'+money(totalSalAno)+' MZM</div></div>';
+    html += '<div style="flex:1;min-width:170px;background:var(--card);border:1px solid var(--b);border-left:4px solid #dc2626;border-radius:var(--rad);padding:14px"><div style="font-size:12px;color:var(--t2)">Despesas Totais</div><div style="font-size:20px;font-weight:800;color:#dc2626">'+money(totalSalAno)+' MZM</div></div>';
     html += '</div>';
     html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px;margin-bottom:18px"><div style="font-weight:700;margin-bottom:12px">Balancete Mensal '+ANO+'</div>';
-    html += '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);text-align:right;border-bottom:1px solid var(--b)"><th style="padding:8px;text-align:left">Mes</th><th style="padding:8px">Propinas</th><th style="padding:8px">Taxas Fixas</th><th style="padding:8px">Avulsos</th><th style="padding:8px">Receita</th><th style="padding:8px">Salários</th><th style="padding:8px">Saldo</th></tr></thead><tbody>';
+    html += '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);text-align:right;border-bottom:1px solid var(--b)"><th style="padding:8px;text-align:left">Mes</th><th style="padding:8px">Propinas</th><th style="padding:8px">Taxas Fixas</th><th style="padding:8px">Avulsos</th><th style="padding:8px">Receita</th><th style="padding:8px">Despesas</th><th style="padding:8px">Saldo</th></tr></thead><tbody>';
     for(var m=1;m<=12;m++){ var pm=porMes[m]; var tm=pm.propina+pm.taxa_fixa+pm.avulso; var sal=salMes[m]||0; var saldo=tm-sal; html += '<tr style="border-bottom:1px solid var(--b);text-align:right"><td style="padding:7px;text-align:left">'+MM[m-1]+'</td><td style="padding:7px">'+money(pm.propina)+'</td><td style="padding:7px">'+money(pm.taxa_fixa)+'</td><td style="padding:7px">'+money(pm.avulso)+'</td><td style="padding:7px;font-weight:700">'+money(tm)+'</td><td style="padding:7px;color:#dc2626">'+(sal?'-'+money(sal):'—')+'</td><td style="padding:7px;font-weight:700;color:'+(saldo>=0?'#16a34a':'#dc2626')+'">'+money(saldo)+'</td></tr>'; }
     html += '<tr style="background:var(--bg3);font-weight:800;text-align:right"><td style="padding:8px;text-align:left">TOTAL</td><td style="padding:8px">'+money(porFam.propina)+'</td><td style="padding:8px">'+money(porFam.taxa_fixa)+'</td><td style="padding:8px">'+money(porFam.avulso)+'</td><td style="padding:8px">'+money(totalAno)+'</td><td style="padding:8px;color:#dc2626">-'+money(totalSalAno)+'</td><td style="padding:8px;color:'+((totalAno-totalSalAno)>=0?'#16a34a':'#dc2626')+'">'+money(totalAno-totalSalAno)+'</td></tr>';
     html += '</tbody></table></div></div>';
@@ -31732,9 +31739,25 @@ window.__finV21 = true;
 
 (function(){'use strict';
 if(window.__finV22)return;
-window.__estadoPropina=function(p){try{if(!p)return 'por_pagar';if(p.st==='pago')return 'pago';if(p.st==='isento')return 'isento';if(p.st==='multa')return 'divida';if(p.st!=='npago')return p.st;var hoje=new Date();var mesAtual=hoje.getMonth()+1;var dia=hoje.getDate();var dv=(typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)?(parseInt(CONFIG.diaVencimento,10)||5):5;var m=(typeof p.m!=='undefined')?p.m:0;if(m<mesAtual)return 'divida';if(m===mesAtual)return (dia>dv)?'divida':'por_pagar';return 'por_pagar';}catch(e){return 'por_pagar';}};
+window.__estadoPropina=function(p){try{if(!p)return 'futuro';
+  if(p.st==='pago')return 'pago';
+  if(p.st==='isento')return 'isento';
+  if(p.st==='multa')return 'divida';
+  var m=(typeof p.m!=='undefined')?p.m:0;
+  // Dezembro (12) nao conta: ano lectivo tem 11 mensalidades (Jan-Nov)
+  if(m>=12)return 'futuro';
+  if(p.st!=='npago')return p.st;
+  var hoje=new Date();var mesAtual=hoje.getMonth()+1;var dia=hoje.getDate();
+  var dv=(typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)?(parseInt(CONFIG.diaVencimento,10)||5):5;
+  // Mes ja passou e nao foi pago -> DIVIDA (vermelho)
+  if(m<mesAtual)return 'divida';
+  // Mes atual: so vira divida depois do dia de vencimento
+  if(m===mesAtual)return (dia>dv)?'divida':'futuro';
+  // Mes futuro -> sem valor definido (so define ao pagar ou vencer)
+  return 'futuro';
+}catch(e){return 'futuro';}};
 window.__valPropina=function(turmaId){try{return (typeof getPropinaTurma==='function')?getPropinaTurma(turmaId):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);}catch(e){return 4500;}};
-window.__totaisPropinas=function(){try{var d=0,pp=0,pg=0;(typeof ALUNOS!=='undefined'?ALUNOS:[]).forEach(function(a){var val=window.__valPropina(a.turma);(a.propinas||[]).forEach(function(p){var e=window.__estadoPropina(p);if(e==='divida'){d+=(p.v||val);}else if(e==='por_pagar'){pp+=val;}else if(e==='pago'){pg+=(p.v||val);}});});return {divida:d,porPagar:pp,pago:pg};}catch(e){return {divida:0,porPagar:0,pago:0};}};
+window.__totaisPropinas=function(){try{var d=0,pp=0,pg=0;(typeof ALUNOS!=='undefined'?ALUNOS:[]).forEach(function(a){var val=window.__valPropina(a.turma);(a.propinas||[]).forEach(function(p){var e=window.__estadoPropina(p);if(e==='divida'){d+=(p.v||val);}else if(e==='pago'){pg+=(p.v||val);}});});return {divida:d,porPagar:pp,pago:pg};}catch(e){return {divida:0,porPagar:0,pago:0};}};
 window.__backfillPagamentosSeed=function(){try{if(typeof PAGAMENTOS==='undefined')window.PAGAMENTOS=[];var ano=(typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)?CONFIG.anoLectivo:new Date().getFullYear();var seq=1;(typeof ALUNOS!=='undefined'?ALUNOS:[]).forEach(function(a){if(!a||!a.seedTeste||!a.propinas)return;a.propinas.forEach(function(p){if(!p||p.st!=='pago')return;if(p.pagamentoId)return;var mm=(typeof p.m!=='undefined')?p.m:1;var dia=(typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)?(parseInt(CONFIG.diaVencimento,10)||5):5;var mmStr=(mm<10?'0':'')+mm;var ddStr=(dia<10?'0':'')+dia;var dt=ano+'-'+mmStr+'-'+ddStr;var val=window.__valPropina(a.turma);var pid='PAGSEED-'+(a.id)+'-'+mm;var pag={id:pid,alunoId:a.id,alunoNome:a.nome,alunoNum:a.num,turmaId:a.turma,meses:[mm],valorTotal:(p.v||val),data:dt,canal:'numerario',banco:'',ref:'SEED-'+(a.num||a.id)+'-'+mm,obs:'',estado:'confirmado',seedTeste:true};PAGAMENTOS.push(pag);p.pagamentoId=pid;});});return PAGAMENTOS.filter(function(x){return x.seedTeste;}).length;}catch(e){return 'ERR '+e.message;}};
 try{if(typeof __seedTeste==='function'&&!__seedTeste.__v22){var _origSeed=__seedTeste;window.__seedTeste=function(){var r=_origSeed.apply(this,arguments);try{window.__backfillPagamentosSeed();if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}return r;};window.__seedTeste.__v22=true;}}catch(e){}
 try{if(typeof __limparTeste==='function'&&!__limparTeste.__v22){var _origLimpar=__limparTeste;window.__limparTeste=function(){try{if(typeof PAGAMENTOS!=='undefined'){for(var i=PAGAMENTOS.length-1;i>=0;i--){if(PAGAMENTOS[i]&&PAGAMENTOS[i].seedTeste)PAGAMENTOS.splice(i,1);}}}catch(e){}var r=_origLimpar.apply(this,arguments);try{if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}return r;};window.__limparTeste.__v22=true;}}catch(e){}
