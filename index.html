@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.18</span>
+    <span class="logo-ver">v6.20</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -26973,7 +26973,8 @@ function exportarRelatorioFinanceiro(tipo) {
 
   const totalPago    = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>p.st==='pago').reduce((ss,p)=>ss+(p.v||4500),0),0);
   const totalDesp    = DESPESAS_REG.reduce((s,d)=>s+d.valor,0);
-  const totalSal     = PROFS.reduce((s,p)=>s+(p.salario||0),0) * 5; // 5 months
+  const totalSalReg  = DESPESAS_REG.filter(d=>d.categoria==='salarios').reduce((s,d)=>s+(d.valor||0),0);
+  const totalSal     = totalSalReg>0 ? 0 : PROFS.reduce((s,p)=>s+(p.salario||0),0) * 5; // salarios ja em DESPESAS_REG, evitar dupla contagem
   const resultado    = totalPago - totalDesp - totalSal;
   const nDevedores   = ALUNOS.filter(a=>(a.propinas||[]).some(p=>p.st==='npago')).length;
   const totalDivida  = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((ss,p)=>ss+(window.__totalProp?window.__totalProp(p):(p.v||getPropinaTurma(a.turma))),0),0);
@@ -27404,9 +27405,7 @@ function rDespesasCategoria() {
               </div>
             </td>
             ${mesesSel.map(m => {
-              const v = c.k==='salarios'
-                ? PROFS.reduce((s,p)=>s+(p.salario||0),0)
-                : DESPESAS_REG.filter(d =>
+              const v = DESPESAS_REG.filter(d =>
                     d.categoria===c.k &&
                     parseInt(d.data?.substring(5,7))===m
                   ).reduce((s,d)=>s+d.valor,0);
@@ -27420,8 +27419,7 @@ function rDespesasCategoria() {
           <tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)">
             <td>TOTAL</td>
             ${mesesSel.map(m => {
-              const v = PROFS.reduce((s,p)=>s+(p.salario||0),0) +
-                DESPESAS_REG.filter(d=>parseInt(d.data?.substring(5,7))===m)
+              const v = DESPESAS_REG.filter(d=>parseInt(d.data?.substring(5,7))===m)
                   .reduce((s,d)=>s+d.valor,0);
               return `<td style="text-align:right;font-family:var(--fm)">${v>0?fmt(v):'—'}</td>`;
             }).join('')}
@@ -28665,7 +28663,7 @@ function exportarRelFinanceiro(ano) {
     ? (ORCAMENTO_ANUAL.outrasReceitas||[]).reduce((s,r)=>s+r.valor,0) : 0;
   const totalRec  = totalPropinas + outrasRec;
   const despCats  = typeof CAT_LABELS!=='undefined' ? Object.entries(CAT_LABELS).map(([k,l])=>{
-    const v=k==='salarios'?PROFS.reduce((s,p)=>s+(p.salario||0),0)*12:
+    const v=k==='salarios'?(DESPESAS_REG.filter(d=>d.categoria==='salarios').reduce((s,d)=>s+(d.valor||0),0)||PROFS.reduce((s,p)=>s+(p.salario||0),0)*12):
       (typeof DESPESAS_REG!=='undefined'?DESPESAS_REG.filter(d=>d.categoria===k).reduce((s,d)=>s+d.valor,0):0);
     return{k,l,v};
   }).filter(c=>c.v>0) : [];
