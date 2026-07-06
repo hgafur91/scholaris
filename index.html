@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.16</span>
+    <span class="logo-ver">v6.17</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5226,9 +5226,13 @@ function openPA(id){
   
   const _ims=document.getElementById('pa-insc-mat');if(_ims)_ims.innerHTML=rInscricaoMatricula(a);
 document.getElementById('prop-meses').innerHTML=a.propinas.map((p,mi)=>{
-    const cls=p.st==='pago'?'pago':p.st==='multa'?'multa':p.st==='isento'?'pago':p.st==='npago'?'npago':'';
-    const vc=p.st==='pago'?'var(--g)':p.st==='multa'?'var(--am)':p.st==='isento'?'var(--g)':p.st==='npago'?'var(--r)':'var(--t3)';
-    return`<div class="pm ${cls}"><div style="font-size:11px;font-weight:700;color:var(--t);margin-bottom:4px">${M[mi]}</div><div style="font-size:12px;font-weight:800;color:${vc};margin-bottom:3px">${p.v?p.v.toLocaleString()+' MZM':'—'}</div>${p.st==='multa'&&(p.multaPct||0)>0?`<div style="font-size:8px;color:var(--am);margin-bottom:2px">+${Math.round((p.v||0)*(p.multaPct||0)/100).toLocaleString()} multa (${p.multaPct}%)</div>`:''}<div style="font-size:9px;color:${vc}">${p.st==='pago'?'<i class="ti ti-check"></i> Pago':p.st==='multa'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Em atraso':p.st==='isento'?'<i class="ti ti-gift"></i> Isento':p.st==='npago'?'<i class="ti ti-x"></i> Não pago':'○ Pendente'}</div>${p.dt?`<div style="font-size:8px;color:var(--t3)">${p.dt}</div>`:''} ${['gestor','secretario','director'].includes(curRole)&&p.st==='npago'?`<div style="display:flex;gap:3px;margin-top:6px"><button style="flex:1;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(34,197,94,.15);color:var(--g);cursor:pointer" onclick="setProp(${a.id},${mi},'pago')">Pago</button>${(curRole==='gestor'||curRole==='director')?`<button style="flex:1;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(245,158,11,.15);color:var(--am);cursor:pointer" onclick="setProp(${a.id},${mi},'multa')">Multa</button>`:''}</div>`:''}</div>`;
+    const _e=(window.__estadoPropina?window.__estadoPropina(p):p.st);
+    const _multa=(p.st==='multa');
+    const cls=_e==='pago'?'pago':_e==='divida'?(_multa?'multa':'npago'):_e==='isento'?'pago':'';
+    const vc=_e==='pago'?'var(--g)':_e==='divida'?'var(--r)':_e==='isento'?'var(--g)':'var(--t3)';
+    const _lbl=_e==='pago'?'<i class="ti ti-check"></i> Pago':_e==='divida'?(_multa?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Em atraso (multa)':'<i class="ti ti-x"></i> Em atraso'):_e==='isento'?'<i class="ti ti-gift"></i> Isento':'○ Por vencer';
+    const _mostraVal=(_e==='pago'||_e==='divida'||_e==='isento');
+    return`<div class="pm ${cls}"><div style="font-size:11px;font-weight:700;color:var(--t);margin-bottom:4px">${M[mi]}</div><div style="font-size:12px;font-weight:800;color:${vc};margin-bottom:3px">${_mostraVal&&p.v?p.v.toLocaleString()+' MZM':'—'}</div>${_multa&&_e==='divida'&&(p.multaPct||0)>0?`<div style="font-size:8px;color:var(--am);margin-bottom:2px">+${Math.round((p.v||0)*(p.multaPct||0)/100).toLocaleString()} multa (${p.multaPct}%)</div>`:''}<div style="font-size:9px;color:${vc}">${_lbl}</div>${p.dt?`<div style="font-size:8px;color:var(--t3)">${p.dt}</div>`:''} ${['gestor','secretario','director'].includes(curRole)&&_e==='divida'?`<div style="display:flex;gap:3px;margin-top:6px"><button style="flex:1;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(34,197,94,.15);color:var(--g);cursor:pointer" onclick="setProp(${a.id},${mi},'pago')">Pago</button>${(curRole==='gestor'||curRole==='director')?`<button style="flex:1;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(245,158,11,.15);color:var(--am);cursor:pointer" onclick="setProp(${a.id},${mi},'multa')">Multa</button>`:''}</div>`:(['gestor','secretario','director'].includes(curRole)&&_e==='futuro'?`<div style="margin-top:6px"><button style="width:100%;font-size:9px;padding:4px;border-radius:5px;border:none;background:rgba(34,197,94,.15);color:var(--g);cursor:pointer" onclick="setProp(${a.id},${mi},'pago')">Registar pagamento</button></div>`:'')}</div>`;
   }).join('');
   document.getElementById('pa-hist').innerHTML=a.propinas.filter(p=>p.st==='pago').map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--b)"><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:9px;background:${p.st==='pago'?'rgba(34,197,94,.1)':'rgba(245,158,11,.1)'};display:flex;align-items:center;justify-content:center;font-size:14px">${p.st==='pago'?'<i class="ti ti-check"></i>':'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i>'}</div><div><div style="font-size:13px;font-weight:700">Propina ${MF[p.m-1]} 2026</div><div style="font-size:10px;color:var(--t2)">${p.dt||'—'} · ${p.ref||'Sem recibo'}</div></div></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:800;color:${p.st==='pago'?'var(--g)':'var(--am)'}">${p.v.toLocaleString()} MZM${p.st==='multa'&&(p.multaPct||0)>0?' <span style="font-size:11px;color:var(--am)">+ '+Math.round((p.v||0)*(p.multaPct||0)/100).toLocaleString()+' multa</span>':''}</span><span class="badge ${p.st==='pago'?'bok':'bwn'}">${p.st==='pago'?'Pago':'Em atraso'}</span>${['gestor','secretario'].includes(curRole)?`<button class="btn btn-g btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i></button>`:''}</div></div>`).join('')||'<div style="padding:18px;text-align:center;color:var(--t2);font-size:13px">Sem pagamentos registados.</div>';
 }
@@ -5659,6 +5663,8 @@ function _entrarNaApp(userData) {
     }[curRole] || 'dash';
     go(startView);
     toast('Bem-vindo, ' + curUser.nome + '!');
+    // Carregar despesas registadas (agora que _escolaId ja e o real)
+    try{ if(typeof window.loadDespesasFirestore==='function') window.loadDespesasFirestore(); }catch(e){}
   });
 }
 
