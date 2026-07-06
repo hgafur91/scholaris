@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.17</span>
+    <span class="logo-ver">v6.18</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -26488,14 +26488,16 @@ if (typeof DESPESAS_REG === 'undefined') window.DESPESAS_REG = [];
 // ── Helper: get month abbrev ──────────────────────────────────
 const MESES_SHORT = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const CAT_LABELS  = {
-  salarios:'Salários',material:'Material Didáctico',
-  manutencao:'Manutenção',servicos:'Serviços',
-  marketing:'Marketing',outros:'Outros'
+  salarios:'Salários',luz:'Água e Luz',agua:'Água',
+  caixa:'Caixa Semanal',manutencao:'Manutenção',
+  impostos:'Impostos',material:'Material Didáctico',
+  servicos:'Serviços',marketing:'Marketing',outros:'Outros'
 };
 const CAT_CORES = {
-  salarios:'#4f8ef7',material:'#22c55e',
-  manutencao:'#f59e0b',servicos:'#06b6d4',
-  marketing:'#7c6af7',outros:'#94a3b8'
+  salarios:'#4f8ef7',luz:'#f59e0b',agua:'#06b6d4',
+  caixa:'#22c55e',manutencao:'#f97316',
+  impostos:'#ef4444',material:'#84cc16',
+  servicos:'#14b8a6',marketing:'#7c6af7',outros:'#94a3b8'
 };
 
 // ── Propina real de um aluno (v6.02) ──────────────────────────
@@ -30462,7 +30464,7 @@ try{ window.injectBalanceteSidebar(); }catch(e){}
 (function(){'use strict';
 if(window.__finPatch4) return; window.__finPatch4=true;
 function _money(v){try{return (Number(v)||0).toLocaleString('pt-PT');}catch(e){return String(v||0);}}
-var EXTRA_CAT={material:'Material Didactico',servicos:'Servicos (Agua/Luz)',transporte:'Transporte',renda:'Renda/Aluguer',impostos:'Impostos',outro:'Outras Despesas',outros:'Outras Despesas'};
+var EXTRA_CAT={salarios:'Salarios',luz:'Agua e Luz',agua:'Agua',caixa:'Caixa Semanal',manutencao:'Manutencao',material:'Material Didactico',servicos:'Servicos (Agua/Luz)',transporte:'Transporte',renda:'Renda/Aluguer',impostos:'Impostos',outro:'Outras Despesas',outros:'Outras Despesas'};
 window.nomeCategoriaDespesa=function(id){ try{ if(typeof DESP_CAT!=='undefined'){ var c=DESP_CAT.filter(function(x){return x.id===id;})[0]; if(c) return c.nome; } }catch(e){} return EXTRA_CAT[id]||id||'Outras Despesas'; };
 window.saveDespesaFirestore=async function(d){
   try{
