@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.28</span>
+    <span class="logo-ver">v6.29</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34312,14 +34312,17 @@ window.__finV30=true;})();
     _souProfessor(){
       // Robusto: se o utilizador tem alocações carregadas, é professor com turmas.
       // (curRole pode estar vazio neste contexto; não dependemos só dele.)
-      if(!window._meuStaffId) return false;
       if(window.curRole==='gestor' || window.curRole==='director' || window.curRole==='dir-pedagogico') return false;
+      // Se o papel é explicitamente professor, é professor (mesmo que a cache esteja vazia)
+      if(window.curRole==='professor') return true;
+      if(!window._meuStaffId) return false;
       return !!(this.__alocCache && this.__alocCache.length);
     },
     async _minhasAloc(){
       // alocações do professor logado (turma_id + disciplina nome)
+      // Tabela correcta: 'atribuicoes' (professor_id, turma_id, disciplina_id)
       if(this.__alocCache) return this.__alocCache;
-      var r=await sb().from('alocacoes').select('turma_id, disciplinas(nome)').eq('professor_id', window._meuStaffId);
+      var r=await sb().from('atribuicoes').select('turma_id, disciplinas(nome)').eq('professor_id', window._meuStaffId).eq('escola_id', escola());
       this.__alocCache=((r&&r.data)||[]);
       return this.__alocCache;
     },
@@ -34420,7 +34423,12 @@ window.__finV30=true;})();
     try{ await NT._minhasAloc(); }catch(e){}
     var ts;
     try{ ts=await NT.turmas(); }catch(e){ c.innerHTML='<div class="card"><div class="cb" style="padding:20px;color:var(--r)">Erro: '+esc((e&&e.message)||e)+'</div></div>'; return; }
-    if(!ts.length){ c.innerHTML='<div class="card"><div class="cb" style="padding:30px;text-align:center;color:var(--t2)">Sem turmas.</div></div>'; return; }
+    if(!ts.length){
+      var msgVazia = NT._souProfessor()
+        ? '<div class="cb" style="padding:30px;text-align:center;color:var(--t2)"><i class="ti ti-info-circle" style="font-size:28px;color:var(--a);display:block;margin-bottom:10px"></i>Não tem turmas atribuídas.<br><span style="font-size:12px">Contacte a Direcção para lhe atribuir turmas e disciplinas.</span></div>'
+        : '<div class="cb" style="padding:30px;text-align:center;color:var(--t2)">Sem turmas.</div>';
+      c.innerHTML='<div class="card">'+msgVazia+'</div>'; return;
+    }
     c.innerHTML='<div style="font-size:15px;font-weight:700;color:var(--t);margin-bottom:12px">Escolhe a turma</div>'
       +'<div class="tc-grid">'+ts.map(function(t){
         return '<div class="card" style="cursor:pointer" onclick="ntAbrirTurma(\''+t.id+'\',\''+esc(t.nome)+'\')"><div class="cb" style="padding:18px;text-align:center">'
