@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.21</span>
+    <span class="logo-ver">v6.22</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5947,7 +5947,12 @@ async function loadDadosEscola() {
           if (al) {
             pag.alunoId = al.id;
             meses.forEach(mi => {
-              const p = al.propinas && al.propinas.find(x => x.m === mi);
+              // A app grava 'meses' como INDICE do array (base-0: Jan=0).
+              // As propinas tem campo m em base-1 (Jan=1). Converter: m = indice+1.
+              // Aceitar ambos os formatos por seguranca (dados historicos).
+              let p = al.propinas && al.propinas.find(x => x.m === (mi+1));
+              if (!p) p = al.propinas && al.propinas.find(x => x.m === mi);
+              if (!p && al.propinas && al.propinas[mi]) p = al.propinas[mi];
               if (p) {
                 p.st = 'pago';
                 p.pagamentoId = pag.id;
