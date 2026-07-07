@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.29</span>
+    <span class="logo-ver">v6.30</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -4391,7 +4391,7 @@ function openAluno(id){
     const infoEl=document.getElementById('ap-hor-info');if(infoEl)infoEl.textContent=rows.length?(tot+' aulas/semana · Turma '+a.turma):'Sem horário definido';
     const gEl=document.getElementById('ap-hor-g');if(!gEl)return;
     if(!rows.length){gEl.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--t3);padding:20px;font-size:12px">Horário ainda não gerado para esta turma.</div>';return;}
-    gEl.innerHTML=['','Seg','Ter','Qua','Qui','Sex'].map(dh=>'<div class="hh">'+dh+'</div>').join('')+rows.map(row=>'<div class="hhr">'+row.h+'</div>'+dias.map(dd=>{const cell=row[dd];return cell?'<div class="hc oc" title="'+cell.d+' — '+(cell.p||'Sem professor')+'"><div style="font-size:11px;font-weight:700;color:var(--a)">'+cell.d+'</div><div style="font-size:9px;color:var(--t3)">'+(cell.p?((PROFS.find(p=>p.num===cell.p)||{nome:cell.p}).nome.split(' ')[0]):'—')+'</div></div>':'<div class="hc vz"></div>'}).join('')).join('');
+    gEl.innerHTML=['','Seg','Ter','Qua','Qui','Sex'].map(dh=>'<div class="hh">'+dh+'</div>').join('')+rows.map(row=>'<div class="hhr">'+row.h+'</div>'+dias.map(dd=>{const cell=row[dd];return cell?'<div class="hc oc" title="'+cell.d+' — '+(cell.p||'Sem professor')+'"><div style="font-size:11px;font-weight:700;color:var(--a)">'+cell.d+'</div><div style="font-size:9px;color:var(--t3)">'+nomeProfHorario(cell.p)+'</div></div>':'<div class="hc vz"></div>'}).join('')).join('');
   })();
   rIR('ap-td-r',[['Director Turma','Prof. António Cuna'],['Disciplinas',a.notas.t1.length+''],['Inscrições','Activas']]);
   // Financeiro
@@ -4933,6 +4933,25 @@ function rHorarioGrelha(turmaFiltro) {
     </div>`:''}`;
 }
 
+// Helper robusto: resolve o nome (1º nome) do professor a partir do codigo guardado no horario.
+// O codigo pode ser num, id, _dbId ou ate o proprio nome. Tenta varios campos.
+function nomeProfHorario(codigo){
+  if(!codigo) return '—';
+  try{
+    var arr = (typeof PROFS!=='undefined' && Array.isArray(PROFS)) ? PROFS : [];
+    var p = arr.find(function(x){
+      return x && (x.num===codigo || x.id===codigo || x._dbId===codigo ||
+                   String(x.id)===String(codigo) || String(x._dbId)===String(codigo) ||
+                   String(x.num)===String(codigo));
+    });
+    if(p && p.nome) return String(p.nome).split(' ')[0];
+    // fallback: se o codigo ja parece um nome (tem espaco ou letras), mostra o 1o nome
+    if(/[a-zA-Zà-úÀ-Ú]/.test(String(codigo)) && !/^(PRF|PROF)/i.test(String(codigo))){
+      return String(codigo).split(' ')[0];
+    }
+  }catch(e){}
+  return String(codigo);
+}
 function openHorTurma(tid){
   const t=TURMAS.find(x=>x.id===tid);
   document.getElementById('hor-s1').style.display='none';
@@ -4947,7 +4966,7 @@ function openHorTurma(tid){
   const dias=['seg','ter','qua','qui','sex'];
   document.getElementById('hor-g').innerHTML=
     ['','Seg','Ter','Qua','Qui','Sex'].map(d=>`<div class="hh">${d}</div>`).join('')+
-    rows.map(row=>`<div class="hhr">${row.h}</div>${dias.map(d=>{const cell=row[d];return cell?`<div class="hc oc" title="${cell.d} — ${cell.p||'Sem professor'}"><div style="font-size:11px;font-weight:700;color:var(--a)">${cell.d}</div><div style="font-size:9px;color:var(--t3)">${cell.p?((PROFS.find(p=>p.num===cell.p)||{nome:cell.p}).nome.split(' ')[0]):'—'}</div></div>`:`<div class="hc vz"></div>`}).join('')}`).join('');
+    rows.map(row=>`<div class="hhr">${row.h}</div>${dias.map(d=>{const cell=row[d];return cell?`<div class="hc oc" title="${cell.d} — ${cell.p||'Sem professor'}"><div style="font-size:11px;font-weight:700;color:var(--a)">${cell.d}</div><div style="font-size:9px;color:var(--t3)">${nomeProfHorario(cell.p)}</div></div>`:`<div class="hc vz"></div>`}).join('')}`).join('');
 }
 function horBack(){document.getElementById('hor-s1').style.display='block';document.getElementById('hor-s2').style.display='none';document.getElementById('hor-back').style.display='none';document.getElementById('btn-add-aula').style.display='none'}
 
@@ -34995,7 +35014,91 @@ window.__finV30=true;})();
         corpo='<div style="font-size:11px;color:var(--t3);margin-bottom:8px">Cada disciplina = média dos 3 trimestres. Média Anual = média das disciplinas.</div><div class="tw"><table><thead><tr><th>Nº</th><th style="text-align:left">Aluno</th>'+ths+'<th style="text-align:center">Média</th><th style="text-align:center">Situação</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
       }
     }
-    el.innerHTML='<div class="card"><div class="ch"><span class="ct">Aproveitamento — '+esc(S.nome)+'</span></div><div class="cb">'+bar+corpo+'</div></div>';
+    el.innerHTML='<div class="card"><div class="ch"><span class="ct">Aproveitamento — '+esc(S.nome)+'</span></div><div class="cb">'+aprovResumoGraficos(S)+bar+corpo+'</div></div>';
+  }
+
+  // Resumo com media geral da turma + graficos (SVG puro, sem bibliotecas)
+  function aprovResumoGraficos(S){
+    try{
+      var alunos=S.alunos||[], dados=S.dados||[];
+      // Media anual de cada aluno = media das medias por disciplina (media dos 3 trimestres)
+      var m1=mapaTri(dados,1), m2=mapaTri(dados,2), m3=mapaTri(dados,3);
+      var discs=discsDe(dados,null);
+      if(!discs.length) return ''; // sem notas, sem resumo
+      var mediasAlunos=[]; // media anual por aluno
+      var somaDisc={}, contDisc={}; // p/ media por disciplina (turma)
+      discs.forEach(function(d){ somaDisc[d]=0; contDisc[d]=0; });
+      alunos.forEach(function(a){
+        var md=[];
+        discs.forEach(function(d){
+          var vs=[m1[a.id]&&m1[a.id][d], m2[a.id]&&m2[a.id][d], m3[a.id]&&m3[a.id][d]].filter(function(v){return v!=null;});
+          if(vs.length){ var mdisc=vs.reduce(function(s,v){return s+v;},0)/vs.length; md.push(mdisc); somaDisc[d]+=mdisc; contDisc[d]++; }
+        });
+        if(md.length){ mediasAlunos.push(md.reduce(function(s,v){return s+v;},0)/md.length); }
+      });
+      if(!mediasAlunos.length) return '';
+      var mediaTurma = mediasAlunos.reduce(function(s,v){return s+v;},0)/mediasAlunos.length;
+      var aprovados = mediasAlunos.filter(function(v){return v>=10;}).length;
+      var reprovados = mediasAlunos.length - aprovados;
+      var pctAprov = Math.round(aprovados/mediasAlunos.length*100);
+      var melhor = Math.max.apply(null, mediasAlunos);
+      var pior = Math.min.apply(null, mediasAlunos);
+
+      // Cartoes de KPI
+      var corMedia = mediaTurma>=14?'#22c55e':(mediaTurma>=10?'#f59e0b':'#ef4444');
+      var kpis='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+
+        kpiCard('Média Geral da Turma', mediaTurma.toFixed(1)+' val', corMedia, 'ti-chart-bar')+
+        kpiCard('Aprovados', aprovados+' <span style="font-size:12px;color:var(--t3)">('+pctAprov+'%)</span>', '#22c55e', 'ti-circle-check')+
+        kpiCard('Reprovados', ''+reprovados, reprovados>0?'#ef4444':'var(--t2)', 'ti-circle-x')+
+        kpiCard('Melhor / Pior', melhor.toFixed(1)+' / '+pior.toFixed(1), 'var(--a)', 'ti-arrows-vertical')+
+        '</div>';
+
+      // Grafico 1: media por disciplina (barras horizontais)
+      var mediasDisc = discs.map(function(d){ return {nome:d, media: contDisc[d]?somaDisc[d]/contDisc[d]:0}; })
+                            .sort(function(a,b){return b.media-a.media;});
+      var g1='<div style="font-weight:700;font-size:13px;margin:6px 0 10px;color:var(--t)">Média por disciplina</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:18px">';
+      mediasDisc.forEach(function(x){
+        var pct=Math.min(100, x.media/20*100);
+        var cor=x.media>=14?'#22c55e':(x.media>=10?'#f59e0b':'#ef4444');
+        g1+='<div style="display:flex;align-items:center;gap:10px">'+
+          '<div style="width:110px;font-size:12px;color:var(--t2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(x.nome)+'</div>'+
+          '<div style="flex:1;background:var(--bg3);border-radius:6px;height:20px;position:relative;overflow:hidden">'+
+            '<div style="width:'+pct+'%;height:100%;background:'+cor+';border-radius:6px;transition:width .4s"></div>'+
+          '</div>'+
+          '<div style="width:44px;font-size:12px;font-weight:700;color:'+cor+'">'+x.media.toFixed(1)+'</div>'+
+        '</div>';
+      });
+      g1+='</div>';
+
+      // Grafico 2: distribuicao de aproveitamento (faixas de nota)
+      var faixas=[
+        {lbl:'0-9 (Reprov.)', min:0, max:9.99, cor:'#ef4444'},
+        {lbl:'10-13 (Suf.)', min:10, max:13.99, cor:'#f59e0b'},
+        {lbl:'14-16 (Bom)', min:14, max:16.99, cor:'#3b82f6'},
+        {lbl:'17-20 (M.Bom)', min:17, max:20, cor:'#22c55e'}
+      ];
+      faixas.forEach(function(f){ f.n = mediasAlunos.filter(function(v){return v>=f.min && v<=f.max;}).length; });
+      var maxN = Math.max.apply(null, faixas.map(function(f){return f.n;}))||1;
+      var g2='<div style="font-weight:700;font-size:13px;margin:6px 0 10px;color:var(--t)">Distribuição dos alunos por faixa</div>'+
+        '<div style="display:flex;align-items:flex-end;gap:14px;height:120px;padding:0 8px 4px">';
+      faixas.forEach(function(f){
+        var h=Math.round(f.n/maxN*95);
+        g2+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">'+
+          '<div style="font-size:13px;font-weight:800;color:'+f.cor+';margin-bottom:4px">'+f.n+'</div>'+
+          '<div style="width:100%;max-width:60px;height:'+h+'%;min-height:4px;background:'+f.cor+';border-radius:6px 6px 0 0"></div>'+
+          '<div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center">'+f.lbl+'</div>'+
+        '</div>';
+      });
+      g2+='</div>';
+
+      return '<div style="border:1px solid var(--b);border-radius:12px;padding:16px;margin-bottom:16px;background:var(--card2)">'+kpis+
+        '<div style="display:flex;gap:24px;flex-wrap:wrap"><div style="flex:1;min-width:260px">'+g1+'</div><div style="flex:1;min-width:260px">'+g2+'</div></div></div>';
+    }catch(e){ return ''; }
+  }
+  function kpiCard(label, valor, cor, icon){
+    return '<div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--b);border-radius:10px;padding:12px 14px">'+
+      '<div style="font-size:11px;color:var(--t2);margin-bottom:4px"><i class="ti '+icon+'" style="color:'+cor+'"></i> '+label+'</div>'+
+      '<div style="font-size:22px;font-weight:800;color:'+cor+'">'+valor+'</div></div>';
   }
   window.aprovSet=function(modo,tri){ var S=window._aprov; if(!S)return; S.modo=modo; if(tri)S.tri=tri; aprovDraw(); };
 
@@ -35154,9 +35257,80 @@ window.__finV30=true;})();
         +'<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;color:var(--t2);font-size:11px;border-bottom:1px solid var(--b)"><th style="padding:8px">Disciplina</th><th style="padding:8px;text-align:center">AS1</th><th style="padding:8px;text-align:center">AS2</th><th style="padding:8px;text-align:center">M</th><th style="padding:8px;text-align:center">AP</th><th style="padding:8px;text-align:center">M(T)</th></tr></thead><tbody>'+rows+'</tbody>'
         +'<tfoot><tr style="border-top:2px solid var(--b)"><td style="padding:8px;font-weight:800" colspan="5">Média do Trimestre</td><td style="padding:8px;text-align:center;font-weight:800;color:'+(media==null?'var(--t3)':(media>=10?'#22c55e':'#ef4444'))+'">'+(media==null?'—':media.toFixed(1))+'</td></tr></tfoot></table></div></div>';
     }
-    host.innerHTML=tabs+corpo;
+    host.innerHTML=tabs+alunoResumoGraficos(S)+corpo;
   }
-  window.alNotasSet=function(t){ alNotasDraw(t); };
+
+  // Resumo do desempenho do proprio aluno (media geral + graficos)
+  function alunoResumoGraficos(S){
+    try{
+      var dados=S.dados||[]; if(!dados.length) return '';
+      var discs=[]; dados.forEach(function(n){ if(discs.indexOf(n.disciplina)<0) discs.push(n.disciplina); }); discs.sort();
+      if(!discs.length) return '';
+      // media final por disciplina (media das M(T) dos 3 trimestres)
+      var byd={}; dados.forEach(function(n){ (byd[n.disciplina]=byd[n.disciplina]||{})[n.trimestre]=mtOf(n); });
+      var mediasDisc=[]; var finais=[];
+      discs.forEach(function(d){
+        var vs=[byd[d][1],byd[d][2],byd[d][3]].filter(function(x){return x!=null;});
+        if(vs.length){ var f=vs.reduce(function(s,x){return s+x;},0)/vs.length; mediasDisc.push({nome:d,media:f}); finais.push(f); }
+      });
+      if(!finais.length) return '';
+      var mediaGeral = finais.reduce(function(s,x){return s+x;},0)/finais.length;
+      var aprovado = mediaGeral>=10;
+      // media por trimestre (evolucao)
+      var triMed=[1,2,3].map(function(t){
+        var vs=[]; discs.forEach(function(d){ if(byd[d][t]!=null) vs.push(byd[d][t]); });
+        return vs.length? vs.reduce(function(s,x){return s+x;},0)/vs.length : null;
+      });
+      // melhor e pior disciplina
+      var ord=mediasDisc.slice().sort(function(a,b){return b.media-a.media;});
+      var melhor=ord[0], pior=ord[ord.length-1];
+
+      var corMedia = mediaGeral>=14?'#22c55e':(mediaGeral>=10?'#f59e0b':'#ef4444');
+      var kpis='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+
+        kpiCardA('A Minha Média Geral', mediaGeral.toFixed(1)+' val', corMedia, 'ti-star')+
+        kpiCardA('Situação', aprovado?'Aprovado':'Em risco', aprovado?'#22c55e':'#ef4444', aprovado?'ti-circle-check':'ti-alert-triangle')+
+        kpiCardA('Melhor disciplina', melhor?esc(melhor.nome.length>12?melhor.nome.slice(0,12)+'…':melhor.nome)+' <span style="font-size:12px">'+melhor.media.toFixed(1)+'</span>':'—', '#3b82f6', 'ti-award')+
+        kpiCardA('A melhorar', pior?esc(pior.nome.length>12?pior.nome.slice(0,12)+'…':pior.nome)+' <span style="font-size:12px">'+pior.media.toFixed(1)+'</span>':'—', '#f59e0b', 'ti-trending-up')+
+        '</div>';
+
+      // Grafico barras: media por disciplina
+      var mDiscOrd=mediasDisc.slice().sort(function(a,b){return b.media-a.media;});
+      var g1='<div style="font-weight:700;font-size:13px;margin:6px 0 10px;color:var(--t)">As minhas notas por disciplina</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:18px">';
+      mDiscOrd.forEach(function(x){
+        var pct=Math.min(100,x.media/20*100);
+        var cor=x.media>=14?'#22c55e':(x.media>=10?'#f59e0b':'#ef4444');
+        g1+='<div style="display:flex;align-items:center;gap:10px">'+
+          '<div style="width:110px;font-size:12px;color:var(--t2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(x.nome)+'</div>'+
+          '<div style="flex:1;background:var(--bg3);border-radius:6px;height:20px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+cor+';border-radius:6px"></div></div>'+
+          '<div style="width:44px;font-size:12px;font-weight:700;color:'+cor+'">'+x.media.toFixed(1)+'</div>'+
+        '</div>';
+      });
+      g1+='</div>';
+
+      // Grafico linha simples: evolucao por trimestre
+      var g2='<div style="font-weight:700;font-size:13px;margin:6px 0 10px;color:var(--t)">Evolução por trimestre</div>'+
+        '<div style="display:flex;align-items:flex-end;gap:20px;height:120px;padding:0 10px 4px">';
+      var maxT=14; // escala fixa ate 20 mas realca a partir de 14
+      triMed.forEach(function(v,i){
+        var val=v==null?0:v; var h=Math.round(val/20*95);
+        var cor=v==null?'var(--b)':(v>=14?'#22c55e':(v>=10?'#f59e0b':'#ef4444'));
+        g2+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">'+
+          '<div style="font-size:13px;font-weight:800;color:'+cor+';margin-bottom:4px">'+(v==null?'—':v.toFixed(1))+'</div>'+
+          '<div style="width:100%;max-width:54px;height:'+h+'%;min-height:4px;background:'+cor+';border-radius:6px 6px 0 0"></div>'+
+          '<div style="font-size:11px;color:var(--t3);margin-top:6px">'+(i+1)+'º Trim</div>'+
+        '</div>';
+      });
+      g2+='</div>';
+
+      return '<div style="border:1px solid var(--b);border-radius:12px;padding:16px;margin-bottom:16px;background:var(--card2)">'+kpis+
+        '<div style="display:flex;gap:24px;flex-wrap:wrap"><div style="flex:1;min-width:260px">'+g1+'</div><div style="flex:1;min-width:220px">'+g2+'</div></div></div>';
+    }catch(e){ return ''; }
+  }
+  function kpiCardA(label, valor, cor, icon){
+    return '<div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--b);border-radius:10px;padding:12px 14px">'+
+      '<div style="font-size:11px;color:var(--t2);margin-bottom:4px"><i class="ti '+icon+'" style="color:'+cor+'"></i> '+label+'</div>'+
+      '<div style="font-size:20px;font-weight:800;color:'+cor+'">'+valor+'</div></div>';
+  }
 
   // ===== DECLARAÇÃO DE APROVEITAMENTO (notas reais, PDF MINEDH) =====
   window.emitirDeclaracaoAproveitamento = async function(localId){
