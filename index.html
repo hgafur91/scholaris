@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.30</span>
+    <span class="logo-ver">v6.31</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -14831,7 +14831,6 @@ async function openTurma(turmaId) {
       <button class="tab" onclick="swTurmaTab('aproveitamento',this,'${turmaId}')"><i class="ti ti-star"></i> Aproveitamento</button>
       <button class="tab" onclick="swTurmaTab('faltas',this,'${turmaId}')"><i class="ti ti-alert-circle"></i> Faltas</button>
       <button class="tab" onclick="swTurmaTab('profs',this,'${turmaId}')"><i class="ti ti-chalkboard"></i> Professores</button>
-      <button class="tab" onclick="swTurmaTab('analise',this,'${turmaId}')"><i class="ti ti-chart-bar"></i> Análise Gráfica</button>
       <button class="tab" onclick="swTurmaTab('analitico',this,'${turmaId}')"><i class="ti ti-notebook"></i> Plano Analítico</button>
       <button class="tab" onclick="swTurmaTab('tematico',this,'${turmaId}')"><i class="ti ti-book"></i> Plano Temático</button>
       <button class="tab" id="turma-tab-horario" onclick="swTurmaTab('horario',this,'${turmaId}')"><i class="ti ti-calendar"></i> Horário</button>
@@ -35044,6 +35043,26 @@ window.__finV30=true;})();
       var melhor = Math.max.apply(null, mediasAlunos);
       var pior = Math.min.apply(null, mediasAlunos);
 
+      // Evolucao da media da turma por trimestre (dos dados reais) + previsao
+      function mediaTurmaTri(mapaT){
+        var vals=[];
+        alunos.forEach(function(a){
+          var md=mapaT[a.id]; if(!md) return;
+          var vs=discs.map(function(d){return md[d];}).filter(function(v){return v!=null;});
+          if(vs.length) vals.push(vs.reduce(function(s,v){return s+v;},0)/vs.length);
+        });
+        return vals.length? vals.reduce(function(s,v){return s+v;},0)/vs_len(vals) : null;
+      }
+      function vs_len(a){ return a.length; }
+      var triTurma=[mediaTurmaTri(m1), mediaTurmaTri(m2), mediaTurmaTri(m3)];
+      // Previsao: se ha 1o e 2o trim, projeta a tendencia
+      var previsao=null;
+      if(triTurma[0]!=null && triTurma[1]!=null && triTurma[2]==null){
+        previsao=Math.min(20, Math.max(0, triTurma[1] + (triTurma[1]-triTurma[0])));
+      }
+      var tendencia=0;
+      if(triTurma[0]!=null && triTurma[1]!=null) tendencia=triTurma[1]-triTurma[0];
+
       // Cartoes de KPI
       var corMedia = mediaTurma>=14?'#22c55e':(mediaTurma>=10?'#f59e0b':'#ef4444');
       var kpis='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+
@@ -35091,8 +35110,33 @@ window.__finV30=true;})();
       });
       g2+='</div>';
 
-      return '<div style="border:1px solid var(--b);border-radius:12px;padding:16px;margin-bottom:16px;background:var(--card2)">'+kpis+
-        '<div style="display:flex;gap:24px;flex-wrap:wrap"><div style="flex:1;min-width:260px">'+g1+'</div><div style="flex:1;min-width:260px">'+g2+'</div></div></div>';
+      // Grafico 3: evolucao da media da turma por trimestre (com previsao)
+      var g3='';
+      var temEvol = triTurma.some(function(v){return v!=null;});
+      if(temEvol){
+        var trendTxt = tendencia>0?'Em subida':(tendencia<0?'Em descida':'Estável');
+        var trendCor = tendencia>0?'#22c55e':(tendencia<0?'#ef4444':'#f59e0b');
+        g3='<div style="font-weight:700;font-size:13px;margin:6px 0 10px;color:var(--t)">Evolução da média da turma <span style="font-size:11px;font-weight:600;color:'+trendCor+'">· '+trendTxt+'</span></div>'+
+          '<div style="display:flex;align-items:flex-end;gap:16px;height:120px;padding:0 8px 4px">';
+        var pontos=[{lbl:'1º Trim', v:triTurma[0], est:false},{lbl:'2º Trim', v:triTurma[1], est:false},{lbl:'3º Trim', v:triTurma[2], est:false}];
+        if(previsao!=null) pontos.push({lbl:'Previsão', v:previsao, est:true});
+        pontos.forEach(function(p){
+          var val=p.v==null?0:p.v; var h=Math.round(val/20*95);
+          var cor=p.est?'#8b5cf6':(p.v==null?'var(--b)':(p.v>=14?'#22c55e':(p.v>=10?'#f59e0b':'#ef4444')));
+          g3+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">'+
+            '<div style="font-size:13px;font-weight:800;color:'+cor+';margin-bottom:4px">'+(p.v==null?'—':p.v.toFixed(1))+'</div>'+
+            '<div style="width:100%;max-width:54px;height:'+h+'%;min-height:4px;background:'+cor+';border-radius:6px 6px 0 0'+(p.est?';opacity:.7;border:1px dashed #8b5cf6':'')+'"></div>'+
+            '<div style="font-size:10px;color:var(--t3);margin-top:6px">'+p.lbl+'</div>'+
+          '</div>';
+        });
+        g3+='</div>';
+        if(previsao!=null) g3+='<div style="font-size:11px;color:#8b5cf6;margin-top:6px;text-align:center"><i class="ti ti-bulb"></i> Previsão do 3º trimestre com base na tendência</div>';
+      }
+
+      var blocoGraficos = '<div style="display:flex;gap:24px;flex-wrap:wrap"><div style="flex:1;min-width:260px">'+g1+'</div><div style="flex:1;min-width:260px">'+g2+'</div></div>';
+      if(g3) blocoGraficos += '<div style="margin-top:8px;padding-top:14px;border-top:1px solid var(--b)">'+g3+'</div>';
+
+      return '<div style="border:1px solid var(--b);border-radius:12px;padding:16px;margin-bottom:16px;background:var(--card2)">'+kpis+blocoGraficos+'</div>';
     }catch(e){ return ''; }
   }
   function kpiCard(label, valor, cor, icon){
