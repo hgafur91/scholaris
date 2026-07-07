@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.20</span>
+    <span class="logo-ver">v6.21</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -16997,6 +16997,25 @@ function logAudit(accao, entidade, detalhe, valorAntes, valorDepois) {
     ip:          '—',
     sessionId:   window._sessionId || 'demo',
   });
+  // Persistir na base (auditoria permanente e imutavel) - nao bloqueia a UI
+  try{
+    if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){
+      var _num=function(v){ if(v==null||v==='') return null; var n=parseFloat(v); return isNaN(n)?null:n; };
+      window._supabase.from('auditoria').insert({
+        escola_id:    window._escolaId,
+        session_id:   window._sessionId || null,
+        utilizador:   curUser?.nome || 'Sistema',
+        role:         curRole || null,
+        accao:        accao || 'ACCAO',
+        entidade:     entidade || null,
+        detalhe:      (detalhe!=null? String(detalhe): null),
+        valor_antes:  _num(valorAntes),
+        valor_depois: _num(valorDepois),
+        ip:           '—'
+      }).then(function(r){ if(r&&r.error) console.warn('auditoria', r.error.message); },
+              function(e){ console.warn('auditoria', e&&e.message); });
+    }
+  }catch(e){ /* auditoria nunca deve partir a operacao principal */ }
 }
 
 // Generate session ID
@@ -17572,9 +17591,50 @@ function exportarAgingReport() {
 //  AUDIT TRAIL
 // ════════════════════════════════════════════════════════════
 
+// Carregar historico permanente de auditoria da base (ultimas 500 entradas)
+window._auditLoaded = false;
+window.carregarAuditoria = async function(){
+  try{
+    if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')) return;
+    var res = await window._supabase.from('auditoria')
+      .select('*').eq('escola_id', window._escolaId)
+      .order('criado_em',{ascending:false}).limit(500);
+    var rows = res && res.data; if(!rows) return;
+    if(typeof AUDIT_LOG==='undefined') window.AUDIT_LOG=[];
+    // Evitar duplicar as entradas ja em memoria (por id)
+    var have={}; AUDIT_LOG.forEach(function(l){ if(l._dbId) have[l._dbId]=true; });
+    var carregadas = rows.filter(function(r){ return !have[r.id]; }).map(function(r){
+      return {
+        _dbId:      r.id,
+        id:         r.id,
+        timestamp:  r.criado_em,
+        utilizador: r.utilizador || 'Sistema',
+        role:       r.role || '',
+        accao:      r.accao,
+        entidade:   r.entidade,
+        detalhe:    r.detalhe,
+        valorAntes: r.valor_antes,
+        valorDepois:r.valor_depois,
+        ip:         r.ip || '—',
+        sessionId:  r.session_id || ''
+      };
+    });
+    // Juntar: memoria (sessao atual) + base (historico), ordenar por data desc
+    var mem = AUDIT_LOG.filter(function(l){ return !l._dbId; });
+    window.AUDIT_LOG = mem.concat(carregadas).sort(function(a,b){
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+    window._auditLoaded = true;
+  }catch(e){ console.warn('carregarAuditoria', e && e.message); }
+};
+
 function rAuditTrail() {
   const el = document.getElementById('audit-trail-c');
   if (!el) return;
+  // Na primeira abertura, carregar historico da base e re-renderizar
+  if(!window._auditLoaded){
+    window.carregarAuditoria().then(function(){ try{ rAuditTrail(); }catch(e){} });
+  }
 
   const canExport = ['gestor'].includes(curRole);
 
