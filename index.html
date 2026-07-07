@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.26</span>
+    <span class="logo-ver">v6.27</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -37336,6 +37336,7 @@ window.trimestreActual = function(d){
     h += '<div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Mes final</label><select id="balPRO-fim" class="inp" onchange="window.__balMesFim=this.value;window.balancetePRO()">'+optFim+'</select></div>';
     h += '<button class="btn btn-g" onclick="window.__balMesIni=1;window.__balMesFim=12;window.balancetePRO()">Ano completo</button>';
     h += '<button class="btn btn-g" onclick="var d=new Date();window.__balMesIni=d.getMonth()+1;window.__balMesFim=d.getMonth()+1;window.balancetePRO()">Mes actual</button>';
+    h += '<button class="btn btn-gr" onclick="window.exportarBalancetePRO()"><i class="ti ti-download"></i> Exportar</button>';
     h += '</div>';
     h += '<div style="font-size:12px;color:var(--t3);margin-bottom:14px">Periodo: '+MESES[mIni-1]+' a '+MESES[mFim-1]+' · '+dt.nPags+' pagamento(s)</div>';
 
@@ -37388,6 +37389,52 @@ window.trimestreActual = function(d){
     h += '</tbody></table></div>';
 
     body.innerHTML = h;
+  };
+
+  // ---- EXPORTAR (CSV completo do periodo selecionado) ----
+  window.exportarBalancetePRO = function(){
+    try{
+      var mIni = parseInt(window.__balMesIni,10)||1;
+      var mFim = parseInt(window.__balMesFim,10)||12;
+      if(mFim<mIni){ var t=mIni; mIni=mFim; mFim=t; }
+      var dt = calcular(mIni, mFim);
+      function n(v){ return (Math.round(v||0)); } // numero limpo p/ Excel
+      var L = []; // linhas do CSV (separador ;)
+      var escola = '';
+      try{ escola = (typeof CONFIG!=='undefined' && CONFIG.nomeEscola) ? CONFIG.nomeEscola : ''; }catch(e){}
+      L.push('BALANCETE'+(escola?' - '+escola:''));
+      L.push('Periodo;'+MESES[mIni-1]+' a '+MESES[mFim-1]);
+      L.push('Gerado em;'+new Date().toLocaleString('pt-PT'));
+      L.push('');
+      L.push('RECEITAS (ENTRADAS) POR CATEGORIA');
+      L.push('Categoria;Valor (MZM)');
+      L.push('Propinas;'+n(dt.rec.propina));
+      L.push('Taxas Fixas;'+n(dt.rec.taxa_fixa));
+      L.push('Servicos / Avulsos;'+n(dt.rec.avulso));
+      L.push('Total Receitas;'+n(dt.totRec));
+      L.push('');
+      L.push('DESPESAS (SAIDAS) POR CATEGORIA');
+      L.push('Categoria;Valor (MZM)');
+      var cats = Object.keys(dt.despCat).sort(function(a,b){return dt.despCat[b]-dt.despCat[a];});
+      cats.forEach(function(k){ L.push(nomeCat(k)+';'+n(dt.despCat[k])); });
+      L.push('Total Despesas;'+n(dt.totDesp));
+      L.push('');
+      L.push('RESULTADO (Receitas - Despesas);'+n(dt.resultado));
+      L.push('');
+      L.push('DETALHE MENSAL');
+      L.push('Mes;Propinas;Taxas;Avulsos;Entradas;Despesas;Saldo');
+      for(var mm=mIni;mm<=mFim;mm++){
+        var pm=dt.porMes[mm]; var ent=pm.propina+pm.taxa_fixa+pm.avulso; var saldo=ent-pm.despesa;
+        L.push(MESES[mm-1]+';'+n(pm.propina)+';'+n(pm.taxa_fixa)+';'+n(pm.avulso)+';'+n(ent)+';'+n(pm.despesa)+';'+n(saldo));
+      }
+      L.push('TOTAL;'+n(dt.rec.propina)+';'+n(dt.rec.taxa_fixa)+';'+n(dt.rec.avulso)+';'+n(dt.totRec)+';'+n(dt.totDesp)+';'+n(dt.resultado));
+      var csv = L.join('\n');
+      var fname = 'Balancete_'+MESES[mIni-1]+'_a_'+MESES[mFim-1]+'_'+(new Date().getFullYear())+'.csv';
+      if(typeof downloadCSV==='function'){ downloadCSV(csv, fname); }
+      else {
+        var bom='\uFEFF'; var blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=fname; a.click(); URL.revokeObjectURL(url);
+      }
+    }catch(e){ try{ if(typeof toast==='function') toast('Erro ao exportar: '+e); }catch(_){} }
   };
 
   function rowHTML(label, val, opt){
