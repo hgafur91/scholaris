@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.22</span>
+    <span class="logo-ver">v6.23</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -17626,9 +17626,12 @@ window.carregarAuditoria = async function(){
     });
     // Juntar: memoria (sessao atual) + base (historico), ordenar por data desc
     var mem = AUDIT_LOG.filter(function(l){ return !l._dbId; });
-    window.AUDIT_LOG = mem.concat(carregadas).sort(function(a,b){
+    var combinado = mem.concat(carregadas).sort(function(a,b){
       return new Date(b.timestamp) - new Date(a.timestamp);
     });
+    // Mutar o array LOCAL AUDIT_LOG (nao reatribuir para window, senao a vista nao ve)
+    AUDIT_LOG.length = 0;
+    combinado.forEach(function(x){ AUDIT_LOG.push(x); });
     window._auditLoaded = true;
   }catch(e){ console.warn('carregarAuditoria', e && e.message); }
 };
