@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.24</span>
+    <span class="logo-ver">v6.25</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -37252,61 +37252,70 @@ window.trimestreActual = function(d){
 
   window.Fin = Fin;
 
+  /* Melhorar o renderBalanceteRange existente (que ja respeita meses e tem
+     seletores da app) em vez de competir com ele:
+     1) classificar propinas corretamente (familia null -> propina se tem meses)
+     2) garantir que o Director tem acesso */
   try{
-    function v27moneyF(n){ var neg=n<0; n=Math.abs(Math.round(n)||0); var s; try{s=n.toLocaleString('pt-PT').replace(/\u00A0/g,' ');}catch(e){s=''+n;} return (neg?'-':'')+s+' MZM'; }
-    window.__balanceteFin = function(){
-      var b=document.getElementById('pag-tab-body'); if(!b) return;
-      if(window.__balActive!==true) return;
-      // Se ja existe o balancete Fin (nosso), nao redesenhar
-      var existente = b.querySelector('#v27-bal');
-      if(existente && existente.getAttribute('data-fin')==='1') return;
-      var rec = Fin.receitasPorCat();
-      var dcatsObj = Fin.despesasPorCat();
-      var totRec = rec.total;
-      var dcats = {}; Object.keys(dcatsObj).forEach(function(k){ if(k!=='_total') dcats[k]=dcatsObj[k]; });
-      var totDesp = dcatsObj._total;
-      var resultado = totRec - totDesp;
-      var wrap=document.createElement('div'); wrap.id='v27-bal'; wrap.setAttribute('data-fin','1');
-      function st(t){ var h=document.createElement('div'); h.textContent=t; h.style.fontWeight='700'; h.style.fontSize='15px'; h.style.margin='18px 0 8px'; h.style.color='var(--t)'; return h; }
-      function rw(label,val,opt){ opt=opt||{}; var r=document.createElement('div'); r.style.display='flex'; r.style.justifyContent='space-between'; r.style.padding='10px 14px'; r.style.borderBottom='1px solid var(--b)'; r.style.fontSize='14px'; if(opt.bold) r.style.fontWeight='700'; var a=document.createElement('span'); a.textContent=label; var c=document.createElement('span'); c.textContent=v27moneyF(val); if(opt.color) c.style.color=opt.color; r.appendChild(a); r.appendChild(c); return r; }
-      function cd(){ var c=document.createElement('div'); c.style.background='var(--card)'; c.style.border='1px solid var(--b)'; c.style.borderRadius='12px'; c.style.overflow='hidden'; c.style.marginBottom='6px'; return c; }
-      wrap.appendChild(st('Receitas (Entradas) por categoria'));
-      var rc=cd(); rc.appendChild(rw('Propinas',rec.propinas)); rc.appendChild(rw('Taxas Fixas',rec.taxas)); rc.appendChild(rw('Servicos / Avulsos',rec.avulsos)); rc.appendChild(rw('Total Receitas',totRec,{bold:true,color:'#16a34a'})); wrap.appendChild(rc);
-      wrap.appendChild(st('Despesas (Saidas) por categoria'));
-      var dc=cd(); Object.keys(dcats).forEach(function(k){ var nome=window.nomeCategoriaDespesa?window.nomeCategoriaDespesa(k):k; dc.appendChild(rw(nome,dcats[k])); }); dc.appendChild(rw('Total Despesas',totDesp,{bold:true,color:'#dc2626'})); wrap.appendChild(dc);
-      var resCard=document.createElement('div'); resCard.style.marginTop='16px'; resCard.style.padding='18px'; resCard.style.borderRadius='14px'; resCard.style.display='flex'; resCard.style.justifyContent='space-between'; resCard.style.alignItems='center'; resCard.style.background= resultado>=0?'rgba(34,197,94,.12)':'rgba(239,68,68,.12)'; resCard.style.border='1px solid '+(resultado>=0?'#a7f3d0':'#fecaca');
-      var rl=document.createElement('span'); rl.textContent='Resultado (Receitas - Despesas)'; rl.style.fontWeight='700'; rl.style.fontSize='15px'; var rv=document.createElement('span'); rv.textContent=v27moneyF(resultado); rv.style.fontWeight='800'; rv.style.fontSize='20px'; rv.style.color= resultado>=0?'#16a34a':'#dc2626'; resCard.appendChild(rl); resCard.appendChild(rv); wrap.appendChild(resCard);
-      b.innerHTML=''; b.appendChild(wrap);
+    // Classificador robusto de familia (propinas tem familia=null mas tem meses)
+    window.familiaDePagamentoFin = function(p){
+      var fam = (p && p.familia||'').toLowerCase();
+      if(fam==='taxa_fixa'||fam==='taxa') return 'taxa_fixa';
+      if(fam==='avulso'||fam==='avulsos') return 'avulso';
+      if(fam==='propina'||fam==='propinas') return 'propina';
+      var tipo = (p && (p.tipo||p.categoriaId)||'').toLowerCase();
+      if(tipo.indexOf('propina')>=0) return 'propina';
+      if(tipo.indexOf('matricula')>=0||tipo.indexOf('inscricao')>=0||tipo.indexOf('taxa')>=0) return 'taxa_fixa';
+      if(Array.isArray(p&&p.meses) && p.meses.length>0) return 'propina';
+      return 'avulso';
     };
-
-    if(typeof window.pagTab==='function' && !window.pagTab.__finBal){
-      var _ptFin = window.pagTab;
-      window.pagTab = function(id){
-        var r; try{ r=_ptFin.apply(this,arguments); }catch(e){}
-        if(id==='balancete'){
-          window.__balActive=true;
-          setTimeout(function(){ try{ window.__balanceteFin(); }catch(e){} }, 40);
-        }
-        return r;
-      };
-      window.pagTab.__finBal = true;
+    // Substituir _famDe globalmente pelo classificador robusto
+    if(typeof familiaDePagamento==='undefined'){
+      window.familiaDePagamento = window.familiaDePagamentoFin;
     }
-    // Vigilancia: se o balancete antigo (v27, sem data-fin) aparecer, substituir pelo nosso
-    setInterval(function(){
-      try{
-        if(window.__balActive!==true) return;
-        var b=document.getElementById('pag-tab-body'); if(!b) return;
-        var ex=b.querySelector('#v27-bal');
-        if(ex && ex.getAttribute('data-fin')!=='1'){
-          // e o antigo — remover e desenhar o nosso
-          ex.remove();
-          window.__balanceteFin();
-        } else if(!ex){
-          window.__balanceteFin();
-        }
-      }catch(e){}
-    }, 800);
-  }catch(e){ try{ console.warn('Fin balancete', e); }catch(_){} }
+
+    /* Garantir que o renderBalanceteRange (bom, por-mes) domina sobre o v27
+       (que le do DOM e amontoa). O v27 tem setInterval/observer a chamar
+       v27Balancete; neutralizamos marcando o balancete como "nosso" e
+       redesenhando com renderBalanceteRange sempre que o v27 tentar. */
+    (function(){
+      var _balPintado = false;
+      function balDominar(){
+        try{
+          if(window.__balActive!==true){ _balPintado=false; return; }
+          var b=document.getElementById('pag-tab-body'); if(!b) return;
+          // Se o v27 desenhou (tem #v27-bal), substituir pelo renderBalanceteRange bom
+          var v27=b.querySelector('#v27-bal');
+          if(v27){
+            // ler mes selecionado se existir; senao ano completo
+            var a=document.getElementById('bal-mini'), c=document.getElementById('bal-mfim');
+            var mi=a?a.value:1, mf=c?c.value:12;
+            if(typeof window.renderBalanceteRange==='function'){
+              window.renderBalanceteRange(mi, mf);
+            }
+          } else if(!b.querySelector('#bal-mini') && !_balPintado){
+            // nada desenhado ainda — pintar o bom
+            if(typeof window.renderBalanceteRange==='function'){
+              window.renderBalanceteRange(1,12);
+              _balPintado=true;
+            }
+          }
+        }catch(e){}
+      }
+      // Correr com frequencia suficiente para vencer o v27 (1200ms)
+      setInterval(balDominar, 500);
+      // Tambem no pagTab
+      if(typeof window.pagTab==='function' && !window.pagTab.__finDom){
+        var _ptD = window.pagTab;
+        window.pagTab = function(id){
+          var r; try{ r=_ptD.apply(this,arguments); }catch(e){}
+          if(id==='balancete'){ window.__balActive=true; _balPintado=false; setTimeout(balDominar, 60); }
+          return r;
+        };
+        window.pagTab.__finDom = true;
+      }
+    })();
+  }catch(e){ try{ console.warn('Fin fam', e); }catch(_){} }
 })();
 </script>
 
