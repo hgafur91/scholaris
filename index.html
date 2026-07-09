@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.39</span>
+    <span class="logo-ver">v6.40</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -15293,6 +15293,30 @@ function __persistCargos(prof) {
     }
   } catch(e){}
 }
+
+// Muda o papel da CONTA (perfis) ligada ao professor: 'dir-ciclo' quando recebe o cargo, 'professor' quando o perde.
+function __persistPapelCiclo(prof, ehDirCiclo) {
+  try {
+    if (!prof || !prof._dbId) return;
+    if (!(window._supabase && window._escolaId && window._escolaId !== 'escola_demo')) return;
+    var novoPerfil = ehDirCiclo ? 'dir-ciclo' : 'professor';
+    // Encontrar a conta (perfil) ligada a este staff e mudar o papel
+    window._supabase.from('perfis')
+      .update({ perfil: novoPerfil })
+      .eq('staff_id', prof._dbId)
+      .eq('escola_id', window._escolaId)
+      .select()
+      .then(function(res){
+        if (res && res.error) {
+          try{ toast('Cargo guardado, mas não mudou o acesso: ' + (res.error.message||'erro')); }catch(e){}
+        } else if (res && res.data && res.data.length) {
+          try{ toast(ehDirCiclo ? 'Conta actualizada: agora entra como Chefe de Ciclo.' : 'Conta revertida para Professor.'); }catch(e){}
+        } else {
+          try{ toast('Cargo guardado. Nota: este professor não tem conta de login associada.'); }catch(e){}
+        }
+      }, function(){ try{ toast('Cargo guardado, mas falhou a mudança de acesso.'); }catch(e){} });
+  } catch(e){}
+}
 const _origGuardarCargo = guardarCargo;
 guardarCargo = function() {
   const profId = parseInt(document.getElementById('cargo-prof-sel')?.value);
@@ -15327,12 +15351,17 @@ guardarCargo = function() {
       if (Array.isArray(outro.cargos) && outro.cargos.indexOf('dir-ciclo-' + ref) >= 0) {
         outro.cargos = outro.cargos.filter(function(c){ return c !== 'dir-ciclo-' + ref; });
         __persistCargos(outro); // gravar a remoção na base
+        // reverter a conta do director anterior para professor (se já não for dir-ciclo de outro ciclo)
+        var aindaCiclo = (outro.cargos||[]).some(function(c){ return c.startsWith('dir-ciclo-'); });
+        if (!aindaCiclo) __persistPapelCiclo(outro, false);
       }
     });
     // Limpar directorId anterior deste prof noutros ciclos e definir o novo
     CICLOS.forEach(c => { if (c.directorId === profId || c.directorId === p.num) c.directorId = null; });
     const ciclo = CICLOS.find(c => c.id == ref);
     if (ciclo) ciclo.directorId = p.num;
+    // dar acesso de login de Chefe de Ciclo à conta deste professor
+    __persistPapelCiclo(p, true);
   }
 
   closeM('m-atribuir-cargo');
@@ -15362,11 +15391,16 @@ removerCargo = function(profId, tipo) {
   }
   // Clear from CICLOS if dir-ciclo
   if (tipo === 'dir-ciclo') {
-    CICLOS.forEach(c => { if (c.directorId === profId) c.directorId = null; });
+    CICLOS.forEach(c => { if (c.directorId === profId || c.directorId === p.num) c.directorId = null; });
   }
 
   p.cargos = (p.cargos || []).filter(c => !c.startsWith(tipo));
   __persistCargos(p);
+  // se removemos o cargo de ciclo e já não é dir-ciclo de outro ciclo, reverter a conta para professor
+  if (tipo === 'dir-ciclo') {
+    var aindaCiclo = (p.cargos||[]).some(function(c){ return c.startsWith('dir-ciclo-'); });
+    if (!aindaCiclo) __persistPapelCiclo(p, false);
+  }
   rCargos();
   toast('Cargo removido');
 };
