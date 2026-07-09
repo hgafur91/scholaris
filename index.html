@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.40</span>
+    <span class="logo-ver">v6.41</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1783,6 +1783,8 @@ console.log('[Scholaris] Supabase v2 inicializado');
 <div class="modal-ov" id="m-nemol"><div class="modal"><div class="mhd"><span class="mt">Novo Emolumento</span><button class="mclose" onclick="closeM('m-nemol')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr"><label class="fl">Descrição</label><input class="ffi" placeholder="Ex: Taxa de exame de recurso"></div><div class="fgr"><label class="fl">Valor (MZM)</label><input class="ffi" type="number" placeholder="500"></div><div class="fgr"><label class="fl">Periodicidade</label><select class="ffi"><option>Mensal</option><option>Anual</option><option>Por exame</option><option>Por pedido</option></select></div><div class="fgr"><label class="fl">Aplicável a</label><select class="ffi"><option>Todos os alunos</option><option>Novos alunos</option><option>Alunos em recurso</option></select></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nemol')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nemol');toast('Emolumento criado!')">Guardar</button></div></div></div>
 
 <div class="modal-ov" id="m-nstaff"><div class="modal"><div class="mhd"><span class="mt">Novo Membro de Staff</span><button class="mclose" onclick="closeM('m-nstaff')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr"><label class="fl">Departamento</label><select class="ffi"><option>Académico → PRF000004</option><option>Gestão → GST000003</option><option>Financeiro → FIN000002</option></select></div><div class="fgr"><label class="fl">Cargo</label><input class="ffi" placeholder="Professor, Director..."></div><div class="fgr"><label class="fl">Nome</label><input class="ffi" placeholder="Nome completo"></div><div class="fgr"><label class="fl">Regime</label><select class="ffi"><option value="inteiro">Tempo Inteiro</option><option value="parcial">Tempo Parcial</option></select></div><div class="fgr"><label class="fl">Formação</label><select class="ffi"><option>Licenciatura</option><option>Mestrado</option><option>Doutoramento</option></select></div><div class="fgr"><label class="fl">Salário (MZM)</label><input class="ffi" type="number" placeholder="35000"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nstaff')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nstaff');toast('Staff criado e alocado!')">Guardar</button></div></div></div>
+
+<div class="modal-ov" id="m-alterar-pass"><div class="modal" style="max-width:420px"><div class="mhd"><span class="mt"><i class="ti ti-key" style="margin-right:6px"></i>Alterar Password</span><button class="mclose" onclick="closeM('m-alterar-pass')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="ib-box ib-blue" style="margin-bottom:14px;font-size:12px"><i class="ti ti-info-circle"></i> Introduza a password actual e a nova password (mínimo 6 caracteres).</div><div class="fg"><div class="fgr full"><label class="fl">Password Actual</label><input class="ffi" type="password" id="ap-pass-atual" placeholder="A sua password actual" autocomplete="current-password"></div><div class="fgr full"><label class="fl">Nova Password</label><input class="ffi" type="password" id="ap-pass-nova" placeholder="Nova password" autocomplete="new-password"></div><div class="fgr full"><label class="fl">Confirmar Nova Password</label><input class="ffi" type="password" id="ap-pass-conf" placeholder="Repita a nova password" autocomplete="new-password"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-alterar-pass')">Cancelar</button><button class="btn btn-p" onclick="alterarPassword()"><i class="ti ti-check"></i> Alterar Password</button></div></div></div>
 
 <div class="modal-ov" id="m-nlivro"><div class="modal"><div class="mhd"><span class="mt">Novo Livro</span><button class="mclose" onclick="closeM('m-nlivro')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr"><label class="fl">Título</label><input class="ffi" placeholder="Título do livro"></div><div class="fgr"><label class="fl">Autor</label><input class="ffi" placeholder="Autor(es)"></div><div class="fgr"><label class="fl">Área</label><select class="ffi"><option>Matemática</option><option>Português</option><option>Inglês</option><option>Física</option><option>Biologia</option></select></div><div class="fgr"><label class="fl">Exemplares</label><input class="ffi" type="number" value="5"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nlivro')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nlivro');toast('Livro adicionado!')">Guardar</button></div></div></div>
 
@@ -21134,6 +21136,7 @@ function alterarPassword() {
   closeM('m-alterar-pass');
   toast('Password alterada! (modo demo — sem persistência)');
 }
+try{ window.abrirAlterarPassword = abrirAlterarPassword; window.alterarPassword = alterarPassword; }catch(e){}
 
 // ════════════════════════════════════════════════════════════
 //  RESET PASSWORD (gestor e director)
@@ -21257,21 +21260,21 @@ function autoEmailFromName(nome) {
 const _origSetupRoleAuth = setupRole;
 setupRole = function() {
   _origSetupRoleAuth();
-  // Add change password option to the user dropdown if it exists
+  // Adicionar "Alterar Password" na barra de topo (ao lado do Sair), para TODOS os utilizadores
   setTimeout(() => {
-    const uinfo = document.getElementById('uinfo');
-    if (!uinfo || uinfo.querySelector('.btn-alterar-pass')) return;
-    // Add after the logout button
-    const logoutBtn = uinfo.querySelector('[onclick*="doLogout"]') ||
-                      uinfo.querySelector('[onclick*="logout"]');
-    if (logoutBtn) {
-      const btn = document.createElement('button');
-      btn.className = 'btn btn-g btn-sm btn-alterar-pass';
-      btn.style.cssText = 'width:100%;text-align:left;margin-bottom:4px;font-size:12px';
-      btn.innerHTML = '<i class="ti ti-key" style="margin-right:6px"></i>Alterar Password';
-      btn.onclick = () => abrirAlterarPassword();
+    try{
+      var logoutBtn = document.querySelector('.logout-btn');
+      if (!logoutBtn) return;
+      if (document.getElementById('btn-alterar-pass-top')) return;
+      var btn = document.createElement('button');
+      btn.className = 'logout-btn';
+      btn.id = 'btn-alterar-pass-top';
+      btn.style.cssText = 'margin-right:6px';
+      btn.title = 'Alterar a minha password';
+      btn.innerHTML = '<i class="ti ti-key" style="font-size:12px"></i> Password';
+      btn.onclick = function(){ abrirAlterarPassword(); };
       logoutBtn.parentNode.insertBefore(btn, logoutBtn);
-    }
+    }catch(e){}
   }, 200);
 };
 
