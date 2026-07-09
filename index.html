@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.42</span>
+    <span class="logo-ver">v6.43</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -37049,27 +37049,27 @@ window.trimestreActual = function(d){
     var m=document.createElement('div'); m.id='m-editar-prof'; m.className='modal-ov'; m.style.display='flex';
     m.innerHTML='<div class="modal" style="max-width:640px;max-height:90vh;overflow:auto"><div class="mhd"><span class="mt"><i class="ti ti-user-edit"></i> Editar Perfil — '+p.nome+'</span><button class="mclose" onclick="document.getElementById(\'m-editar-prof\').remove()"><i class="ti ti-x"></i></button></div>'
       +'<div class="mbod"><div class="fg">'
-      +'<div class="fgr full"><label class="fl">Nome completo</label><input class="ffi" id="ep-nome" value="'+v(p.nome)+'"></div>'
-      +'<div class="fgr"><label class="fl">Cargo</label><input class="ffi" id="ep-cargo" value="'+v(p.cargo)+'"></div>'
-      +'<div class="fgr"><label class="fl">Departamento</label><select class="ffi" id="ep-dep"><option value="academico"'+(p.dep==='academico'?' selected':'')+'>Académico</option><option value="gestao"'+(p.dep==='gestao'?' selected':'')+'>Gestão</option><option value="financeiro"'+(p.dep==='financeiro'?' selected':'')+'>Financeiro</option></select></div>'
-      +'<div class="fgr"><label class="fl">Regime</label><select class="ffi" id="ep-regime"><option value="inteiro"'+(p.regime==='inteiro'?' selected':'')+'>Tempo Inteiro</option><option value="parcial"'+(p.regime==='parcial'?' selected':'')+'>Tempo Parcial</option></select></div>'
-      +(podeSal?('<div class="fgr"><label class="fl">Salário Base (MZM)</label><input class="ffi" type="number" id="ep-salario" value="'+v(p.salario)+'"></div>'):'')
-      +'<div class="fgr"><label class="fl">Formação</label><select class="ffi" id="ep-form"><option'+(p.form==='Licenciatura'?' selected':'')+'>Licenciatura</option><option'+(p.form==='Mestrado'?' selected':'')+'>Mestrado</option><option'+(p.form==='Doutoramento'?' selected':'')+'>Doutoramento</option><option'+(p.form==='Bacharelato'?' selected':'')+'>Bacharelato</option><option'+(p.form==='Ensino Médio'?' selected':'')+'>Ensino Médio</option></select></div>'
-      +'<div class="fgr"><label class="fl">Área</label><input class="ffi" id="ep-area" value="'+v(p.area)+'"></div>'
-      +'<div class="fgr"><label class="fl">Data de nascimento</label><input class="ffi" type="date" id="ep-nasc" value="'+v(p.nasc)+'"></div>'
-      +'<div class="fgr"><label class="fl">Género</label><select class="ffi" id="ep-genero"><option value="M"'+(p.genero==='M'?' selected':'')+'>Masculino</option><option value="F"'+(p.genero==='F'?' selected':'')+'>Feminino</option></select></div>'
-      +'<div class="fgr"><label class="fl">Telefone</label><input class="ffi" id="ep-tel" value="'+v(p.tel)+'"></div>'
-      +'<div class="fgr"><label class="fl">Email</label><input class="ffi" id="ep-email" value="'+v(p.email)+'"></div>'
-      +'<div class="fgr full"><label class="fl">Morada</label><input class="ffi" id="ep-morada" value="'+v(p.morada)+'"></div>'
-      +'<div class="fgr"><label class="fl">BI</label><input class="ffi" id="ep-bi" value="'+v(p.bi)+'"></div>'
-      +'<div class="fgr"><label class="fl">NUIT</label><input class="ffi" id="ep-nuit" value="'+v(p.nuit)+'"></div>'
-      +'<div class="fgr"><label class="fl">NISS</label><input class="ffi" id="ep-niss" value="'+v(p.niss)+'"></div>'
+      +'<div class="fgr full"><label class="fl">Nome completo</label><input class="ffi" id="edp-nome" value="'+v(p.nome)+'"></div>'
+      +'<div class="fgr"><label class="fl">Cargo</label><input class="ffi" id="edp-cargo" value="'+v(p.cargo)+'"></div>'
+      +'<div class="fgr"><label class="fl">Departamento</label><select class="ffi" id="edp-dep"><option value="academico"'+(p.dep==='academico'?' selected':'')+'>Académico</option><option value="gestao"'+(p.dep==='gestao'?' selected':'')+'>Gestão</option><option value="financeiro"'+(p.dep==='financeiro'?' selected':'')+'>Financeiro</option></select></div>'
+      +'<div class="fgr"><label class="fl">Regime</label><select class="ffi" id="edp-regime"><option value="inteiro"'+(p.regime==='inteiro'?' selected':'')+'>Tempo Inteiro</option><option value="parcial"'+(p.regime==='parcial'?' selected':'')+'>Tempo Parcial</option></select></div>'
+      +(podeSal?('<div class="fgr"><label class="fl">Salário Base (MZM)</label><input class="ffi" type="number" id="edp-salario" value="'+v(p.salario)+'"></div>'):'')
+      +'<div class="fgr"><label class="fl">Formação</label><select class="ffi" id="edp-form"><option'+(p.form==='Licenciatura'?' selected':'')+'>Licenciatura</option><option'+(p.form==='Mestrado'?' selected':'')+'>Mestrado</option><option'+(p.form==='Doutoramento'?' selected':'')+'>Doutoramento</option><option'+(p.form==='Bacharelato'?' selected':'')+'>Bacharelato</option><option'+(p.form==='Ensino Médio'?' selected':'')+'>Ensino Médio</option></select></div>'
+      +'<div class="fgr"><label class="fl">Área</label><input class="ffi" id="edp-area" value="'+v(p.area)+'"></div>'
+      +'<div class="fgr"><label class="fl">Data de nascimento</label><input class="ffi" type="date" id="edp-nasc" value="'+v(p.nasc)+'"></div>'
+      +'<div class="fgr"><label class="fl">Género</label><select class="ffi" id="edp-genero"><option value="M"'+(p.genero==='M'?' selected':'')+'>Masculino</option><option value="F"'+(p.genero==='F'?' selected':'')+'>Feminino</option></select></div>'
+      +'<div class="fgr"><label class="fl">Telefone</label><input class="ffi" id="edp-tel" value="'+v(p.tel)+'"></div>'
+      +'<div class="fgr"><label class="fl">Email</label><input class="ffi" id="edp-email" value="'+v(p.email)+'"></div>'
+      +'<div class="fgr full"><label class="fl">Morada</label><input class="ffi" id="edp-morada" value="'+v(p.morada)+'"></div>'
+      +'<div class="fgr"><label class="fl">BI</label><input class="ffi" id="edp-bi" value="'+v(p.bi)+'"></div>'
+      +'<div class="fgr"><label class="fl">NUIT</label><input class="ffi" id="edp-nuit" value="'+v(p.nuit)+'"></div>'
+      +'<div class="fgr"><label class="fl">NISS</label><input class="ffi" id="edp-niss" value="'+v(p.niss)+'"></div>'
       +'</div>'
       +'<div style="border-top:1px dashed var(--b);margin:16px 0 12px;padding-top:12px"><div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:10px"><i class="ti ti-briefcase"></i> Contrato</div><div class="fg">'
-      +'<div class="fgr full"><label class="fl">Tipo de contrato</label><select class="ffi" id="ep-contrato"><option value="efectivo"'+(p.contrato==='efectivo'?' selected':'')+'>Efectivo</option><option value="prazo"'+(p.contrato==='prazo'?' selected':'')+'>A prazo certo</option><option value="prestacao"'+(p.contrato==='prestacao'?' selected':'')+'>Prestação de serviços</option></select></div>'
-      +'<div class="fgr"><label class="fl">Data de admissão</label><input class="ffi" type="date" id="ep-cont-ini" value="'+v(p.cont_ini)+'"></div>'
-      +'<div class="fgr"><label class="fl">Fim de contrato</label><input class="ffi" type="date" id="ep-cont-fim" value="'+v(p.cont_fim)+'"></div>'
-      +'<div class="fgr"><label class="fl">Férias/ano (dias)</label><input class="ffi" type="number" id="ep-ferias" value="'+v(p.ferias_dias_ano||30)+'"></div>'
+      +'<div class="fgr full"><label class="fl">Tipo de contrato</label><select class="ffi" id="edp-contrato"><option value="efectivo"'+(p.contrato==='efectivo'?' selected':'')+'>Efectivo</option><option value="prazo"'+(p.contrato==='prazo'?' selected':'')+'>A prazo certo</option><option value="prestacao"'+(p.contrato==='prestacao'?' selected':'')+'>Prestação de serviços</option></select></div>'
+      +'<div class="fgr"><label class="fl">Data de admissão</label><input class="ffi" type="date" id="edp-cont-ini" value="'+v(p.cont_ini)+'"></div>'
+      +'<div class="fgr"><label class="fl">Fim de contrato</label><input class="ffi" type="date" id="edp-cont-fim" value="'+v(p.cont_fim)+'"></div>'
+      +'<div class="fgr"><label class="fl">Férias/ano (dias)</label><input class="ffi" type="number" id="edp-ferias" value="'+v(p.ferias_dias_ano||30)+'"></div>'
       +'</div></div>'
       +(podeSal?'<div class="ib-box ib-blue" style="font-size:12px"><i class="ti ti-info-circle"></i> Alterações ao salário reflectem-se automaticamente na Folha de Salários.</div>':'')
       +'</div><div class="mft"><button class="btn btn-g" onclick="document.getElementById(\'m-editar-prof\').remove()">Cancelar</button><button class="btn btn-p" onclick="window.__guardarPerfilProf('+id+')"><i class="ti ti-check"></i> Guardar Alterações</button></div></div>';
@@ -37086,27 +37086,27 @@ window.trimestreActual = function(d){
     function gv(elId){ var el=document.getElementById(elId); return el?el.value:undefined; }
     // Construir objecto de actualização (só campos que existem no formulário)
     var upd={
-      nome: gv('ep-nome'),
-      cargo: gv('ep-cargo'),
-      dep: gv('ep-dep'),
-      regime: gv('ep-regime'),
-      form: gv('ep-form'),
-      area: gv('ep-area'),
-      nasc: gv('ep-nasc')||null,
-      genero: gv('ep-genero'),
-      tel: gv('ep-tel'),
-      email: gv('ep-email'),
-      morada: gv('ep-morada'),
-      bi: gv('ep-bi'),
-      nuit: gv('ep-nuit'),
-      niss: gv('ep-niss'),
-      contrato: gv('ep-contrato'),
-      cont_ini: gv('ep-cont-ini')||null,
-      cont_fim: gv('ep-cont-fim')||null,
-      ferias_dias_ano: parseInt(gv('ep-ferias'))||30
+      nome: gv('edp-nome'),
+      cargo: gv('edp-cargo'),
+      dep: gv('edp-dep'),
+      regime: gv('edp-regime'),
+      form: gv('edp-form'),
+      area: gv('edp-area'),
+      nasc: gv('edp-nasc')||null,
+      genero: gv('edp-genero'),
+      tel: gv('edp-tel'),
+      email: gv('edp-email'),
+      morada: gv('edp-morada'),
+      bi: gv('edp-bi'),
+      nuit: gv('edp-nuit'),
+      niss: gv('edp-niss'),
+      contrato: gv('edp-contrato'),
+      cont_ini: gv('edp-cont-ini')||null,
+      cont_fim: gv('edp-cont-fim')||null,
+      ferias_dias_ano: parseInt(gv('edp-ferias'))||30
     };
     if(podeSal){
-      var sal=parseFloat(gv('ep-salario'));
+      var sal=parseFloat(gv('edp-salario'));
       if(!isNaN(sal)) upd.salario=sal;
     }
     if(!upd.nome || !upd.nome.trim()){ toast('O nome não pode ficar vazio'); return; }
