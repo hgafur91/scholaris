@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.34</span>
+    <span class="logo-ver">v6.35</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3308,7 +3308,6 @@ const ROLES={
         {i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},
         {i:'ti-layout-grid',l:'Turmas',id:'turmas'},
         {i:'ti-users',l:'Alunos',id:'alunos'},
-        {i:'ti-chalkboard',l:'Professores',id:'professores'},
         {i:'ti-users-group',l:'Encarregados',id:'encarregados'},
         {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
         {i:'ti-calendar',l:'Horário',id:'horario'},
@@ -3394,7 +3393,6 @@ const ROLES={
         {i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},
         {i:'ti-layout-grid',l:'Turmas',id:'turmas'},
         {i:'ti-users',l:'Alunos',id:'alunos'},
-        {i:'ti-chalkboard',l:'Professores',id:'professores'},
         {i:'ti-users-group',l:'Encarregados',id:'encarregados'},
         {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
         {i:'ti-calendar',l:'Horário',id:'horario'},
@@ -3607,6 +3605,11 @@ function getPlanoAnalitico(tid, disc) {
 
 
 function go(id){
+  // Acesso à vista de Professores restrito a Gestor Geral e Director Geral
+  if(id==='professores' && !['gestor','director'].includes(curRole)){
+    if(typeof toast==='function') toast('Acesso restrito — apenas Gestor Geral e Director Geral podem ver os professores.');
+    return;
+  }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.querySelectorAll('.si,.ssi').forEach(s=>s.classList.remove('on'));
   const ve=document.getElementById(VM[id]);if(ve)ve.classList.add('on');
@@ -3686,13 +3689,11 @@ function rDash(){
       desc:'Turmas, professores, horários, presenças e desempenho académico.',
       chips:[
         {l:'Turmas',       ic:'ti-layout-grid', fn:"go('turmas')"},
-        {l:'Professores',  ic:'ti-chalkboard',  fn:"go('professores')"},
         {l:'Horário',      ic:'ti-calendar',    fn:"go('horario')"},
         {l:'Plano Temático',ic:'ti-book',       fn:"go('curr-planos')"},
       ],
       stats:[
         {v:String(ALUNOS.length),  l:'Alunos Matriculados',    s:'Total na escola',     cl:'bl', ic:'ti-users',          fn:"go('alunos')"},
-        {v:String(PROFS.length),   l:'Professores',            s:'Corpo docente',        cl:'pu', ic:'ti-chalkboard',     fn:"go('professores')"},
         {v:String(TURMAS.length),  l:'Turmas Activas',         s:'Todas as turmas',      cl:'gr', ic:'ti-layout-grid',    fn:"go('turmas')"},
         {v:String(CICLOS.length),  l:'Ciclos',                 s:'Estrutura curricular', cl:'tl', ic:'ti-circles',        fn:"go('ciclos')"},
         {v:String(ALUNOS.filter(a=>{ try{return calcFaltas(a.id).emRisco}catch(e){return false}}).length), l:'Em Risco Faltas', s:'Acima do limite', cl:'re', ic:'ti-alert-triangle', fn:"go('faltas')", dt:'!', up:false},
@@ -3700,7 +3701,6 @@ function rDash(){
       ],
       qa:[
         {ic:'ti-layout-grid',    l:'Turmas',       bg:'rgba(79,142,247,.12)',  c:'var(--a)',  fn:"go('turmas')"},
-        {ic:'ti-chalkboard',     l:'Professores',  bg:'rgba(124,106,247,.12)', c:'var(--a2)', fn:"go('professores')"},
         {ic:'ti-calendar',       l:'Horário',      bg:'rgba(34,197,94,.12)',   c:'var(--g)',  fn:"go('horario')"},
         {ic:'ti-notebook',       l:'Plano Analít.',bg:'rgba(6,182,212,.12)',   c:'var(--tl)', fn:"go('plano-analitico')"},
         {ic:'ti-alert-triangle', l:'Faltas',       bg:'rgba(239,68,68,.12)',   c:'var(--r)',  fn:"go('faltas')"},
@@ -4459,6 +4459,11 @@ function renderAlPresencas(a,id){
 
 // ══ PROFESSORES ══
 function rPr(list){
+  if(!['gestor','director'].includes(curRole)){
+    var _elpr=document.getElementById('tb-pr');
+    if(_elpr) _elpr.innerHTML='<tr><td colspan="10" style="padding:30px;text-align:center;color:var(--t2)"><i class="ti ti-lock" style="font-size:22px;color:var(--r);display:block;margin-bottom:8px"></i>Acesso restrito — apenas Gestor Geral e Director Geral.</td></tr>';
+    return;
+  }
   const _showSal=canSeeSalary();
   list=list||PROFS.filter(p=>p.dep==='academico');
   document.getElementById('tb-pr').innerHTML=list.map((p,i)=>`<tr onclick="openProf(${p.id})">
@@ -4476,6 +4481,7 @@ function rPr(list){
 function fPr(f,btn){document.querySelectorAll('#v-professores .chip').forEach(c=>c.classList.remove('on'));if(btn)btn.classList.add('on');const base=PROFS.filter(p=>p.dep==='academico');rPr(f==='inteiro'?base.filter(p=>p.regime==='inteiro'):f==='parcial'?base.filter(p=>p.regime==='parcial'):base)}
 
 function openProf(id){
+  if(!['gestor','director'].includes(curRole)){ if(typeof toast==='function') toast('Acesso restrito — apenas Gestor Geral e Director Geral.'); return; }
   const p=PROFS.find(x=>x.id===id);if(!p)return;
   window.curProfId=id; // track for export buttons
   const i=PROFS.indexOf(p),c=gc(i+2);
@@ -12898,7 +12904,6 @@ ROLES['dir-pedagogico'] = {
       {i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},
       {i:'ti-layout-grid',l:'Turmas',id:'turmas'},
       {i:'ti-users',l:'Alunos',id:'alunos'},
-      {i:'ti-chalkboard',l:'Professores',id:'professores'},
       {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
       {i:'ti-calendar',l:'Horário',id:'horario'},
       {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
