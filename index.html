@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.35</span>
+    <span class="logo-ver">v6.38</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3404,6 +3404,7 @@ const ROLES={
       ]},
       {sl:'Gestão Financeira',sub:[
         {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
+        {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
         {i:'ti-cash',l:'Despesas',id:'despesas'},
@@ -15261,14 +15262,34 @@ buildSidebar = function() {
 // ── v5.94: persistência de cargos no Supabase ────────────────
 function __persistCargos(prof) {
   try {
-    if (!prof || !prof._dbId) return;
+    if (!prof) return;
+    if (!prof._dbId) {
+      try{ toast('Este professor não tem ligação à base de dados (sem _dbId). Cargo só guardado localmente.'); }catch(e){}
+      return;
+    }
     if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
-      window._supabase.from('staff')
+      var q = window._supabase.from('staff')
         .update({ cargos: prof.cargos || [] })
-        .eq('id', prof._dbId)
-        .then(function(res){
-          if (res && res.error) { try{ toast('Cargo guardado localmente, falhou no servidor: ' + (res.error.message||'erro')); }catch(e){} }
-        }, function(){ try{ toast('Cargo guardado localmente, falhou no servidor.'); }catch(e){} });
+        .eq('id', prof._dbId);
+      // filtrar tambem por escola_id (exigido por RLS nalgumas configuracoes)
+      try{ q = q.eq('escola_id', window._escolaId); }catch(e){}
+      q.select().then(function(res){
+        if (res && res.error) {
+          try{ toast('Falhou no servidor: ' + (res.error.message||'erro')); }catch(e){}
+        } else if (res && res.data && res.data.length===0) {
+          // update nao afectou linhas: escola_id nao bate ou RLS bloqueou. Tentar sem filtro escola_id.
+          window._supabase.from('staff').update({ cargos: prof.cargos || [] }).eq('id', prof._dbId).select()
+            .then(function(r2){
+              if (r2 && r2.error) { try{ toast('Falhou no servidor: '+(r2.error.message||'erro')); }catch(e){} }
+              else if (r2 && r2.data && r2.data.length) { try{ toast('Cargo gravado.'); }catch(e){} }
+              else { try{ toast('Cargo não gravado (verifique permissões).'); }catch(e){} }
+            }, function(){ try{ toast('Falhou no servidor.'); }catch(e){} });
+        } else {
+          try{ toast('Cargo gravado.'); }catch(e){}
+        }
+      }, function(){ try{ toast('Falhou no servidor.'); }catch(e){} });
+    } else {
+      try{ toast('Sem ligação ao servidor — cargo só guardado localmente.'); }catch(e){}
     }
   } catch(e){}
 }
@@ -15300,7 +15321,15 @@ guardarCargo = function() {
 
   // Update CICLOS for dir-ciclo
   if (tipo === 'dir-ciclo' && ref) {
-    // Remove from previous ciclo
+    // Um ciclo só tem UM director: remover este cargo de QUALQUER outro professor
+    PROFS.forEach(function(outro){
+      if (outro.id === profId) return;
+      if (Array.isArray(outro.cargos) && outro.cargos.indexOf('dir-ciclo-' + ref) >= 0) {
+        outro.cargos = outro.cargos.filter(function(c){ return c !== 'dir-ciclo-' + ref; });
+        __persistCargos(outro); // gravar a remoção na base
+      }
+    });
+    // Limpar directorId anterior deste prof noutros ciclos e definir o novo
     CICLOS.forEach(c => { if (c.directorId === profId) c.directorId = null; });
     const ciclo = CICLOS.find(c => c.id == ref);
     if (ciclo) ciclo.directorId = profId;
@@ -35266,9 +35295,10 @@ window.__finV30=true;})();
     var host=document.getElementById('ap-nt-c'); if(!host) return;
     var S=window._alNotas; if(!S) return;
     var dados=S.dados;
-    var tabs='<div class="trimestre-tabs">'+[1,2,3].map(function(t){
+    var tabs='<div class="trimestre-tabs" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+[1,2,3].map(function(t){
       return '<button class="ttab '+(t===tri?'on':'')+'" onclick="alNotasSet('+t+')">'+t+'º Trimestre</button>';
-    }).join('')+'<button class="ttab '+(tri==='final'?'on':'')+'" onclick="alNotasSet(\'final\')">Média Final</button></div>';
+    }).join('')+'<button class="ttab '+(tri==='final'?'on':'')+'" onclick="alNotasSet(\'final\')">Média Final</button>'
+    +'<button class="btn btn-gr btn-sm" style="margin-left:auto" onclick="window.exportarBoletimAluno('+(tri==='final'?'\'final\'':tri)+')"><i class="ti ti-file-type-pdf"></i> Exportar Boletim</button></div>';
 
     var corpo;
     if(tri==='final'){
@@ -35308,6 +35338,95 @@ window.__finV30=true;})();
     }
     host.innerHTML=tabs+alunoResumoGraficos(S)+corpo;
   }
+
+  // ---- BOLETIM DO ALUNO (dados reais, trimestre ou anual) ----
+  window.exportarBoletimAluno = function(periodo){
+    try{
+      var S=window._alNotas; if(!S||!S.dados||!S.dados.length){ if(typeof toast==='function') toast('Sem notas para gerar o boletim.'); return; }
+      var dados=S.dados;
+      var aluno=window._alunoAtualReal||null;
+      var nomeAluno = aluno&&aluno.nome ? aluno.nome : (function(){ try{ var el=document.querySelector('#v-aluno-p .ph-title,#v-aluno-p h1,#v-aluno-p .bc .cr'); return el?el.textContent.trim():'Aluno'; }catch(e){ return 'Aluno'; } })();
+      var escola=''; try{ escola=(typeof CONFIG!=='undefined'&&CONFIG.nomeEscola)?CONFIG.nomeEscola:(typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nome)||''; }catch(e){}
+      var anoLect=''; try{ anoLect=(typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear(); }catch(e){ anoLect=new Date().getFullYear(); }
+      var minAprov=10; try{ minAprov=(typeof CONFIG!=='undefined'&&CONFIG.mediaAprovacao)||10; }catch(e){}
+
+      var discs=[]; dados.forEach(function(n){ if(discs.indexOf(n.disciplina)<0) discs.push(n.disciplina); }); discs.sort();
+      var byd={}; dados.forEach(function(n){ (byd[n.disciplina]=byd[n.disciplina]||{})[n.trimestre]=mtOf(n); });
+
+      var titulo, linhasHTML='', mediaGeral=null, situacao='', htmlBody='';
+      function corNota(v){ return v==null?'#94a3b8':(v>=14?'#16a34a':(v>=minAprov?'#f59e0b':'#dc2626')); }
+
+      if(periodo==='final' || periodo===undefined){
+        titulo='Boletim Anual de Aproveitamento';
+        var finais=[];
+        linhasHTML=discs.map(function(d){
+          var v1=byd[d][1],v2=byd[d][2],v3=byd[d][3];
+          var vs=[v1,v2,v3].filter(function(x){return x!=null;});
+          var fin=vs.length?vs.reduce(function(s,x){return s+x;},0)/vs.length:null;
+          if(fin!=null)finais.push(fin);
+          function c(v){ return '<td style="text-align:center;color:'+corNota(v)+'">'+(v==null?'—':v.toFixed(1))+'</td>'; }
+          var sit=fin==null?'—':(fin>=minAprov?'Aprovado':'Reprovado');
+          return '<tr><td style="font-weight:600">'+esc(d)+'</td>'+c(v1)+c(v2)+c(v3)+'<td style="text-align:center;font-weight:800;color:'+corNota(fin)+'">'+(fin==null?'—':fin.toFixed(1))+'</td><td style="text-align:center;font-weight:600;color:'+(sit==='Aprovado'?'#16a34a':(sit==='Reprovado'?'#dc2626':'#94a3b8'))+'">'+sit+'</td></tr>';
+        }).join('');
+        mediaGeral=finais.length?(finais.reduce(function(s,x){return s+x;},0)/finais.length):null;
+        situacao = mediaGeral==null?'—':(mediaGeral>=minAprov?'TRANSITA':'NÃO TRANSITA');
+        var cabA='<tr><th style="text-align:left">Disciplina</th><th>1ºT</th><th>2ºT</th><th>3ºT</th><th>Final</th><th>Situação</th></tr>';
+        var footA='<tr style="font-weight:800;background:#f8fafc"><td>MÉDIA GERAL</td><td colspan="3"></td><td style="text-align:center;color:'+corNota(mediaGeral)+'">'+(mediaGeral==null?'—':mediaGeral.toFixed(1))+'</td><td style="text-align:center;color:'+(situacao==='TRANSITA'?'#16a34a':'#dc2626')+'">'+situacao+'</td></tr>';
+        htmlBody='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead>'+cabA+'</thead><tbody>'+linhasHTML+footA+'</tbody></table>';
+      } else {
+        var t=parseInt(periodo,10);
+        titulo='Boletim do '+t+'º Trimestre';
+        var notasT=dados.filter(function(n){return n.trimestre===t;});
+        notasT.sort(function(a,b){return (a.disciplina||'').localeCompare(b.disciplina||'');});
+        var somaMT=0,cont=0;
+        linhasHTML=notasT.map(function(n){
+          var a=num(n.as1),b=num(n.as2),ap=num(n.ap); var m=(a!=null&&b!=null)?(a+b)/2:null; var mt=mtOf(n);
+          if(mt!=null){somaMT+=mt;cont++;}
+          function c(v,bold){ return '<td style="text-align:center;'+(bold?'font-weight:800;':'')+'color:'+corNota(v)+'">'+(v==null?'—':v.toFixed(1))+'</td>'; }
+          return '<tr><td style="font-weight:600">'+esc(n.disciplina)+'</td>'+c(a)+c(b)+c(m)+c(ap)+c(mt,true)+'</tr>';
+        }).join('');
+        mediaGeral=cont?somaMT/cont:null;
+        situacao = mediaGeral==null?'—':(mediaGeral>=minAprov?'Aprovado':'Reprovado');
+        var cabT='<tr><th style="text-align:left">Disciplina</th><th>AS1</th><th>AS2</th><th>M</th><th>AP</th><th>M(T)</th></tr>';
+        var footT='<tr style="font-weight:800;background:#f8fafc"><td colspan="5">MÉDIA DO TRIMESTRE</td><td style="text-align:center;color:'+corNota(mediaGeral)+'">'+(mediaGeral==null?'—':mediaGeral.toFixed(1))+'</td></tr>';
+        htmlBody='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead>'+cabT+'</thead><tbody>'+linhasHTML+footT+'</tbody></table>';
+      }
+
+      if(!linhasHTML){ if(typeof toast==='function') toast('Sem notas neste período.'); return; }
+
+      var aprovado = (situacao==='Aprovado'||situacao==='TRANSITA');
+      var html='<!doctype html><html><head><meta charset="utf-8"><title>Boletim — '+esc(nomeAluno)+'</title>'+
+        '<style>'+
+        'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:28px;font-size:12px}'+
+        '.page{max-width:800px;margin:0 auto}'+
+        '.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0D1526;padding-bottom:12px;margin-bottom:16px}'+
+        '.esc{font-size:18px;font-weight:800;color:#0D1526}.escs{font-size:10px;color:#64748b}'+
+        '.tipo{font-size:13px;font-weight:800;text-transform:uppercase;color:#4f8ef7;text-align:right}'+
+        '.cod{font-size:9px;color:#94a3b8;font-family:monospace;text-align:right;margin-top:3px}'+
+        '.info{display:flex;justify-content:space-between;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px}'+
+        'th,td{padding:8px 10px;border-bottom:1px solid #e2e8f0}th{background:#f1f5f9;font-size:10px;text-transform:uppercase;color:#475569}'+
+        '.res{margin-top:18px;padding:14px 18px;border-radius:10px;display:flex;justify-content:space-between;font-size:14px;font-weight:800;'+(aprovado?'background:#dcfce7;color:#166534':(situacao==='—'?'background:#f1f5f9;color:#475569':'background:#fee2e2;color:#991b1b'))+'}'+
+        '.ass{display:flex;justify-content:space-between;margin-top:48px;font-size:11px;color:#475569}'+
+        '.ass div{text-align:center;width:40%;border-top:1px solid #94a3b8;padding-top:6px}'+
+        '.no-print{text-align:center;margin-bottom:16px}.no-print button{padding:9px 20px;background:#0D1526;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;margin:0 4px}'+
+        '@media print{.no-print{display:none}body{padding:12mm}}'+
+        '</style></head><body>'+
+        '<div class="no-print"><button onclick="window.print()">Imprimir / Guardar PDF</button></div>'+
+        '<div class="page">'+
+        '<div class="hdr"><div><div class="esc">'+esc(escola||'Colégio')+'</div><div class="escs">Ano Lectivo '+anoLect+'</div></div>'+
+        '<div><div class="tipo">'+titulo+'</div><div class="cod">BOL-'+esc(nomeAluno.split(' ')[0])+'-'+anoLect+'</div></div></div>'+
+        '<div class="info"><span><b>Aluno:</b> '+esc(nomeAluno)+'</span><span><b>Data:</b> '+new Date().toLocaleDateString('pt-PT')+'</span></div>'+
+        htmlBody+
+        '<div class="res"><span>'+ (periodo==='final'?'Situação Final':'Situação no Trimestre') +'</span><span>'+situacao+(mediaGeral!=null?' · '+mediaGeral.toFixed(1)+' val':'')+'</span></div>'+
+        '<div class="ass"><div>O Director de Turma</div><div>A Direcção</div></div>'+
+        '</div></body></html>';
+
+      var w=window.open('','_blank');
+      if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o boletim.'); return; }
+      w.document.open(); w.document.write(html); w.document.close();
+      if(typeof toast==='function') toast('<i class="ti ti-file-type-pdf"></i> Boletim gerado — escolha "Guardar como PDF"');
+    }catch(e){ try{ if(typeof toast==='function') toast('Erro no boletim: '+e); }catch(_){} }
+  };
 
   // Resumo do desempenho do proprio aluno (media geral + graficos)
   function alunoResumoGraficos(S){
