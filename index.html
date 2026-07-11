@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.45</span>
+    <span class="logo-ver">v6.47</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -755,6 +755,12 @@ console.log('[Scholaris] Supabase v2 inicializado');
 <div class="view" id="v-turmas">
   <div class="ph"><div><div class="ph-title">Turmas</div><div class="ph-sub">Ano Lectivo 2026</div></div><div class="ph-right"><button class="btn btn-p btn-sm" id="btn-nova-turma" onclick="openM('m-nturma')"><i class="ti ti-plus"></i> Nova Turma</button></div></div>
   <div class="tc-grid" id="tg"></div>
+</div>
+
+<!-- ════ VISÃO GERAL DA ESCOLA ════ -->
+<div class="view" id="v-visao-geral">
+  <div class="ph"><div><div class="ph-title">Visão Geral da Escola</div><div class="ph-sub">Panorama demográfico e operacional · Ano Lectivo 2026</div></div></div>
+  <div id="visao-geral-c"><div style="padding:40px;text-align:center;color:var(--t2)"><i class="ti ti-loader"></i> A carregar...</div></div>
 </div>
 
 <!-- ════ ALUNOS ════ -->
@@ -3307,6 +3313,7 @@ const ROLES={
         {i:'ti-award',l:'Cargos / Atribuições',id:'cargos'},
       ]},
       {sl:'Gestão Académica',sub:[
+        {i:'ti-chart-pie',l:'Visão Geral da Escola',id:'visao-geral'},
         {i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},
         {i:'ti-layout-grid',l:'Turmas',id:'turmas'},
         {i:'ti-users',l:'Alunos',id:'alunos'},
@@ -3392,6 +3399,7 @@ const ROLES={
         {i:'ti-award',l:'Cargos / Atribuições',id:'cargos'},
       ]},
       {sl:'Gestão Académica',sub:[
+        {i:'ti-chart-pie',l:'Visão Geral da Escola',id:'visao-geral'},
         {i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},
         {i:'ti-layout-grid',l:'Turmas',id:'turmas'},
         {i:'ti-users',l:'Alunos',id:'alunos'},
@@ -3546,7 +3554,7 @@ function canSeeSalary(){return ['gestor','director'].includes(curRole);}
 
 
 // ══ NAVEGAÇÃO ══
-const VM={dash:'v-dash',exec:'v-exec',config:'v-config','curr-planos':'v-curr-planos',turmas:'v-turmas',alunos:'v-alunos','aluno-p':'v-aluno-p',professores:'v-professores','prof-p':'v-prof-p',encarregados:'v-encarregados','enc-p':'v-enc-p',alocacao:'v-alocacao',horario:'v-horario',presencas:'v-presencas',notas:'v-notas',exames:'v-exames',propinas:'v-propinas',propaluno:'v-propaluno',despesas:'v-despesas',emolumentos:'v-emolumentos',staff:'v-staff',aval:'v-aval','aval-dep':'v-aval-dep',bib:'v-bib',portal:'v-portal','portal-prof':'v-portal-prof',faltas:'v-faltas','calendario-escolar':'v-calendario-escolar','monitor-prof':'v-monitor-prof','progresso-alunos':'v-progresso-alunos','dash-enc':'v-dash-enc','portal-enc-notas':'v-portal-enc-notas','portal-enc-presencas':'v-portal-enc-presencas','portal-enc-trabalhos':'v-portal-enc-trabalhos','portal-enc-propinas':'v-portal-enc-propinas','portal-enc-horario':'v-portal-enc-horario','mensagens-enc':'v-mensagens-enc','admissoes':'v-admissoes','comunicacao':'v-comunicacao','ciclo-visao':'v-ciclo-visao','ciclo-turmas':'v-ciclo-turmas','meu-perfil-prof':'v-meu-perfil-prof','minha-aula':'v-minha-aula','comunicados-prof':'v-comunicados-prof','trabalhos-prof':'v-trabalhos-prof','desempenho-acad':'v-desempenho-acad','alertas-ciclo':'v-alertas-ciclo','reunioes':'v-reunioes','monitor-ciclo':'v-monitor-ciclo','dividas':'v-dividas','folha-salarios':'v-folha-salarios','fluxo-caixa':'v-fluxo-caixa','orcamento':'v-orcamento','previsao-receita':'v-previsao-receita','despesas-cat':'v-despesas-cat','gestao-ano':'v-gestao-ano','utilizadores':'v-utilizadores','fin-dashboard':'v-fin-dashboard','audit-trail':'v-audit-trail','aging-report':'v-aging-report','reconciliacao':'v-reconciliacao','periodos':'v-periodos','cargos':'v-cargos','turma-p':'v-turma-p'};
+const VM={dash:'v-dash',exec:'v-exec',config:'v-config','curr-planos':'v-curr-planos',turmas:'v-turmas',alunos:'v-alunos','aluno-p':'v-aluno-p',professores:'v-professores','prof-p':'v-prof-p',encarregados:'v-encarregados','enc-p':'v-enc-p',alocacao:'v-alocacao',horario:'v-horario',presencas:'v-presencas',notas:'v-notas',exames:'v-exames',propinas:'v-propinas',propaluno:'v-propaluno',despesas:'v-despesas',emolumentos:'v-emolumentos',staff:'v-staff',aval:'v-aval','aval-dep':'v-aval-dep',bib:'v-bib',portal:'v-portal','portal-prof':'v-portal-prof',faltas:'v-faltas','calendario-escolar':'v-calendario-escolar','monitor-prof':'v-monitor-prof','progresso-alunos':'v-progresso-alunos','dash-enc':'v-dash-enc','portal-enc-notas':'v-portal-enc-notas','portal-enc-presencas':'v-portal-enc-presencas','portal-enc-trabalhos':'v-portal-enc-trabalhos','portal-enc-propinas':'v-portal-enc-propinas','portal-enc-horario':'v-portal-enc-horario','mensagens-enc':'v-mensagens-enc','admissoes':'v-admissoes','comunicacao':'v-comunicacao','ciclo-visao':'v-ciclo-visao','ciclo-turmas':'v-ciclo-turmas','meu-perfil-prof':'v-meu-perfil-prof','minha-aula':'v-minha-aula','comunicados-prof':'v-comunicados-prof','trabalhos-prof':'v-trabalhos-prof','desempenho-acad':'v-desempenho-acad','alertas-ciclo':'v-alertas-ciclo','reunioes':'v-reunioes','monitor-ciclo':'v-monitor-ciclo','dividas':'v-dividas','folha-salarios':'v-folha-salarios','fluxo-caixa':'v-fluxo-caixa','orcamento':'v-orcamento','previsao-receita':'v-previsao-receita','despesas-cat':'v-despesas-cat','gestao-ano':'v-gestao-ano','utilizadores':'v-utilizadores','fin-dashboard':'v-fin-dashboard','audit-trail':'v-audit-trail','aging-report':'v-aging-report','reconciliacao':'v-reconciliacao','periodos':'v-periodos','cargos':'v-cargos','turma-p':'v-turma-p','visao-geral':'v-visao-geral'};
 
 // ════════════════════════════════════════════════════════════
 //  SCHOLARIS — CICLOS, DISPONIBILIDADE, PLANO ANALÍTICO
@@ -3617,7 +3625,7 @@ function go(id){
   document.querySelectorAll('.si,.ssi').forEach(s=>s.classList.remove('on'));
   const ve=document.getElementById(VM[id]);if(ve)ve.classList.add('on');
   const se=document.getElementById('si-'+id);if(se)se.classList.add('on');
-  const _builtIn={dash:rDash,exec:rExec,config:rConfig,'curr-planos':()=>rCurrPlanos(null),turmas:rTurmas,alunos:rAl,professores:rPr,encarregados:rEncs,alocacao:rAlocacao,horario:rHorTurmas,presencas:setupPresencas,notas:rNotasTurmas,exames:rExames,propinas:rPropTurmas,despesas:rDespesas,emolumentos:rEmol,staff:()=>rStaff('todos'),'aval-dep':rAvalDep,bib:rBib,portal:rPortalAluno,'portal-prof':rPortalProf,faltas:rFaltas,'minha-aula':rMinhaAulaCompleta,'comunicados-prof':rComunicadosProf,'trabalhos-prof':rTrabalhosProfView,'desempenho-acad':rDesempenhoAcademico,'alertas-ciclo':rAlertasCiclo,'reunioes':rReunioes,'monitor-ciclo':rMonitorCiclo,'dividas':rDividasConsolidadas,'folha-salarios':rFolhaSalarios,'fluxo-caixa':rFluxoCaixa,'orcamento':rOrcamento,'previsao-receita':rPrevisaoReceita,'despesas-cat':rDespesasCategoria,'gestao-ano':()=>window.rGestaoAno()};
+  const _builtIn={dash:rDash,exec:rExec,config:rConfig,'curr-planos':()=>rCurrPlanos(null),turmas:rTurmas,alunos:rAl,professores:rPr,encarregados:rEncs,alocacao:rAlocacao,horario:rHorTurmas,presencas:setupPresencas,notas:rNotasTurmas,exames:rExames,propinas:rPropTurmas,despesas:rDespesas,emolumentos:rEmol,staff:()=>rStaff('todos'),'aval-dep':rAvalDep,bib:rBib,portal:rPortalAluno,'portal-prof':rPortalProf,faltas:rFaltas,'minha-aula':rMinhaAulaCompleta,'comunicados-prof':rComunicadosProf,'trabalhos-prof':rTrabalhosProfView,'desempenho-acad':rDesempenhoAcademico,'alertas-ciclo':rAlertasCiclo,'reunioes':rReunioes,'monitor-ciclo':rMonitorCiclo,'dividas':rDividasConsolidadas,'folha-salarios':rFolhaSalarios,'fluxo-caixa':rFluxoCaixa,'orcamento':rOrcamento,'previsao-receita':rPrevisaoReceita,'despesas-cat':rDespesasCategoria,'gestao-ano':()=>window.rGestaoAno(),'visao-geral':()=>window.rVisaoGeral()};
   const _fn=_builtIn[id]||(typeof RENDER_MAP!=='undefined'&&RENDER_MAP[id])||null;
   if(_fn)_fn(id);
 }
@@ -5889,6 +5897,7 @@ async function loadDadosEscola() {
           _turmaDbId: matricula?.turma_id || null,
           classe: turmaDB ? (turmaDB.nome?.charAt(0) + 'ª Classe') : '',
           ingresso: a.created_at ? new Date(a.created_at).getFullYear() : new Date().getFullYear(),
+          _matriculaAnos: Array.isArray(a.matriculas) ? a.matriculas.map(function(m){return m.ano_lectivo_id;}).filter(Boolean) : [],
           verif: a.confirmado === true,
           foto: null,
           bolseiro: _bolsaPct>0?'sim':'nao',
@@ -12904,6 +12913,7 @@ ROLES['dir-pedagogico'] = {
       {i:'ti-calendar-event',l:'Reuniões',id:'reunioes'},
     ]},
     {sl:'Gestão Académica', sub:[
+      {i:'ti-chart-pie',l:'Visão Geral da Escola',id:'visao-geral'},
       {i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},
       {i:'ti-layout-grid',l:'Turmas',id:'turmas'},
       {i:'ti-users',l:'Alunos',id:'alunos'},
@@ -13128,63 +13138,204 @@ function editarCiclo(id) {
 let _paTurma = null, _paDisc = null;
 
 function renderTurmaTabAnalise(turmaId, alunos) {
-  var cfg = (typeof CONFIG!=="undefined" && CONFIG.mediaAprovacao) || 10;
-  var trimestres = ["t1","t2","t3"];
-  var trimLabels = ["1º Trim.","2º Trim.","3º Trim."];
-  function mediaTrimAluno(a, tk){
-    var arr = (a.notas && a.notas[tk]) ? a.notas[tk] : [];
-    var ms = arr.map(function(n){ return calcMediaTrimestral(n); }).filter(function(m){ return m!=null; });
-    return ms.length ? (ms.reduce(function(s,m){return s+m;},0)/ms.length) : null;
+  // Análise demográfica e operacional da turma (dados reais)
+  var ANO_ATUAL = 'b2000000-0000-0000-0000-000000000026';
+  function esc2(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var total = alunos.length;
+  if(!total){
+    return '<div class="card"><div class="cb" style="text-align:center;padding:48px;color:var(--t2)"><i class="ti ti-chart-pie" style="font-size:46px;display:block;margin-bottom:12px"></i>Sem alunos nesta turma.</div></div>';
   }
-  var medTurma = trimestres.map(function(tk){
-    var vals = alunos.map(function(a){ return mediaTrimAluno(a, tk); }).filter(function(m){ return m!=null; });
-    return vals.length ? Math.round(vals.reduce(function(s,m){return s+m;},0)/vals.length*10)/10 : null;
-  });
-  var proj = (medTurma[0]!=null && medTurma[1]!=null)
-    ? Math.min(20, Math.max(0, Math.round((medTurma[1] + (medTurma[1]-medTurma[0]))*10)/10))
-    : null;
-  var temDados = medTurma.some(function(m){ return m!=null; });
-  var medias = alunos.map(function(a){ return calcMediaGeralAluno(a.id); }).filter(function(m){ return m!=null; });
-  var mediaGeral = medias.length ? Math.round(medias.reduce(function(s,m){return s+m;},0)/medias.length*10)/10 : null;
-  var aprovados = medias.filter(function(m){ return m>=cfg; }).length;
-  var taxaAprov = medias.length ? Math.round(aprovados/medias.length*100) : 0;
-  var discNames = (alunos[0] && alunos[0].notas && alunos[0].notas.t1) ? alunos[0].notas.t1.map(function(n){return n.d;}) : [];
-  var discStats = discNames.map(function(d){
-    var vs = alunos.map(function(a){ return calcNotaFinal(a.id, d); }).filter(function(m){ return m!=null; });
-    var mm = vs.length ? Math.round(vs.reduce(function(s,m){return s+m;},0)/vs.length*10)/10 : null;
-    return {d:d, m:mm};
-  }).filter(function(x){ return x.m!=null; });
-  discStats.sort(function(x,y){ return y.m - x.m; });
-  var melhor = discStats[0], pior = discStats[discStats.length-1];
-  var pontos = [];
-  for(var i=0;i<medTurma.length;i++){ if(medTurma[i]!=null) pontos.push({val:medTurma[i], estimado:false}); }
-  if(proj!=null) pontos.push({val:proj, estimado:true});
-  var grafico = (typeof gerarGraficoLinha==="function" && pontos.length) ? gerarGraficoLinha(pontos, "Média da Turma") : "";
-  var trend = (medTurma[0]!=null && medTurma[1]!=null) ? (medTurma[1]-medTurma[0]) : 0;
-  var trendTxt = trend>0 ? "Em subida" : trend<0 ? "Em descida" : "Estável";
-  var trendCls = trend>0 ? "bok" : trend<0 ? "ber" : "bwn";
-  if(!temDados){
-    return '<div class="card"><div class="cb" style="text-align:center;padding:48px;color:var(--t2)"><i class="ti ti-chart-line" style="font-size:46px;display:block;margin-bottom:12px"></i>Ainda sem notas lan\u00e7adas para esta turma.<br><span style="font-size:12px">A an\u00e1lise gr\u00e1fica aparece assim que houver avalia\u00e7\u00f5es registadas.</span></div></div>';
+  // Género
+  var rapazes = alunos.filter(function(a){return a.genero==='M';}).length;
+  var meninas = alunos.filter(function(a){return a.genero==='F';}).length;
+  var semGen = total - rapazes - meninas;
+  var pctR = Math.round(rapazes/total*100), pctM = Math.round(meninas/total*100);
+  // Idade média
+  var hoje = new Date();
+  var idades = alunos.map(function(a){
+    if(!a.nasc) return null;
+    var d = new Date(a.nasc); if(isNaN(d)) return null;
+    var i = hoje.getFullYear()-d.getFullYear();
+    var mdiff = hoje.getMonth()-d.getMonth(); if(mdiff<0||(mdiff===0&&hoje.getDate()<d.getDate())) i--;
+    return (i>0&&i<100)?i:null;
+  }).filter(function(x){return x!=null;});
+  var idadeMedia = idades.length ? (idades.reduce(function(s,x){return s+x;},0)/idades.length) : null;
+  var idadeMin = idades.length?Math.min.apply(null,idades):null, idadeMax = idades.length?Math.max.apply(null,idades):null;
+  // Novos vs antigos: antigo = tem matrícula de ano anterior ao actual
+  var antigos = alunos.filter(function(a){
+    var anos = a._matriculaAnos||[];
+    return anos.some(function(y){ return y && y!==ANO_ATUAL; });
+  }).length;
+  var novos = total - antigos;
+  var pctNovos = Math.round(novos/total*100);
+
+  function donut(a,b,corA,corB,lblA,lblB){
+    var tt=a+b; if(!tt) return '';
+    var pa=a/tt, C=2*Math.PI*54, da=pa*C;
+    return '<svg viewBox="0 0 140 140" style="width:130px;height:130px">'+
+      '<circle cx="70" cy="70" r="54" fill="none" stroke="'+corB+'" stroke-width="20"/>'+
+      '<circle cx="70" cy="70" r="54" fill="none" stroke="'+corA+'" stroke-width="20" stroke-dasharray="'+da+' '+C+'" transform="rotate(-90 70 70)"/>'+
+      '<text x="70" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="var(--t)">'+tt+'</text>'+
+      '<text x="70" y="84" text-anchor="middle" font-size="10" fill="var(--t3)">alunos</text>'+
+    '</svg>';
   }
-  var H = "";
-  H += '<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-trending-up" style="color:var(--a);margin-right:6px"></i>Evolu\u00e7\u00e3o da M\u00e9dia da Turma</span><span class="badge '+trendCls+'" style="font-size:11px">'+trendTxt+'</span></div><div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:8px 4px">'+grafico+'<div style="font-size:12px;color:var(--t2);line-height:1.9">';
-  H += trimLabels.map(function(l,idx){ return l+': <b style="color:var(--t)">'+(medTurma[idx]!=null?medTurma[idx].toFixed(1):"\u2014")+'</b>'; }).join("<br>");
-  if(proj!=null) H += '<br><span style="color:var(--a)">Previs\u00e3o: <b>'+proj.toFixed(1)+'</b> valores</span>';
-  H += '</div></div></div>';
-  H += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px">';
-  H += '<div class="card"><div class="cb" style="padding:16px"><div style="font-size:12px;color:var(--t2)">M\u00e9dia Geral</div><div style="font-size:26px;font-weight:700;color:var(--t)">'+(mediaGeral!=null?mediaGeral.toFixed(1):"\u2014")+'</div></div></div>';
-  H += '<div class="card"><div class="cb" style="padding:16px"><div style="font-size:12px;color:var(--t2)">Taxa de Aprova\u00e7\u00e3o</div><div style="font-size:26px;font-weight:700;color:'+(taxaAprov>=50?"var(--ok)":"var(--er)")+'">'+taxaAprov+'%</div></div></div>';
-  H += '<div class="card"><div class="cb" style="padding:16px"><div style="font-size:12px;color:var(--t2)">Melhor Disciplina</div><div style="font-size:17px;font-weight:700;color:var(--ok)">'+(melhor?melhor.d+" ("+melhor.m.toFixed(1)+")":"\u2014")+'</div></div></div>';
-  H += '<div class="card"><div class="cb" style="padding:16px"><div style="font-size:12px;color:var(--t2)">A Melhorar</div><div style="font-size:17px;font-weight:700;color:var(--er)">'+(pior?pior.d+" ("+pior.m.toFixed(1)+")":"\u2014")+'</div></div></div>';
+  function card(inner){ return '<div style="flex:1;min-width:240px;background:var(--card);border:1px solid var(--b);border-radius:12px;padding:16px">'+inner+'</div>'; }
+  function leg(cor,lbl,val,pct){ return '<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span style="width:12px;height:12px;border-radius:3px;background:'+cor+';display:inline-block"></span><span style="font-size:13px;color:var(--t2);flex:1">'+lbl+'</span><b style="font-size:13px">'+val+'</b><span style="font-size:11px;color:var(--t3);width:38px;text-align:right">'+(pct!=null?pct+'%':'')+'</span></div>'; }
+
+  var H = '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">';
+  // Card género
+  H += card('<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-users" style="color:#3b82f6"></i> Género</div>'+
+    '<div style="display:flex;align-items:center;gap:16px"><div>'+donut(rapazes,meninas,'#3b82f6','#ec4899')+'</div>'+
+    '<div style="flex:1">'+leg('#3b82f6','Rapazes',rapazes,pctR)+leg('#ec4899','Meninas',meninas,pctM)+(semGen?leg('#94a3b8','Sem registo',semGen,null):'')+'</div></div>');
+  // Card novos vs antigos
+  H += card('<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-user-plus" style="color:#22c55e"></i> Novos vs Recorrentes</div>'+
+    '<div style="display:flex;align-items:center;gap:16px"><div>'+donut(novos,antigos,'#22c55e','#f59e0b')+'</div>'+
+    '<div style="flex:1">'+leg('#22c55e','Novos (este ano)',novos,pctNovos)+leg('#f59e0b','Recorrentes',antigos,100-pctNovos)+'</div></div>'+
+    (antigos===0?'<div style="font-size:11px;color:var(--t3);margin-top:8px"><i class="ti ti-info-circle"></i> Primeiro ano no sistema: todos contam como novos. A partir do próximo ano lectivo os recorrentes aparecem automaticamente.</div>':''));
+  // Card idade
+  H += card('<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-cake" style="color:#8b5cf6"></i> Idade</div>'+
+    '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px"><span style="font-size:32px;font-weight:800;color:var(--t)">'+(idadeMedia!=null?idadeMedia.toFixed(1):'—')+'</span><span style="font-size:13px;color:var(--t2)">anos (média)</span></div>'+
+    (idadeMin!=null?'<div style="font-size:12px;color:var(--t3)">Dos '+idadeMin+' aos '+idadeMax+' anos</div>':'<div style="font-size:12px;color:var(--t3)">Sem datas de nascimento registadas</div>'));
+  // Card faltas (assíncrono)
+  H += card('<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-calendar-off" style="color:#ef4444"></i> Faltas</div>'+
+    '<div id="an-faltas-'+turmaId+'" style="color:var(--t3);font-size:13px"><i class="ti ti-loader"></i> A carregar faltas...</div>');
   H += '</div>';
-  H += '<div class="card"><div class="ch"><span class="ct">Aproveitamento por Aluno</span></div><table><tr><th>Aluno</th><th>M\u00e9dia</th><th>Estado</th></tr>';
-  H += alunos.map(function(a){
-    var m = calcMediaGeralAluno(a.id);
-    var ok = m!=null && m>=cfg;
-    return '<tr><td>'+a.nome+'</td><td>'+(m!=null?m.toFixed(1):"\u2014")+'</td><td style="color:'+(m==null?"var(--t2)":ok?"var(--ok)":"var(--er)")+'">'+(m==null?"Sem notas":ok?"Aprovado":"Reprovado")+'</td></tr>';
-  }).join("");
-  H += '</table></div>';
+
+  // Carregar faltas em segundo plano
+  setTimeout(function(){ __carregarFaltasTurmaAnalise(turmaId, alunos); }, 30);
   return H;
+}
+
+async function __carregarFaltasTurmaAnalise(turmaId, alunos){
+  var box = document.getElementById('an-faltas-'+turmaId); if(!box) return;
+  try{
+    if(!window._supabase){ box.innerHTML='<span style="color:var(--t3)">Sem ligação.</span>'; return; }
+    var ids = alunos.map(function(a){return a._dbId;}).filter(Boolean);
+    var res = await window._supabase.from('faltas').select('aluno_id,justif').eq('escola_id', window._escolaId).eq('turma', turmaId);
+    if(res.error){ box.innerHTML='<span style="color:var(--t3)">Sem dados de faltas.</span>'; return; }
+    var faltas = res.data||[];
+    var total = faltas.length;
+    var justif = faltas.filter(function(f){return f.justif===true;}).length;
+    var injust = total - justif;
+    var nAlunos = alunos.length||1;
+    var media = (total/nAlunos);
+    // aluno com mais faltas
+    var cont={}; faltas.forEach(function(f){ cont[f.aluno_id]=(cont[f.aluno_id]||0)+1; });
+    var maxId=null,maxN=0; Object.keys(cont).forEach(function(k){ if(cont[k]>maxN){maxN=cont[k];maxId=k;} });
+    var nomeMax=''; if(maxId){ var am=alunos.find(function(a){return String(a._dbId)===String(maxId);}); nomeMax=am?am.nome:''; }
+    box.innerHTML =
+      '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px"><span style="font-size:32px;font-weight:800;color:var(--t)">'+media.toFixed(1)+'</span><span style="font-size:13px;color:var(--t2)">faltas/aluno (média)</span></div>'+
+      '<div style="font-size:12px;color:var(--t2);line-height:1.8">'+
+        'Total de faltas: <b>'+total+'</b><br>'+
+        'Justificadas: <b style="color:#22c55e">'+justif+'</b> · Injustificadas: <b style="color:#ef4444">'+injust+'</b>'+
+        (nomeMax?'<br>Mais faltas: <b>'+nomeMax.replace(/[&<>"]/g,'')+'</b> ('+maxN+')':'')+
+      '</div>';
+  }catch(e){ box.innerHTML='<span style="color:var(--t3)">Erro ao carregar faltas.</span>'; }
+}
+
+// ═══ VISÃO GERAL DA ESCOLA (pedagógico / director / gestor) ═══
+window.rVisaoGeral = function(){
+  var el = document.getElementById('visao-geral-c'); if(!el) return;
+  if(['gestor','director','dir-pedagogico'].indexOf(curRole)<0){
+    el.innerHTML='<div class="card" style="padding:32px;text-align:center;color:var(--t2)"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:8px"></i>Sem permissão para ver a visão geral da escola.</div>';
+    return;
+  }
+  var ANO_ATUAL='b2000000-0000-0000-0000-000000000026';
+  var A = (typeof ALUNOS!=='undefined')?ALUNOS:[];
+  var T = (typeof TURMAS!=='undefined')?TURMAS:[];
+  var P = (typeof PROFS!=='undefined')?PROFS:[];
+  var totalA=A.length, totalT=T.length, totalP=P.length;
+  var racio = totalP? (totalA/totalP):0;
+  // Género global
+  var rap=A.filter(function(a){return a.genero==='M';}).length;
+  var men=A.filter(function(a){return a.genero==='F';}).length;
+  var pctR=totalA?Math.round(rap/totalA*100):0, pctM=totalA?Math.round(men/totalA*100):0;
+  // Novos vs antigos
+  var antigos=A.filter(function(a){ var y=a._matriculaAnos||[]; return y.some(function(x){return x&&x!==ANO_ATUAL;}); }).length;
+  var novos=totalA-antigos;
+  // Idade média
+  var hoje=new Date();
+  var idades=A.map(function(a){ if(!a.nasc)return null; var d=new Date(a.nasc); if(isNaN(d))return null; var i=hoje.getFullYear()-d.getFullYear(); var md=hoje.getMonth()-d.getMonth(); if(md<0||(md===0&&hoje.getDate()<d.getDate()))i--; return (i>0&&i<100)?i:null; }).filter(function(x){return x!=null;});
+  var idadeMedia=idades.length?(idades.reduce(function(s,x){return s+x;},0)/idades.length):null;
+  // Distribuição por ciclo
+  var CIC=(typeof CICLOS!=='undefined')?CICLOS:[];
+  function classeDe(t){ return (t && (t.classe!=null?t.classe:(t.nome||'').match(/\d+/)&&(t.nome||'').match(/\d+/)[0])); }
+  var porCiclo=CIC.map(function(c){
+    var classes=c.classes||[];
+    var alunosCiclo=A.filter(function(a){
+      var tt=T.find(function(x){return x.id===a.turma;}); if(!tt)return false;
+      var cl=String(classeDe(tt)); return classes.indexOf(cl)>=0;
+    });
+    return {nome:c.nome, sigla:c.sigla, cor:c.cor, n:alunosCiclo.length, r:alunosCiclo.filter(function(a){return a.genero==='M';}).length, m:alunosCiclo.filter(function(a){return a.genero==='F';}).length};
+  });
+  // Tamanho de turmas
+  var tamanhos=T.map(function(t){ return {nome:t.nome, n:A.filter(function(a){return a.turma===t.id;}).length}; }).sort(function(x,y){return y.n-x.n;});
+  var maior=tamanhos[0], menor=tamanhos[tamanhos.length-1];
+  var mediaTurma=totalT?Math.round(totalA/totalT):0;
+
+  function kpi(val,lbl,cor,ic){ return '<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:12px;padding:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><i class="ti '+ic+'" style="color:'+cor+';font-size:18px"></i><span style="font-size:12px;color:var(--t2)">'+lbl+'</span></div><div style="font-size:28px;font-weight:800;color:var(--t)">'+val+'</div></div>'; }
+  function donut(a,b,cA,cB){ var tt=a+b; if(!tt)return ''; var C=2*Math.PI*54,da=(a/tt)*C; return '<svg viewBox="0 0 140 140" style="width:120px;height:120px"><circle cx="70" cy="70" r="54" fill="none" stroke="'+cB+'" stroke-width="20"/><circle cx="70" cy="70" r="54" fill="none" stroke="'+cA+'" stroke-width="20" stroke-dasharray="'+da+' '+C+'" transform="rotate(-90 70 70)"/><text x="70" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="var(--t)">'+tt+'</text><text x="70" y="84" text-anchor="middle" font-size="10" fill="var(--t3)">alunos</text></svg>'; }
+  function leg(cor,lbl,val,pct){ return '<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span style="width:12px;height:12px;border-radius:3px;background:'+cor+';display:inline-block"></span><span style="font-size:13px;color:var(--t2);flex:1">'+lbl+'</span><b style="font-size:13px">'+val+'</b><span style="font-size:11px;color:var(--t3);width:38px;text-align:right">'+(pct!=null?pct+'%':'')+'</span></div>'; }
+  function card(inner,flex){ return '<div style="flex:'+(flex||1)+';min-width:260px;background:var(--card);border:1px solid var(--b);border-radius:12px;padding:16px">'+inner+'</div>'; }
+
+  var H='';
+  // KPIs
+  H+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+
+    kpi(totalA,'Alunos','#3b82f6','ti-users')+
+    kpi(totalT,'Turmas','#8b5cf6','ti-layout-grid')+
+    kpi(totalP,'Professores','#22c55e','ti-chalkboard')+
+    kpi(racio.toFixed(1),'Alunos / Professor','#f59e0b','ti-scale')+
+    kpi(idadeMedia!=null?idadeMedia.toFixed(1):'—','Idade média','#ec4899','ti-cake')+
+  '</div>';
+  // Género + Novos
+  H+='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">';
+  H+=card('<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-users" style="color:#3b82f6"></i> Género (toda a escola)</div><div style="display:flex;align-items:center;gap:16px"><div>'+donut(rap,men,'#3b82f6','#ec4899')+'</div><div style="flex:1">'+leg('#3b82f6','Rapazes',rap,pctR)+leg('#ec4899','Meninas',men,pctM)+'</div></div>');
+  H+=card('<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-user-plus" style="color:#22c55e"></i> Novos vs Recorrentes</div><div style="display:flex;align-items:center;gap:16px"><div>'+donut(novos,antigos,'#22c55e','#f59e0b')+'</div><div style="flex:1">'+leg('#22c55e','Novos',novos,totalA?Math.round(novos/totalA*100):0)+leg('#f59e0b','Recorrentes',antigos,totalA?Math.round(antigos/totalA*100):0)+'</div></div>'+(antigos===0?'<div style="font-size:11px;color:var(--t3);margin-top:8px"><i class="ti ti-info-circle"></i> Primeiro ano no sistema.</div>':''));
+  H+='</div>';
+  // Distribuição por ciclo
+  var maxCiclo=Math.max.apply(null,porCiclo.map(function(c){return c.n;}).concat([1]));
+  var gc='<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-stack-2" style="color:#8b5cf6"></i> Distribuição por Ciclo</div><div style="display:flex;flex-direction:column;gap:10px">';
+  porCiclo.forEach(function(c){
+    var pct=Math.round(c.n/maxCiclo*100);
+    gc+='<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--t2)">'+(c.sigla||c.nome)+'</span><span><b>'+c.n+'</b> <span style="color:var(--t3);font-size:11px">('+c.r+'♂ '+c.m+'♀)</span></span></div><div style="background:var(--bg3);border-radius:6px;height:14px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+(c.cor||'#8b5cf6')+';border-radius:6px"></div></div></div>';
+  });
+  gc+='</div>';
+  H+='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">'+card(gc,2);
+  // Tamanho de turmas
+  H+=card('<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-ruler-2" style="color:#f59e0b"></i> Tamanho das Turmas</div>'+
+    '<div style="font-size:12px;color:var(--t2);line-height:2.1">Média por turma: <b style="color:var(--t)">'+mediaTurma+'</b> alunos<br>'+
+    (maior?'Maior: <b>'+maior.nome+'</b> ('+maior.n+')<br>':'')+
+    (menor?'Menor: <b>'+menor.nome+'</b> ('+menor.n+')':'')+'</div>',1);
+  H+='</div>';
+  // Assiduidade (async)
+  H+='<div id="vg-assiduidade" style="background:var(--card);border:1px solid var(--b);border-radius:12px;padding:16px"><div style="font-weight:700;font-size:14px;margin-bottom:8px"><i class="ti ti-calendar-off" style="color:#ef4444"></i> Assiduidade Global</div><div style="color:var(--t3);font-size:13px"><i class="ti ti-loader"></i> A carregar faltas...</div></div>';
+
+  el.innerHTML=H;
+  setTimeout(__carregarAssiduidadeGlobal, 40);
+};
+
+async function __carregarAssiduidadeGlobal(){
+  var box=document.getElementById('vg-assiduidade'); if(!box) return;
+  try{
+    if(!window._supabase) return;
+    var res=await window._supabase.from('faltas').select('aluno_id,justif,turma').eq('escola_id', window._escolaId);
+    if(res.error){ box.querySelector('div:last-child').innerHTML='<span style="color:var(--t3)">Sem dados.</span>'; return; }
+    var f=res.data||[];
+    var total=f.length;
+    var justif=f.filter(function(x){return x.justif===true;}).length;
+    var nA=(typeof ALUNOS!=='undefined'?ALUNOS.length:1)||1;
+    var media=(total/nA);
+    // faltas por turma → mais e menos assídua
+    var porT={}; f.forEach(function(x){ porT[x.turma]=(porT[x.turma]||0)+1; });
+    var T=(typeof TURMAS!=='undefined')?TURMAS:[];
+    var arr=T.map(function(t){ var nAl=ALUNOS.filter(function(a){return a.turma===t.id;}).length||1; return {nome:t.nome, mediaT:(porT[t.id]||0)/nAl}; }).filter(function(x){return x.nome;}).sort(function(a,b){return a.mediaT-b.mediaT;});
+    var maisAssidua=arr[0], menosAssidua=arr[arr.length-1];
+    box.innerHTML='<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-calendar-off" style="color:#ef4444"></i> Assiduidade Global</div>'+
+      '<div style="display:flex;gap:24px;flex-wrap:wrap"><div><div style="font-size:28px;font-weight:800;color:var(--t)">'+media.toFixed(1)+'</div><div style="font-size:12px;color:var(--t2)">faltas / aluno (média)</div></div>'+
+      '<div style="font-size:12px;color:var(--t2);line-height:2">Total de faltas: <b>'+total+'</b><br>Justificadas: <b style="color:#22c55e">'+justif+'</b> · Injustificadas: <b style="color:#ef4444">'+(total-justif)+'</b></div>'+
+      (maisAssidua?'<div style="font-size:12px;color:var(--t2);line-height:2">Mais assídua: <b style="color:#22c55e">'+maisAssidua.nome+'</b><br>Menos assídua: <b style="color:#ef4444">'+menosAssidua.nome+'</b></div>':'')+
+      '</div>';
+  }catch(e){}
 }
 function rPlanoAnalitico(turmaId) {
   const _paEls = document.querySelectorAll('[id="plano-analitico-c"]'); const el = Array.from(_paEls).find(function(x){return x.offsetParent!==null;}) || _paEls[_paEls.length-1] || document.getElementById('plano-analitico-c');
@@ -14838,6 +14989,7 @@ async function openTurma(turmaId) {
       <button class="tab on" onclick="swTurmaTab('alunos',this,'${turmaId}')"><i class="ti ti-users"></i> Alunos</button>
       <button class="tab" onclick="swTurmaTab('aproveitamento',this,'${turmaId}')"><i class="ti ti-star"></i> Aproveitamento</button>
       <button class="tab" onclick="swTurmaTab('faltas',this,'${turmaId}')"><i class="ti ti-alert-circle"></i> Faltas</button>
+      <button class="tab" onclick="swTurmaTab('analise',this,'${turmaId}')"><i class="ti ti-chart-pie"></i> Análise</button>
       <button class="tab" onclick="swTurmaTab('profs',this,'${turmaId}')"><i class="ti ti-chalkboard"></i> Professores</button>
       <button class="tab" onclick="swTurmaTab('analitico',this,'${turmaId}')"><i class="ti ti-notebook"></i> Plano Analítico</button>
       <button class="tab" onclick="swTurmaTab('tematico',this,'${turmaId}')"><i class="ti ti-book"></i> Plano Temático</button>
