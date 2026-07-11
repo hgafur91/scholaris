@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.47</span>
+    <span class="logo-ver">v6.48</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -13236,6 +13236,7 @@ async function __carregarFaltasTurmaAnalise(turmaId, alunos){
 // ═══ VISÃO GERAL DA ESCOLA (pedagógico / director / gestor) ═══
 window.rVisaoGeral = function(){
   var el = document.getElementById('visao-geral-c'); if(!el) return;
+  try{
   if(['gestor','director','dir-pedagogico'].indexOf(curRole)<0){
     el.innerHTML='<div class="card" style="padding:32px;text-align:center;color:var(--t2)"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:8px"></i>Sem permissão para ver a visão geral da escola.</div>';
     return;
@@ -13259,18 +13260,23 @@ window.rVisaoGeral = function(){
   var idadeMedia=idades.length?(idades.reduce(function(s,x){return s+x;},0)/idades.length):null;
   // Distribuição por ciclo
   var CIC=(typeof CICLOS!=='undefined')?CICLOS:[];
-  function classeDe(t){ return (t && (t.classe!=null?t.classe:(t.nome||'').match(/\d+/)&&(t.nome||'').match(/\d+/)[0])); }
+  function classeDe(t){
+    if(!t) return '';
+    if(t.classe!=null && t.classe!=='') return String(t.classe).replace(/\D/g,'');
+    var m=String(t.nome||'').match(/\d+/);
+    return m?m[0]:'';
+  }
   var porCiclo=CIC.map(function(c){
-    var classes=c.classes||[];
+    var classes=(c.classes||[]).map(function(x){return String(x).replace(/\D/g,'');});
     var alunosCiclo=A.filter(function(a){
       var tt=T.find(function(x){return x.id===a.turma;}); if(!tt)return false;
-      var cl=String(classeDe(tt)); return classes.indexOf(cl)>=0;
+      return classes.indexOf(classeDe(tt))>=0;
     });
-    return {nome:c.nome, sigla:c.sigla, cor:c.cor, n:alunosCiclo.length, r:alunosCiclo.filter(function(a){return a.genero==='M';}).length, m:alunosCiclo.filter(function(a){return a.genero==='F';}).length};
+    return {nome:c.nome||'', sigla:c.sigla||'', cor:c.cor||'#8b5cf6', n:alunosCiclo.length, r:alunosCiclo.filter(function(a){return a.genero==='M';}).length, m:alunosCiclo.filter(function(a){return a.genero==='F';}).length};
   });
   // Tamanho de turmas
-  var tamanhos=T.map(function(t){ return {nome:t.nome, n:A.filter(function(a){return a.turma===t.id;}).length}; }).sort(function(x,y){return y.n-x.n;});
-  var maior=tamanhos[0], menor=tamanhos[tamanhos.length-1];
+  var tamanhos=T.map(function(t){ return {nome:t.nome||'—', n:A.filter(function(a){return a.turma===t.id;}).length}; }).sort(function(x,y){return y.n-x.n;});
+  var maior=tamanhos.length?tamanhos[0]:null, menor=tamanhos.length?tamanhos[tamanhos.length-1]:null;
   var mediaTurma=totalT?Math.round(totalA/totalT):0;
 
   function kpi(val,lbl,cor,ic){ return '<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:12px;padding:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><i class="ti '+ic+'" style="color:'+cor+';font-size:18px"></i><span style="font-size:12px;color:var(--t2)">'+lbl+'</span></div><div style="font-size:28px;font-weight:800;color:var(--t)">'+val+'</div></div>'; }
@@ -13312,6 +13318,10 @@ window.rVisaoGeral = function(){
 
   el.innerHTML=H;
   setTimeout(__carregarAssiduidadeGlobal, 40);
+  }catch(e){
+    el.innerHTML='<div class="card" style="padding:24px;color:var(--t2)"><b style="color:#ef4444">Erro ao gerar a visão geral:</b><br><code style="font-size:12px">'+(e&&e.message?e.message:String(e))+'</code></div>';
+    try{ console.error('[VisaoGeral]', e); }catch(_){}
+  }
 };
 
 async function __carregarAssiduidadeGlobal(){
