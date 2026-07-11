@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.50</span>
+    <span class="logo-ver">v6.51</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -24111,20 +24111,11 @@ function rMinhaAulaCompleta() {
     </div>`;
   }
 
-  // No aulas today
-  if (aulasUnicas.length === 0 && diaKey) {
-    el.innerHTML = banner + `<div class="card">
-      <div class="cb" style="text-align:center;padding:32px 20px">
-        <i class="ti ti-calendar-off" style="font-size:40px;color:var(--t3);display:block;margin-bottom:12px"></i>
-        <div style="font-size:16px;font-weight:800;color:var(--t);margin-bottom:6px">Sem aulas hoje</div>
-        <div style="font-size:13px;color:var(--t2)">
-          Não tem aulas programadas para esta ${['','Segunda','Terça','Quarta','Quinta','Sexta'][hoje.getDay()]}-feira.
-        </div>
-      </div>
+  // Banner informativo: registo aberto por 5 dias (sem bloqueio de janela)
+  banner = `<div class="ib-box ib-blue" style="margin-bottom:14px">
+      <i class="ti ti-calendar-check"></i>
+      Pode registar aulas dadas <strong>até 5 dias</strong> depois. Escolha a turma, a disciplina e o dia.
     </div>`;
-    maCarregarHistorico();
-    return;
-  }
 
   // Build aula cards or single form
   el.innerHTML = banner + `
@@ -24138,17 +24129,40 @@ function rMinhaAulaCompleta() {
       </div>
       <div class="cb">
         <div class="fg">
-          <!-- Aula do dia (filtrada por HORARIO) -->
-          <div class="fgr full"><label class="fl">Aula de Hoje</label>
-            <select class="ffi" id="ma-aula-hoje" onchange="maSelAulaHoje()">
-              <option value="">— Seleccionar aula —</option>
-              ${aulasUnicas.map((a,i) => {
-                const perNome = a.periodo ? a.periodo.nome : a.hora;
-                return `<option value="${i}">${perNome} · ${a.tid} · ${a.disc}</option>`;
-              }).join('')}
+          <!-- Turma → Disciplina → Dia (janela de 5 dias) -->
+          <div class="fgr"><label class="fl">Turma</label>
+            <select class="ffi" id="ma-turma-sel" onchange="maSelTurma()">
+              <option value="">— Seleccionar turma —</option>
+              ${(function(){
+                var alocP = (typeof ALOCACOES!=='undefined'?ALOCACOES:[]).filter(function(a){return a.prof===prof.num;});
+                var ids=[]; alocP.forEach(function(a){ if(ids.indexOf(a.turma)<0) ids.push(a.turma); });
+                return ids.map(function(tid){
+                  var t=(TURMAS||[]).find(function(x){return String(x.id)===String(tid);});
+                  return '<option value="'+tid+'">'+(t?(t.nome||tid):tid)+'</option>';
+                }).join('');
+              })()}
             </select>
           </div>
-          <!-- Hidden fields populated by maSelAulaHoje -->
+          <div class="fgr"><label class="fl">Disciplina</label>
+            <select class="ffi" id="ma-disc-sel" onchange="maSelDisc()">
+              <option value="">— Seleccione a turma —</option>
+            </select>
+          </div>
+          <div class="fgr full"><label class="fl">Dia da aula <span style="font-size:10px;color:var(--t3);margin-left:6px">(pode registar até 5 dias depois)</span></label>
+            <select class="ffi" id="ma-dia-sel">
+              ${(function(){
+                var dias=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+                var out=[];
+                for(var i=0;i<5;i++){
+                  var d=new Date(); d.setDate(d.getDate()-i);
+                  var iso=d.toISOString().slice(0,10);
+                  var lbl=(i===0?'Hoje':(i===1?'Ontem':dias[d.getDay()]))+' — '+d.toLocaleDateString('pt-PT');
+                  out.push('<option value="'+iso+'">'+lbl+'</option>');
+                }
+                return out.join('');
+              })()}
+            </select>
+          </div>
           <input type="hidden" id="ma-turma" value="">
           <input type="hidden" id="ma-disc"  value="">
           <input type="hidden" id="ma-hora"  value="">
@@ -24161,7 +24175,7 @@ function rMinhaAulaCompleta() {
                 color:var(--g);margin-left:8px;font-weight:600"></span>
             </label>
             <select class="ffi" id="ma-tema" onchange="maTemaParaConteudo()">
-              <option value="">— Seleccione a aula primeiro —</option>
+              <option value="">— Seleccione turma e disciplina —</option>
             </select>
           </div>
 
@@ -24202,10 +24216,12 @@ function rMinhaAulaCompleta() {
           <button class="btn btn-g btn-sm" onclick="maCarregarHistorico()">
             <i class="ti ti-history"></i> Ver Aulas Anteriores
           </button>
-          <button class="btn btn-p ${dentro?'':'btn-disabled'}"
+          <button class="btn btn-g btn-sm" onclick="abrirLivroPonto()">
+            <i class="ti ti-book"></i> Livro de Ponto
+          </button>
+          <button class="btn btn-p"
             id="btn-ma-registar"
-            onclick="maRegistar()"
-            ${dentro?'':'title="Fora da janela de registo (±10 min do período)"'}>
+            onclick="maRegistar()">
             <i class="ti ti-check"></i> Registar Aula
           </button>
         </div>
@@ -24241,23 +24257,38 @@ function rMinhaAulaCompleta() {
 }
 
 // ── Select aula from dropdown ─────────────────────────────────
-function maSelAulaHoje() {
-  const idx = parseInt(document.getElementById('ma-aula-hoje')?.value);
-  if (isNaN(idx) || !window._aulasHoje?.[idx]) {
-    // Reset
-    document.getElementById('ma-tema').innerHTML = '<option value="">— Seleccione a aula primeiro —</option>';
-    return;
-  }
-  const aula = window._aulasHoje[idx];
-  // Set hidden fields
-  const turmaEl = document.getElementById('ma-turma');
-  const discEl  = document.getElementById('ma-disc');
-  const horaEl  = document.getElementById('ma-hora');
-  if (turmaEl) turmaEl.value = aula.tid;
-  if (discEl)  discEl.value  = aula.disc;
-  if (horaEl)  horaEl.value  = aula.hora;
-  // Load temas
-  maCarregarTemas();
+function maSelAulaHoje() { /* substituído por maSelTurma/maSelDisc */ }
+
+// Turma escolhida → preencher disciplinas que o professor lecciona nessa turma
+function maSelTurma() {
+  var tid = document.getElementById('ma-turma-sel')?.value || '';
+  var dsel = document.getElementById('ma-disc-sel');
+  var th = document.getElementById('ma-turma');
+  if (th) th.value = tid;
+  if (!dsel) return;
+  if (!tid) { dsel.innerHTML = '<option value="">— Seleccione a turma —</option>'; return; }
+  var prof = (typeof resolverMeuProf==='function') ? resolverMeuProf() : null;
+  if (!prof) prof = PROFS.find(function(p){ return p.num===(curUser&&curUser.profNum) || p.nome===(curUser&&curUser.nome); });
+  var aloc = (typeof ALOCACOES!=='undefined'?ALOCACOES:[]).filter(function(a){
+    return String(a.turma)===String(tid) && (!prof || a.prof===prof.num);
+  });
+  if (!aloc.length) { dsel.innerHTML = '<option value="">— Sem disciplinas nesta turma —</option>'; return; }
+  dsel.innerHTML = '<option value="">— Seleccionar disciplina —</option>' + aloc.map(function(a){
+    return '<option value="'+(a.disc||'')+'" data-discid="'+(a._discId||'')+'">'+(a.disc||'')+'</option>';
+  }).join('');
+  var dh = document.getElementById('ma-disc'); if (dh) dh.value = '';
+  var tema = document.getElementById('ma-tema');
+  if (tema) tema.innerHTML = '<option value="">— Seleccione a disciplina —</option>';
+}
+
+// Disciplina escolhida → carregar temas do plano
+function maSelDisc() {
+  var dsel = document.getElementById('ma-disc-sel');
+  var disc = dsel ? dsel.value : '';
+  var dh = document.getElementById('ma-disc'); if (dh) dh.value = disc;
+  var discId = dsel && dsel.selectedIndex>0 ? dsel.options[dsel.selectedIndex].getAttribute('data-discid') : '';
+  window._maDiscId = discId || null;
+  if (disc) maCarregarTemas();
 }
 
 // ── Load disciplines for selected turma ──────────────────────
@@ -25063,66 +25094,127 @@ function guardarObsTurma(turmaId, texto, tipo) {
 //  OVERRIDE maRegistar to include faltas + observacoes
 // ════════════════════════════════════════════════════════════
 const _origMaRegistar = maRegistar;
-maRegistar = function() {
-  // v5.95: janela alargada — regista durante todo o dia da aula (não só ±10min)
-  // (Moçambique: nem todos têm telefone no momento exacto da aula)
-
-  const turmaId = document.getElementById('ma-turma')?.value;
-  const disc    = document.getElementById('ma-disc')?.value;
-  const hora    = document.getElementById('ma-hora')?.value;
-  const tema    = document.getElementById('ma-tema')?.value;
-  const obs     = document.getElementById('ma-conteudo')?.value.trim();
-  const metodo  = document.getElementById('ma-metodo')?.value;
-  const aval    = document.getElementById('ma-aval')?.value;
-  const obsTurma= document.getElementById('ma-obs-turma')?.value.trim();
-  const hoje    = new Date().toISOString().split('T')[0];
+maRegistar = async function() {
+  // Janela de 5 dias — regista aulas dadas até 5 dias depois (realidade de Moçambique)
+  var turmaId = document.getElementById('ma-turma-sel')?.value || document.getElementById('ma-turma')?.value;
+  var dsel    = document.getElementById('ma-disc-sel');
+  var disc    = dsel ? dsel.value : (document.getElementById('ma-disc')?.value||'');
+  var discId  = window._maDiscId || (dsel && dsel.selectedIndex>0 ? dsel.options[dsel.selectedIndex].getAttribute('data-discid') : null);
+  var dataAula= document.getElementById('ma-dia-sel')?.value || new Date().toISOString().split('T')[0];
+  var temaSel = document.getElementById('ma-tema');
+  var planoId = temaSel ? temaSel.value : '';
+  var temaTxt = (temaSel && temaSel.selectedIndex>0) ? temaSel.options[temaSel.selectedIndex].textContent.trim() : '';
+  var obs     = document.getElementById('ma-conteudo')?.value.trim() || '';
+  var metodo  = document.getElementById('ma-metodo')?.value || '';
+  var aval    = document.getElementById('ma-aval')?.value || '';
+  var obsTurma= document.getElementById('ma-obs-turma')?.value.trim() || '';
 
   if (!turmaId) { toast('Seleccione a turma'); return; }
   if (!disc)    { toast('Seleccione a disciplina'); return; }
-  if (!tema)    { toast('Seleccione o tema da aula'); return; }
 
-  const prof = resolverMeuProf ? resolverMeuProf() :
-    PROFS.find(p => p.num === curUser?.profNum || p.nome === curUser?.nome) || PROFS[0];
+  var prof = (typeof resolverMeuProf==='function') ? resolverMeuProf() : null;
+  if (!prof) prof = PROFS.find(function(p){ return p.num===(curUser&&curUser.profNum) || p.nome===(curUser&&curUser.nome); });
+  if (!prof || !prof._dbId) { toast('Professor sem ligação à base de dados'); return; }
 
-  // Register aula in PLANO_ANALITICO
-  if (!PLANO_ANALITICO[turmaId]) PLANO_ANALITICO[turmaId] = {};
-  if (!PLANO_ANALITICO[turmaId][disc]) PLANO_ANALITICO[turmaId][disc] = [];
+  var btn = document.getElementById('btn-ma-registar');
+  if (btn) btn.disabled = true;
 
-  const jaTem = PLANO_ANALITICO[turmaId][disc].some(a => a.data===hoje && a.hora===hora);
-  if (jaTem) { toast('Já existe registo para este período hoje'); return; }
+  try {
+    // Faltosos marcados no ecrã
+    var faltosos = (typeof getFaltosos==='function') ? getFaltosos() : [];
+    var alunosT  = (ALUNOS||[]).filter(function(a){ return String(a.turma)===String(turmaId); });
+    var nFaltas  = faltosos.length;
+    var nPres    = Math.max(0, alunosT.length - nFaltas);
+    var mes = new Date(dataAula).getMonth()+1;
+    var trim = mes<=4?1:(mes<=8?2:3);
+    var sumario = [obs, metodo?('Método: '+metodo):'', aval?('Avaliação: '+aval):'', obsTurma?('Obs. turma: '+obsTurma):''].filter(Boolean).join(' · ');
 
-  PLANO_ANALITICO[turmaId][disc].push({
-    data: hoje, hora, conteudo: tema, obs,
-    metodo, avaliacao: aval, prof: prof?.num||''
-  });
+    if (window._supabase && window._escolaId) {
+      // 1) Registar a aula (upsert — uma aula por turma+disciplina+dia)
+      var aula = {
+        escola_id: window._escolaId,
+        professor_id: prof._dbId,
+        turma_id: String(turmaId),
+        disciplina_id: discId || null,
+        disciplina: disc,
+        data: dataAula,
+        trimestre: trim,
+        plano_id: planoId || null,
+        tema: temaTxt || null,
+        sumario: sumario || null,
+        n_presentes: nPres,
+        n_faltas: nFaltas
+      };
+      var up = await window._supabase.from('aulas_dadas')
+        .upsert(aula, { onConflict: 'escola_id,turma_id,disciplina_id,data' });
+      if (up.error) { toast('Erro ao registar aula: '+up.error.message); if(btn) btn.disabled=false; return; }
 
-  // Register faltas
-  registarFaltas(turmaId, disc, hora, hoje);
+      // 2) Faltas: limpar as desta aula e regravar
+      await window._supabase.from('faltas').delete()
+        .eq('escola_id', window._escolaId).eq('turma', String(turmaId))
+        .eq('disciplina', disc).eq('data', dataAula);
 
-  // Save turma observation
-  if (obsTurma) {
-    const tipoObs = document.getElementById('ma-obs-tipo')?.value || 'geral';
-    guardarObsTurma(turmaId, obsTurma, tipoObs);
+      var rows = [];
+      faltosos.forEach(function(aid){
+        var al = (ALUNOS||[]).find(function(x){ return String(x.id)===String(aid) || String(x._dbId)===String(aid); });
+        if (!al || !al._dbId) return;
+        rows.push({
+          escola_id: window._escolaId,
+          aluno_id: al._dbId,
+          turma: String(turmaId),
+          disciplina: disc,
+          data: dataAula,
+          trimestre: trim,
+          tipo: 'F',
+          justif: false
+        });
+      });
+      if (rows.length) {
+        var fi = await window._supabase.from('faltas').insert(rows);
+        if (fi.error) toast('Aula registada, mas falhou gravar faltas: '+fi.error.message);
+      }
+
+      // 3) Marcar tema do plano como executado
+      if (planoId) {
+        try { await window._supabase.from('planos_tematicos').update({executado:true}).eq('id', planoId); } catch(e){}
+      }
+    } else {
+      toast('Sem ligação — aula não foi gravada no servidor'); if(btn) btn.disabled=false; return;
+    }
+
+    // Memória (compatibilidade com vistas existentes)
+    try {
+      if (!PLANO_ANALITICO[turmaId]) PLANO_ANALITICO[turmaId] = {};
+      if (!PLANO_ANALITICO[turmaId][disc]) PLANO_ANALITICO[turmaId][disc] = [];
+      PLANO_ANALITICO[turmaId][disc].push({ data: dataAula, hora:'', conteudo: temaTxt||obs, obs: obs, metodo: metodo, avaliacao: aval, prof: prof.num||'' });
+    } catch(e){}
+    if (obsTurma && typeof guardarObsTurma==='function') {
+      var tipoObs = document.getElementById('ma-obs-tipo')?.value || 'geral';
+      try { guardarObsTurma(turmaId, obsTurma, tipoObs); } catch(e){}
+    }
+
+    var dLbl = new Date(dataAula).toLocaleDateString('pt-PT');
+    toast('<i class="ti ti-check"></i> Aula de '+dLbl+' registada · '+nPres+' presentes, '+nFaltas+' falta(s)');
+
+    // Limpar formulário
+    if (temaSel) temaSel.value='';
+    var c=document.getElementById('ma-conteudo'); if(c) c.value='';
+    var ot=document.getElementById('ma-obs-turma'); if(ot) ot.value='';
+    document.querySelectorAll('#ma-faltas-lista label').forEach(function(l){ l.classList.remove('falta-marcada'); });
+    maCarregarHistorico();
+  } catch(e) {
+    toast('Erro: '+(e && e.message ? e.message : e));
+  } finally {
+    if (btn) btn.disabled = false;
   }
-
-  const nFaltas = getFaltosos().length;
-  toast(` Aula registada${nFaltas?' · '+nFaltas+' falta(s)':''}`);
-  maCarregarTemas();
-  document.getElementById('ma-tema').value = '';
-  document.getElementById('ma-conteudo').value = '';
-  if (document.getElementById('ma-obs-turma')) document.getElementById('ma-obs-turma').value='';
-  // Uncheck all faltas
-  document.querySelectorAll('#ma-faltas-lista label').forEach(l=>l.classList.remove('falta-marcada'));
-  maCarregarHistorico();
 };
 
 // ════════════════════════════════════════════════════════════
 //  OVERRIDE maSelAulaHoje to also load students
 // ════════════════════════════════════════════════════════════
-const _origMaSelAulaHoje = maSelAulaHoje;
-maSelAulaHoje = function() {
-  _origMaSelAulaHoje();
-  // Load students after disc is set
+const _origMaSelDisc = maSelDisc;
+maSelDisc = function() {
+  _origMaSelDisc();
   setTimeout(() => maCarregarAlunos(), 50);
 };
 
