@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.52</span>
+    <span class="logo-ver">v6.53</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -15843,6 +15843,7 @@ guardarCargo = function() {
   const label = tipo === 'dir-turma'   ? 'Director de Turma' :
                 tipo === 'dir-ciclo'   ? 'Director de Ciclo' : 'Coordenador';
   toast(`${label} atribuído: ${p.nome}`);
+  try{ if(typeof logAudit==='function') logAudit('CARGO_ATRIBUIDO', `${p.nome} (${p.num||'—'})`, `${label}${ref?(' — '+ref):''}`, null, null); }catch(e){}
 
   // If we're on the turma profile, refresh it
   if (ref && document.getElementById('v-turma-p')?.classList.contains('on')) {
@@ -15876,6 +15877,7 @@ removerCargo = function(profId, tipo) {
   }
   rCargos();
   toast('Cargo removido');
+  try{ if(typeof logAudit==='function') logAudit('CARGO_REMOVIDO', `${p.nome} (${p.num||'—'})`, `Cargo removido: ${tipo}`, null, null); }catch(e){}
 };
 
 // ── ALOCAR ALUNOS À TURMA ─────────────────────────────────────
@@ -18214,10 +18216,22 @@ function rAuditTrail() {
       <input class="ffi" id="audit-search" placeholder="Pesquisar por utilizador, entidade, ref..." style="flex:1;min-width:200px" oninput="filtrarAuditTrail()">
       <select class="ffi" id="audit-tipo" onchange="filtrarAuditTrail()" style="width:200px">
         <option value="">Todos os tipos</option>
+        <optgroup label="Financeiro">
         <option value="PAGAMENTO_REGISTADO">Pagamento Registado</option>
         <option value="PAGAMENTO_CONFIRMADO">Pagamento Confirmado</option>
         <option value="PAGAMENTO_ESTORNADO">Pagamento Estornado</option>
         <option value="PAGAMENTO_CONFIRMADO_AUTO">Confirmação Automática</option>
+        </optgroup>
+        <optgroup label="Académico / Aulas">
+        <option value="AULA_REGISTADA">Aula Registada</option>
+        <option value="NOTAS_LANCADAS">Notas Lançadas</option>
+        <option value="NOTAS_FECHADAS">Trimestre Fechado</option>
+        </optgroup>
+        <optgroup label="Cargos / Perfis">
+        <option value="CARGO_ATRIBUIDO">Cargo Atribuído</option>
+        <option value="CARGO_REMOVIDO">Cargo Removido</option>
+        <option value="PERFIL_PROF_EDITADO">Perfil Editado</option>
+        </optgroup>
       </select>
       <input class="ffi" type="date" id="audit-de" onchange="filtrarAuditTrail()" style="width:130px">
       <input class="ffi" type="date" id="audit-ate" onchange="filtrarAuditTrail()" style="width:130px">
@@ -18253,6 +18267,12 @@ function filtrarAuditTrail() {
     'PAGAMENTO_ESTORNADO':       {l:'Pagamento Estornado',    c:'var(--r)',  ic:'ti-arrow-back'},
     'PAGAMENTO_CONFIRMADO_AUTO': {l:'Confirmação Automática', c:'var(--tl)', ic:'ti-robot'},
     'DESPESA_CRIADA':            {l:'Despesa Criada',         c:'var(--am)', ic:'ti-cash'},
+    'AULA_REGISTADA':            {l:'Aula Registada',         c:'var(--tl)', ic:'ti-book'},
+    'NOTAS_LANCADAS':            {l:'Notas Lançadas',         c:'var(--a)',  ic:'ti-clipboard-text'},
+    'NOTAS_FECHADAS':            {l:'Trimestre Fechado',      c:'var(--am)', ic:'ti-lock'},
+    'CARGO_ATRIBUIDO':           {l:'Cargo Atribuído',        c:'var(--g)',  ic:'ti-user-check'},
+    'CARGO_REMOVIDO':            {l:'Cargo Removido',         c:'var(--r)',  ic:'ti-user-x'},
+    'PERFIL_PROF_EDITADO':       {l:'Perfil Editado',         c:'var(--t2)', ic:'ti-user-edit'},
   };
 
   el.innerHTML = logs.length ? `
@@ -18286,7 +18306,7 @@ function filtrarAuditTrail() {
         }).join('')}
       </tbody>
     </table></div></div>` :
-    `<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Sem registos de auditoria. Registe um pagamento para iniciar o trail.</div>`;
+    `<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Sem registos de auditoria para os filtros seleccionados.</div>`;
 }
 
 function exportarAuditTrail() {
@@ -25234,6 +25254,19 @@ maRegistar = async function() {
       var up = await window._supabase.from('aulas_dadas')
         .upsert(aula, { onConflict: 'escola_id,turma_id,disciplina_id,data' });
       if (up.error) { toast('Erro ao registar aula: '+up.error.message); if(btn) btn.disabled=false; return; }
+
+      // Auditoria: aula registada por professor
+      try {
+        if (typeof logAudit === 'function') {
+          var _tNome = ((typeof TURMAS!=='undefined'?TURMAS:[]).find(function(t){return String(t.id)===String(turmaId);})||{}).nome || turmaId;
+          logAudit(
+            'AULA_REGISTADA',
+            disc + ' — ' + _tNome + ' (' + dataAula + ')',
+            (temaTxt?('Tema: '+temaTxt+' · '):'') + nPres + ' presentes, ' + nFaltas + ' falta(s) · '+(trim)+'º trim.',
+            null, null
+          );
+        }
+      } catch(e){}
 
       // 2) Faltas: limpar as desta aula e regravar
       await window._supabase.from('faltas').delete()
@@ -35240,6 +35273,8 @@ window.__finV30=true;})();
     }
     if(btn){btn.disabled=false;btn.style.opacity=1;btn.innerHTML='<i class="ti ti-device-floppy"></i> Guardar notas';}
     toast(erros?('Guardado '+ok+', '+erros+' erro(s)'):('Notas guardadas! ('+ok+')'));
+    // Auditoria: lançamento de notas
+    try{ if(ok>0 && typeof logAudit==='function') logAudit('NOTAS_LANCADAS', (_st.disciplina||'?')+' — '+(_st.turmaNome||_st.turmaId||'?')+' ('+_st.trimestre+'º trim.)', ok+' aluno(s) avaliado(s)'+(erros?(' · '+erros+' erro(s)'):''), null, null); }catch(e){}
   };
 
   window.ntFechar=async function(ev){
@@ -35267,6 +35302,7 @@ window.__finV30=true;})();
       if(!_st.discId){ toast('Não foi possível identificar a disciplina para fechar.'); if(btn){btn.disabled=false;btn.style.opacity=1;} return; }
       await NT.fechar(_st.turmaId, _st.discId, _st.trimestre);
       toast('Trimestre fechado. Notas oficiais.');
+      try{ if(typeof logAudit==='function') logAudit('NOTAS_FECHADAS', (_st.disciplina||'?')+' — '+(_st.turmaNome||_st.turmaId||'?')+' ('+_st.trimestre+'º trim.)', 'Trimestre fechado — notas oficiais', null, null); }catch(e){}
       ntTabela();
     }catch(e){ toast('Erro ao fechar: '+((e&&e.message)||e)); if(btn){btn.disabled=false;btn.style.opacity=1;btn.innerHTML='<i class="ti ti-lock"></i> Fechar trimestre';} }
   };
@@ -37690,6 +37726,7 @@ window.trimestreActual = function(d){
     }
     var p=(typeof PROFS!=='undefined'?PROFS:[]).find(function(x){return x.id==id;});
     if(!p||!p._dbId){ toast('Professor sem ligação à base de dados'); return; }
+    var _salAntes = (p.salario!=null && p.salario!=='') ? parseFloat(p.salario) : null;
     var podeSal = (typeof canSeeSalary==='function') ? canSeeSalary() : (curRole==='gestor'||curRole==='director');
     function gv(elId){ var el=document.getElementById(elId); return el?el.value:undefined; }
     // Construir objecto de actualização (só campos que existem no formulário)
@@ -37723,6 +37760,16 @@ window.trimestreActual = function(d){
       if(res.error){ toast('Erro ao gravar: '+res.error.message); return; }
       Object.assign(p,upd); // reflectir em memória → Folha de Salários usa p.salario
       toast('Perfil actualizado com sucesso'+(podeSal&&upd.salario!==undefined?' — Folha de Salários actualizada':''));
+      // Auditoria: edição de perfil (regista alteração de salário se mudou)
+      try{
+        if(typeof logAudit==='function'){
+          var _salDepois = (podeSal && upd.salario!==undefined) ? upd.salario : _salAntes;
+          var _mudouSal = (podeSal && upd.salario!==undefined && Number(_salAntes)!==Number(upd.salario));
+          logAudit('PERFIL_PROF_EDITADO', (upd.nome||p.nome||'?')+' ('+(p.num||'—')+')',
+            'Perfil actualizado'+(_mudouSal?(' · Salário alterado'):''),
+            _mudouSal?_salAntes:null, _mudouSal?_salDepois:null);
+        }
+      }catch(e){}
       var mm=document.getElementById('m-editar-prof'); if(mm) mm.remove();
       // Refrescar o perfil aberto
       try{ if(typeof openProf==='function') openProf(id); else if(typeof window.__injectarPainelRH==='function') window.__injectarPainelRH(id); }catch(e){}
