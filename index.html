@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.53</span>
+    <span class="logo-ver">v6.54</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -6294,7 +6294,8 @@ async function loadDadosEscola() {
                   || (row.aluno_id ? ALUNOS.find(x => x._dbId === row.aluno_id) : null);
           if (al) {
             pag.alunoId = al.id;
-            meses.forEach(mi => {
+            // Pagamentos estornados não marcam a propina como paga (senão reapareciam pagos)
+            if (row.estado !== 'estornado') meses.forEach(mi => {
               // A app grava 'meses' como INDICE do array (base-0: Jan=0).
               // As propinas tem campo m em base-1 (Jan=1). Converter: m = indice+1.
               // Aceitar ambos os formatos por seguranca (dados historicos).
@@ -17761,6 +17762,13 @@ function confirmarRegistoPagamento() {
   const pagId = 'PAG' + Date.now().toString(36).toUpperCase();
   const mesesArr = [..._pagMesesSel].sort((a,b)=>a-b);
 
+  // Estado inicial depende do canal:
+  //  · Transferência / Depósito → 'por_confirmar' (o dinheiro pode ainda não ter
+  //    entrado; tem de ser cruzado com o extracto bancário).
+  //  · POS (autorizado no acto) e Numerário (dinheiro em caixa) → 'confirmado' à entrada.
+  const _precisaConfBanco = (canal === 'transferencia' || canal === 'deposito');
+  const _estadoInicial    = _precisaConfBanco ? 'por_confirmar' : 'confirmado';
+
   // Create payment record
   const pag = {
     id:          pagId,
@@ -17772,8 +17780,10 @@ function confirmarRegistoPagamento() {
     valorTotal:  valor,
     valorPropina: CONFIG.valorPropina||4500,
     data, canal, banco, ref, obs,
-    estado:      'por_confirmar',  // Not yet confirmed by bank
-    confirmedBy: null, confirmedAt: null, confirmedRef: null,
+    estado:      _estadoInicial,
+    confirmedBy:  _precisaConfBanco ? null : (curUser?.nome||'Registo directo'),
+    confirmedAt:  _precisaConfBanco ? null : data,
+    confirmedRef: _precisaConfBanco ? null : ref,
     registadoPor: curUser?.nome||'',
     registadoEm: new Date().toISOString(),
   };
@@ -17791,8 +17801,8 @@ function confirmarRegistoPagamento() {
       // v mantém-se limpo (propina da turma); a multa paga fica no valorTotal do pagamento
       p.pagamentoId = pagId;
       p.ref        = ref;
-      p.dataConfirm = null;  // Not confirmed yet
-      p.estadoBanco = 'por_confirmar';
+      p.dataConfirm = _precisaConfBanco ? null : data;
+      p.estadoBanco = _estadoInicial;
     }
   });
 
@@ -17802,11 +17812,13 @@ function confirmarRegistoPagamento() {
     `Propina ${a.num} — Meses: ${mesesArr.map(mi=>M[mi]).join(', ')}`,
     `Canal: ${canal} | Banco: ${banco} | Ref: ${ref} | Valor: ${valor.toLocaleString()} MZM`,
     'npago',
-    'pago_por_confirmar'
+    _precisaConfBanco ? 'pago_por_confirmar' : 'pago_confirmado'
   );
 
   closeM('m-registar-pagamento');
-  toast(`Pagamento registado! Ref: ${ref} — Aguarda confirmação bancária`);
+  toast(_precisaConfBanco
+    ? `Pagamento registado! Ref: ${ref} — Aguarda confirmação bancária`
+    : `Pagamento registado e confirmado! Ref: ${ref}`);
 
   // Refresh propinas view if open
   if (document.getElementById('v-propinas')?.classList.contains('on')) {
@@ -17939,6 +17951,18 @@ function confirmarPagamentoManual() {
   pag.confirmedRef= refExt;
   if (obsConf) pag.obs += (pag.obs?'\n':'') + 'Confirmação: ' + obsConf;
 
+  // Persistir na base — sem isto a confirmação era perdida no próximo refresh.
+  // (Quem confirmou e quando ficam permanentes no Registo de Auditoria, abaixo.)
+  try {
+    if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+      window._supabase.from('pagamentos')
+        .update({ estado: 'confirmado' })
+        .eq('pag_id', pag.id).eq('escola_id', window._escolaId)
+        .then(function(r){ if(r&&r.error) toast('Confirmado no ecrã, mas falhou gravar no servidor: '+r.error.message); },
+              function(e){ console.warn('confirmar persist', e&&e.message); });
+    }
+  } catch(e){}
+
   // Update student propinas
   const a = ALUNOS.find(x=>x.id===pag.alunoId);
   if (a) {
@@ -17977,6 +18001,17 @@ function estornarPagamento(pagId) {
   }
 
   pag.estado = 'estornado';
+
+  // Persistir o estorno na base (senão reaparecia como pago no próximo refresh)
+  try {
+    if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
+      window._supabase.from('pagamentos')
+        .update({ estado: 'estornado' })
+        .eq('pag_id', pag.id).eq('escola_id', window._escolaId)
+        .then(function(r){ if(r&&r.error) toast('Estornado no ecrã, mas falhou gravar no servidor: '+r.error.message); },
+              function(e){ console.warn('estorno persist', e&&e.message); });
+    }
+  } catch(e){}
 
   logAudit(
     'PAGAMENTO_ESTORNADO',
