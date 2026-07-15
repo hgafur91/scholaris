@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.56</span>
+    <span class="logo-ver">v6.57</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1857,17 +1857,17 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="mhd"><span class="mt">Novo Activo / Bem</span><button class="mclose" onclick="closeM('m-nactivo')"><i class="ti ti-x"></i></button></div>
   <div class="mbod">
     <div class="fg">
-      <div class="fgr"><label class="fl">Descrição</label><input class="ffi" placeholder="Ex: Computador HP EliteBook"></div>
+      <div class="fgr"><label class="fl">Descrição</label><input class="ffi" id="act-desc" placeholder="Ex: Computador HP EliteBook"></div>
       <div class="fgr"><label class="fl">Categoria</label><select class="ffi" id="act-cat"><option value="equipamento"><i class="ti ti-device-laptop"></i> Equipamento</option><option value="mobiliario"><i class="ti ti-armchair"></i> Mobiliário</option><option value="livros"><i class="ti ti-books"></i> Material Pedagógico</option><option value="outro"><i class="ti ti-box"></i> Outro</option></select></div>
-      <div class="fgr"><label class="fl">Nº de Série / Referência</label><input class="ffi" placeholder="SN ou código interno"></div>
-      <div class="fgr"><label class="fl">Quantidade</label><input class="ffi" type="number" value="1"></div>
-      <div class="fgr"><label class="fl">Valor (MZM)</label><input class="ffi" type="number" placeholder="0.00"></div>
-      <div class="fgr"><label class="fl">Estado</label><select class="ffi"><option>Bom</option><option>Razoável</option><option>Mau</option><option>Abatido</option></select></div>
-      <div class="fgr"><label class="fl">Localização</label><input class="ffi" placeholder="Ex: Sala 12, Secretaria..."></div>
-      <div class="fgr"><label class="fl">Data de Aquisição</label><input class="ffi" type="date" value="2026-05-25"></div>
+      <div class="fgr"><label class="fl">Nº de Série / Referência</label><input class="ffi" id="act-ref" placeholder="SN ou código interno"></div>
+      <div class="fgr"><label class="fl">Quantidade</label><input class="ffi" id="act-qtd" type="number" value="1"></div>
+      <div class="fgr"><label class="fl">Valor (MZM)</label><input class="ffi" id="act-valor" type="number" placeholder="0.00"></div>
+      <div class="fgr"><label class="fl">Estado</label><select class="ffi" id="act-estado"><option>Bom</option><option>Razoável</option><option>Mau</option><option>Abatido</option></select></div>
+      <div class="fgr"><label class="fl">Localização</label><input class="ffi" id="act-local" placeholder="Ex: Sala 12, Secretaria..."></div>
+      <div class="fgr"><label class="fl">Data de Aquisição</label><input class="ffi" id="act-data" type="date"></div>
     </div>
   </div>
-  <div class="mft"><button class="btn btn-g" onclick="closeM('m-nactivo')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nactivo');toast('Activo registado no inventário!')">Guardar</button></div>
+  <div class="mft"><button class="btn btn-g" onclick="closeM('m-nactivo')">Cancelar</button><button class="btn btn-p" onclick="guardarActivo()">Guardar</button></div>
 </div></div>
 
 <!-- Modal: Configurar Escalões de Multa -->
@@ -7076,17 +7076,15 @@ function exportarRelatorio() {
 //  INVENTÁRIO
 // ════════════════════════════════════════════════════════════
 
-let INVENTARIO = [
-  {id:1,desc:'Computador HP ProBook 450',cat:'equipamento',ref:'HP-001',qtd:5,valor:85000,estado:'Bom',local:'Secretaria'},
-  {id:2,desc:'Projector Epson EB-S41',cat:'equipamento',ref:'EP-001',qtd:2,valor:45000,estado:'Bom',local:'Sala 12'},
-  {id:3,desc:'Secretária Professores',cat:'mobiliario',ref:'MOB-001',qtd:25,valor:8500,estado:'Razoável',local:'Salas de aula'},
-  {id:4,desc:'Cadeiras Alunos',cat:'mobiliario',ref:'MOB-002',qtd:280,valor:1200,estado:'Bom',local:'Salas de aula'},
-  {id:5,desc:'Matemática 10ª Classe (INDE)',cat:'livros',ref:'LIV-MAT-10',qtd:45,valor:350,estado:'Bom',local:'Biblioteca'},
-];
+let INVENTARIO = [];  // v6.57: carregado do Supabase (tabela 'inventario') via carregarInventario()
 
 function rInventario(filtro) {
   const el = document.getElementById('inventario-lista');
   if (!el) return;
+  // Lazy-load do Supabase na 1ª abertura (re-renderiza quando chega)
+  if (!window._inventarioLoaded && window._supabase && window._escolaId && window._escolaId!=='escola_demo' && typeof window.carregarInventario==='function') {
+    window.carregarInventario().then(function(){ try{ rInventario(filtro); }catch(e){} });
+  }
   const list = filtro && filtro !== 'todos' ? INVENTARIO.filter(i => i.cat === filtro) : INVENTARIO;
   const totalValor = list.reduce((s,i) => s + i.qtd*i.valor, 0);
   const catIc = {equipamento:'<i class="ti ti-device-laptop"></i>',mobiliario:'<i class="ti ti-armchair"></i>',livros:'<i class="ti ti-books"></i>',outro:'<i class="ti ti-box"></i>'};
@@ -7109,7 +7107,7 @@ function rInventario(filtro) {
           <td style="font-weight:700;color:var(--am)">${(i.qtd*i.valor).toLocaleString()} MZM</td>
           <td><span class="badge ${i.estado==='Bom'?'bok':i.estado==='Razoável'?'bwn':'ber'}">${i.estado}</span></td>
           <td style="font-size:12px;color:var(--t2)">${i.local}</td>
-          ${curRole==='gestor'?`<td><button class="btn btn-re btn-sm" onclick="INVENTARIO=INVENTARIO.filter(x=>x.id!==${i.id});rInventario();toast('Removido')"><i class="ti ti-trash"></i></button></td>`:''}
+          ${curRole==='gestor'?`<td><button class="btn btn-re btn-sm" onclick="removerActivo('${i._dbId||i.id}')"><i class="ti ti-trash"></i></button></td>`:''}
         </tr>`).join('')}
       </tbody>
     </table></div></div>`;
@@ -38655,6 +38653,69 @@ window.trimestreActual = function(d){
       }
     }catch(e){}
   }, 400);
+})();
+</script>
+
+<script>
+/* ═══ v6.57 — INVENTÁRIO: persistência real no Supabase (tabela 'inventario') ═══ */
+(function(){
+  if(window.__invPersist) return; window.__invPersist=true;
+  function sb(){ return window._supabase; }
+  function esc(){ return window._escolaId; }
+  function ready(){ return sb() && esc() && esc()!=='escola_demo'; }
+  function mapRow(row){
+    return { id:row.id, _dbId:row.id, desc:row.descricao, cat:row.categoria||'outro',
+      ref:row.referencia||'', qtd:row.quantidade||0, valor:row.valor||0,
+      estado:row.estado||'Bom', local:row.local||'', data:row.data_aquisicao||null };
+  }
+
+  window.carregarInventario = async function(){
+    if(!ready() || typeof INVENTARIO==='undefined') return;
+    try{
+      var r = await sb().from('inventario').select('*').eq('escola_id', esc()).order('criado_em',{ascending:true});
+      if(r.error){ console.warn('[inventario]', r.error.message); return; }
+      INVENTARIO.length = 0;                       // mutar (não reatribuir)
+      (r.data||[]).forEach(function(row){ INVENTARIO.push(mapRow(row)); });
+      window._inventarioLoaded = true;
+    }catch(e){ console.warn('[inventario]', e&&e.message); }
+  };
+
+  window.guardarActivo = async function(){
+    var g=function(id){ var e=document.getElementById(id); return e?String(e.value):''; };
+    var desc=g('act-desc').trim();
+    if(!desc){ toast('Indique a descrição do activo'); return; }
+    if(!ready()){ toast('Sem ligação ao servidor — activo não gravado'); return; }
+    var row={ escola_id:esc(), descricao:desc, categoria:g('act-cat')||'outro',
+      referencia:g('act-ref').trim()||null, quantidade:parseInt(g('act-qtd'),10)||1,
+      valor:parseFloat(g('act-valor'))||0, estado:g('act-estado')||'Bom',
+      local:g('act-local').trim()||null, data_aquisicao:g('act-data')||null };
+    try{
+      var r=await sb().from('inventario').insert(row).select().single();
+      if(r.error){ toast('Erro ao gravar: '+r.error.message); return; }
+      if(typeof INVENTARIO!=='undefined') INVENTARIO.push(mapRow(r.data));
+      closeM('m-nactivo');
+      ['act-desc','act-ref','act-valor','act-local'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+      var q=document.getElementById('act-qtd'); if(q) q.value='1';
+      if(typeof rInventario==='function') rInventario();
+      toast('<i class="ti ti-check"></i> Activo registado no inventário');
+    }catch(e){ toast('Erro: '+(e&&e.message)); }
+  };
+
+  window.removerActivo = async function(dbId){
+    if(!confirm('Remover este activo do inventário?')) return;
+    if(ready()){
+      try{
+        var r=await sb().from('inventario').delete().eq('id', dbId).eq('escola_id', esc());
+        if(r.error){ toast('Erro ao remover: '+r.error.message); return; }
+      }catch(e){ toast('Erro: '+(e&&e.message)); return; }
+    }
+    if(typeof INVENTARIO!=='undefined'){
+      var i=INVENTARIO.findIndex(function(x){ return String(x._dbId||x.id)===String(dbId); });
+      if(i>=0) INVENTARIO.splice(i,1);
+    }
+    if(typeof rInventario==='function') rInventario();
+    toast('Removido');
+  };
 })();
 </script>
 
