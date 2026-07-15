@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.54</span>
+    <span class="logo-ver">v6.55</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -675,7 +675,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
       <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar modo dia/noite"></button>
       <i class="ti ti-sun" style="font-size:13px;color:var(--t3)" id="theme-sun"></i>
     </div>
-    <button class="notif-btn" onclick="toast('2 notificações pendentes')"><i class="ti ti-bell" style="font-size:16px"></i><span class="notif-dot"></span></button>
+    <!-- sino de notificações removido (v6.55): contagem fixa, sem sistema de notificações real -->
     <div class="avt" id="top-avt">HG</div>
     <div class="uinfo"><div class="uname" id="top-name">—</div><div class="urole" id="top-role">—</div></div>
     <button class="logout-btn" onclick="doLogout()"><i class="ti ti-logout" style="font-size:12px"></i> Sair</button>
@@ -714,7 +714,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 <!-- ════ PAINEL EXECUTIVO ════ -->
 <div class="view" id="v-exec">
-  <div class="ph"><div><div class="ph-title">Painel Executivo</div><div class="ph-sub">Indicadores estratégicos — 2026</div></div><div class="ph-right"><button class="btn btn-g btn-sm" onclick="toast('Exportado!')"><i class="ti ti-download"></i> Exportar</button></div></div>
+  <div class="ph"><div><div class="ph-title">Painel Executivo</div><div class="ph-sub">Indicadores estratégicos — 2026</div></div><div class="ph-right"><!-- botão Exportar removido (v6.55): não exportava nada (só toast) --></div></div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="exec-kpis"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
     <div class="card"><div class="ch"><span class="ct">Receita vs Despesa</span></div><div class="cb" id="exec-fin"></div></div>
@@ -978,7 +978,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="ph"><div><div class="bc"><span>Gest. Financeira</span><span>›</span><span class="cr">Propinas</span></div><div class="ph-title">Propinas</div><div class="ph-sub" id="prop-sub">Seleccione uma turma</div></div>
     <div class="ph-right">
       <button class="btn btn-g btn-sm" id="prop-back" onclick="propBack()" style="display:none"><i class="ti ti-arrow-left"></i> Turmas</button>
-      <button class="btn btn-p btn-sm" onclick="toast('Emissão em lote')"><i class="ti ti-stack"></i> Lote</button>
+      <!-- botão Lote removido (v6.55): emissão em lote não implementada (só toast) -->
     </div>
   </div>
   <div id="prop-s1"><div class="tc-grid" id="prop-turmas"></div></div>
@@ -1768,7 +1768,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 <div class="modal-ov" id="m-nexame"><div class="modal"><div class="mhd"><span class="mt">Novo Exame</span><button class="mclose" onclick="closeM('m-nexame')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr"><label class="fl">Disciplina</label><select class="ffi"><option>Matemática</option><option>Português</option><option>Inglês</option><option>Física</option></select></div><div class="fgr"><label class="fl">Turma</label><select class="ffi"><option>7ª A</option><option>10ª A</option><option>11ª B</option></select></div><div class="fgr"><label class="fl">Tipo</label><select class="ffi"><option>Exame Normal</option><option>Recurso</option><option>Teste</option></select></div><div class="fgr"><label class="fl">Trimestre</label><select class="ffi"><option>1º Trimestre</option><option>2º Trimestre</option><option>3º Trimestre</option></select></div><div class="fgr"><label class="fl">Data</label><input class="ffi" type="date"></div><div class="fgr"><label class="fl">Hora</label><input class="ffi" type="time" value="08:00"></div><div class="fgr"><label class="fl">Sala</label><input class="ffi" placeholder="Sala 12"></div><div class="fgr"><label class="fl">Duração (min)</label><input class="ffi" type="number" value="120"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nexame')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nexame');toast('Exame criado!')">Guardar</button></div></div></div>
 
-<div class="modal-ov" id="m-pag"><div class="modal"><div class="mhd"><span class="mt">Registar Pagamento</span><button class="mclose" onclick="closeM('m-pag')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> O sistema emite o recibo automaticamente após confirmar.</div><div class="fg"><div class="fgr"><label class="fl">Aluno</label><select class="ffi"><option>ALU000001 — Aaron Chaimite</option><option>ALU000002 — Abdulai Diallo</option><option>ALU000003 — Yasmin Tajú</option></select></div><div class="fgr"><label class="fl">Mês</label><select class="ffi"><option>Janeiro 2026</option><option>Fevereiro 2026</option><option>Março 2026</option><option>Abril 2026</option><option>Maio 2026</option></select></div><div class="fgr"><label class="fl">Valor (MZM)</label><input class="ffi" type="number" value="4500"></div><div class="fgr"><label class="fl">Método</label><select class="ffi"><option>Transferência Bancária</option><option>Dinheiro</option><option>M-Pesa</option><option>E-Mola</option></select></div><div class="fgr"><label class="fl">Referência</label><input class="ffi" placeholder="Nº referência"></div><div class="fgr"><label class="fl">Data</label><input class="ffi" type="date" value="2026-05-25"></div><div class="fgr full"><label class="fl">Descrição</label><input class="ffi" placeholder="Propina Maio 2026"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-pag')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-pag');emitirRecibo()">Confirmar & Emitir Recibo</button></div></div></div>
+<!-- modal m-pag removido (v6.55): demo órfão com alunos hardcoded, nunca aberto -->
 
 <div class="modal-ov" id="m-recibo"><div class="modal" style="max-width:480px"><div class="mhd"><span class="mt">Recibo de Pagamento</span><button class="mclose" onclick="closeM('m-recibo')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="ib-box ib-gr" style="margin-bottom:16px"><i class="ti ti-check-circle"></i> Pagamento confirmado! Recibo emitido automaticamente.</div>
   <div class="recibo-box">
@@ -5590,27 +5590,8 @@ function setProp(aid,mi,st){
 }
 
 // ══ RECIBO AUTOMÁTICO ══
-function emitirRecibo(){
-  reciboCounter++;
-  const num=`REC-2026-${String(reciboCounter).padStart(6,'0')}`;
-  const agora=new Date();
-  const dt=agora.toLocaleDateString('pt-PT')+' às '+agora.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
-  document.getElementById('r-num').textContent=`Recibo Nº ${num}`;
-  document.getElementById('r-dt').textContent=dt;
-  document.getElementById('r-cod').textContent=num;
-  document.getElementById('r-sec').textContent=curUser.nome||'Secretário';
-  document.getElementById('r-stamp').textContent='EA';
-  document.getElementById('r-body').innerHTML=`
-    <div class="rcrow"><span style="color:var(--t2)">Aluno</span><span style="font-weight:700">ALU000001 — Aaron Chaimite</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Turma</span><span>10A — 10ª Classe</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Referência</span><span>Propina Maio 2026</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Valor</span><span style="font-weight:800;color:var(--g)">${CONFIG.valorPropina.toLocaleString()}.00 MZM</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Método</span><span>M-Pesa</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Secretário</span><span>${curUser.nome||'—'}</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Data</span><span>${dt}</span></div>`;
-  openM('m-recibo');
-  toast(`<i class="ti ti-circle-check" style="color:#22c55e"></i> Recibo ${num} emitido com sucesso!`);
-}
+// emitirRecibo() removido (v6.55): recibo demo com dados hardcoded. O recibo real
+// é emitirReciboPag()/imprimirReciboActual(), que usam o pagamento verdadeiro.
 
 // ══ GERAR FACTURA ══
 function gerarFactura(mesIdx, incluirMulta){
@@ -5777,7 +5758,7 @@ function loadAval(id){
       </div>
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--b);display:flex;justify-content:space-between;align-items:center">
         <div><div style="font-size:11px;color:var(--t2)">Nota Final</div><div style="font-size:28px;font-weight:800;color:${p.nota>=16?'var(--g)':p.nota>=12?'var(--am)':'var(--r)'}">${p.nota}<span style="font-size:14px;color:var(--t2)">/20</span></div></div>
-        <div style="display:flex;gap:8px"><button class="btn btn-g" onclick="toast('Rascunho guardado!')">Guardar Rascunho</button><button class="btn btn-p" onclick="PROFS.find(x=>x.id==${id}).nota=parseFloat(document.getElementById('vv-${id}-0').textContent)||${p.nota};rStaff('todos');toast('Avaliação submetida para ${p.nome}!')">Submeter</button></div>
+        <div style="display:flex;gap:8px"><!-- botão Guardar Rascunho removido (v6.55): não gravava (só toast) --><button class="btn btn-p" onclick="PROFS.find(x=>x.id==${id}).nota=parseFloat(document.getElementById('vv-${id}-0').textContent)||${p.nota};rStaff('todos');toast('Avaliação submetida para ${p.nome}!')">Submeter</button></div>
       </div>
     </div></div>`;
 }
@@ -7272,49 +7253,11 @@ rConfig = function() {
   }
 };
 
-// Override emitirRecibo to use escalões
-const _origEmitirRecibo = emitirRecibo;
-emitirRecibo = function() {
-  // Use real multa calculation
-  const multa = calcMultaActual();
-  const valorFinal = multa > 0
-    ? Math.round(CONFIG.valorPropina * (1 + multa/100))
-    : CONFIG.valorPropina;
+// Override emitirRecibo removido (v6.55): inseria um pagamento FALSO na tabela real
+// (aluno 'Aaron Chaimite' hardcoded via savePagamentoFirestore). Perigoso e morto —
+// o único chamador era o modal m-pag, também removido.
 
-  reciboCounter++;
-  const num = `REC-2026-${String(reciboCounter).padStart(6,'0')}`;
-  const agora = new Date();
-  const dt = agora.toLocaleDateString('pt-PT') + ' às ' + agora.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
-  document.getElementById('r-num').textContent = `Recibo Nº ${num}`;
-  document.getElementById('r-dt').textContent = dt;
-  document.getElementById('r-cod').textContent = num;
-  document.getElementById('r-sec').textContent = curUser.nome || 'Secretário';
-  document.getElementById('r-stamp').textContent = 'EA';
-  document.getElementById('r-body').innerHTML = `
-    <div class="rcrow"><span style="color:var(--t2)">Aluno</span><span style="font-weight:700">ALU000001 — Aaron Chaimite</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Turma</span><span>10A — 10ª Classe</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Referência</span><span>Propina Maio 2026</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Valor Base</span><span>${CONFIG.valorPropina.toLocaleString()} MZM</span></div>
-    ${multa > 0 ? `<div class="rcrow"><span style="color:var(--am)">Multa (dia ${new Date().getDate()} → +${multa}%)</span><span style="color:var(--am);font-weight:700">+${(valorFinal-CONFIG.valorPropina).toLocaleString()} MZM</span></div>` : ''}
-    <div class="rcrow"><span style="color:var(--t2)">Valor Total</span><span style="font-weight:800;color:${multa>0?'var(--am)':'var(--g)'};font-size:15px">${valorFinal.toLocaleString()} MZM</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Método</span><span>M-Pesa</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Secretário</span><span>${curUser.nome || '—'}</span></div>
-    <div class="rcrow"><span style="color:var(--t2)">Data/Hora</span><span>${dt}</span></div>`;
-  openM('m-recibo');
-  toast(`<i class="ti ti-circle-check" style="color:#22c55e"></i> Recibo ${num} emitido — ${valorFinal.toLocaleString()} MZM${multa>0?' (com multa de '+multa+'%)':''}`);
-
-  // Save to Firestore
-  savePagamentoFirestore({
-    alunoId: 'ALU000001',
-    alunoNome: 'Aaron Chaimite',
-    mes: 'Maio 2026',
-    valorBase: CONFIG.valorPropina,
-    multa, valorFinal, recibo: num,
-    metodo: 'M-Pesa', dt,
-  });
-};
-
-console.log('[Scholaris] <i class="ti ti-circle-check" style="color:#22c55e"></i> Scholaris v1.2 — Firebase + Multas + Boletim + Comunicados + Calendário + Disciplina + Cobrança + Inventário');
+console.log('[Scholaris] Scholaris v1.2 — Firebase + Multas + Boletim + Comunicados + Calendário + Disciplina + Cobrança + Inventário');
 
 
 
@@ -8154,7 +8097,7 @@ renderAlNotas = function(a, trimKey) {
   return `<div class="card" style="margin-top:0">
     <div class="ch">
       <span class="ct">Notas — ${trimN} Trimestre · Pesos: AS1 ${CONFIG.pesoAS1}% · AS2 ${CONFIG.pesoAS2}% · AT ${CONFIG.pesoAT}%</span>
-      ${canEdit ? `<button class="btn btn-p btn-sm" onclick="toast('Notas guardadas!')"><i class="ti ti-device-floppy"></i> Guardar</button>` : ''}
+      ${''/* botão Guardar removido (v6.55): dizia 'Notas guardadas!' sem gravar. O lançamento real de notas é na vista Notas (ntGuardarTudo). */}
     </div>
     <div class="tw"><table>
       <thead>
