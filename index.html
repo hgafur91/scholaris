@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.55</span>
+    <span class="logo-ver">v6.56</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1764,7 +1764,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   </div>
 </div></div>
 
-<div class="modal-ov" id="m-nova-classe"><div class="modal"><div class="mhd"><span class="mt">Nova Classe / Curso</span><button class="mclose" onclick="closeM('m-nova-classe')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr full"><label class="fl">Tipo</label><select class="ffi"><option>Escola (Classe + Disciplinas)</option><option>Instituto Superior (Curso + Módulos)</option></select></div><div class="fgr"><label class="fl">Designação</label><input class="ffi" placeholder="Ex: 12ª Classe"></div><div class="fgr"><label class="fl">Ciclo</label><input class="ffi" placeholder="Ex: 2º Ciclo Secundário"></div><div class="fgr"><label class="fl">Duração (anos)</label><input class="ffi" type="number" value="1"></div><div class="fgr full"><label class="fl">Disciplinas</label><input class="ffi" placeholder="Matemática, Português, Inglês, Física..."></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nova-classe')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nova-classe');toast('Classe criada!')">Guardar</button></div></div></div>
+<!-- modal m-nova-classe removido (v6.56): demo, nunca aberto (0 openM) -->
 
 <div class="modal-ov" id="m-nexame"><div class="modal"><div class="mhd"><span class="mt">Novo Exame</span><button class="mclose" onclick="closeM('m-nexame')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr"><label class="fl">Disciplina</label><select class="ffi"><option>Matemática</option><option>Português</option><option>Inglês</option><option>Física</option></select></div><div class="fgr"><label class="fl">Turma</label><select class="ffi"><option>7ª A</option><option>10ª A</option><option>11ª B</option></select></div><div class="fgr"><label class="fl">Tipo</label><select class="ffi"><option>Exame Normal</option><option>Recurso</option><option>Teste</option></select></div><div class="fgr"><label class="fl">Trimestre</label><select class="ffi"><option>1º Trimestre</option><option>2º Trimestre</option><option>3º Trimestre</option></select></div><div class="fgr"><label class="fl">Data</label><input class="ffi" type="date"></div><div class="fgr"><label class="fl">Hora</label><input class="ffi" type="time" value="08:00"></div><div class="fgr"><label class="fl">Sala</label><input class="ffi" placeholder="Sala 12"></div><div class="fgr"><label class="fl">Duração (min)</label><input class="ffi" type="number" value="120"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nexame')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nexame');toast('Exame criado!')">Guardar</button></div></div></div>
 
@@ -1796,7 +1796,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 <div class="modal-ov" id="m-nemol"><div class="modal"><div class="mhd"><span class="mt">Novo Emolumento</span><button class="mclose" onclick="closeM('m-nemol')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr"><label class="fl">Descrição</label><input class="ffi" placeholder="Ex: Taxa de exame de recurso"></div><div class="fgr"><label class="fl">Valor (MZM)</label><input class="ffi" type="number" placeholder="500"></div><div class="fgr"><label class="fl">Periodicidade</label><select class="ffi"><option>Mensal</option><option>Anual</option><option>Por exame</option><option>Por pedido</option></select></div><div class="fgr"><label class="fl">Aplicável a</label><select class="ffi"><option>Todos os alunos</option><option>Novos alunos</option><option>Alunos em recurso</option></select></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nemol')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nemol');toast('Emolumento criado!')">Guardar</button></div></div></div>
 
-<div class="modal-ov" id="m-nstaff"><div class="modal"><div class="mhd"><span class="mt">Novo Membro de Staff</span><button class="mclose" onclick="closeM('m-nstaff')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr"><label class="fl">Departamento</label><select class="ffi"><option>Académico → PRF000004</option><option>Gestão → GST000003</option><option>Financeiro → FIN000002</option></select></div><div class="fgr"><label class="fl">Cargo</label><input class="ffi" placeholder="Professor, Director..."></div><div class="fgr"><label class="fl">Nome</label><input class="ffi" placeholder="Nome completo"></div><div class="fgr"><label class="fl">Regime</label><select class="ffi"><option value="inteiro">Tempo Inteiro</option><option value="parcial">Tempo Parcial</option></select></div><div class="fgr"><label class="fl">Formação</label><select class="ffi"><option>Licenciatura</option><option>Mestrado</option><option>Doutoramento</option></select></div><div class="fgr"><label class="fl">Salário (MZM)</label><input class="ffi" type="number" placeholder="35000"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nstaff')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nstaff');toast('Staff criado e alocado!')">Guardar</button></div></div></div>
+<!-- modal m-nstaff removido (v6.56): demo com deps hardcoded, nunca aberto (0 openM). Criação real de staff é o modal do professor (n-pr-*) -->
 
 <div class="modal-ov" id="m-alterar-pass"><div class="modal" style="max-width:420px"><div class="mhd"><span class="mt"><i class="ti ti-key" style="margin-right:6px"></i>Alterar Password</span><button class="mclose" onclick="closeM('m-alterar-pass')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="ib-box ib-blue" style="margin-bottom:14px;font-size:12px"><i class="ti ti-info-circle"></i> Introduza a password actual e a nova password (mínimo 6 caracteres).</div><div class="fg"><div class="fgr full"><label class="fl">Password Actual</label><input class="ffi" type="password" id="ap-pass-atual" placeholder="A sua password actual" autocomplete="current-password"></div><div class="fgr full"><label class="fl">Nova Password</label><input class="ffi" type="password" id="ap-pass-nova" placeholder="Nova password" autocomplete="new-password"></div><div class="fgr full"><label class="fl">Confirmar Nova Password</label><input class="ffi" type="password" id="ap-pass-conf" placeholder="Repita a nova password" autocomplete="new-password"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-alterar-pass')">Cancelar</button><button class="btn btn-p" onclick="alterarPassword()"><i class="ti ti-check"></i> Alterar Password</button></div></div></div>
 
@@ -3331,7 +3331,6 @@ const ROLES={
         {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
         {i:'ti-check',l:'Presenças',id:'presencas'},
         {i:'ti-star',l:'Notas Finais',id:'notas'},
-        {i:'ti-file-text',l:'Exames',id:'exames'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
       {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
@@ -3417,7 +3416,6 @@ const ROLES={
         {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
         {i:'ti-check',l:'Presenças',id:'presencas'},
         {i:'ti-star',l:'Notas Finais',id:'notas'},
-        {i:'ti-file-text',l:'Exames',id:'exames'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
       {sl:'Gestão Financeira',sub:[
