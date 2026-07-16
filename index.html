@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.57</span>
+    <span class="logo-ver">v6.58</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5363,13 +5363,15 @@ function exportarAlunoPDF(){
 try{ window.exportarVisaoGeralPDF=exportarVisaoGeralPDF; window.exportarTurmaPDF=exportarTurmaPDF; window.exportarAlunoPDF=exportarAlunoPDF; }catch(e){}
 
 // ══ LIVRO DE PONTO ══
-async function abrirLivroPonto(){
+async function abrirLivroPonto(turmaFiltro){
   try{
     if(!window._supabase){ toast('Sem ligação ao servidor'); return; }
-    // Âmbito: professor vê as suas aulas; gestor/dir vêem todas
+    // Âmbito: turmaFiltro → todas as aulas dessa turma (Livro de Ponto da turma);
+    // senão professor vê as suas, gestão vê todas.
     var prof=__meuProfPres();
     var q=window._supabase.from('aulas_dadas').select('*').eq('escola_id',window._escolaId).order('data',{ascending:false});
-    if(curRole==='professor' && prof && prof._dbId) q=q.eq('professor_id',prof._dbId);
+    if(turmaFiltro){ q=q.eq('turma_id', String(turmaFiltro)); }
+    else if(curRole==='professor' && prof && prof._dbId){ q=q.eq('professor_id',prof._dbId); }
     var r=await q;
     if(r.error){ toast('Erro: '+r.error.message); return; }
     var aulas=r.data||[];
@@ -5416,7 +5418,7 @@ async function abrirLivroPonto(){
       '<div class="page">'+
       '<div class="hdr"><div><div class="esc">'+esc3(escola||'Colégio')+'</div><div class="escs">Ano Lectivo '+anoL+'</div></div>'+
       '<div><div class="tipo">Livro de Ponto</div><div style="font-size:9px;color:#94a3b8;text-align:right">Emitido a '+new Date().toLocaleDateString('pt-PT')+'</div></div></div>'+
-      '<div class="info"><span><b>Aulas registadas:</b> '+totalAulas+'</span><span><b>Total de faltas:</b> '+totalFaltas+'</span>'+(curRole==='professor'&&prof?'<span><b>Professor:</b> '+esc3(prof.nome)+'</span>':'')+'</div>'+
+      '<div class="info"><span><b>Aulas registadas:</b> '+totalAulas+'</span><span><b>Total de faltas:</b> '+totalFaltas+'</span>'+(turmaFiltro?'<span><b>Turma:</b> '+esc3(nomeTurma(turmaFiltro))+'</span>':'')+(curRole==='professor'&&prof?'<span><b>Professor:</b> '+esc3(prof.nome)+'</span>':'')+'</div>'+
       '<table><thead><tr><th>Data</th><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Tema / Sumário</th><th style="text-align:center">Pres.</th><th style="text-align:center">Faltas</th></tr></thead><tbody>'+linhas+'</tbody></table>'+
       '<div class="ass"><div>O Professor</div><div>A Direcção Pedagógica</div></div>'+
       '</div></body></html>';
@@ -5425,6 +5427,40 @@ async function abrirLivroPonto(){
     if(!w){ toast('Permita popups para abrir o livro de ponto'); return; }
     w.document.open(); w.document.write(html); w.document.close();
   }catch(e){ toast('Erro: '+(e&&e.message?e.message:e)); }
+}
+
+// v6.58: Livro de Ponto DA TURMA (aba no perfil da turma) — todas as aulas da turma
+async function renderLivroPontoTurma(turmaId){
+  var el=document.getElementById('turma-livroponto-c'); if(!el) return;
+  function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+  if(!window._supabase || !window._escolaId){ el.innerHTML='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem ligação ao servidor.</div>'; return; }
+  try{
+    var r=await window._supabase.from('aulas_dadas').select('*')
+      .eq('escola_id',window._escolaId).eq('turma_id',String(turmaId)).order('data',{ascending:false});
+    if(r.error){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-alert-triangle"></i> Erro: '+esc(r.error.message)+'</div>'; return; }
+    var aulas=r.data||[];
+    function nomeProf(id){ var p=(PROFS||[]).find(function(x){return String(x._dbId)===String(id);}); return p?p.nome:'—'; }
+    var totalFaltas=aulas.reduce(function(s,a){return s+(a.n_faltas||0);},0);
+    var head='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">'
+      +'<div style="font-size:13px;color:var(--t2)"><b>'+aulas.length+'</b> aula(s) registada(s) · <b>'+totalFaltas+'</b> falta(s)</div>'
+      +'<button class="btn btn-p btn-sm" onclick="abrirLivroPonto(\''+esc(turmaId)+'\')"><i class="ti ti-download"></i> Descarregar Livro de Ponto</button>'
+      +'</div>';
+    if(!aulas.length){ el.innerHTML=head+'<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Ainda não há aulas registadas nesta turma.</div>'; return; }
+    var linhas=aulas.map(function(a){
+      var d=new Date(a.data);
+      return '<tr>'
+        +'<td style="font-family:var(--fm);font-size:11px;white-space:nowrap">'+d.toLocaleDateString('pt-PT')+'</td>'
+        +'<td>'+esc(a.disciplina||'—')+'</td>'
+        +'<td>'+esc(nomeProf(a.professor_id))+'</td>'
+        +'<td style="font-size:11px;color:var(--t2);max-width:280px">'+esc(a.tema||a.sumario||'—')+'</td>'
+        +'<td style="text-align:center">'+(a.n_presentes||0)+'</td>'
+        +'<td style="text-align:center;color:'+((a.n_faltas||0)>0?'var(--r)':'var(--t3)')+'">'+(a.n_faltas||0)+'</td>'
+        +'</tr>';
+    }).join('');
+    el.innerHTML=head+'<div class="card"><div class="tw"><table>'
+      +'<thead><tr><th>Data</th><th>Disciplina</th><th>Professor</th><th>Tema / Sumário</th><th style="text-align:center">Pres.</th><th style="text-align:center">Faltas</th></tr></thead>'
+      +'<tbody>'+linhas+'</tbody></table></div></div>';
+  }catch(e){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-alert-triangle"></i> Erro: '+esc(e&&e.message)+'</div>'; }
 }
 
 // ══ NOTAS POR TURMA (lançamento) ══
@@ -15254,6 +15290,17 @@ async function openTurma(turmaId) {
       <button class="tab" onclick="swTurmaTab('tematico',this,'${turmaId}')"><i class="ti ti-book"></i> Plano Temático</button>
       <button class="tab" id="turma-tab-horario" onclick="swTurmaTab('horario',this,'${turmaId}')"><i class="ti ti-calendar"></i> Horário</button>
       <button class="tab" id="turma-tab-graduacao" onclick="swTurmaTab('graduacao',this,'${turmaId}')"><i class="ti ti-certificate"></i> Graduação</button>
+      ${(function(){
+        // Livro de Ponto da turma: Gestor, Director, Dir. Pedagógico, Chefe de Ciclo e o DT desta turma
+        var pode = ['gestor','director','dir-pedagogico','dir-ciclo'].includes(curRole);
+        if(!pode && curRole==='professor'){
+          try{ var mp=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
+            var t=(TURMAS||[]).find(function(x){return String(x.id)===String(turmaId);});
+            if(mp && t && String(t.dirTurma)===String(mp.num)) pode=true;
+          }catch(e){}
+        }
+        return pode ? '<button class="tab" onclick="swTurmaTab(\'livroponto\',this,\''+turmaId+'\')"><i class="ti ti-book-2"></i> Livro de Ponto</button>' : '';
+      })()}
     </div>
     <div id="turma-p-tab-content">
       ${renderTurmaTabAlunos(turmaId, alunos, canEdit)}
@@ -15296,6 +15343,7 @@ function renderTurmaTabHorario(turmaId) {
   else if (tab==='analitico')  { el.innerHTML='<div id="pa-disc-body"><div id="plano-analitico-c"></div></div>'; _paTurma=turmaId; rPlanoAnalitico(turmaId); }
   else if (tab==='tematico')   el.innerHTML = renderTurmaTabTematico(turmaId);
   else if (tab==='horario')   el.innerHTML = renderTurmaTabHorario(turmaId);
+  else if (tab==='livroponto'){ el.innerHTML='<div id="turma-livroponto-c"><div style="padding:20px;color:var(--t2)">A carregar livro de ponto…</div></div>'; if(typeof renderLivroPontoTurma==='function') renderLivroPontoTurma(turmaId); }
 }
 
 function renderTurmaTabAlunos(turmaId, alunos, canEdit) {
@@ -24307,10 +24355,7 @@ function rMinhaAulaCompleta() {
           </button>
         </div>
 
-        ${!dentro && diaKey ? `<div style="font-size:11px;color:var(--r);text-align:right;margin-top:4px">
-          <i class="ti ti-lock" style="font-size:10px"></i>
-          Registo bloqueado — fora da janela de ±10 minutos do período
-        </div>` : ''}
+        <!-- v6.58: removida a restrição ±10 min do período (registo é por dia, via horário) -->
       </div>
     </div>
 
@@ -24369,7 +24414,51 @@ function maSelDisc() {
   var dh = document.getElementById('ma-disc'); if (dh) dh.value = disc;
   var discId = dsel && dsel.selectedIndex>0 ? dsel.options[dsel.selectedIndex].getAttribute('data-discid') : '';
   window._maDiscId = discId || null;
+  try{ maRebuildDias(); }catch(e){}   // v6.58: limitar dias aos do horário
   if (disc) maCarregarTemas();
+}
+
+// ── v6.58: dias válidos = dias em que ESTE professor dá ESTA disciplina nesta turma ──
+// Cruza com o horário (HORARIO[turma] → linhas {seg..sex:{d:disciplina,p:profNum}}).
+function maDiasValidosSemana(turmaId, discNome, profNum){
+  var map={seg:1,ter:2,qua:3,qui:4,sex:5};   // getDay(): Dom=0..Sáb=6
+  var res=new Set();
+  try{
+    var rows=(typeof HORARIO!=='undefined' && HORARIO[turmaId]) || [];
+    rows.forEach(function(row){
+      ['seg','ter','qua','qui','sex'].forEach(function(dia){
+        var slot=row&&row[dia];
+        if(slot && String(slot.d)===String(discNome) && String(slot.p)===String(profNum)) res.add(map[dia]);
+      });
+    });
+  }catch(e){}
+  return res;
+}
+
+function maRebuildDias(){
+  var sel=document.getElementById('ma-dia-sel'); if(!sel) return;
+  var turmaId=(document.getElementById('ma-turma')||{}).value || (document.getElementById('ma-turma-sel')||{}).value || '';
+  var disc=(document.getElementById('ma-disc')||{}).value || '';
+  var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
+  var profNum=prof?prof.num:null;
+  var nomes=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  var validos=(turmaId && disc && profNum)? maDiasValidosSemana(turmaId, disc, profNum) : new Set();
+  var temHorario=validos.size>0;             // há dados de horário para este trio
+  var prev=sel.value, out=[];
+  for(var i=0;i<5;i++){                       // janela: últimos 5 dias
+    var d=new Date(); d.setDate(d.getDate()-i);
+    var wd=d.getDay();
+    if(temHorario && !validos.has(wd)) continue;   // com horário → só dias certos
+    var iso=d.toISOString().slice(0,10);
+    var lbl=(i===0?'Hoje':(i===1?'Ontem':nomes[wd]))+' — '+d.toLocaleDateString('pt-PT');
+    out.push('<option value="'+iso+'">'+lbl+'</option>');
+  }
+  if(!out.length){
+    sel.innerHTML='<option value="">— Sem dia de aula nos últimos 5 dias —</option>';
+    return;
+  }
+  sel.innerHTML=out.join('');
+  if(prev){ for(var o=0;o<sel.options.length;o++){ if(sel.options[o].value===prev){ sel.selectedIndex=o; break; } } }
 }
 
 // ── Load disciplines for selected turma ──────────────────────
@@ -24431,9 +24520,7 @@ function maTemaParaConteudo() {
 
 // ── Register the lesson ──────────────────────────────────────
 function maRegistar() {
-  const { dentro } = getPeriodoActual();
-  if (!dentro) { toast('Fora da janela de registo (±10 minutos do período)'); return; }
-
+  // v6.58: removida a restrição de janela ±10 min (o registo é por dia, validado pelo horário)
   const turmaId = document.getElementById('ma-turma')?.value;
   const disc    = document.getElementById('ma-disc')?.value;
   const hora    = document.getElementById('ma-hora')?.value;
@@ -25181,7 +25268,7 @@ maRegistar = async function() {
   var dsel    = document.getElementById('ma-disc-sel');
   var disc    = dsel ? dsel.value : (document.getElementById('ma-disc')?.value||'');
   var discId  = window._maDiscId || (dsel && dsel.selectedIndex>0 ? dsel.options[dsel.selectedIndex].getAttribute('data-discid') : null);
-  var dataAula= document.getElementById('ma-dia-sel')?.value || new Date().toISOString().split('T')[0];
+  var dataAula= document.getElementById('ma-dia-sel')?.value || '';  // v6.58: sem fallback p/ hoje
   var temaTxt = (document.getElementById('ma-tema')?.value || '').trim();
   var planoId = null;
   var obs     = document.getElementById('ma-conteudo')?.value.trim() || '';
@@ -25191,6 +25278,7 @@ maRegistar = async function() {
 
   if (!turmaId) { toast('Seleccione a turma'); return; }
   if (!disc)    { toast('Seleccione a disciplina'); return; }
+  if (!dataAula){ toast('Seleccione o dia da aula (só dias em que tem esta aula no horário).'); return; }
 
   var prof = (typeof resolverMeuProf==='function') ? resolverMeuProf() : null;
   if (!prof) prof = PROFS.find(function(p){ return p.num===(curUser&&curUser.profNum) || p.nome===(curUser&&curUser.nome); });
