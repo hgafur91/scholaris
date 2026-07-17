@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.63</span>
+    <span class="logo-ver">v6.64</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1578,6 +1578,15 @@ console.log('[Scholaris] Supabase v2 inicializado');
     </div>
   </div>
   <div id="relatorio-fin-c"></div>
+</div>
+
+<!-- ════ AS MINHAS TURMAS (professor / DT) — v6.64 ════ -->
+<div class="view" id="v-minhas-turmas">
+  <div class="ph"><div>
+    <div class="ph-title">As Minhas Turmas</div>
+    <div class="ph-sub">Turmas e disciplinas que lecciona</div>
+  </div></div>
+  <div id="minhas-turmas-c"></div>
 </div>
 
 <div class="view" id="v-gestao-ano"><div class="ph"><div><div class="ph-title">Gestao do Ano Lectivo</div><div class="ph-sub">Fecho, abertura e arquivo</div></div></div><div id="gestao-ano-c"></div></div>
@@ -3389,7 +3398,7 @@ const ROLES={
     ]},
   professor:{nome:'Professor',cargo:'Professor',avt:'CM',color:'var(--g)',badge:'Professor',
     sidebar:[
-      {sl:'Portal Professor',flat:[{i:'ti-layout-dashboard',l:'As Minhas Aulas',id:'portal-prof'},{i:'ti-id-badge',l:'O Meu Perfil',id:'meu-perfil-prof'},{i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},{i:'ti-star',l:'Lançar Notas',id:'notas'},{i:'ti-calendar',l:'O Meu Horário',id:'horario'}]},
+      {sl:'Portal Professor',flat:[{i:'ti-layout-dashboard',l:'As Minhas Aulas',id:'portal-prof'},{i:'ti-school',l:'As Minhas Turmas',id:'minhas-turmas'},{i:'ti-id-badge',l:'O Meu Perfil',id:'meu-perfil-prof'},{i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},{i:'ti-star',l:'Lançar Notas',id:'notas'},{i:'ti-calendar',l:'O Meu Horário',id:'horario'}]},
       {sl:'Consulta',flat:[{i:'ti-school',l:'Planos Analíticos',id:'curr-planos'},{i:'ti-books',l:'Biblioteca',id:'bib'}]},{sl:'Comunicação',flat:[{i:'ti-speakerphone',l:'Comunicados',id:'comunicados-prof'},{i:'ti-clipboard-list',l:'Trabalhos',id:'trabalhos-prof'}]},
     ]},
   aluno:{nome:'Aaron Chaimite',cargo:'Aluno',avt:'AC',color:'var(--am)',badge:'Aluno',
@@ -3575,7 +3584,7 @@ function canSeeSalary(){return ['gestor','director'].includes(curRole);}
 
 
 // ══ NAVEGAÇÃO ══
-const VM={dash:'v-dash',exec:'v-exec',config:'v-config','curr-planos':'v-curr-planos',turmas:'v-turmas',alunos:'v-alunos','aluno-p':'v-aluno-p',professores:'v-professores','prof-p':'v-prof-p',encarregados:'v-encarregados','enc-p':'v-enc-p',alocacao:'v-alocacao',horario:'v-horario',presencas:'v-presencas',notas:'v-notas',exames:'v-exames',propinas:'v-propinas',propaluno:'v-propaluno',despesas:'v-despesas',emolumentos:'v-emolumentos',staff:'v-staff',aval:'v-aval','aval-dep':'v-aval-dep',bib:'v-bib',portal:'v-portal','portal-prof':'v-portal-prof',faltas:'v-faltas','calendario-escolar':'v-calendario-escolar','monitor-prof':'v-monitor-prof','progresso-alunos':'v-progresso-alunos','dash-enc':'v-dash-enc','portal-enc-notas':'v-portal-enc-notas','portal-enc-presencas':'v-portal-enc-presencas','portal-enc-trabalhos':'v-portal-enc-trabalhos','portal-enc-propinas':'v-portal-enc-propinas','portal-enc-horario':'v-portal-enc-horario','mensagens-enc':'v-mensagens-enc','admissoes':'v-admissoes','comunicacao':'v-comunicacao','ciclo-visao':'v-ciclo-visao','ciclo-turmas':'v-ciclo-turmas','meu-perfil-prof':'v-meu-perfil-prof','minha-aula':'v-minha-aula','comunicados-prof':'v-comunicados-prof','trabalhos-prof':'v-trabalhos-prof','desempenho-acad':'v-desempenho-acad','alertas-ciclo':'v-alertas-ciclo','reunioes':'v-reunioes','monitor-ciclo':'v-monitor-ciclo','dividas':'v-dividas','folha-salarios':'v-folha-salarios','fluxo-caixa':'v-fluxo-caixa','orcamento':'v-orcamento','previsao-receita':'v-previsao-receita','despesas-cat':'v-despesas-cat','gestao-ano':'v-gestao-ano','relatorio-fin':'v-relatorio-fin','utilizadores':'v-utilizadores','fin-dashboard':'v-fin-dashboard','audit-trail':'v-audit-trail','aging-report':'v-aging-report','reconciliacao':'v-reconciliacao','periodos':'v-periodos','cargos':'v-cargos','turma-p':'v-turma-p','visao-geral':'v-visao-geral'};
+const VM={dash:'v-dash',exec:'v-exec',config:'v-config','curr-planos':'v-curr-planos',turmas:'v-turmas',alunos:'v-alunos','aluno-p':'v-aluno-p',professores:'v-professores','prof-p':'v-prof-p',encarregados:'v-encarregados','enc-p':'v-enc-p',alocacao:'v-alocacao',horario:'v-horario',presencas:'v-presencas',notas:'v-notas',exames:'v-exames',propinas:'v-propinas',propaluno:'v-propaluno',despesas:'v-despesas',emolumentos:'v-emolumentos',staff:'v-staff',aval:'v-aval','aval-dep':'v-aval-dep',bib:'v-bib',portal:'v-portal','portal-prof':'v-portal-prof',faltas:'v-faltas','calendario-escolar':'v-calendario-escolar','monitor-prof':'v-monitor-prof','progresso-alunos':'v-progresso-alunos','dash-enc':'v-dash-enc','portal-enc-notas':'v-portal-enc-notas','portal-enc-presencas':'v-portal-enc-presencas','portal-enc-trabalhos':'v-portal-enc-trabalhos','portal-enc-propinas':'v-portal-enc-propinas','portal-enc-horario':'v-portal-enc-horario','mensagens-enc':'v-mensagens-enc','admissoes':'v-admissoes','comunicacao':'v-comunicacao','ciclo-visao':'v-ciclo-visao','ciclo-turmas':'v-ciclo-turmas','meu-perfil-prof':'v-meu-perfil-prof','minha-aula':'v-minha-aula','comunicados-prof':'v-comunicados-prof','trabalhos-prof':'v-trabalhos-prof','desempenho-acad':'v-desempenho-acad','alertas-ciclo':'v-alertas-ciclo','reunioes':'v-reunioes','monitor-ciclo':'v-monitor-ciclo','dividas':'v-dividas','folha-salarios':'v-folha-salarios','fluxo-caixa':'v-fluxo-caixa','orcamento':'v-orcamento','previsao-receita':'v-previsao-receita','despesas-cat':'v-despesas-cat','gestao-ano':'v-gestao-ano','relatorio-fin':'v-relatorio-fin','minhas-turmas':'v-minhas-turmas','utilizadores':'v-utilizadores','fin-dashboard':'v-fin-dashboard','audit-trail':'v-audit-trail','aging-report':'v-aging-report','reconciliacao':'v-reconciliacao','periodos':'v-periodos','cargos':'v-cargos','turma-p':'v-turma-p','visao-geral':'v-visao-geral'};
 
 // ════════════════════════════════════════════════════════════
 //  SCHOLARIS — CICLOS, DISPONIBILIDADE, PLANO ANALÍTICO
@@ -28291,6 +28300,7 @@ function fmt(n) {
 if (typeof RENDER_MAP !== 'undefined') {
   RENDER_MAP['dividas']          = () => rDividasConsolidadas();
 RENDER_MAP['relatorio-fin']    = () => rRelatorioFin();
+RENDER_MAP['minhas-turmas']    = () => rMinhasTurmas();
   RENDER_MAP['folha-salarios']   = () => rFolhaSalarios();
   RENDER_MAP['fluxo-caixa']      = () => rFluxoCaixa();
   RENDER_MAP['orcamento']        = () => rOrcamento();
@@ -39068,6 +39078,120 @@ window.trimestreActual = function(d){
         +'</body></html>');
       w.document.close();
     }catch(e){ toast('Erro ao exportar: '+(e&&e.message)); }
+  };
+})();
+</script>
+
+<script>
+/* ═══ v6.64 — AS MINHAS TURMAS (professor / DT) ═══
+   Professor normal: um cartão por (turma × disciplina) que lecciona → detalhe com
+   alunos, notas (M por trimestre + anual) e estatísticas dessa disciplina.
+   DT: além disso, atalho para a turma completa (openTurma, todas as disciplinas). */
+(function(){
+  if(window.__minhasTurmasLoaded) return; window.__minhasTurmasLoaded=true;
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function num(v){ v=parseFloat(v); return isNaN(v)?null:v; }
+  function kpi(v,l,cor,ic){
+    return '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center;position:relative;overflow:hidden">'
+      +'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:'+cor+'"></div>'
+      +'<i class="ti '+ic+'" style="color:'+cor+';font-size:16px"></i>'
+      +'<div style="font-size:20px;font-weight:800;color:'+cor+';margin-top:4px">'+v+'</div>'
+      +'<div style="font-size:11px;color:var(--t2)">'+l+'</div></div>';
+  }
+  window.__mtCards=[];
+
+  window.rMinhasTurmas = async function(){
+    var el=document.getElementById('minhas-turmas-c'); if(!el) return;
+    el.innerHTML='<div style="padding:20px;color:var(--t2)">A carregar as suas turmas…</div>';
+    var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
+    if(!prof){ el.innerHTML='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Esta área é para professores.</div>'; return; }
+    var aloc=[];
+    try{ aloc=(window.NT&&NT._minhasAloc)?(await NT._minhasAloc()):[]; }catch(e){ aloc=[]; }
+    var tmap={}; (window.TURMAS||[]).forEach(function(t){ if(t._dbId) tmap[t._dbId]={code:t.id,nome:t.nome||t.id}; });
+    var dtTurmas=(window.TURMAS||[]).filter(function(t){ return t.dirTurma && String(t.dirTurma)===String(prof.num); });
+
+    var porTurma={};
+    aloc.forEach(function(a){
+      var tid=a.turma_id, dn=a.disciplinas&&a.disciplinas.nome; if(!tid||!dn) return;
+      if(!porTurma[tid]) porTurma[tid]={nome:(tmap[tid]&&tmap[tid].nome)||tid, discs:[]};
+      if(!porTurma[tid].discs.some(function(d){return d.nome===dn;})) porTurma[tid].discs.push({nome:dn,id:a.disciplina_id});
+    });
+    var tids=Object.keys(porTurma);
+    window.__mtCards=[];
+
+    var html='';
+    if(dtTurmas.length){
+      html+='<div class="card" style="margin-bottom:16px;border-left:4px solid var(--am)">'
+        +'<div class="ch"><span class="ct"><i class="ti ti-crown" style="color:var(--am);margin-right:6px"></i>Director de Turma</span></div>'
+        +'<div class="cb" style="display:flex;gap:10px;flex-wrap:wrap">'
+        + dtTurmas.map(function(t){ return '<button class="btn btn-p btn-sm" onclick="openTurma(\''+esc(t.id)+'\')"><i class="ti ti-layout-grid"></i> Turma '+esc(t.nome||t.id)+' — ver tudo</button>'; }).join('')
+        +'</div><div style="padding:0 16px 12px;font-size:11px;color:var(--t2)">Como Director de Turma vê todas as disciplinas, alunos, notas e faltas da turma.</div></div>';
+    }
+    if(!tids.length && !dtTurmas.length){
+      el.innerHTML='<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Ainda não tem turmas/disciplinas atribuídas. Contacte a Direcção.</div>'; return;
+    }
+    if(tids.length){
+      html+='<div style="font-size:13px;font-weight:700;margin:4px 0 10px">As minhas disciplinas</div>';
+      tids.forEach(function(tid){
+        var t=porTurma[tid];
+        html+='<div class="card" style="margin-bottom:12px"><div class="ch"><span class="ct"><i class="ti ti-users" style="margin-right:6px"></i>Turma '+esc(t.nome)+'</span><span style="font-size:11px;color:var(--t2)">'+t.discs.length+' disciplina(s)</span></div>'
+          +'<div class="cb" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px">'
+          + t.discs.map(function(d){
+              var idx=window.__mtCards.push({tid:tid,disc:d.nome,turmaNome:t.nome})-1;
+              return '<div class="qa-card" onclick="rMinhaTurmaDetalhe('+idx+')">'
+                +'<div class="qa-ico" style="background:rgba(79,142,247,.12)"><i class="ti ti-book" style="color:var(--a)"></i></div>'
+                +'<div class="qa-lbl">'+esc(d.nome)+'</div>'
+                +'<div style="font-size:10px;color:var(--t2);margin-top:2px">Ver alunos e notas</div></div>';
+            }).join('')
+          +'</div></div>';
+      });
+    }
+    el.innerHTML=html;
+  };
+
+  window.rMinhaTurmaDetalhe = async function(idx){
+    var el=document.getElementById('minhas-turmas-c'); if(!el) return;
+    var info=window.__mtCards[idx]; if(!info){ return window.rMinhasTurmas(); }
+    var tid=info.tid, disc=info.disc, turmaNome=info.turmaNome;
+    el.innerHTML='<div style="padding:20px;color:var(--t2)">A carregar '+esc(disc)+'…</div>';
+    var alunos=[], N={1:{},2:{},3:{}};
+    try{
+      alunos=await NT.alunos(tid);
+      N[1]=await NT.notas(tid,disc,1); N[2]=await NT.notas(tid,disc,2); N[3]=await NT.notas(tid,disc,3);
+    }catch(e){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-alert-triangle"></i> Erro: '+esc((e&&e.message)||e)+'</div>'; return; }
+    var med=(typeof CONFIG!=='undefined'&&CONFIG.mediaAprovacao)||10;
+    function mtOf(n){ if(!n) return null; var a=num(n.as1),b=num(n.as2),c=num(n.ap); if(a==null||b==null||c==null) return null; return (a+b+c)/3; }
+    function cel(m){ return m==null?'<span style="color:var(--t3)">—</span>':'<b style="color:'+(m>=med?'var(--g)':'var(--r)')+'">'+m.toFixed(1)+'</b>'; }
+    var linhas='', somaAnual=0, nAval=0, nAprov=0;
+    alunos.forEach(function(al,i){
+      var m1=mtOf(N[1][al.id]), m2=mtOf(N[2][al.id]), m3=mtOf(N[3][al.id]);
+      var disp=[m1,m2,m3].filter(function(x){return x!=null;});
+      var anual= disp.length? (disp.reduce(function(s,x){return s+x;},0)/disp.length) : null;
+      if(anual!=null){ nAval++; somaAnual+=anual; if(anual>=med) nAprov++; }
+      linhas+='<tr><td style="padding:7px 10px;color:var(--t2)">'+(i+1)+'</td>'
+        +'<td style="padding:7px 10px;font-weight:600">'+esc(al.nome_completo||al.numero_aluno||'')+'</td>'
+        +'<td style="padding:7px;text-align:center">'+cel(m1)+'</td><td style="padding:7px;text-align:center">'+cel(m2)+'</td><td style="padding:7px;text-align:center">'+cel(m3)+'</td>'
+        +'<td style="padding:7px;text-align:center">'+cel(anual)+'</td>'
+        +'<td style="padding:7px;text-align:center">'+(anual==null?'<span class="badge bin">Sem notas</span>':(anual>=med?'<span class="badge bok">Aprovado</span>':'<span class="badge ber">Reprovado</span>'))+'</td></tr>';
+    });
+    var mediaTurma= nAval? (somaAnual/nAval) : null;
+    var taxa= nAval? Math.round(nAprov/nAval*100) : 0;
+    var kpis='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">'
+      + kpi(String(alunos.length),'Alunos','var(--a)','ti-users')
+      + kpi(nAval+'/'+alunos.length,'Avaliados','var(--tl)','ti-clipboard-check')
+      + kpi(mediaTurma==null?'—':mediaTurma.toFixed(1),'Média da turma', mediaTurma==null?'var(--t2)':(mediaTurma>=med?'var(--g)':'var(--r)'),'ti-chart-bar')
+      + kpi(taxa+'%','Taxa de aprovação', taxa>=70?'var(--g)':taxa>=50?'var(--am)':'var(--r)','ti-percentage')
+      +'</div>';
+    el.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
+      +'<button class="btn btn-g btn-sm" onclick="rMinhasTurmas()"><i class="ti ti-arrow-left"></i> Voltar</button>'
+      +'<div style="font-size:16px;font-weight:800">Turma '+esc(turmaNome)+' · '+esc(disc)+'</div>'
+      +'<div style="flex:1"></div>'
+      +'<button class="btn btn-p btn-sm" onclick="go(\'notas\')"><i class="ti ti-edit"></i> Lançar notas</button></div>'
+      + kpis
+      + '<div style="font-size:10px;color:var(--t3);margin-bottom:6px">Média anual = média dos trimestres já lançados. Aprovação a partir de '+med+' valores.</div>'
+      +'<div class="card"><div class="cb" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="color:var(--t2);font-size:11px;text-align:left;border-bottom:1px solid var(--b)"><th style="padding:8px 10px">Nº</th><th style="padding:8px 10px">Aluno</th><th style="padding:8px;text-align:center">M T1</th><th style="padding:8px;text-align:center">M T2</th><th style="padding:8px;text-align:center">M T3</th><th style="padding:8px;text-align:center">Anual</th><th style="padding:8px;text-align:center">Situação</th></tr></thead>'
+      +'<tbody>'+ (linhas||'<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--t2)">Sem alunos matriculados.</td></tr>') +'</tbody></table></div></div>';
   };
 })();
 </script>
