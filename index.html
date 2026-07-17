@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.64</span>
+    <span class="logo-ver">v6.65</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -39113,7 +39113,7 @@ window.trimestreActual = function(d){
     var porTurma={};
     aloc.forEach(function(a){
       var tid=a.turma_id, dn=a.disciplinas&&a.disciplinas.nome; if(!tid||!dn) return;
-      if(!porTurma[tid]) porTurma[tid]={nome:(tmap[tid]&&tmap[tid].nome)||tid, discs:[]};
+      if(!porTurma[tid]) porTurma[tid]={nome:(tmap[tid]&&tmap[tid].nome)||tid, code:(tmap[tid]&&tmap[tid].code)||null, discs:[]};
       if(!porTurma[tid].discs.some(function(d){return d.nome===dn;})) porTurma[tid].discs.push({nome:dn,id:a.disciplina_id});
     });
     var tids=Object.keys(porTurma);
@@ -39137,7 +39137,7 @@ window.trimestreActual = function(d){
         html+='<div class="card" style="margin-bottom:12px"><div class="ch"><span class="ct"><i class="ti ti-users" style="margin-right:6px"></i>Turma '+esc(t.nome)+'</span><span style="font-size:11px;color:var(--t2)">'+t.discs.length+' disciplina(s)</span></div>'
           +'<div class="cb" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px">'
           + t.discs.map(function(d){
-              var idx=window.__mtCards.push({tid:tid,disc:d.nome,turmaNome:t.nome})-1;
+              var idx=window.__mtCards.push({tid:tid,code:t.code,disc:d.nome,turmaNome:t.nome})-1;
               return '<div class="qa-card" onclick="rMinhaTurmaDetalhe('+idx+')">'
                 +'<div class="qa-ico" style="background:rgba(79,142,247,.12)"><i class="ti ti-book" style="color:var(--a)"></i></div>'
                 +'<div class="qa-lbl">'+esc(d.nome)+'</div>'
@@ -39154,33 +39154,48 @@ window.trimestreActual = function(d){
     var info=window.__mtCards[idx]; if(!info){ return window.rMinhasTurmas(); }
     var tid=info.tid, disc=info.disc, turmaNome=info.turmaNome;
     el.innerHTML='<div style="padding:20px;color:var(--t2)">A carregar '+esc(disc)+'…</div>';
-    var alunos=[], N={1:{},2:{},3:{}};
+    var alunos=[], N={1:{},2:{},3:{}}, faltasMap={};
     try{
       alunos=await NT.alunos(tid);
       N[1]=await NT.notas(tid,disc,1); N[2]=await NT.notas(tid,disc,2); N[3]=await NT.notas(tid,disc,3);
+      // Faltas puxadas do registo de aula (tabela 'faltas', por código de turma + disciplina)
+      if(info.code && window._supabase && window._escolaId){
+        var fr=await window._supabase.from('faltas').select('aluno_id,justif')
+          .eq('escola_id',window._escolaId).eq('turma',String(info.code)).eq('disciplina',disc);
+        ((fr&&fr.data)||[]).forEach(function(f){
+          if(!faltasMap[f.aluno_id]) faltasMap[f.aluno_id]={total:0,justif:0};
+          faltasMap[f.aluno_id].total++; if(f.justif) faltasMap[f.aluno_id].justif++;
+        });
+      }
     }catch(e){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-alert-triangle"></i> Erro: '+esc((e&&e.message)||e)+'</div>'; return; }
     var med=(typeof CONFIG!=='undefined'&&CONFIG.mediaAprovacao)||10;
     function mtOf(n){ if(!n) return null; var a=num(n.as1),b=num(n.as2),c=num(n.ap); if(a==null||b==null||c==null) return null; return (a+b+c)/3; }
     function cel(m){ return m==null?'<span style="color:var(--t3)">—</span>':'<b style="color:'+(m>=med?'var(--g)':'var(--r)')+'">'+m.toFixed(1)+'</b>'; }
-    var linhas='', somaAnual=0, nAval=0, nAprov=0;
+    var linhas='', somaAnual=0, nAval=0, nAprov=0, totalFaltas=0;
     alunos.forEach(function(al,i){
       var m1=mtOf(N[1][al.id]), m2=mtOf(N[2][al.id]), m3=mtOf(N[3][al.id]);
       var disp=[m1,m2,m3].filter(function(x){return x!=null;});
       var anual= disp.length? (disp.reduce(function(s,x){return s+x;},0)/disp.length) : null;
       if(anual!=null){ nAval++; somaAnual+=anual; if(anual>=med) nAprov++; }
+      var fa=faltasMap[al.id]||{total:0,justif:0}; totalFaltas+=fa.total;
+      var faCel = fa.total
+        ? '<b style="color:'+(fa.total>=3?'var(--r)':'var(--am)')+'">'+fa.total+'</b>'+(fa.justif?' <span style="font-size:9px;color:var(--t3)">('+fa.justif+' just.)</span>':'')
+        : '<span style="color:var(--t3)">0</span>';
       linhas+='<tr><td style="padding:7px 10px;color:var(--t2)">'+(i+1)+'</td>'
         +'<td style="padding:7px 10px;font-weight:600">'+esc(al.nome_completo||al.numero_aluno||'')+'</td>'
         +'<td style="padding:7px;text-align:center">'+cel(m1)+'</td><td style="padding:7px;text-align:center">'+cel(m2)+'</td><td style="padding:7px;text-align:center">'+cel(m3)+'</td>'
         +'<td style="padding:7px;text-align:center">'+cel(anual)+'</td>'
+        +'<td style="padding:7px;text-align:center">'+faCel+'</td>'
         +'<td style="padding:7px;text-align:center">'+(anual==null?'<span class="badge bin">Sem notas</span>':(anual>=med?'<span class="badge bok">Aprovado</span>':'<span class="badge ber">Reprovado</span>'))+'</td></tr>';
     });
     var mediaTurma= nAval? (somaAnual/nAval) : null;
     var taxa= nAval? Math.round(nAprov/nAval*100) : 0;
-    var kpis='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">'
+    var kpis='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:14px">'
       + kpi(String(alunos.length),'Alunos','var(--a)','ti-users')
       + kpi(nAval+'/'+alunos.length,'Avaliados','var(--tl)','ti-clipboard-check')
       + kpi(mediaTurma==null?'—':mediaTurma.toFixed(1),'Média da turma', mediaTurma==null?'var(--t2)':(mediaTurma>=med?'var(--g)':'var(--r)'),'ti-chart-bar')
       + kpi(taxa+'%','Taxa de aprovação', taxa>=70?'var(--g)':taxa>=50?'var(--am)':'var(--r)','ti-percentage')
+      + kpi(String(totalFaltas),'Faltas (total)', totalFaltas?'var(--r)':'var(--g)','ti-user-x')
       +'</div>';
     el.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
       +'<button class="btn btn-g btn-sm" onclick="rMinhasTurmas()"><i class="ti ti-arrow-left"></i> Voltar</button>'
@@ -39190,8 +39205,8 @@ window.trimestreActual = function(d){
       + kpis
       + '<div style="font-size:10px;color:var(--t3);margin-bottom:6px">Média anual = média dos trimestres já lançados. Aprovação a partir de '+med+' valores.</div>'
       +'<div class="card"><div class="cb" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
-      +'<thead><tr style="color:var(--t2);font-size:11px;text-align:left;border-bottom:1px solid var(--b)"><th style="padding:8px 10px">Nº</th><th style="padding:8px 10px">Aluno</th><th style="padding:8px;text-align:center">M T1</th><th style="padding:8px;text-align:center">M T2</th><th style="padding:8px;text-align:center">M T3</th><th style="padding:8px;text-align:center">Anual</th><th style="padding:8px;text-align:center">Situação</th></tr></thead>'
-      +'<tbody>'+ (linhas||'<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--t2)">Sem alunos matriculados.</td></tr>') +'</tbody></table></div></div>';
+      +'<thead><tr style="color:var(--t2);font-size:11px;text-align:left;border-bottom:1px solid var(--b)"><th style="padding:8px 10px">Nº</th><th style="padding:8px 10px">Aluno</th><th style="padding:8px;text-align:center">M T1</th><th style="padding:8px;text-align:center">M T2</th><th style="padding:8px;text-align:center">M T3</th><th style="padding:8px;text-align:center">Anual</th><th style="padding:8px;text-align:center">Faltas</th><th style="padding:8px;text-align:center">Situação</th></tr></thead>'
+      +'<tbody>'+ (linhas||'<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--t2)">Sem alunos matriculados.</td></tr>') +'</tbody></table></div></div>';
   };
 })();
 </script>
