@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.60</span>
+    <span class="logo-ver">v6.61</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32773,6 +32773,8 @@ window.__finV22 = true;
 if(window.__finV30)return;
 function vp(t){try{return (typeof window.__valPropina==='function')?window.__valPropina(t):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);}catch(e){return 4500;}}
 function ep(p){try{return (typeof window.__estadoPropina==='function')?window.__estadoPropina(p):(p&&p.st==='npago'?'divida':'pago');}catch(e){return 'pago';}}
+// v6.61: multa REAL de uma propina — usa a p.multaPct atribuída pelo escalão (não uma % única)
+function mt(p){try{return (typeof window.__multaDe==='function')?window.__multaDe(p):((p&&p.st==='multa')?Math.round((p.v||0)*((p.multaPct||0)/100)):0);}catch(e){return 0;}}
 function fmtN(n){try{return (typeof window.fmt==='function')?window.fmt(n):(''+Math.round(n||0));}catch(e){return ''+Math.round(n||0);}}
 var MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 window.__v30Devedores=function(){
@@ -32786,8 +32788,9 @@ window.__v30Devedores=function(){
     var venc=props.filter(function(p){return p&&ep(p)==='divida';});
     if(!venc.length)return;
     var val=venc.reduce(function(s,p){return s+(p.v||vp(a._turmaDbId||a.turma));},0);
+    var multa=venc.reduce(function(s,p){return s+mt(p);},0);   // v6.61: multa real, escalão a escalão
     var meses=venc.length;
-    rows.push({a:a,meses:meses,val:val,
+    rows.push({a:a,meses:meses,val:val,multa:multa,
       cor:meses>=3?'var(--r)':meses===2?'var(--am)':'var(--t2)',
       nivel:meses>=3?'Critico':meses===2?'Atencao':'Normal'});
   });
@@ -32890,7 +32893,10 @@ window.__finV30=true;})();
     base.forEach(function(x){
       var meses=x.meses||0, prop=x.val||0;
       if(meses<=0 || prop<=0) return;
-      var multa=Math.round(prop*pct/100), total=prop+multa, s=sev(meses);
+      // v6.61: usar a multa REAL (escalão de cada propina). Só cai na % única se o
+      // cálculo real não vier (compatibilidade).
+      var multa=(typeof x.multa==='number')? x.multa : Math.round(prop*pct/100);
+      var total=prop+multa, s=sev(meses);
       out.push({ a:x.a, meses:meses, propina:prop, multa:multa, total:total, sev:s.t, cor:s.c });
     });
     out.sort(function(a,b){ return b.meses-a.meses || b.total-a.total; });
@@ -32943,6 +32949,7 @@ window.__finV30=true;})();
     var devs=window.__v31Devedores();
     var pct=window.__multaPct();
     var totalDivida=devs.reduce(function(s,d){ return s+d.total; },0);
+    var totalMulta=devs.reduce(function(s,d){ return s+(d.multa||0); },0);   // v6.61
     var nDev=devs.length;
     var c1=devs.filter(function(d){return d.meses<2;}).length, c2=devs.filter(function(d){return d.meses===2;}).length, c3=devs.filter(function(d){return d.meses>=3;}).length;
     var taxa=0; try{ var hist=window.__v31Hist(); }catch(e){}
@@ -32954,7 +32961,7 @@ window.__finV30=true;})();
     var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">'
       +'<div style="background:var(--card,#fff);border:1px solid #fecaca;border-top:3px solid #dc2626;border-radius:14px;padding:18px;text-align:center"><div style="font-size:30px;font-weight:800;color:#dc2626">'+nDev+'</div><div style="color:#64748b;font-size:13px">Alunos Devedores</div></div>'
       +'<div style="background:var(--card,#fff);border:1px solid #fecaca;border-top:3px solid #dc2626;border-radius:14px;padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:#dc2626">'+_fmt(totalDivida)+'</div><div style="color:#64748b;font-size:13px">Total em Divida (c/ multa)</div></div>'
-      +'<div style="background:var(--card,#fff);border:1px solid #fde68a;border-top:3px solid #f59e0b;border-radius:14px;padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:#f59e0b">'+pct+'%</div><div style="color:#64748b;font-size:13px">Multa por atraso</div></div>'
+      +'<div style="background:var(--card,#fff);border:1px solid #fde68a;border-top:3px solid #f59e0b;border-radius:14px;padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:#f59e0b">'+_fmt(totalMulta)+'</div><div style="color:#64748b;font-size:13px">Total em Multas <span style="font-size:11px;color:#94a3b8">(por escalão)</span></div></div>'
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">'
       +'<div style="font-size:13px;color:#64748b"><b style="color:#eab308">'+c1+'</b> leve &nbsp; <b style="color:#f59e0b">'+c2+'</b> media &nbsp; <b style="color:#dc2626">'+c3+'</b> grave</div>'
