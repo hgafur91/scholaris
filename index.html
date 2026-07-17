@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.66</span>
+    <span class="logo-ver">v6.67</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -35587,6 +35587,8 @@ window.__finV30=true;})();
   var _orig = window.openTurma;
   window.openTurma = async function(turmaId){
     var r = _orig ? await _orig.apply(this, arguments) : undefined;
+    // v6.67: garantir que os KPIs reais (média/taxa/faltas) são preenchidos no caminho activo
+    try{ if(typeof window.__patchTurmaKPIs==='function') window.__patchTurmaKPIs(turmaId); }catch(e){}
     try{
       var t = (window.TURMAS||[]).find(function(x){return x.id===turmaId;});
       var dbId = t && t._dbId;
