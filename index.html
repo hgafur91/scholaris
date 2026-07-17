@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.59</span>
+    <span class="logo-ver">v6.60</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32780,7 +32780,10 @@ window.__v30Devedores=function(){
   var rows=[];
   al.forEach(function(a){
     var props=a.propinas||[];
-    var venc=props.filter(function(p){return p&&p.st==='npago'&&ep(p)==='divida';});
+    // v6.60: NÃO exigir st==='npago' — __estadoPropina já devolve 'divida' também
+    // para st==='multa' (propina vencida que gerou multa). O filtro antigo excluía
+    // exactamente os maiores devedores.
+    var venc=props.filter(function(p){return p&&ep(p)==='divida';});
     if(!venc.length)return;
     var val=venc.reduce(function(s,p){return s+(p.v||vp(a._turmaDbId||a.turma));},0);
     var meses=venc.length;
@@ -32798,9 +32801,9 @@ window.__v30Hist=function(){
     var acc=0,novo=0;
     al.forEach(function(a){
       (a.propinas||[]).forEach(function(p){
-        if(!p||p.st!=='npago')return;
+        if(!p)return;
         if((p.m||0)>m)return;
-        if(ep(p)!=='divida')return;
+        if(ep(p)!=='divida')return;   // v6.60: inclui st==='multa' (era excluído pelo filtro npago)
         var v=(p.v||vp(a._turmaDbId||a.turma));
         acc+=v; if((p.m||0)===m)novo+=v;
       });
