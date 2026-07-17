@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.62</span>
+    <span class="logo-ver">v6.63</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -35149,7 +35149,7 @@ window.__finV30=true;})();
       // alocações do professor logado (turma_id + disciplina nome)
       // Tabela correcta: 'atribuicoes' (professor_id, turma_id, disciplina_id)
       if(this.__alocCache) return this.__alocCache;
-      var r=await sb().from('atribuicoes').select('turma_id, disciplinas(nome)').eq('professor_id', window._meuStaffId).eq('escola_id', escola());
+      var r=await sb().from('atribuicoes').select('turma_id, disciplina_id, disciplinas(nome)').eq('professor_id', window._meuStaffId).eq('escola_id', escola());
       this.__alocCache=((r&&r.data)||[]);
       return this.__alocCache;
     },
@@ -35191,6 +35191,13 @@ window.__finV30=true;})();
       DISC_PADRAO.forEach(function(d){ if(set.indexOf(d)<0) set.push(d); });
       return set.sort();
     },
+    // v6.63: disciplina_id a partir das atribuições do professor (o que a RLS exige)
+    async discIdAloc(turmaId, disciplinaNome){
+      try{ await this._minhasAloc(); }catch(e){}
+      var al=this.__alocCache||[];
+      var hit=al.find(function(a){ return String(a.turma_id)===String(turmaId) && a.disciplinas && a.disciplinas.nome===disciplinaNome; });
+      return (hit && hit.disciplina_id) || null;
+    },
     async alunos(turmaId){
       var r=await sb().from('matriculas').select('aluno_id, alunos(id,nome_completo,numero_aluno)').eq('turma_id',turmaId);
       var lst=((r&&r.data)||[]).map(function(m){return m.alunos;}).filter(Boolean);
@@ -35204,6 +35211,8 @@ window.__finV30=true;})();
     async guardar(o){
       var row={ escola_id:escola(), turma_id:o.turmaId, aluno_id:o.alunoId, disciplina:o.disciplina, trimestre:o.trimestre,
         as1:(o.as1===''||o.as1==null)?null:o.as1, as2:(o.as2===''||o.as2==null)?null:o.as2, ap:(o.ap===''||o.ap==null)?null:o.ap };
+      // v6.63: incluir disciplina_id — a política RLS exige-o para os professores (tem_alocacao)
+      if(o.disciplinaId) row.disciplina_id=o.disciplinaId;
       var r=await sb().from('notas').upsert(row,{onConflict:'aluno_id,disciplina,trimestre'}).select();
       if(r.error) throw r.error; return r.data&&r.data[0];
     },
@@ -35299,7 +35308,8 @@ window.__finV30=true;})();
     try{
       alunos=await NT.alunos(_st.turmaId);
       notas=await NT.notas(_st.turmaId,_st.disciplina,_st.trimestre);
-      discId=await NT.discId(_st.turmaId,_st.disciplina);
+      discId=await NT.discIdAloc(_st.turmaId,_st.disciplina);   // v6.63: preferir o id da alocação
+      if(!discId) discId=await NT.discId(_st.turmaId,_st.disciplina);
       _st.discId=discId;
       fecho=await NT.estaFechado(_st.turmaId, discId, _st.trimestre);
       _st.fechado=!!fecho;
@@ -35361,16 +35371,20 @@ window.__finV30=true;})();
   window.ntGuardarTudo=async function(ev){
     var btn=ev&&ev.target?ev.target.closest('button'):null; if(btn){btn.disabled=true;btn.style.opacity=.6;btn.textContent='A guardar...';}
     var trs=document.querySelectorAll('#nt-tabela tr[data-aluno]');
-    var ok=0, erros=0;
+    var ok=0, erros=0, ultErro='', preenchidas=0;
     for(var i=0;i<trs.length;i++){
       var tr=trs[i], aid=tr.getAttribute('data-aluno');
       var as1=tr.querySelector('[data-f="as1"]').value, as2=tr.querySelector('[data-f="as2"]').value, ap=tr.querySelector('[data-f="ap"]').value;
       if(as1===''&&as2===''&&ap==='') continue; // linha vazia, ignora
-      try{ await NT.guardar({turmaId:_st.turmaId, alunoId:aid, disciplina:_st.disciplina, trimestre:_st.trimestre, as1:num(as1), as2:num(as2), ap:num(ap)}); ok++; }
-      catch(e){ erros++; }
+      preenchidas++;
+      try{ await NT.guardar({turmaId:_st.turmaId, alunoId:aid, disciplina:_st.disciplina, disciplinaId:_st.discId, trimestre:_st.trimestre, as1:num(as1), as2:num(as2), ap:num(ap)}); ok++; }
+      catch(e){ erros++; ultErro=(e&&e.message)||String(e); }
     }
     if(btn){btn.disabled=false;btn.style.opacity=1;btn.innerHTML='<i class="ti ti-device-floppy"></i> Guardar notas';}
-    toast(erros?('Guardado '+ok+', '+erros+' erro(s)'):('Notas guardadas! ('+ok+')'));
+    // v6.63: mensagem clara — erro real, ou "nada preenchido", em vez de um "0" ambíguo
+    if(erros){ toast('<i class="ti ti-alert-triangle"></i> Guardou '+ok+', falhou '+erros+(ultErro?(' — '+ultErro):'')); }
+    else if(!preenchidas){ toast('Não há notas preenchidas para guardar.'); }
+    else { toast('<i class="ti ti-check"></i> Notas guardadas! ('+ok+')'); }
     // Auditoria: lançamento de notas
     try{ if(ok>0 && typeof logAudit==='function') logAudit('NOTAS_LANCADAS', (_st.disciplina||'?')+' — '+(_st.turmaNome||_st.turmaId||'?')+' ('+_st.trimestre+'º trim.)', ok+' aluno(s) avaliado(s)'+(erros?(' · '+erros+' erro(s)'):''), null, null); }catch(e){}
   };
@@ -35395,7 +35409,7 @@ window.__finV30=true;})();
         var tr=trs[i], aid=tr.getAttribute('data-aluno');
         var a1=tr.querySelector('[data-f="as1"]').value, a2=tr.querySelector('[data-f="as2"]').value, ap=tr.querySelector('[data-f="ap"]').value;
         if(a1===''&&a2===''&&ap==='') continue;
-        try{ await NT.guardar({turmaId:_st.turmaId, alunoId:aid, disciplina:_st.disciplina, trimestre:_st.trimestre, as1:num(a1), as2:num(a2), ap:num(ap)}); }catch(e){}
+        try{ await NT.guardar({turmaId:_st.turmaId, alunoId:aid, disciplina:_st.disciplina, disciplinaId:_st.discId, trimestre:_st.trimestre, as1:num(a1), as2:num(a2), ap:num(ap)}); }catch(e){}
       }
       if(!_st.discId){ toast('Não foi possível identificar a disciplina para fechar.'); if(btn){btn.disabled=false;btn.style.opacity=1;} return; }
       await NT.fechar(_st.turmaId, _st.discId, _st.trimestre);
