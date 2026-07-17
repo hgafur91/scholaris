@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.65</span>
+    <span class="logo-ver">v6.66</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -15237,15 +15237,7 @@ async function openTurma(turmaId) {
 
   ` : '';
 
-  // Stats row
-  const mediaGeral = alunos.length
-    ? Math.round(alunos.reduce((s,a)=>s+(calcMediaGeralAluno(a.id)||0),0)/alunos.length*10)/10
-    : null;
-  const faltasMed  = alunos.length
-    ? Math.round(alunos.reduce((s,a)=>s+(calcFaltas(a.id).pct||0),0)/alunos.length)
-    : 0;
-  const nAprovados = alunos.filter(a=>(calcMediaGeralAluno(a.id)||0)>=CONFIG.mediaAprovacao).length;
-
+  // Stats row — média/taxa/faltas vêm dos DADOS REAIS (notas + aulas_dadas), via __patchTurmaKPIs (v6.66)
   const el = document.getElementById('turma-p-c');
   if (!el) return;
 
@@ -15255,14 +15247,13 @@ async function openTurma(turmaId) {
       ${[
         {l:'Alunos',         v:alunos.length+'/'+t.max,  c:'var(--a)',  ic:'ti-users'},
         {l:'Disciplinas',    v:discs.length,              c:'var(--tl)', ic:'ti-books'},
-        {l:'Média da Turma', v:mediaGeral??'—',           c:mediaGeral>=(CONFIG.mediaAprovacao||10)?'var(--g)':'var(--am)', ic:'ti-star'},
-        {l:'Taxa Aprovação', v:alunos.length?Math.round(nAprovados/alunos.length*100)+'%':'—',
-                                                          c:'var(--g)',  ic:'ti-award'},
-        {l:'Média Faltas',   v:faltasMed+'%',             c:faltasMed>15?'var(--r)':faltasMed>8?'var(--am)':'var(--g)', ic:'ti-alert-circle'},
+        {l:'Média da Turma', v:'…', c:'var(--tl)', ic:'ti-star',          id:'tk-media'},
+        {l:'Taxa Aprovação', v:'…', c:'var(--tl)', ic:'ti-award',         id:'tk-taxa'},
+        {l:'Média Faltas',   v:'…', c:'var(--tl)', ic:'ti-alert-circle',  id:'tk-faltas'},
       ].map(k=>`<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden">
         <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div>
         <i class="ti ${k.ic}" style="color:${k.c};font-size:18px;display:block;margin-bottom:6px"></i>
-        <div style="font-size:20px;font-weight:800;color:${k.c}">${k.v}</div>
+        <div style="font-size:20px;font-weight:800;color:${k.c}"${k.id?` id="${k.id}"`:''}>${k.v}</div>
         <div style="font-size:10px;color:var(--t2)">${k.l}</div>
       </div>`).join('')}
     </div>
@@ -15338,6 +15329,8 @@ async function openTurma(turmaId) {
     <div id="turma-p-tab-content">
       ${renderTurmaTabAlunos(turmaId, alunos, canEdit)}
     </div>`;
+  // v6.66: preencher Média da Turma / Taxa Aprovação / Média Faltas com dados reais
+  try{ if(typeof __patchTurmaKPIs==='function') __patchTurmaKPIs(turmaId, alunos.length); }catch(e){}
 }
 
 function renderTurmaTabHorario(turmaId) {
@@ -39207,6 +39200,55 @@ window.trimestreActual = function(d){
       +'<div class="card"><div class="cb" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
       +'<thead><tr style="color:var(--t2);font-size:11px;text-align:left;border-bottom:1px solid var(--b)"><th style="padding:8px 10px">Nº</th><th style="padding:8px 10px">Aluno</th><th style="padding:8px;text-align:center">M T1</th><th style="padding:8px;text-align:center">M T2</th><th style="padding:8px;text-align:center">M T3</th><th style="padding:8px;text-align:center">Anual</th><th style="padding:8px;text-align:center">Faltas</th><th style="padding:8px;text-align:center">Situação</th></tr></thead>'
       +'<tbody>'+ (linhas||'<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--t2)">Sem alunos matriculados.</td></tr>') +'</tbody></table></div></div>';
+  };
+})();
+</script>
+
+<script>
+/* ═══ v6.66 — KPIs reais do cabeçalho da turma (Média, Taxa Aprovação, Média Faltas) ═══
+   Antes vinham de calcMediaGeralAluno/calcFaltas (estrutura em memória, vazia → 0).
+   Agora: notas da tabela 'notas' (por turma_id UUID) e faltas de 'aulas_dadas' (por código). */
+(function(){
+  if(window.__turmaKpisLoaded) return; window.__turmaKpisLoaded=true;
+  function n(v){ v=parseFloat(v); return isNaN(v)?null:v; }
+  function setK(id,val,cor){ var e=document.getElementById(id); if(e){ e.textContent=val; if(cor) e.style.color=cor; } }
+
+  window.__patchTurmaKPIs = async function(turmaCode, nAlunos){
+    if(!(window._supabase && window._escolaId)) return;
+    var t=(window.TURMAS||[]).find(function(x){ return String(x.id)===String(turmaCode); });
+    var uuid=t&&t._dbId, esc=window._escolaId;
+    var med=(typeof CONFIG!=='undefined'&&CONFIG.mediaAprovacao)||10;
+
+    // ── Notas reais (turma_id = UUID) ──
+    try{
+      if(uuid){
+        var rn=await window._supabase.from('notas').select('aluno_id,as1,as2,ap')
+          .eq('escola_id',esc).eq('turma_id',uuid);
+        var byAluno={};
+        ((rn&&rn.data)||[]).forEach(function(x){
+          var a=n(x.as1),b=n(x.as2),c=n(x.ap); if(a==null||b==null||c==null) return;
+          (byAluno[x.aluno_id]=byAluno[x.aluno_id]||[]).push((a+b+c)/3);
+        });
+        var medias=Object.keys(byAluno).map(function(aid){ var arr=byAluno[aid]; return arr.reduce(function(s,y){return s+y;},0)/arr.length; });
+        if(medias.length){
+          var mt=medias.reduce(function(s,y){return s+y;},0)/medias.length;
+          var aprov=medias.filter(function(m){return m>=med;}).length;
+          var taxa=Math.round(aprov/medias.length*100);
+          setK('tk-media', (Math.round(mt*10)/10).toFixed(1), mt>=med?'var(--g)':'var(--am)');
+          setK('tk-taxa', taxa+'%', taxa>=50?'var(--g)':taxa>=30?'var(--am)':'var(--r)');
+        } else { setK('tk-media','—','var(--t2)'); setK('tk-taxa','—','var(--t2)'); }
+      } else { setK('tk-media','—','var(--t2)'); setK('tk-taxa','—','var(--t2)'); }
+    }catch(e){ setK('tk-media','—','var(--t2)'); setK('tk-taxa','—','var(--t2)'); }
+
+    // ── Faltas reais do registo de aula (aulas_dadas.turma_id = CÓDIGO) ──
+    try{
+      var ra=await window._supabase.from('aulas_dadas').select('n_presentes,n_faltas')
+        .eq('escola_id',esc).eq('turma_id',String(turmaCode));
+      var tf=0, tot=0;
+      ((ra&&ra.data)||[]).forEach(function(x){ var f=parseInt(x.n_faltas,10)||0, p=parseInt(x.n_presentes,10)||0; tf+=f; tot+=(f+p); });
+      var pct= tot? Math.round(tf/tot*100) : 0;
+      setK('tk-faltas', pct+'%', pct>15?'var(--r)':pct>8?'var(--am)':'var(--g)');
+    }catch(e){ setK('tk-faltas','—','var(--t2)'); }
   };
 })();
 </script>
