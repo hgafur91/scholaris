@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.61</span>
+    <span class="logo-ver">v6.62</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1565,6 +1565,20 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div id="despesas-cat-c"></div>
 </div>
 
+
+<!-- ════ RELATÓRIO FINANCEIRO (v6.62) ════ -->
+<div class="view" id="v-relatorio-fin">
+  <div class="ph">
+    <div>
+      <div class="ph-title">Relatório Financeiro</div>
+      <div class="ph-sub">Cobrança, dívida e despesas — anual ou mês a mês</div>
+    </div>
+    <div class="ph-right">
+      <button class="btn btn-g btn-sm" onclick="exportarRelatorioFin()"><i class="ti ti-download"></i> Exportar / Imprimir</button>
+    </div>
+  </div>
+  <div id="relatorio-fin-c"></div>
+</div>
 
 <div class="view" id="v-gestao-ano"><div class="ph"><div><div class="ph-title">Gestao do Ano Lectivo</div><div class="ph-sub">Fecho, abertura e arquivo</div></div></div><div id="gestao-ano-c"></div></div>
 </div><!-- /main -->
@@ -3333,7 +3347,7 @@ const ROLES={
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
       {sl:'Gestão RH',sub:[
         {i:'ti-briefcase',l:'Staff / Dep.',id:'staff'},
         {i:'ti-star',l:'Avaliações',id:'aval'},
@@ -3420,6 +3434,7 @@ const ROLES={
       ]},
       {sl:'Gestão Financeira',sub:[
         {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
+        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},
         {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
@@ -3560,7 +3575,7 @@ function canSeeSalary(){return ['gestor','director'].includes(curRole);}
 
 
 // ══ NAVEGAÇÃO ══
-const VM={dash:'v-dash',exec:'v-exec',config:'v-config','curr-planos':'v-curr-planos',turmas:'v-turmas',alunos:'v-alunos','aluno-p':'v-aluno-p',professores:'v-professores','prof-p':'v-prof-p',encarregados:'v-encarregados','enc-p':'v-enc-p',alocacao:'v-alocacao',horario:'v-horario',presencas:'v-presencas',notas:'v-notas',exames:'v-exames',propinas:'v-propinas',propaluno:'v-propaluno',despesas:'v-despesas',emolumentos:'v-emolumentos',staff:'v-staff',aval:'v-aval','aval-dep':'v-aval-dep',bib:'v-bib',portal:'v-portal','portal-prof':'v-portal-prof',faltas:'v-faltas','calendario-escolar':'v-calendario-escolar','monitor-prof':'v-monitor-prof','progresso-alunos':'v-progresso-alunos','dash-enc':'v-dash-enc','portal-enc-notas':'v-portal-enc-notas','portal-enc-presencas':'v-portal-enc-presencas','portal-enc-trabalhos':'v-portal-enc-trabalhos','portal-enc-propinas':'v-portal-enc-propinas','portal-enc-horario':'v-portal-enc-horario','mensagens-enc':'v-mensagens-enc','admissoes':'v-admissoes','comunicacao':'v-comunicacao','ciclo-visao':'v-ciclo-visao','ciclo-turmas':'v-ciclo-turmas','meu-perfil-prof':'v-meu-perfil-prof','minha-aula':'v-minha-aula','comunicados-prof':'v-comunicados-prof','trabalhos-prof':'v-trabalhos-prof','desempenho-acad':'v-desempenho-acad','alertas-ciclo':'v-alertas-ciclo','reunioes':'v-reunioes','monitor-ciclo':'v-monitor-ciclo','dividas':'v-dividas','folha-salarios':'v-folha-salarios','fluxo-caixa':'v-fluxo-caixa','orcamento':'v-orcamento','previsao-receita':'v-previsao-receita','despesas-cat':'v-despesas-cat','gestao-ano':'v-gestao-ano','utilizadores':'v-utilizadores','fin-dashboard':'v-fin-dashboard','audit-trail':'v-audit-trail','aging-report':'v-aging-report','reconciliacao':'v-reconciliacao','periodos':'v-periodos','cargos':'v-cargos','turma-p':'v-turma-p','visao-geral':'v-visao-geral'};
+const VM={dash:'v-dash',exec:'v-exec',config:'v-config','curr-planos':'v-curr-planos',turmas:'v-turmas',alunos:'v-alunos','aluno-p':'v-aluno-p',professores:'v-professores','prof-p':'v-prof-p',encarregados:'v-encarregados','enc-p':'v-enc-p',alocacao:'v-alocacao',horario:'v-horario',presencas:'v-presencas',notas:'v-notas',exames:'v-exames',propinas:'v-propinas',propaluno:'v-propaluno',despesas:'v-despesas',emolumentos:'v-emolumentos',staff:'v-staff',aval:'v-aval','aval-dep':'v-aval-dep',bib:'v-bib',portal:'v-portal','portal-prof':'v-portal-prof',faltas:'v-faltas','calendario-escolar':'v-calendario-escolar','monitor-prof':'v-monitor-prof','progresso-alunos':'v-progresso-alunos','dash-enc':'v-dash-enc','portal-enc-notas':'v-portal-enc-notas','portal-enc-presencas':'v-portal-enc-presencas','portal-enc-trabalhos':'v-portal-enc-trabalhos','portal-enc-propinas':'v-portal-enc-propinas','portal-enc-horario':'v-portal-enc-horario','mensagens-enc':'v-mensagens-enc','admissoes':'v-admissoes','comunicacao':'v-comunicacao','ciclo-visao':'v-ciclo-visao','ciclo-turmas':'v-ciclo-turmas','meu-perfil-prof':'v-meu-perfil-prof','minha-aula':'v-minha-aula','comunicados-prof':'v-comunicados-prof','trabalhos-prof':'v-trabalhos-prof','desempenho-acad':'v-desempenho-acad','alertas-ciclo':'v-alertas-ciclo','reunioes':'v-reunioes','monitor-ciclo':'v-monitor-ciclo','dividas':'v-dividas','folha-salarios':'v-folha-salarios','fluxo-caixa':'v-fluxo-caixa','orcamento':'v-orcamento','previsao-receita':'v-previsao-receita','despesas-cat':'v-despesas-cat','gestao-ano':'v-gestao-ano','relatorio-fin':'v-relatorio-fin','utilizadores':'v-utilizadores','fin-dashboard':'v-fin-dashboard','audit-trail':'v-audit-trail','aging-report':'v-aging-report','reconciliacao':'v-reconciliacao','periodos':'v-periodos','cargos':'v-cargos','turma-p':'v-turma-p','visao-geral':'v-visao-geral'};
 
 // ════════════════════════════════════════════════════════════
 //  SCHOLARIS — CICLOS, DISPONIBILIDADE, PLANO ANALÍTICO
@@ -28275,6 +28290,7 @@ function fmt(n) {
 // ── RENDER MAP ────────────────────────────────────────────────
 if (typeof RENDER_MAP !== 'undefined') {
   RENDER_MAP['dividas']          = () => rDividasConsolidadas();
+RENDER_MAP['relatorio-fin']    = () => rRelatorioFin();
   RENDER_MAP['folha-salarios']   = () => rFolhaSalarios();
   RENDER_MAP['fluxo-caixa']      = () => rFluxoCaixa();
   RENDER_MAP['orcamento']        = () => rOrcamento();
@@ -38823,6 +38839,221 @@ window.trimestreActual = function(d){
     }
     if(typeof rInventario==='function') rInventario();
     toast('Removido');
+  };
+})();
+</script>
+
+<script>
+/* ═══ v6.62 — RELATÓRIO FINANCEIRO (anual ou mês a mês) ═══
+   Usa sempre os helpers canónicos: __estadoPropina (dívida = vencida e não paga),
+   __totalProp (propina + multa do escalão). Ver Dívidas Consolidadas para coerência. */
+(function(){
+  if(window.__relFinLoaded) return; window.__relFinLoaded=true;
+  var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var MESC =['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  window.__relFinMes = 0;   // 0 = ano completo
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+  function money(n){ try{ return Math.round(n||0).toLocaleString('pt-PT')+' MZM'; }catch(e){ return (n||0)+' MZM'; } }
+  function ep(p){ try{ return (typeof window.__estadoPropina==='function')?window.__estadoPropina(p):'futuro'; }catch(e){ return 'futuro'; } }
+  function totProp(p){ try{ return (typeof window.__totalProp==='function')?window.__totalProp(p):((p&&p.v)||0); }catch(e){ return (p&&p.v)||0; } }
+  function mesDe(d){ try{ return d? parseInt(String(d).slice(5,7),10) : 0; }catch(e){ return 0; } }
+  function anoL(){ try{ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear(); }catch(e){ return ''; } }
+
+  window.__relFinSetMes=function(m){ window.__relFinMes=parseInt(m,10)||0; try{ rRelatorioFin(); }catch(e){} };
+
+  function dados(){
+    var mes=window.__relFinMes;
+    var P=(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]).filter(function(p){ return p && p.estado!=='estornado'; });
+    var D=(window.DESPESAS_REG&&Array.isArray(window.DESPESAS_REG))?window.DESPESAS_REG:[];
+    var Pf= mes? P.filter(function(p){ return mesDe(p.data)===mes; }) : P;
+    var Df= mes? D.filter(function(d){ var m=(d.mes!=null)?parseInt(d.mes,10):mesDe(d.data); return m===mes; }) : D;
+    var recebido=Pf.reduce(function(s,p){ return s+(p.valorTotal||0); },0);
+    var despesas=Df.reduce(function(s,d){ return s+(parseFloat(d.valor)||0); },0);
+    var AL=(typeof ALUNOS!=='undefined'?ALUNOS:[]);
+    var comDiv=0,emDia=0,nunca=0,dividaTot=0,pagoTot=0,futuroTot=0,distrib={},porClasse={},devs=[];
+    AL.forEach(function(a){
+      var props=a.propinas||[];
+      var venc=props.filter(function(p){ return ep(p)==='divida'; });
+      var dv=venc.reduce(function(s,p){ return s+totProp(p); },0);
+      dividaTot+=dv;
+      pagoTot  +=props.filter(function(p){ return p.st==='pago'; }).reduce(function(s,p){ return s+(p.v||0); },0);
+      futuroTot+=props.filter(function(p){ return ep(p)==='futuro'; }).reduce(function(s,p){ return s+(p.v||0); },0);
+      if(venc.length){ comDiv++; distrib[venc.length]=(distrib[venc.length]||0)+1; devs.push({a:a,meses:venc.length,val:dv}); }
+      else emDia++;
+      if(!props.some(function(p){ return p.st==='pago'; })) nunca++;
+      if(dv>0){ var cl=a.classe||a.turma||'—'; porClasse[cl]=(porClasse[cl]||0)+dv; }
+    });
+    devs.sort(function(x,y){ return y.val-x.val; });
+    var taxa=(pagoTot+dividaTot)>0? Math.round(pagoTot/(pagoTot+dividaTot)*100):0;
+    var canal={}; Pf.forEach(function(p){ var c=p.canal||'—'; canal[c]=(canal[c]||0)+(p.valorTotal||0); });
+    var pagantes={}; Pf.forEach(function(p){ if(p.alunoNum) pagantes[p.alunoNum]=1; });
+    var propMesDiv=0, propMesPag=0;
+    if(mes){ AL.forEach(function(a){ (a.propinas||[]).forEach(function(p){ if((p.m||0)!==mes) return; if(ep(p)==='divida') propMesDiv++; else if(p.st==='pago') propMesPag++; }); }); }
+    return {mes:mes,P:P,D:D,Pf:Pf,Df:Df,recebido:recebido,despesas:despesas,saldo:recebido-despesas,
+      AL:AL,comDiv:comDiv,emDia:emDia,nunca:nunca,dividaTot:dividaTot,pagoTot:pagoTot,futuroTot:futuroTot,
+      distrib:distrib,porClasse:porClasse,devs:devs,taxa:taxa,canal:canal,
+      nPagantes:Object.keys(pagantes).length,propMesDiv:propMesDiv,propMesPag:propMesPag};
+  }
+
+  function kpi(v,l,s,cor,ic){
+    return '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;position:relative;overflow:hidden">'
+      +'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:'+cor+'"></div>'
+      +'<i class="ti '+ic+'" style="color:'+cor+';font-size:17px"></i>'
+      +'<div style="font-size:19px;font-weight:800;color:'+cor+';margin-top:5px;word-break:break-word">'+v+'</div>'
+      +'<div style="font-size:11px;color:var(--t2);font-weight:600">'+l+'</div>'
+      +(s?'<div style="font-size:10px;color:var(--t3);margin-top:2px">'+s+'</div>':'')+'</div>';
+  }
+  function grid(n,inner){ return '<div style="display:grid;grid-template-columns:repeat('+n+',1fr);gap:12px;margin-bottom:16px">'+inner+'</div>'; }
+  function card(t,inner,sub){ return '<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">'+t+'</span>'+(sub?'<span style="font-size:11px;color:var(--t2)">'+sub+'</span>':'')+'</div>'+inner+'</div>'; }
+
+  function tabelaMensal(P,D){
+    var rows='',tr=0,td=0;
+    for(var m=1;m<=12;m++){
+      var rec=P.filter(function(p){ return mesDe(p.data)===m; }).reduce(function(s,p){ return s+(p.valorTotal||0); },0);
+      var des=D.filter(function(d){ var dm=(d.mes!=null)?parseInt(d.mes,10):mesDe(d.data); return dm===m; }).reduce(function(s,d){ return s+(parseFloat(d.valor)||0); },0);
+      if(!rec && !des) continue;
+      tr+=rec; td+=des;
+      var sal=rec-des;
+      rows+='<tr><td style="font-weight:700">'+MESES[m-1]+'</td>'
+        +'<td style="text-align:right;color:var(--g)">'+money(rec)+'</td>'
+        +'<td style="text-align:right;color:var(--r)">'+money(des)+'</td>'
+        +'<td style="text-align:right;font-weight:800;color:'+(sal>=0?'var(--g)':'var(--r)')+'">'+money(sal)+'</td></tr>';
+    }
+    if(!rows) return '<div class="cb" style="padding:20px;text-align:center;color:var(--t2)">Sem movimento registado.</div>';
+    rows+='<tr style="border-top:2px solid var(--b2)"><td style="font-weight:800">TOTAL</td>'
+      +'<td style="text-align:right;font-weight:800;color:var(--g)">'+money(tr)+'</td>'
+      +'<td style="text-align:right;font-weight:800;color:var(--r)">'+money(td)+'</td>'
+      +'<td style="text-align:right;font-weight:800;color:'+((tr-td)>=0?'var(--g)':'var(--r)')+'">'+money(tr-td)+'</td></tr>';
+    return '<div class="tw"><table><thead><tr><th>Mês</th><th style="text-align:right">Recebido</th><th style="text-align:right">Despesas</th><th style="text-align:right">Saldo</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  function barras(distrib){
+    var keys=Object.keys(distrib).map(Number).sort(function(a,b){ return b-a; });
+    if(!keys.length) return '<div class="cb" style="padding:18px"><div class="ib-box ib-gr"><i class="ti ti-circle-check"></i> Nenhum aluno com dívida.</div></div>';
+    var max=Math.max.apply(null,keys.map(function(k){ return distrib[k]; }))||1;
+    return '<div class="cb" style="padding:12px 0">'+keys.map(function(k){
+      var n=distrib[k], pct=Math.round(n/max*100);
+      var cor=k>=5?'var(--r)':k>=3?'var(--am)':'var(--tl)';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:5px 16px">'
+        +'<div style="width:78px;font-size:12px;font-weight:700">'+k+' '+(k===1?'mês':'meses')+'</div>'
+        +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:16px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+cor+'"></div></div>'
+        +'<div style="width:96px;text-align:right;font-size:12px;font-weight:700">'+n+' aluno'+(n===1?'':'s')+'</div></div>';
+    }).join('')+'</div>';
+  }
+
+  function tabelaCanal(canal){
+    var LBL={transferencia:'Transferência',pos:'POS',deposito:'Depósito',numerario:'Numerário'};
+    var keys=Object.keys(canal);
+    if(!keys.length) return '<div class="cb" style="padding:18px;text-align:center;color:var(--t2)">Sem pagamentos no período.</div>';
+    var tot=keys.reduce(function(s,k){ return s+canal[k]; },0)||1;
+    return '<div class="cb" style="padding:0">'+keys.sort(function(a,b){ return canal[b]-canal[a]; }).map(function(k){
+      var pct=Math.round(canal[k]/tot*100);
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--b)">'
+        +'<div style="width:104px;font-size:12px;font-weight:600">'+esc(LBL[k]||k)+'</div>'
+        +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:12px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:var(--a)"></div></div>'
+        +'<div style="width:126px;text-align:right;font-size:12px;font-weight:700">'+money(canal[k])+'</div>'
+        +'<div style="width:38px;text-align:right;font-size:11px;color:var(--t2)">'+pct+'%</div></div>';
+    }).join('')+'</div>';
+  }
+
+  function tabelaClasse(porClasse){
+    var keys=Object.keys(porClasse);
+    if(!keys.length) return '<div class="cb" style="padding:18px;text-align:center;color:var(--t2)">Sem dívida.</div>';
+    keys.sort(function(a,b){ return porClasse[b]-porClasse[a]; });
+    return '<div class="tw"><table><thead><tr><th>Classe / Turma</th><th style="text-align:right">Dívida</th></tr></thead><tbody>'
+      +keys.map(function(k){ return '<tr><td style="font-weight:700">'+esc(k)+'</td><td style="text-align:right;font-weight:700;color:var(--r)">'+money(porClasse[k])+'</td></tr>'; }).join('')
+      +'</tbody></table></div>';
+  }
+
+  function tabelaDevs(devs){
+    if(!devs.length) return '<div class="cb" style="padding:18px;text-align:center;color:var(--g);font-weight:600">Sem devedores.</div>';
+    return '<div class="tw"><table><thead><tr><th>Aluno</th><th>Turma</th><th style="text-align:center">Meses</th><th style="text-align:right">Dívida</th></tr></thead><tbody>'
+      +devs.slice(0,10).map(function(d){
+        return '<tr><td style="font-weight:700">'+esc(d.a.nome)+'<br><span style="font-size:10px;color:var(--t3);font-family:var(--fm)">'+esc(d.a.num||'')+'</span></td>'
+          +'<td><span class="badge bin">'+esc(d.a.turma||'')+'</span></td>'
+          +'<td style="text-align:center;font-weight:700;color:'+(d.meses>=5?'var(--r)':d.meses>=3?'var(--am)':'var(--t2)')+'">'+d.meses+'</td>'
+          +'<td style="text-align:right;font-weight:700;color:var(--r)">'+money(d.val)+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  }
+
+  window.rRelatorioFin=function(){
+    var el=document.getElementById('relatorio-fin-c'); if(!el) return;
+    if(!['gestor','director'].includes(curRole)){
+      el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor Geral e Director Geral.</div>'; return;
+    }
+    var d=dados(), mes=d.mes;
+    var periodo = mes? (MESES[mes-1]+' de '+anoL()) : ('Ano lectivo '+anoL());
+
+    var sel='<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:16px">'
+      +'<span style="font-size:11px;color:var(--t2);font-weight:700;margin-right:4px">PERÍODO</span>'
+      +'<button class="btn btn-sm '+(mes===0?'btn-p':'btn-g')+'" onclick="__relFinSetMes(0)">Ano completo</button>';
+    for(var m=1;m<=12;m++) sel+='<button class="btn btn-sm '+(mes===m?'btn-p':'btn-g')+'" onclick="__relFinSetMes('+m+')">'+MESC[m-1]+'</button>';
+    sel+='</div>';
+
+    var html=sel
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px"><i class="ti ti-calendar"></i> A mostrar: <b style="color:var(--t)">'+periodo+'</b></div>'
+      + grid(4,
+          kpi(money(d.recebido),'Recebido', mes?'Pagamentos de '+MESES[mes-1]:'Total do ano','var(--g)','ti-coin')
+        + kpi(money(d.despesas),'Despesas', mes?'Gastos de '+MESES[mes-1]:'Total do ano','var(--r)','ti-receipt')
+        + kpi(money(d.saldo),'Saldo', d.saldo>=0?'Recebido − Despesas':'Défice', d.saldo>=0?'var(--g)':'var(--r)','ti-trending-up')
+        + kpi(money(d.dividaTot),'Dívida acumulada','Vencida e não paga (c/ multa)','var(--am)','ti-alert-circle')
+      );
+
+    if(!mes){
+      html+= grid(4,
+          kpi(String(d.emDia),'Alunos em dia','De '+d.AL.length+' alunos','var(--g)','ti-user-check')
+        + kpi(String(d.comDiv),'Alunos com dívida', (d.AL.length?Math.round(d.comDiv/d.AL.length*100):0)+'% dos alunos','var(--r)','ti-user-exclamation')
+        + kpi(String(d.nunca),'Nunca pagaram','Sem 1 pagamento este ano','var(--am)','ti-user-x')
+        + kpi(d.taxa+'%','Taxa de cobrança','Pago vs (pago + dívida)', d.taxa>=70?'var(--g)':d.taxa>=40?'var(--am)':'var(--r)','ti-percentage')
+      );
+      html+= card('<i class="ti ti-chart-bar" style="margin-right:6px"></i>Devedores por meses em dívida', barras(d.distrib), d.comDiv+' aluno(s) com dívida');
+      html+= card('<i class="ti ti-calendar-stats" style="margin-right:6px"></i>Mês a mês', tabelaMensal(d.P,d.D), 'Recebido, despesas e saldo');
+      html+= '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+           + '<div>'+card('<i class="ti ti-building-bank" style="margin-right:6px"></i>Receita por canal', tabelaCanal(d.canal))+'</div>'
+           + '<div>'+card('<i class="ti ti-school" style="margin-right:6px"></i>Dívida por classe', tabelaClasse(d.porClasse))+'</div>'
+           + '</div>';
+      html+= card('<i class="ti ti-alert-triangle" style="margin-right:6px"></i>Maiores devedores', tabelaDevs(d.devs), 'Top 10');
+      html+= '<div class="ib-box ib-blue" style="margin-top:4px"><i class="ti ti-info-circle"></i> <b>Por cobrar (meses futuros):</b> '+money(d.futuroTot)+' — propinas dos meses que ainda não venceram. Não contam como dívida.</div>';
+    } else {
+      html+= grid(3,
+          kpi(String(d.nPagantes),'Alunos que pagaram','Em '+MESES[mes-1],'var(--g)','ti-user-check')
+        + kpi(String(d.propMesPag),'Propinas pagas','Do mês de '+MESES[mes-1],'var(--tl)','ti-check')
+        + kpi(String(d.propMesDiv),'Propinas por cobrar','De '+MESES[mes-1]+' (vencidas)','var(--r)','ti-alert-circle')
+      );
+      html+= card('<i class="ti ti-building-bank" style="margin-right:6px"></i>Receita por canal — '+MESES[mes-1], tabelaCanal(d.canal));
+      html+= '<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Os totais de alunos em dia/com dívida são do ano inteiro (a dívida acumula-se, não é mensal). Escolhe <b>Ano completo</b> para os ver.</div>';
+    }
+    el.innerHTML=html;
+  };
+
+  window.exportarRelatorioFin=function(){
+    try{
+      var el=document.getElementById('relatorio-fin-c'); if(!el){ toast('Abra o relatório primeiro'); return; }
+      var mes=window.__relFinMes;
+      var periodo = mes? (MESES[mes-1]+' de '+anoL()) : ('Ano lectivo '+anoL());
+      var escola=''; try{ escola=(window.ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nome)||(typeof CONFIG!=='undefined'&&CONFIG.nomeEscola)||'Colégio'; }catch(e){ escola='Colégio'; }
+      var w=window.open('','_blank'); if(!w){ toast('Permita pop-ups para exportar'); return; }
+      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Relatório Financeiro — '+esc(periodo)+'</title><style>'
+        +'body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:24px;font-size:12px}'
+        +'.hdr{border-bottom:3px solid #0D1526;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start}'
+        +'.esc{font-size:18px;font-weight:800}.tipo{font-size:13px;font-weight:800;text-transform:uppercase;color:#4f8ef7;text-align:right}'
+        +'table{width:100%;border-collapse:collapse;margin-bottom:14px}th,td{padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left}'
+        +'th{background:#f1f5f9;font-size:10px;text-transform:uppercase;color:#475569}'
+        +'.card{border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px;break-inside:avoid}'
+        +'.ch{font-weight:700;margin-bottom:8px;font-size:13px}.ib-box{padding:8px;background:#f8fafc;border-radius:6px;font-size:11px}'
+        +'.btn{display:none!important}'   /* esconder o seletor de período no documento */
+        +'.no-print{text-align:center;margin-bottom:14px}.no-print button{padding:9px 20px;background:#0D1526;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer}'
+        +'@media print{.no-print{display:none}body{padding:10mm}}'
+        +'</style></head><body>'
+        +'<div class="no-print"><button onclick="window.print()">Imprimir / Guardar PDF</button></div>'
+        +'<div class="hdr"><div><div class="esc">'+esc(escola)+'</div><div style="font-size:10px;color:#64748b">'+esc(periodo)+'</div></div>'
+        +'<div><div class="tipo">Relatório Financeiro</div><div style="font-size:9px;color:#94a3b8;text-align:right">Emitido a '+new Date().toLocaleDateString('pt-PT')+'</div></div></div>'
+        +el.innerHTML
+        +'<div style="display:flex;justify-content:space-between;margin-top:40px;font-size:11px;color:#475569"><div style="width:40%;border-top:1px solid #94a3b8;text-align:center;padding-top:6px">O Gestor</div><div style="width:40%;border-top:1px solid #94a3b8;text-align:center;padding-top:6px">A Direcção</div></div>'
+        +'</body></html>');
+      w.document.close();
+    }catch(e){ toast('Erro ao exportar: '+(e&&e.message)); }
   };
 })();
 </script>
