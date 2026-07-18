@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.67</span>
+    <span class="logo-ver">v6.68</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -35585,10 +35585,48 @@ window.__finV30=true;})();
 
   // Embrulha openTurma para acrescentar o botão "Pautas" e guardar o dbId real
   var _orig = window.openTurma;
+  // v6.68: escreve o valor de um KPI do cabeçalho pelo TEXTO do rótulo (robusto a camadas)
+  function __setKpiPorRotulo(rotulo, valor, cor){
+    try{
+      var host=document.getElementById('turma-p-c'); if(!host) return;
+      var divs=host.querySelectorAll('div');
+      for(var i=0;i<divs.length;i++){
+        if(divs[i].children.length===0 && (divs[i].textContent||'').trim()===rotulo){
+          var v=divs[i].previousElementSibling;
+          if(v){ v.textContent=valor; if(cor) v.style.color=cor; }
+          return;
+        }
+      }
+    }catch(e){}
+  }
+  async function __preencherKpisTurma(turmaId){
+    try{
+      var t=(window.TURMAS||[]).find(function(x){return x.id===turmaId;});
+      var dbId=t&&t._dbId; var med=(typeof CONFIG!=='undefined'&&CONFIG.mediaAprovacao)||10;
+      // Notas reais (helper testado das Pautas)
+      if(dbId){
+        var dados=await notasTurma(dbId);
+        var byA={};
+        (dados||[]).forEach(function(x){ var m=mtOf(x); if(m==null) return; (byA[x.aluno_id]=byA[x.aluno_id]||[]).push(m); });
+        var meds=Object.keys(byA).map(function(k){var a=byA[k];return a.reduce(function(s,y){return s+y;},0)/a.length;});
+        if(meds.length){
+          var mt=meds.reduce(function(s,y){return s+y;},0)/meds.length;
+          var taxa=Math.round(meds.filter(function(m){return m>=med;}).length/meds.length*100);
+          __setKpiPorRotulo('Média da Turma', (Math.round(mt*10)/10).toFixed(1), mt>=med?'var(--g)':'var(--am)');
+          __setKpiPorRotulo('Taxa Aprovação', taxa+'%', taxa>=50?'var(--g)':taxa>=30?'var(--am)':'var(--r)');
+        } else { __setKpiPorRotulo('Média da Turma','—','var(--t2)'); __setKpiPorRotulo('Taxa Aprovação','—','var(--t2)'); }
+      }
+      // Faltas reais do registo de aula (aulas_dadas.turma_id = código)
+      var rf=await sb().from('aulas_dadas').select('n_presentes,n_faltas').eq('escola_id',window._escolaId).eq('turma_id',String(turmaId));
+      var tf=0,tot=0; ((rf&&rf.data)||[]).forEach(function(x){var f=parseInt(x.n_faltas,10)||0,p=parseInt(x.n_presentes,10)||0;tf+=f;tot+=f+p;});
+      var pctF= tot? Math.round(tf/tot*100) : 0;
+      __setKpiPorRotulo('Média Faltas', pctF+'%', pctF>15?'var(--r)':pctF>8?'var(--am)':'var(--g)');
+    }catch(e){}
+  }
   window.openTurma = async function(turmaId){
     var r = _orig ? await _orig.apply(this, arguments) : undefined;
-    // v6.67: garantir que os KPIs reais (média/taxa/faltas) são preenchidos no caminho activo
-    try{ if(typeof window.__patchTurmaKPIs==='function') window.__patchTurmaKPIs(turmaId); }catch(e){}
+    // v6.68: preencher os KPIs do cabeçalho com dados reais (caminho activo, por rótulo)
+    __preencherKpisTurma(turmaId);
     try{
       var t = (window.TURMAS||[]).find(function(x){return x.id===turmaId;});
       var dbId = t && t._dbId;
