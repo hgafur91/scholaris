@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.78</span>
+    <span class="logo-ver">v6.79</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3522,7 +3522,7 @@ function isIsento(aluno, tipo) {
 function doLogout(){
   try{ if(window._supabase&&window._supabase.auth){ window._supabase.auth.signOut(); } }catch(e){}
   // Limpa estado e recarrega para não arrastar dados da sessão anterior (sem lag)
-  try{ curRole=''; curUser={}; window._meuAlunoId=null; window._meuStaffId=null; window._currentUser=null; }catch(e){}
+  try{ curRole=''; curUser={}; window._meuAlunoId=null; window._meuEncId=null; window._meuStaffId=null; window._currentUser=null; }catch(e){}
   location.reload();
 }
 
@@ -6025,6 +6025,7 @@ async function fbLogin() {
         userData.escolaId = perfil.escola_id || userData.escolaId;
         window._meuStaffId = perfil.staff_id || null; // ligação conta <-> pessoa (staff)
         window._meuAlunoId = perfil.aluno_id || null; // ligação conta <-> aluno
+        window._meuEncId = perfil.encarregado_id || null; // ligação conta <-> encarregado
         window._meuPerfilId = perfil.id || null; // = auth.uid(), para autor_id
       }
     } catch(pe) {
@@ -6256,6 +6257,7 @@ async function loadDadosEscola() {
           encTel: a.encarregado_tel || '',
           encEmail: a.encarregado_email || '',
           _dbId: a.id,
+          _encDbId: a.encarregado_id || null,
           _turmaDbId: matricula?.turma_id || null,
           classe: turmaDB ? (turmaDB.nome?.charAt(0) + 'ª Classe') : '',
           ingresso: a.created_at ? new Date(a.created_at).getFullYear() : new Date().getFullYear(),
@@ -6298,7 +6300,8 @@ async function loadDadosEscola() {
           nasc: e.nasc || '',
           genero: e.genero || 'M',
           morada: e.morada || '',
-          filhos: [],
+          filhos: ALUNOS.filter(al => al._encDbId && al._encDbId === e.id)
+                        .map(al => ({ id: al.id, nome: al.nome, num: al.num, turma: al.turma || '', saldo: 0 })),
           adesao: e.data_registo ? new Date(e.data_registo).getFullYear() : new Date().getFullYear(),
           _dbId: e.id,
         });
@@ -11884,9 +11887,21 @@ function renderComparacaoTurma(a) {
 }
 
 // ── PORTAL DO ENCARREGADO ─────────────────────────────────────
+// Resolve o encarregado da conta autenticada (perfis.encarregado_id -> ENCS._dbId).
+// Fallback para ENCS[0] em pré-visualização de gestor / modo demonstração.
+function encLogado() {
+  try {
+    if (window._meuEncId) {
+      const e = ENCS.find(x => x._dbId === window._meuEncId);
+      if (e) return e;
+    }
+  } catch (_) {}
+  return ENCS[0] || { nome: '—', num: '', filhos: [] };
+}
+
 function rDashEnc() {
   // Find encarregado's children
-  const enc  = ENCS[0]; // demo: Egídio Chaimite
+  const enc  = encLogado();
   const filhos = enc.filhos.map(f => ALUNOS.find(a => a.id === f.id)).filter(Boolean);
 
   document.getElementById('dash-enc-title').textContent = `Portal — ${enc.nome}`;
@@ -11960,7 +11975,7 @@ function rDashEnc() {
 function rPortalEncNotas() {
   const el = document.getElementById('portal-enc-notas-c');
   if (!el) return;
-  const filhos = ENCS[0].filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
+  const filhos = encLogado().filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
   el.innerHTML = filhos.map(a => `
     <div style="font-size:15px;font-weight:800;color:var(--t);margin:16px 0 10px;display:flex;align-items:center;gap:8px">
       ${mkAv(a.nome,28,ALUNOS.indexOf(a),false)} ${a.nome}
@@ -11973,7 +11988,7 @@ function rPortalEncNotas() {
 function rPortalEncPresencas() {
   const el = document.getElementById('portal-enc-presencas-c');
   if (!el) return;
-  const filhos = ENCS[0].filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
+  const filhos = encLogado().filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
   el.innerHTML = filhos.map(a => `
     <div style="font-size:15px;font-weight:800;color:var(--t);margin:16px 0 8px;display:flex;align-items:center;gap:8px">
       ${mkAv(a.nome,28,ALUNOS.indexOf(a),false)} ${a.nome}
@@ -11985,7 +12000,7 @@ function rPortalEncPresencas() {
 function rPortalEncTrabalhos() {
   const el = document.getElementById('portal-enc-trabalhos-c');
   if (!el) return;
-  const filhos = ENCS[0].filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
+  const filhos = encLogado().filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
   el.innerHTML = filhos.map(a => {
     const meusTrab = TRABALHOS.filter(t => t.turma==='todas'||t.turma===a.turma);
     const pend     = meusTrab.filter(t=>{const e=t.entregas[a.id];return typeof e==='object'?e.estado==='pendente':e==='pendente'}).length;
@@ -12019,7 +12034,7 @@ function rPortalEncTrabalhos() {
 function rPortalEncPropinas() {
   const el = document.getElementById('portal-enc-propinas-c');
   if (!el) return;
-  const filhos = ENCS[0].filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
+  const filhos = encLogado().filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
   el.innerHTML = filhos.map(a => {
     const div = a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
     return `
@@ -12039,7 +12054,7 @@ function rPortalEncPropinas() {
 function rPortalEncHorario() {
   const el = document.getElementById('portal-enc-horario-c');
   if (!el) return;
-  const filhos = ENCS[0].filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
+  const filhos = encLogado().filhos.map(f => ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
   el.innerHTML = filhos.map(a => `
     <div style="font-size:15px;font-weight:800;color:var(--t);margin:16px 0 10px;display:flex;align-items:center;gap:8px">
       ${mkAv(a.nome,28,ALUNOS.indexOf(a),false)} ${a.nome} — ${a.classe} · Turma ${a.turma}
@@ -12056,7 +12071,7 @@ function rMensagensEnc() {
   const el = document.getElementById('mensagens-enc-c');
   if (!el) return;
   const minhasMensagens = MENSAGENS.filter(m =>
-    m.de === ENCS[0].nome || m.para === 'encarregado'
+    m.de === encLogado().nome || m.para === 'encarregado'
   );
   el.innerHTML = minhasMensagens.length
     ? `<div style="display:flex;flex-direction:column;gap:10px">
@@ -16471,7 +16486,7 @@ function gerarGraficoLinhaAluno(medias, proj, cfg) {
 function rPortalEncNotas() {
   const el = document.getElementById('portal-enc-notas-c');
   if (!el) return;
-  const filhos = ENCS[0].filhos.map(f=>ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
+  const filhos = encLogado().filhos.map(f=>ALUNOS.find(a=>a.id===f.id)).filter(Boolean);
   el.innerHTML = filhos.map(a=>`
     <div style="font-size:15px;font-weight:800;color:var(--t);margin:16px 0 10px;display:flex;align-items:center;gap:8px">
       ${mkAv(a.nome,28,ALUNOS.indexOf(a),false)} ${a.nome}
@@ -18988,6 +19003,7 @@ function guardarNovoAluno() {
             genero:           (genero==='Masculino'?'M':genero==='Feminino'?'F':genero)||'M',
             bi_numero:        bi || null,
             naturalidade:     nat || 'Maputo',
+            encarregado_id:   encExistente?._dbId || null,
             encarregado_nome: enome || null,
             encarregado_tel:  etel || null,
             encarregado_email: document.getElementById('na-eemail')?.value.trim() || null,
