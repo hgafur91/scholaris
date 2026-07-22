@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.84</span>
+    <span class="logo-ver">v6.85</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3847,7 +3847,7 @@ function rConfig(){
     <div class="setting-row"><div><div class="setting-label">Valor da propina</div><div class="setting-desc">Definido por classe em "Valores por Classe" (abaixo). Cada turma usa a propina da sua classe.</div></div></div>
     <div class="setting-row"><div><div class="setting-label">Multa de atraso (%)</div><div class="setting-desc">Percentagem adicionada após dia 10</div></div><input type="number" class="ffi" style="width:80px" value="${CONFIG.multaPropina}" onchange="CONFIG.multaPropina=+this.value;toast('Guardado!')"></div>`;
   document.getElementById('config-faltas').innerHTML=`
-    <div class="setting-row"><div><div class="setting-label">% Máxima de faltas por semestre</div><div class="setting-desc">Acima deste valor o aluno é excluído automaticamente</div></div><div style="display:flex;align-items:center;gap:8px"><input type="number" class="ffi" style="width:80px" value="${CONFIG.faltasMaxPct}" onchange="CONFIG.faltasMaxPct=+this.value;toast('% actualizada!');rFaltas&&rFaltas()"><span style="font-size:13px;color:var(--t2)">%</span></div></div>
+    <div class="setting-row"><div><div class="setting-label">% Máxima de faltas por semestre</div><div class="setting-desc">Acima deste valor o aluno é assinalado "excluído" (indicador — não bloqueia matrícula/acesso automaticamente)</div></div><div style="display:flex;align-items:center;gap:8px"><input type="number" class="ffi" style="width:80px" value="${CONFIG.faltasMaxPct}" onchange="CONFIG.faltasMaxPct=+this.value;toast('% actualizada!');rFaltas&&rFaltas()"><span style="font-size:13px;color:var(--t2)">%</span></div></div>
     <div class="setting-row"><div><div class="setting-label">Total de aulas por trimestre</div></div><div style="display:flex;gap:8px"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT1}" onchange="CONFIG.totalAulasT1=+this.value;toast('T1 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT2}" onchange="CONFIG.totalAulasT2=+this.value;toast('T2 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT3}" onchange="CONFIG.totalAulasT3=+this.value;toast('T3 guardado!')""></div></div>
     <div class="ib-box ib-re" style="margin-top:12px"><i class="ti ti-info-circle"></i> Só o Gestor Geral pode alterar estes parâmetros.</div>`;
   document.getElementById('config-sys').innerHTML=`
@@ -7679,7 +7679,7 @@ function rConfigFaltas() {
   const el = document.getElementById('config-faltas');
   if (!el) return;
   el.innerHTML = `
-    <div class="setting-row"><div><div class="setting-label">% Máxima de faltas por semestre</div><div class="setting-desc">Acima deste valor o aluno é excluído</div></div><div style="display:flex;align-items:center;gap:8px"><input type="number" class="ffi" style="width:80px" value="${CONFIG.faltasMaxPct}" onchange="CONFIG.faltasMaxPct=+this.value;toast('% actualizada!')"><span style="font-size:13px;color:var(--t2)">%</span></div></div>
+    <div class="setting-row"><div><div class="setting-label">% Máxima de faltas por semestre</div><div class="setting-desc">Acima deste valor o aluno é assinalado "excluído" (indicador — não bloqueia automaticamente)</div></div><div style="display:flex;align-items:center;gap:8px"><input type="number" class="ffi" style="width:80px" value="${CONFIG.faltasMaxPct}" onchange="CONFIG.faltasMaxPct=+this.value;toast('% actualizada!')"><span style="font-size:13px;color:var(--t2)">%</span></div></div>
     <div class="setting-row"><div><div class="setting-label">Total de aulas por trimestre</div><div class="setting-desc">T1 · T2 · T3</div></div><div style="display:flex;gap:8px"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT1}" onchange="CONFIG.totalAulasT1=+this.value;toast('T1 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT2}" onchange="CONFIG.totalAulasT2=+this.value;toast('T2 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT3}" onchange="CONFIG.totalAulasT3=+this.value;toast('T3 guardado!')"</div></div>
     <div class="ib-box ib-re" style="margin-top:12px"><i class="ti ti-info-circle"></i> Só o Gestor Geral pode alterar estes parâmetros.</div>`;
 }
@@ -9785,10 +9785,14 @@ function badgePrazo(prazo, estado) {
 }
 
 function contarTrabPendentes(alunoId, turmaId) {
-  return TRABALHOS.filter(t =>
-    (t.turma === turmaId || t.turma === 'todas') &&
-    (t.entregas[alunoId] === 'pendente' || t.entregas[alunoId] === 'atrasado')
-  ).length;
+  // v6.85: robusto à forma de entregas — string ('pendente') OU objecto {estado} (patch v69).
+  // Antes comparava só com a string → com o formato-objecto contava sempre 0.
+  return TRABALHOS.filter(function(t){
+    if (!(t.turma === turmaId || t.turma === 'todas')) return false;
+    var e = t.entregas ? t.entregas[alunoId] : null;
+    var estado = (e && typeof e === 'object') ? e.estado : e;
+    return estado === 'pendente' || estado === 'atrasado';
+  }).length;
 }
 
 // ── CRIAR TRABALHO (professor/gestor) ────────────────────────
@@ -25486,6 +25490,18 @@ maRegistar = async function() {
         n_presentes: nPres,
         n_faltas: nFaltas
       };
+      // #7 (v6.85): evitar sobreposição SILENCIOSA da mesma linha aulas_dadas (Minha Aula vs Presenças).
+      // Só pergunta se a aula já existe e foi registada por OUTRO utilizador (o próprio a corrigir é normal).
+      try {
+        var _exA = await window._supabase.from('aulas_dadas').select('professor_id')
+          .eq('escola_id', window._escolaId).eq('turma_id', String(turmaId))
+          .eq('disciplina', disc).eq('data', dataAula).limit(1);
+        var _exRow = _exA && _exA.data && _exA.data[0];
+        if (_exRow && String(_exRow.professor_id) !== String(prof._dbId)) {
+          if (!confirm('Já existe uma aula registada neste dia para ' + disc + ' (' + turmaId + ') por outro utilizador. Substituir as presenças/faltas?')) { if(btn) btn.disabled=false; return; }
+        }
+      } catch(_){}
+
       var up = await window._supabase.from('aulas_dadas')
         .upsert(aula, { onConflict: 'escola_id,turma_id,disciplina_id,data' });
       if (up.error) { toast('Erro ao registar aula: '+up.error.message); if(btn) btn.disabled=false; return; }
