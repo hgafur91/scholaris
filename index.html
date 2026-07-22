@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.72</span>
+    <span class="logo-ver">v6.73</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1825,7 +1825,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 <div class="modal-ov" id="m-nlivro"><div class="modal"><div class="mhd"><span class="mt">Novo Livro</span><button class="mclose" onclick="closeM('m-nlivro')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="fg"><div class="fgr"><label class="fl">Título</label><input class="ffi" placeholder="Título do livro"></div><div class="fgr"><label class="fl">Autor</label><input class="ffi" placeholder="Autor(es)"></div><div class="fgr"><label class="fl">Área</label><select class="ffi"><option>Matemática</option><option>Português</option><option>Inglês</option><option>Física</option><option>Biologia</option></select></div><div class="fgr"><label class="fl">Exemplares</label><input class="ffi" type="number" value="5"></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-nlivro')">Cancelar</button><button class="btn btn-p" onclick="closeM('m-nlivro');toast('Livro adicionado!')">Guardar</button></div></div></div>
 
-<div class="modal-ov" id="m-apagar-falta"><div class="modal" style="max-width:420px"><div class="mhd"><span class="mt">Apagar / Justificar Falta</span><button class="mclose" onclick="closeM('m-apagar-falta')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="ib-box ib-am"><i class="ti ti-shield"></i> Acção restrita — só Gestor Geral e Secretário.</div><div class="fg"><div class="fgr"><label class="fl">Aluno</label><select class="ffi"><option>ALU000001 — Aaron Chaimite</option><option>ALU000002 — Abdulai Diallo</option><option>ALU000003 — Yasmin Tajú</option></select></div><div class="fgr"><label class="fl">Data da Falta</label><input class="ffi" type="date"></div><div class="fgr"><label class="fl">Acção</label><select class="ffi"><option>Justificar falta</option><option>Apagar falta</option></select></div><div class="fgr full"><label class="fl">Motivo / Justificação</label><textarea class="ffi" rows="2" placeholder="Motivo da justificação ou remoção..."></textarea></div></div></div><div class="mft"><button class="btn btn-g" onclick="closeM('m-apagar-falta')">Cancelar</button><button class="btn btn-am" onclick="closeM('m-apagar-falta');toast('Falta justificada e registada no histórico!')">Confirmar</button></div></div></div>
+<!-- modal m-apagar-falta removido (v6.73): demo com alunos hardcoded e Confirmar só-toast. Substituído por verFaltasAluno() (real, via __gerirFaltasAluno) -->
 
 
 <!-- Modal: Novo Comunicado -->
@@ -4491,11 +4491,17 @@ function swAlNotas(t,btn,id){
   document.getElementById('al-nt-body').innerHTML=renderAlNotas(a,t==='final'?'final':`t${t}`);
 }
 
+// v6.73: ligar os botões de gerir faltas à ferramenta REAL (verFaltasAluno), em vez do modal demo
+function __gerirFaltasAluno(alunoId){
+  var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x.id===alunoId;});
+  if(a && typeof window.verFaltasAluno==='function') window.verFaltasAluno(a._dbId, a.nome, a.turma);
+  else if(typeof toast==='function') toast('Ferramenta de faltas indisponível');
+}
 function renderAlPresencas(a,id){
   const totalF=Object.values(a.faltas).flat();const f=calcFaltas(id||a.id);
   const porDisc={};totalF.forEach(x=>{if(!porDisc[x.disc])porDisc[x.disc]={F:0,J:0};porDisc[x.disc][x.tipo]=(porDisc[x.disc][x.tipo]||0)+1});
   const canEdit=['gestor','secretario'].includes(curRole);
-  return`<div class="card"><div class="ch"><span class="ct">Faltas por Disciplina</span>${canEdit?`<button class="btn btn-am btn-sm" onclick="openM('m-apagar-falta')"><i class="ti ti-eraser"></i> Apagar/Justificar</button>`:''}</div><div class="cb">
+  return`<div class="card"><div class="ch"><span class="ct">Faltas por Disciplina</span>${canEdit?`<button class="btn btn-am btn-sm" onclick="__gerirFaltasAluno(${a.id})"><i class="ti ti-eraser"></i> Apagar/Justificar</button>`:''}</div><div class="cb">
     ${f.excluido?`<div class="falta-alert"><i class="ti ti-alert-circle" style="font-size:18px"></i><div><strong>Aluno excluído por excesso de faltas!</strong><br>Atingiu ${f.pct}% (máximo: ${CONFIG.faltasMaxPct}%)</div></div>`:''}
     ${f.emRisco&&!f.excluido?`<div class="falta-alert" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25);color:var(--am)"><i class="ti ti-alert-triangle" style="font-size:18px"></i><div><strong>Em risco — ${f.pct}% de faltas</strong> (limite: ${CONFIG.faltasMaxPct}%)</div></div>`:''}
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px">
@@ -5762,7 +5768,7 @@ function rFaltas(){
         <div style="display:flex;align-items:center;gap:10px">
           <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:${f.excluido?'var(--r)':f.emRisco?'var(--am)':'var(--g)'}">${f.pct}%</div><div style="font-size:10px;color:var(--t2)">${totalFaltas} faltas</div></div>
           <span class="badge ${f.excluido?'ber':f.emRisco?'bwn':'bok'}">${f.excluido?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Excluído':f.emRisco?'<i class="ti ti-bolt" style="color:#f59e0b"></i> Em risco':'<i class="ti ti-check"></i> OK'}</span>
-          ${canEdit?`<button class="btn btn-am btn-sm" onclick="openM('m-apagar-falta')"><i class="ti ti-eraser"></i> Gerir Faltas</button>`:''}
+          ${canEdit?`<button class="btn btn-am btn-sm" onclick="__gerirFaltasAluno(${a.id})"><i class="ti ti-eraser"></i> Gerir Faltas</button>`:''}
           <button class="btn btn-g btn-sm" onclick="openAluno(${a.id})">Ver Perfil</button>
         </div>
       </div>
@@ -13668,9 +13674,34 @@ async function __carregarAssiduidadeGlobal(){
       '</div>';
   }catch(e){}
 }
+// v6.73: rehidratar o Plano Analítico a partir de aulas_dadas (persistido); antes era só-memória
+window.__paLoaded = window.__paLoaded || {};
+window.carregarPlanoAnaliticoTurma = async function(turmaCode){
+  if(window.__paLoaded[turmaCode]) return;
+  if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')) return;
+  try{
+    var r=await window._supabase.from('aulas_dadas').select('disciplina,data,tema,sumario,professor_id')
+      .eq('escola_id',window._escolaId).eq('turma_id',String(turmaCode)).order('data',{ascending:true});
+    if(!r || r.error || typeof PLANO_ANALITICO==='undefined') return;
+    var pn=function(id){ var p=(typeof PROFS!=='undefined'?PROFS:[]).find(function(x){return String(x._dbId)===String(id);}); return p?p.num:''; };
+    (r.data||[]).forEach(function(a){
+      var d=a.disciplina; if(!d) return;
+      if(!PLANO_ANALITICO[turmaCode]) PLANO_ANALITICO[turmaCode]={};
+      if(!PLANO_ANALITICO[turmaCode][d]) PLANO_ANALITICO[turmaCode][d]=[];
+      var arr=PLANO_ANALITICO[turmaCode][d];
+      if(arr.some(function(x){return x.data===a.data;})) return;  // aulas_dadas: 1 aula por turma/disc/dia
+      arr.push({ data:a.data, hora:'', conteudo:a.tema||a.sumario||'', obs:a.sumario||'', metodo:'', avaliacao:'', prof:pn(a.professor_id), _daBd:true });
+    });
+    window.__paLoaded[turmaCode]=true;
+  }catch(e){ console.warn('[plano analitico]', e&&e.message); }
+};
 function rPlanoAnalitico(turmaId) {
   const _paEls = document.querySelectorAll('[id="plano-analitico-c"]'); const el = Array.from(_paEls).find(function(x){return x.offsetParent!==null;}) || _paEls[_paEls.length-1] || document.getElementById('plano-analitico-c');
   if (!el) return;
+  // v6.73: 1ª abertura → carregar o plano da base (aulas_dadas) e re-renderizar
+  if (turmaId && window._supabase && window._escolaId && !window.__paLoaded[turmaId] && typeof carregarPlanoAnaliticoTurma==='function') {
+    carregarPlanoAnaliticoTurma(turmaId).then(function(){ try{ rPlanoAnalitico(turmaId); }catch(e){} });
+  }
 
   // Populate selector
   const sel = document.getElementById('pa-turma-sel');
