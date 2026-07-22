@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.85</span>
+    <span class="logo-ver">v6.86</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -9785,13 +9785,15 @@ function badgePrazo(prazo, estado) {
 }
 
 function contarTrabPendentes(alunoId, turmaId) {
-  // v6.85: robusto à forma de entregas — string ('pendente') OU objecto {estado} (patch v69).
-  // Antes comparava só com a string → com o formato-objecto contava sempre 0.
-  return TRABALHOS.filter(function(t){
+  // v6.86: lê a lista REAL (window.TRABALHOS, populada por TB.sincronizar no arranque) — o
+  // `let TRABALHOS` é um binding separado que ficava vazio. Entregas indexadas por UUID e por
+  // 'L'+idLocal. Pendente = trabalho da turma ainda NÃO entregue nem corrigido por este aluno.
+  var LISTA = (typeof window!=='undefined' && Array.isArray(window.TRABALHOS)) ? window.TRABALHOS : TRABALHOS;
+  return (LISTA||[]).filter(function(t){
     if (!(t.turma === turmaId || t.turma === 'todas')) return false;
-    var e = t.entregas ? t.entregas[alunoId] : null;
+    var e = t.entregas ? ((t.entregas[alunoId]!=null) ? t.entregas[alunoId] : t.entregas['L'+alunoId]) : null;
     var estado = (e && typeof e === 'object') ? e.estado : e;
-    return estado === 'pendente' || estado === 'atrasado';
+    return !(estado === 'entregue' || estado === 'corrigido');
   }).length;
 }
 
@@ -39620,6 +39622,7 @@ window.trimestreActual = function(d){
   window.refrescarAcademico=async function(reRender){
     try{ if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais(); }catch(e){}
     try{ if(typeof window.carregarNotasReais==='function') await window.carregarNotasReais(); }catch(e){}
+    try{ if(window.TB && typeof window.TB.sincronizar==='function') await window.TB.sincronizar(); }catch(e){}  // v6.86: trabalhos/entregas reais -> window.TRABALHOS
     try{ if(typeof window.carregarCacheAcademico==='function') await window.carregarCacheAcademico(reRender===false); }catch(e){}
   };
 
