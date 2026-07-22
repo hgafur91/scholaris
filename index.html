@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.79</span>
+    <span class="logo-ver">v6.80</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -9934,7 +9934,8 @@ function swPortalTab(tab, btn) {
 
 // ── OVERRIDE rPortalAluno ─────────────────────────────────────
 rPortalAluno = function() {
-  const a = ALUNOS[0];
+  const a = (typeof resolverMeuAluno==='function' && resolverMeuAluno()) || ALUNOS[0];
+  if (!a) { const _pc=document.getElementById('portal-c'); if(_pc) _pc.innerHTML='<div class="ib-box ib-am"><i class="ti ti-alert-triangle"></i> Aluno não encontrado. Peça à secretaria para activar o seu acesso.</div>'; return; }
   document.getElementById('portal-title').textContent = `Portal — ${a.nome}`;
   document.getElementById('portal-sub').textContent   = `${a.classe} · Turma ${a.turma} · Ano Lectivo 2026`;
 
@@ -10198,7 +10199,8 @@ function rPPortalTrabalhos() {
 }
 
 function rPPortalHorario() {
-  const p = PROFS.find(x=>x.num==='PRF000001');
+  const p = (typeof resolverMeuProf==='function' && resolverMeuProf()) || PROFS.find(x=>x.num==='PRF000001') || PROFS[0];
+  if(!p){ const _el=document.getElementById('portal-prof-c'); if(_el) _el.innerHTML='<div class="ib-box ib-am"><i class="ti ti-alert-triangle"></i> Perfil não encontrado. Peça ao Gestor para registar a sua ficha em Staff.</div>'; return; }
   const horProf = HORAS_D.map(h=>{
     const row={h};
     ['seg','ter','qua','qui','sex'].forEach(d=>{
@@ -10237,8 +10239,8 @@ setupRole = function() {
 // ── OVERRIDE rPortalProf to use tab structure ─────────────────
 const _origRPortalProf2 = rPortalProf;
 rPortalProf = function() {
-  const p = PROFS.find(x => x.num === 'PRF000001');
-  document.getElementById('pportal-sub').textContent = `${p.nome} · ${p.regime==='inteiro'?'Tempo Inteiro (20h/sem)':'Tempo Parcial'}`;
+  const p = (typeof resolverMeuProf==='function' && resolverMeuProf()) || PROFS.find(x => x.num === 'PRF000001') || PROFS[0];
+  if (p) document.getElementById('pportal-sub').textContent = `${p.nome} · ${p.regime==='inteiro'?'Tempo Inteiro (20h/sem)':'Tempo Parcial'}`;
   // Reset to aulas tab
   document.querySelectorAll('#pportal-tabs .tab').forEach((t,i) => t.classList.toggle('on', i===0));
   _origRPortalProf2();
@@ -11888,12 +11890,13 @@ function renderComparacaoTurma(a) {
 
 // ── PORTAL DO ENCARREGADO ─────────────────────────────────────
 // Resolve o encarregado da conta autenticada (perfis.encarregado_id -> ENCS._dbId).
-// Fallback para ENCS[0] em pré-visualização de gestor / modo demonstração.
+// Conta real de encarregado (window._meuEncId): resolve o próprio; se não casar, devolve
+// vazio (NUNCA os filhos de outra família). Só o gestor/demo (sem _meuEncId) pré-visualiza ENCS[0].
 function encLogado() {
   try {
     if (window._meuEncId) {
       const e = ENCS.find(x => x._dbId === window._meuEncId);
-      if (e) return e;
+      return e || { nome: (window.curUser && curUser.nome) || '—', num: '', filhos: [] };
     }
   } catch (_) {}
   return ENCS[0] || { nome: '—', num: '', filhos: [] };
@@ -12207,7 +12210,7 @@ swPortalTab = function(tab, btn) {
   document.querySelectorAll('#portal-tabs .tab').forEach(t => t.classList.remove('on'));
   if (btn) btn.classList.add('on');
 
-  const a = ALUNOS[0];
+  const a = (typeof resolverMeuAluno==='function' && resolverMeuAluno()) || ALUNOS[0];
   switch(tab) {
     case 'inicio':     renderPortalInicio(a);    break;
     case 'notas':      renderPortalNotas(a);     break;
@@ -26221,8 +26224,7 @@ const _origRPortalEnc = typeof rPortalEnc !== 'undefined' ? rPortalEnc : null;
 
 rPortalEnc = function() {
   // Get current encarregado's children
-  const encNome = curUser?.nome || ROLES.encarregado?.nome;
-  const educandos = ALUNOS.filter(a => a.enome === encNome);
+  const educandos = encLogado().filhos.map(f => ALUNOS.find(a => a.id === f.id)).filter(Boolean);
 
   const alertas = getAlertasEnc(educandos);
   const el = document.getElementById('portal-enc-c');
@@ -26292,8 +26294,7 @@ function swEncTab(tab, btn, alunoIdFocus) {
   const el = document.getElementById('enc-tab-content');
   if (!el) return;
 
-  const encNome  = curUser?.nome || ROLES.encarregado?.nome;
-  const educandos = ALUNOS.filter(a => a.enome === encNome);
+  const educandos = encLogado().filhos.map(f => ALUNOS.find(a => a.id === f.id)).filter(Boolean);
   const aluno     = alunoIdFocus
     ? educandos.find(a => a.id === alunoIdFocus) || educandos[0]
     : educandos[0];
