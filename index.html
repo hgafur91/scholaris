@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.81</span>
+    <span class="logo-ver">v6.82</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3726,7 +3726,7 @@ function rDash(){
         {v:_fmtK(_tp.divida),l:'Dívida MZM',s:'Propinas vencidas por pagar',cl:'re',ic:'ti-alert-circle',fn:"go('dividas')",dt:_tp.divida?'!':'',up:false},{v:String(_nDiv),l:'Alunos com dívida',s:'De '+ALUNOS.length+' alunos',cl:'tl',ic:'ti-user-exclamation',fn:"go('dividas')",dt:_nDiv?'!':'',up:false}],
       qa:[{ic:'ti-user-plus',l:'Novo Aluno',bg:'rgba(79,142,247,.12)',c:'var(--a)',fn:"openM('m-naluno')"},{ic:'ti-chalkboard',l:'Novo Professor',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:"openM('m-nprof')"},{ic:'ti-credit-card',l:'Propinas',bg:'rgba(34,197,94,.12)',c:'var(--g)',fn:"go('propinas')"},{ic:'ti-receipt',l:'Despesas',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:"go('despesas')"},{ic:'ti-alert-circle',l:'Faltas',bg:'rgba(239,68,68,.12)',c:'var(--r)',fn:"go('faltas')"},{ic:'ti-chart-pie',l:'Executivo',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:"go('exec')"}]},
     secretario:{lbl:'Painel do Secretário',title:'Gestão académica e financeira',desc:'Registo de alunos, professores, horários, pagamentos e recibos.',
-      chips:[{l:'Registar Pagamento',ic:'ti-credit-card',fn:'__secRegPagamento()'},{l:'Registar Despesa',ic:'ti-receipt',fn:'abrirNovaDespesaV7()'},{l:'Novo Aluno',ic:'ti-user-plus',fn:"openM('m-naluno')"},{l:'Alocação',ic:'ti-calendar-event',fn:"go('alocacao')"}],
+      chips:[{l:'Registar Pagamento',ic:'ti-credit-card',fn:'__secRegPagamento()'},{l:'Registar Despesa',ic:'ti-receipt',fn:'abrirNovaDespesaV7()'},{l:'Novo Aluno',ic:'ti-user-plus',fn:"abrirNovoAluno()"},{l:'Alocação',ic:'ti-calendar-event',fn:"go('alocacao')"}],
       stats:[{v:String(ALUNOS.length),l:'Total Alunos',s:'Matriculados',cl:'bl',ic:'ti-users',fn:"go('alunos')"},{v:String(PROFS.length),l:'Professores',s:'Inteiro + Parcial',cl:'pu',ic:'ti-chalkboard',fn:"go('professores')"},{v:String(_nDiv),l:'Alunos com dívida',s:'Requer cobrança',cl:'re',ic:'ti-alert-circle',fn:"go('propinas')",dt:_nDiv?'!':'',up:false},{v:_fmtK(_tp.divida),l:'Dívida MZM',s:'Propinas vencidas',cl:'am',ic:'ti-cash',fn:"go('propinas')"}],
       qa:[{ic:'ti-credit-card',l:'Registar Pagamento',bg:'rgba(34,197,94,.12)',c:'var(--g)',fn:'__secRegPagamento()'},{ic:'ti-receipt',l:'Registar Despesa',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:'abrirNovaDespesaV7()'},{ic:'ti-user-plus',l:'Novo Aluno',bg:'rgba(79,142,247,.12)',c:'var(--a)',fn:"openM('m-naluno')"},{ic:'ti-chalkboard',l:'Novo Professor',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:"openM('m-nprof')"},{ic:'ti-calendar-event',l:'Alocação',bg:'rgba(6,182,212,.12)',c:'var(--tl)',fn:"go('alocacao')"},{ic:'ti-calendar',l:'Horário',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:"go('horario')"}]},
   };
@@ -16148,6 +16148,19 @@ function confirmarTransferencia() {
 
   a.turma  = destTurmaId;
   a.classe = turmaDest.classe + 'ª Classe';
+
+  // v6.82: persistir a transferência em matriculas (antes só ficava em memória → perdia-se no reload)
+  if (window._supabase && window._escolaId && window._escolaId!=='escola_demo' && a._dbId && turmaDest._dbId) {
+    window._supabase.from('matriculas').upsert({
+      escola_id: window._escolaId,
+      aluno_id: a._dbId,
+      turma_id: turmaDest._dbId,
+      ano_lectivo_id: 'b2000000-0000-0000-0000-000000000026',
+      estado: 'activa',
+    }, { onConflict: 'escola_id,ano_lectivo_id,aluno_id' }).then(function(r){
+      if (r && r.error) toast('Transferido em memória, mas falhou gravar a matrícula: ' + r.error.message);
+    }, function(){});
+  }
 
   closeM('m-transferir-aluno');
   toast(`${a.nome} transferido para turma ${destTurmaId}!`);
@@ -33460,6 +33473,22 @@ window.__finV30=true;})();
       }
     }catch(e){}
   };
+  // v6.82: persistir automaticamente QUALQUER edição nas Configurações. Os onchange inline
+  // faziam `CONFIG.x=+this.value;toast('Guardado!')` mas NUNCA gravavam → perdia-se no reload.
+  // Listener em bubbling (corre DEPOIS do onchange inline, com CONFIG já actualizado).
+  try{
+    if(!window.__cfgAutoPersist){
+      window.__cfgAutoPersist=true;
+      document.addEventListener('change', function(ev){
+        try{
+          var t=ev&&ev.target;
+          if(t && t.closest && t.closest('.setting-row') && typeof window.__persistConfigSilent==='function'){
+            window.__persistConfigSilent();
+          }
+        }catch(e){}
+      });
+    }
+  }catch(e){}
   // garantir que mover período também persiste
   try{
     if(typeof moverPeriodo==='function' && !moverPeriodo.__v40){
@@ -39483,11 +39512,32 @@ window.trimestreActual = function(d){
     try{ if(!skipRender && window.__viewActual && typeof go==='function') go(window.__viewActual); }catch(e){}  // re-render
   };
 
-  // v6.81: refresco único da camada académica — dados reais em memória (a.faltas via
-  // carregarFaltasReais) + caches de %/média (carregarCacheAcademico) + re-render.
+  // v6.82: gémeo do carregarFaltasReais — popula a.notas.{t1,t2,t3} da BD (notas), com
+  // n = M(T) = (as1+as2+ap)/3 (fórmula canónica). Sem isto, a.notas fica no seed vazio e
+  // boletins/apuramento/tab-notas do encarregado mostram "—" para os alunos reais.
+  window.carregarNotasReais=async function(){
+    if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')) return;
+    try{
+      var res=await window._supabase.from('notas').select('aluno_id,disciplina,trimestre,as1,as2,ap').eq('escola_id',window._escolaId);
+      if(res.error){ console.warn('[notas reais]', res.error.message); return; }
+      (typeof ALUNOS!=='undefined'?ALUNOS:[]).forEach(function(a){ a.notas={t1:[],t2:[],t3:[],exame:[]}; });
+      ((res&&res.data)||[]).forEach(function(r){
+        var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){ return x._dbId===r.aluno_id; });
+        if(!a) return;
+        var tk='t'+(r.trimestre||1); if(!a.notas[tk]) a.notas[tk]=[];
+        var as1=num(r.as1), as2=num(r.as2), ap=num(r.ap);
+        var mt=(as1==null||as2==null||ap==null)?null:Math.round((as1+as2+ap)/3*10)/10;
+        a.notas[tk].push({ d:r.disciplina||'', n:mt, as1:as1, as2:as2, ap:ap });
+      });
+    }catch(e){ console.warn('[notas reais]', e&&e.message); }
+  };
+
+  // v6.81: refresco único da camada académica — dados reais em memória (a.faltas + a.notas)
+  // + caches de %/média (carregarCacheAcademico) + re-render.
   // Usar no arranque e após QUALQUER escrita de faltas/notas/aulas. reRender===false → silencioso.
   window.refrescarAcademico=async function(reRender){
     try{ if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais(); }catch(e){}
+    try{ if(typeof window.carregarNotasReais==='function') await window.carregarNotasReais(); }catch(e){}
     try{ if(typeof window.carregarCacheAcademico==='function') await window.carregarCacheAcademico(reRender===false); }catch(e){}
   };
 
