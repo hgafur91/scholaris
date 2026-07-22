@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.76</span>
+    <span class="logo-ver">v6.77</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -39454,6 +39454,11 @@ window.trimestreActual = function(d){
       var fc={}; ((rf&&rf.data)||[]).forEach(function(x){ (fc[x.aluno_id]=fc[x.aluno_id]||[]).push({justif:x.justif,tipo:x.tipo}); });
       window.__FALTAS_CACHE=fc;
     }catch(e){ console.warn('[cache faltas]', e&&e.message); }
+    try{  // v6.77: nº de aulas dadas por turma (código) — denominador real da % de faltas
+      var ra=await window._supabase.from('aulas_dadas').select('turma_id').eq('escola_id',window._escolaId);
+      var ac={}; ((ra&&ra.data)||[]).forEach(function(x){ ac[x.turma_id]=(ac[x.turma_id]||0)+1; });
+      window.__AULAS_CACHE=ac;
+    }catch(e){ console.warn('[cache aulas]', e&&e.message); }
     try{ if(window.__viewActual && typeof go==='function') go(window.__viewActual); }catch(e){}  // re-render
   };
 
@@ -39485,7 +39490,9 @@ window.trimestreActual = function(d){
         if(a && a._dbId && C){
           var rows=C[a._dbId]||[];
           var total=rows.filter(function(r){ return (r.tipo==='F'||r.tipo==null) && !r.justif; }).length;
-          var maxAulas=(CONFIG.totalAulasT1||40)+(CONFIG.totalAulasT2||40)+(CONFIG.totalAulasT3||40);
+          // v6.77: denominador = aulas realmente dadas na turma (senão o fixo antigo)
+          var AC=window.__AULAS_CACHE;
+          var maxAulas=(AC && a.turma && AC[a.turma]) ? AC[a.turma] : ((CONFIG.totalAulasT1||40)+(CONFIG.totalAulasT2||40)+(CONFIG.totalAulasT3||40));
           var pct=maxAulas?Math.round(total/maxAulas*100):0;
           return { total:total, pct:pct, emRisco:pct>=((CONFIG.faltasMaxPct||25)*0.75), excluido:pct>=(CONFIG.faltasMaxPct||25) };
         }
