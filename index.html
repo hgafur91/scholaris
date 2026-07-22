@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.71</span>
+    <span class="logo-ver">v6.72</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -15984,6 +15984,7 @@ function confirmarAlocarAlunos() {
   }
 
   let count = 0;
+  const _movidos = [];
   _alocSelIds.forEach(id => {
     const a = ALUNOS.find(x => x.id === id);
     if (a) {
@@ -15999,8 +16000,23 @@ function confirmarAlocarAlunos() {
       a.turma   = _alocTurmaAlId;
       a.classe  = (turma?.classe || '') + 'ª Classe';
       count++;
+      _movidos.push(a);
     }
   });
+
+  // v6.72: PERSISTIR a alocação em 'matriculas' (antes só mudava em memória → perdia-se no refresh)
+  if (window._supabase && window._escolaId && turma?._dbId) {
+    const ANO = 'b2000000-0000-0000-0000-000000000026'; // ano lectivo 2026 (iQRA)
+    Promise.all(_movidos.filter(a=>a._dbId).map(a =>
+      window._supabase.from('matriculas').upsert({
+        escola_id: window._escolaId, ano_lectivo_id: ANO,
+        aluno_id: a._dbId, turma_id: turma._dbId, estado: 'activa'
+      }, { onConflict: 'escola_id,ano_lectivo_id,aluno_id' })
+    )).then(rs => {
+      const errs = (rs||[]).filter(r => r && r.error);
+      if (errs.length) toast('Alocados no ecrã, mas '+errs.length+' não gravaram: '+(errs[0].error.message||''));
+    }).catch(e => toast('Erro ao gravar matrículas: '+(e&&e.message)));
+  }
 
   closeM('m-alocar-alunos');
   toast(`${count} aluno(s) adicionados à turma ${_alocTurmaAlId}!`);
@@ -18941,7 +18957,7 @@ function guardarNovoAluno() {
             await window._supabase.from('matriculas').insert({
               aluno_id:       alunoDb.id,
               turma_id:       turmaObj._dbId,
-              ano_lectivo_id: 'b1000000-0000-0000-0000-000000000001',
+              ano_lectivo_id: 'b2000000-0000-0000-0000-000000000026', // v6.72: era b1000000 (ano errado → matrícula invisível)
               escola_id:      window._escolaId,
               estado:         'activa',
             });
