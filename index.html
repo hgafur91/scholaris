@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.74</span>
+    <span class="logo-ver">v6.75</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -16226,8 +16226,8 @@ async function executarGraduacaoTurma(turmaId) {
     a.graduadoDe = turmaId; a.graduadoAno = anoActual;
     if (concluido) { a.graduado = true; a.anoGraduacao = anoActual; arquivados++; } else { movidos++; }
     if (a._dbId) regs.push({
-      escola_id: eid, aluno_id: a._dbId, ano_lectivo_id: CONFIG.anoLectivoId || null,
-      turma_origem_id: turma?.id || null, classe_origem: classeN, classe_destino: prox,
+      escola_id: eid, aluno_id: a._dbId, ano_lectivo_id: CONFIG.anoLectivoId || 'b2000000-0000-0000-0000-000000000026',
+      turma_origem_id: turma?._dbId || null, classe_origem: classeN, classe_destino: prox,  // v6.75: era turma?.id (código)
       media_final: media, aprovado: true, concluido: concluido, autorizado_matricula: !concluido,
       notas_arquivadas: a.notasAnteriores || null, graduado_por: (window._userNome || 'gestor')
     });
@@ -16240,7 +16240,7 @@ async function executarGraduacaoTurma(turmaId) {
       const ids = regs.map(r => r.aluno_id);
       const upd = await window._supabase.from('matriculas')
         .update({ estado: 'graduado', data_saida: new Date().toISOString(), motivo_saida: concluido ? 'Conclusão' : 'Graduação para classe seguinte' })
-        .in('aluno_id', ids).eq('turma_id', turma?.id).eq('estado', 'activa');
+        .in('aluno_id', ids).eq('turma_id', turma?._dbId).eq('estado', 'activa');  // v6.75: era turma?.id (código) -> 0 linhas
       if (upd.error) toast('Aviso: erro ao actualizar matrículas: ' + upd.error.message);
     } catch (e) { toast('Aviso: ' + e.message); }
   }
@@ -18959,14 +18959,31 @@ function guardarNovoAluno() {
     encExistente.filhos.push({ id: aluno.id, nome: aluno.nome, num: aluno.num, turma: aluno.turma || '', saldo: 0 });
   }
 
+  // v6.75: só finalizar (fechar+toast+abrir) APÓS a gravação real; e desfazer se falhar
+  const _finalizarInscricao = () => {
+    if (turma) {
+      const t = TURMAS.find(x=>x.id===turma);
+      const count = ALUNOS.filter(a=>a.turma===turma).length;
+      if (t && count > t.max) toast('Atenção: turma ' + turma + ' excede a lotação máxima');
+    }
+    closeM('m-naluno');
+    toast('<i class="ti ti-check"></i> ' + nome + ' inscrito! Nº ' + newNum);
+    setTimeout(() => openAluno(newId), 200);
+    if (typeof rAl === 'function') rAl();
+  };
+  const _falhouInscricao = (msg) => {
+    const i = ALUNOS.indexOf(aluno); if (i>=0) ALUNOS.splice(i,1);   // remover o aluno-fantasma da memória
+    toast('<i class="ti ti-alert-triangle"></i> Não foi guardado: ' + (msg||'erro'));
+  };
+
   // Guardar no Supabase
   if (window._supabase && window._escolaId && window._escolaId !== 'escola_demo') {
     (async () => {
       try {
-        // 1. Inserir aluno
         const { data: alunoDb, error: alunoErr } = await window._supabase
           .from('alunos').insert({
             escola_id:        window._escolaId,
+            numero_aluno:     newNum,      // v6.75: faltava -> Nº dessincronizado
             nome_completo:    nome,
             data_nascimento:  nasc || null,
             genero:           (genero==='Masculino'?'M':genero==='Feminino'?'F':genero)||'M',
@@ -18979,46 +18996,30 @@ function guardarNovoAluno() {
             ativo:            true,
           }).select().single();
 
-        if (alunoErr) { console.warn('[Supabase] Erro aluno:', alunoErr.message); return; }
-
-        // Actualizar _dbId no objecto local
+        if (alunoErr) { _falhouInscricao(alunoErr.message); return; }
         aluno._dbId = alunoDb.id;
 
-        // 2. Inserir matrícula se turma seleccionada
         if (turma) {
           const turmaObj = TURMAS.find(t => t.id === turma);
           if (turmaObj?._dbId) {
-            await window._supabase.from('matriculas').insert({
+            const mr = await window._supabase.from('matriculas').insert({
               aluno_id:       alunoDb.id,
               turma_id:       turmaObj._dbId,
-              ano_lectivo_id: 'b2000000-0000-0000-0000-000000000026', // v6.72: era b1000000 (ano errado → matrícula invisível)
+              ano_lectivo_id: 'b2000000-0000-0000-0000-000000000026',
               escola_id:      window._escolaId,
               estado:         'activa',
             });
+            if (mr && mr.error) toast('Aluno guardado, mas a matrícula falhou: ' + mr.error.message);
           }
         }
-        console.log('[Scholaris] Aluno guardado no Supabase:', alunoDb.id);
+        _finalizarInscricao();
       } catch(e) {
-        console.warn('[Supabase] Erro ao guardar aluno:', e.message);
+        _falhouInscricao(e && e.message);
       }
     })();
+  } else {
+    _finalizarInscricao();   // modo demonstração / sem ligação
   }
-
-  // If turma selected, check capacity
-  if (turma) {
-    const t = TURMAS.find(x=>x.id===turma);
-    const count = ALUNOS.filter(a=>a.turma===turma).length;
-    if (t && count > t.max) toast('Atenção: turma ' + turma + ' excede a lotação máxima');
-  }
-
-  closeM('m-naluno');
-  toast(nome + ' inscrito! Nº ' + newNum);
-
-  setTimeout(() => {
-    openAluno(newId);
-  }, 200);
-
-  if (typeof rAl === 'function') rAl();
 }
 
 // ── BOLETIM DE INSCRIÇÃO ───────────────────────────────────
