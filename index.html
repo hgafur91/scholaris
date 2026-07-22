@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.68</span>
+    <span class="logo-ver">v6.69</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3726,9 +3726,9 @@ function rDash(){
         {v:_fmtK(_tp.divida),l:'Dívida MZM',s:'Propinas vencidas por pagar',cl:'re',ic:'ti-alert-circle',fn:"go('dividas')",dt:_tp.divida?'!':'',up:false},{v:String(_nDiv),l:'Alunos com dívida',s:'De '+ALUNOS.length+' alunos',cl:'tl',ic:'ti-user-exclamation',fn:"go('dividas')",dt:_nDiv?'!':'',up:false}],
       qa:[{ic:'ti-user-plus',l:'Novo Aluno',bg:'rgba(79,142,247,.12)',c:'var(--a)',fn:'openM("m-naluno")'},{ic:'ti-chalkboard',l:'Novo Professor',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:'openM("m-nprof")'},{ic:'ti-credit-card',l:'Propinas',bg:'rgba(34,197,94,.12)',c:'var(--g)',fn:"go('propinas')"},{ic:'ti-receipt',l:'Despesas',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:"go('despesas')"},{ic:'ti-alert-circle',l:'Faltas',bg:'rgba(239,68,68,.12)',c:'var(--r)',fn:"go('faltas')"},{ic:'ti-chart-pie',l:'Executivo',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:"go('exec')"}]},
     secretario:{lbl:'Painel do Secretário',title:'Gestão académica e financeira',desc:'Registo de alunos, professores, horários, pagamentos e recibos.',
-      chips:[{l:'Novo Aluno',ic:'ti-user-plus',fn:'openM("m-naluno")'},{l:'Novo Professor',ic:'ti-chalkboard',fn:'openM("m-nprof")'},{l:'Registar Pagamento',ic:'ti-credit-card',fn:'openM("m-pag")'},{l:'Alocação',ic:'ti-calendar-event',fn:"go('alocacao')"}],
-      stats:[{v:String(ALUNOS.length),l:'Total Alunos',s:'Matriculados',cl:'bl',ic:'ti-users',fn:"go('alunos')"},{v:String(PROFS.length),l:'Professores',s:'Inteiro + Parcial',cl:'pu',ic:'ti-chalkboard',fn:"go('professores')"},{v:'0',l:'Propinas em atraso',s:'Sem dados ainda',cl:'re',ic:'ti-alert-circle',fn:"go('propinas')",dt:'!',up:false},{v:'0',l:'Recibos emitidos hoje',s:'Esta sessão',cl:'gr',ic:'ti-file-text',fn:"go('propinas')"}],
-      qa:[{ic:'ti-user-plus',l:'Novo Aluno',bg:'rgba(79,142,247,.12)',c:'var(--a)',fn:'openM("m-naluno")'},{ic:'ti-chalkboard',l:'Novo Professor',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:'openM("m-nprof")'},{ic:'ti-credit-card',l:'Registar Pag.',bg:'rgba(34,197,94,.12)',c:'var(--g)',fn:'openM("m-pag")'},{ic:'ti-calendar-event',l:'Alocação',bg:'rgba(6,182,212,.12)',c:'var(--tl)',fn:"go('alocacao')"},{ic:'ti-calendar',l:'Horário',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:"go('horario')"},{ic:'ti-alert-circle',l:'Faltas',bg:'rgba(239,68,68,.12)',c:'var(--r)',fn:"go('faltas')"}]},
+      chips:[{l:'Registar Pagamento',ic:'ti-credit-card',fn:'__secRegPagamento()'},{l:'Registar Despesa',ic:'ti-receipt',fn:'abrirNovaDespesaV7()'},{l:'Novo Aluno',ic:'ti-user-plus',fn:'openM("m-naluno")'},{l:'Alocação',ic:'ti-calendar-event',fn:"go('alocacao')"}],
+      stats:[{v:String(ALUNOS.length),l:'Total Alunos',s:'Matriculados',cl:'bl',ic:'ti-users',fn:"go('alunos')"},{v:String(PROFS.length),l:'Professores',s:'Inteiro + Parcial',cl:'pu',ic:'ti-chalkboard',fn:"go('professores')"},{v:String(_nDiv),l:'Alunos com dívida',s:'Requer cobrança',cl:'re',ic:'ti-alert-circle',fn:"go('propinas')",dt:_nDiv?'!':'',up:false},{v:_fmtK(_tp.divida),l:'Dívida MZM',s:'Propinas vencidas',cl:'am',ic:'ti-cash',fn:"go('propinas')"}],
+      qa:[{ic:'ti-credit-card',l:'Registar Pagamento',bg:'rgba(34,197,94,.12)',c:'var(--g)',fn:'__secRegPagamento()'},{ic:'ti-receipt',l:'Registar Despesa',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:'abrirNovaDespesaV7()'},{ic:'ti-user-plus',l:'Novo Aluno',bg:'rgba(79,142,247,.12)',c:'var(--a)',fn:'openM("m-naluno")'},{ic:'ti-chalkboard',l:'Novo Professor',bg:'rgba(124,106,247,.12)',c:'var(--a2)',fn:'openM("m-nprof")'},{ic:'ti-calendar-event',l:'Alocação',bg:'rgba(6,182,212,.12)',c:'var(--tl)',fn:"go('alocacao')"},{ic:'ti-calendar',l:'Horário',bg:'rgba(245,158,11,.12)',c:'var(--am)',fn:"go('horario')"}]},
   };
   // dir-pedagogico: academic only, no financials
   if (curRole === 'dir-pedagogico') {
@@ -39289,6 +39289,72 @@ window.trimestreActual = function(d){
       var pct= tot? Math.round(tf/tot*100) : 0;
       setK('tk-faltas', pct+'%', pct>15?'var(--r)':pct>8?'var(--am)':'var(--g)');
     }catch(e){ setK('tk-faltas','—','var(--t2)'); }
+  };
+})();
+</script>
+
+<script>
+/* ═══ v6.69 — Atalhos de registo do Secretário (só reutilizam fluxos existentes) ═══
+   Pagamento: tipo → escolher aluno → abrirRegistarPagamento (propina) / pagarTaxaFixa (taxa).
+   Despesa: abrirNovaDespesaV7 (o modal já tem selector de categoria). NÃO cria lógica nova. */
+(function(){
+  if(window.__secShortcuts) return; window.__secShortcuts=true;
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function fechar(){ var o=document.getElementById('sec-sc-ov'); if(o) o.remove(); }
+  window.__secFecharModal=fechar;
+
+  function overlay(titulo, inner){
+    fechar();
+    var ov=document.createElement('div'); ov.id='sec-sc-ov';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML='<div style="background:var(--card);border:1px solid var(--b2);border-radius:14px;width:460px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--b)">'
+      +'<span style="font-weight:800;font-size:15px">'+titulo+'</span>'
+      +'<button onclick="__secFecharModal()" style="background:none;border:none;color:var(--t2);cursor:pointer;font-size:18px"><i class="ti ti-x"></i></button></div>'
+      +'<div id="sec-sc-body" style="padding:18px;overflow:auto">'+inner+'</div></div>';
+    ov.onclick=function(e){ if(e.target===ov) fechar(); };
+    document.body.appendChild(ov);
+  }
+
+  window.__secRegPagamento=function(){
+    overlay('Registar Pagamento',
+      '<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Tipo de pagamento:</div>'
+      +'<div style="display:grid;grid-template-columns:1fr;gap:8px">'
+      +'<button class="btn btn-p" style="justify-content:flex-start" onclick="__secTipoPag(\'propina\')"><i class="ti ti-credit-card"></i> Propina (mensalidade)</button>'
+      +'<button class="btn btn-g" style="justify-content:flex-start" onclick="__secTipoPag(\'matricula\')"><i class="ti ti-file-plus"></i> Matrícula</button>'
+      +'<button class="btn btn-g" style="justify-content:flex-start" onclick="__secTipoPag(\'inscricao\')"><i class="ti ti-writing-sign"></i> Inscrição</button>'
+      +'</div>');
+  };
+
+  var _tipoSel=null;
+  window.__secTipoPag=function(tipo){
+    _tipoSel=tipo;
+    var body=document.getElementById('sec-sc-body'); if(!body) return;
+    var lbl={propina:'Propina',matricula:'Matrícula',inscricao:'Inscrição'}[tipo]||tipo;
+    body.innerHTML='<div style="font-size:12px;color:var(--t2);margin-bottom:8px"><b>'+esc(lbl)+'</b> — escolha o aluno:</div>'
+      +'<input id="sec-sc-busca" class="ffi" placeholder="Pesquisar por nome ou nº…" oninput="__secFiltrarAlunos(this.value)" style="width:100%;margin-bottom:10px">'
+      +'<div id="sec-sc-lista" style="max-height:44vh;overflow:auto"></div>';
+    __secFiltrarAlunos(''); var b=document.getElementById('sec-sc-busca'); if(b) b.focus();
+  };
+
+  window.__secFiltrarAlunos=function(q){
+    var lista=document.getElementById('sec-sc-lista'); if(!lista) return;
+    q=(q||'').toLowerCase().trim();
+    var AL=(typeof ALUNOS!=='undefined'?ALUNOS:[]);
+    var res=AL.filter(function(a){ return !q || (a.nome||'').toLowerCase().indexOf(q)>=0 || (a.num||'').toLowerCase().indexOf(q)>=0; }).slice(0,40);
+    if(!res.length){ lista.innerHTML='<div style="padding:16px;text-align:center;color:var(--t2);font-size:13px">Sem resultados.</div>'; return; }
+    lista.innerHTML=res.map(function(a){
+      return '<div onclick="__secEscolherAluno('+a.id+')" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid var(--b);cursor:pointer" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:700">'+esc(a.nome)+'</div>'
+        +'<div style="font-size:10px;color:var(--t2);font-family:var(--fm)">'+esc(a.num||'')+' · Turma '+esc(a.turma||'')+'</div></div>'
+        +'<i class="ti ti-chevron-right" style="color:var(--t3)"></i></div>';
+    }).join('');
+  };
+
+  window.__secEscolherAluno=function(alunoId){
+    var tipo=_tipoSel; fechar();
+    if(tipo==='propina'){ if(typeof abrirRegistarPagamento==='function') abrirRegistarPagamento(alunoId); else toast('Fluxo de propina indisponível'); }
+    else { if(typeof pagarTaxaFixa==='function') pagarTaxaFixa(alunoId, tipo); else toast('Fluxo de taxa indisponível'); }
   };
 })();
 </script>
