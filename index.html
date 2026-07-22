@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.83</span>
+    <span class="logo-ver">v6.84</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1034,7 +1034,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 <!-- ════ AVALIAÇÕES ════ -->
 <div class="view" id="v-aval">
   <div class="ph"><div><div class="ph-title">Avaliação Individual</div><div class="ph-sub">Avaliação trimestral · escala 0–20</div></div>
-    <div class="ph-right"><select class="btn btn-g" style="cursor:pointer" onchange="loadAval(this.value)"><option value="">Seleccionar colaborador...</option><option value="">Nenhum professor disponível</option><option value="1">PRF000001 — Prof03 — Esperança Bila</option><option value="4">GST000001 — Maria Nhampule</option><option value="5">GST000002 — José Sitoe</option><option value="6">FIN000001 — Fátima Macuacua</option></select></div>
+    <div class="ph-right"><select id="aval-sel" class="btn btn-g" style="cursor:pointer" onchange="loadAval(this.value)"><option value="">Seleccionar colaborador...</option></select></div>
   </div>
   <div id="aval-c"><div class="card"><div class="cb" style="text-align:center;padding:48px;color:var(--t2)"><i class="ti ti-chart-bar" style="font-size:44px;display:block;margin-bottom:12px;color:var(--t3)"></i><div style="font-size:16px;font-weight:700;color:var(--t);margin-bottom:6px">Avaliação Trimestral</div>Seleccione um colaborador acima.</div></div></div>
 </div>
@@ -5812,6 +5812,23 @@ function rStaff(dep){
 function fStaff(dep,btn){rStaff(dep)}
 
 // ══ AVALIAÇÕES ══
+// v6.84: landing do menu "Avaliações" — lista o staff real p/ escolher quem avaliar.
+// Antes go('aval') abria a vista com um <select> de staff HARDCODED e conteúdo vazio.
+function rAvalLanding(){
+  var staff=(typeof PROFS!=='undefined'?PROFS:[])||[];
+  var sel=document.getElementById('aval-sel');
+  if(sel){ sel.innerHTML='<option value="">Seleccionar colaborador...</option>'+
+    staff.map(function(p){ return '<option value="'+p.id+'">'+(p.num||'')+' — '+p.nome+'</option>'; }).join(''); }
+  var el=document.getElementById('aval-c'); if(!el) return;
+  if(!staff.length){ el.innerHTML='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem colaboradores registados para avaliar.</div>'; return; }
+  el.innerHTML='<div class="card"><div class="ch"><span class="ct">Escolha um colaborador para avaliar</span>'
+    +'<span style="font-size:11px;color:var(--t2)">'+staff.length+' colaborador(es)</span></div><div class="cb">'
+    +staff.map(function(p,i){ return '<div style="display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--b);cursor:pointer" onclick="loadAval('+p.id+')">'
+      +mkAv(p.nome,32,i,false)
+      +'<div style="flex:1"><div style="font-size:13px;font-weight:700">'+p.nome+'</div><div style="font-size:11px;color:var(--t2)">'+(p.num||'')+(p.cargo?(' · '+p.cargo):(p.dep?(' · '+p.dep):''))+'</div></div>'
+      +'<button class="btn btn-g btn-sm" onclick="event.stopPropagation();loadAval('+p.id+')"><i class="ti ti-star"></i> Avaliar</button></div>'; }).join('')
+    +'</div></div>';
+}
 function loadAval(id){
   go('aval');
   const p=PROFS.find(x=>x.id==id);if(!p)return;
@@ -13360,6 +13377,7 @@ if (typeof RENDER_MAP !== 'undefined') {
   RENDER_MAP['ciclos']          = () => rCiclos();
   RENDER_MAP['plano-analitico'] = () => rPlanoAnalitico('');
   RENDER_MAP['gerar-horario']   = () => rGerarHorario();
+  RENDER_MAP['aval']            = () => { if(typeof rAvalLanding==='function') rAvalLanding(); };  // v6.84: menu deixa de abrir vazio
 }
 // Also add to VM
 VM['ciclos']          = 'v-ciclos';
@@ -35341,7 +35359,13 @@ window.__finV30=true;})();
     async discIdAloc(turmaId, disciplinaNome){
       try{ await this._minhasAloc(); }catch(e){}
       var al=this.__alocCache||[];
-      var hit=al.find(function(a){ return String(a.turma_id)===String(turmaId) && a.disciplinas && a.disciplinas.nome===disciplinaNome; });
+      // v6.84: comparação robusta (trim + minúsculas + sem acentos) — evitava a falha
+      // SILENCIOSA da RLS quando o nome da disciplina divergia por grafia/acento.
+      var norm=function(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); };
+      var alvo=norm(disciplinaNome);
+      var daTurma=al.filter(function(a){ return String(a.turma_id)===String(turmaId); });
+      var hit=daTurma.find(function(a){ return a.disciplinas && norm(a.disciplinas.nome)===alvo; });
+      if(!hit && daTurma.length===1) hit=daTurma[0];   // só 1 disciplina alocada na turma → é essa
       return (hit && hit.disciplina_id) || null;
     },
     async alunos(turmaId){
