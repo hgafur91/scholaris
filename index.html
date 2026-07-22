@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.80</span>
+    <span class="logo-ver">v6.81</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5294,6 +5294,7 @@ async function guardarPresencas(){
     }
 
     toast('<i class="ti ti-check"></i> Aula registada — '+nPres+' presentes, '+nFalt+' faltas');
+    try{ if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(false); }catch(_){}  // v6.81: faltas/% ao vivo
     presBack();
   }catch(e){
     toast('Erro: '+(e&&e.message?e.message:e));
@@ -6414,7 +6415,7 @@ async function loadDadosEscola() {
     await carregarHorarioSaved();
 
     // 10. v6.71: cache de notas/faltas reais (para calcMediaGeralAluno / calcFaltas)
-    try{ if(typeof carregarCacheAcademico==='function') await carregarCacheAcademico(); }catch(e){}
+    try{ if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(); else if(typeof carregarCacheAcademico==='function') await carregarCacheAcademico(); }catch(e){}
 
   } catch(e) {
     console.warn('[Scholaris] Erro ao carregar dados:', e.message);
@@ -25482,6 +25483,7 @@ maRegistar = async function() {
     var ot=document.getElementById('ma-obs-turma'); if(ot) ot.value='';
     document.querySelectorAll('#ma-faltas-lista label').forEach(function(l){ l.classList.remove('falta-marcada'); });
     maCarregarHistorico();
+    try{ if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(false); }catch(_){}  // v6.81: faltas/% ao vivo (silencioso)
   } catch(e) {
     toast('Erro: '+(e && e.message ? e.message : e));
   } finally {
@@ -35460,6 +35462,7 @@ window.__finV30=true;})();
     else { toast('<i class="ti ti-check"></i> Notas guardadas! ('+ok+')'); }
     // Auditoria: lançamento de notas
     try{ if(ok>0 && typeof logAudit==='function') logAudit('NOTAS_LANCADAS', (_st.disciplina||'?')+' — '+(_st.turmaNome||_st.turmaId||'?')+' ('+_st.trimestre+'º trim.)', ok+' aluno(s) avaliado(s)'+(erros?(' · '+erros+' erro(s)'):''), null, null); }catch(e){}
+    if(ok>0){ try{ if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(false); }catch(_){}  }  // v6.81: médias ao vivo (silencioso)
   };
 
   window.ntFechar=async function(ev){
@@ -37052,7 +37055,7 @@ window.trimestreActual = function(d){
     var res = await window._supabase.from('faltas').delete().eq('id', faltaId);
     if(res.error){ toast('Erro: '+res.error.message); return; }
     toast('Falta retirada.');
-    if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais();
+    if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(); else if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais();
     window.verFaltasAluno(alunoDbId, nome, turmaId);
   };
 
@@ -37063,7 +37066,7 @@ window.trimestreActual = function(d){
       .update({ justif:true, tipo:'J', motivo:motivo }).eq('id', faltaId);
     if(res.error){ toast('Erro: '+res.error.message); return; }
     toast('Falta justificada.');
-    if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais();
+    if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(); else if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais();
     window.verFaltasAluno(alunoDbId, nome, turmaId);
   };
 
@@ -39460,7 +39463,7 @@ window.trimestreActual = function(d){
   // rastrear a vista actual, para re-renderizar quando a cache chegar
   try{ if(typeof window.go==='function' && !window.__goTrack){ var _g=window.go; window.go=function(id){ if(typeof id==='string') window.__viewActual=id; return _g.apply(this,arguments); }; window.__goTrack=true; } }catch(e){}
 
-  window.carregarCacheAcademico=async function(){
+  window.carregarCacheAcademico=async function(skipRender){
     if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')) return;
     try{
       var rn=await window._supabase.from('notas').select('aluno_id,as1,as2,ap').eq('escola_id',window._escolaId);
@@ -39477,7 +39480,15 @@ window.trimestreActual = function(d){
       var ac={}; ((ra&&ra.data)||[]).forEach(function(x){ ac[x.turma_id]=(ac[x.turma_id]||0)+1; });
       window.__AULAS_CACHE=ac;
     }catch(e){ console.warn('[cache aulas]', e&&e.message); }
-    try{ if(window.__viewActual && typeof go==='function') go(window.__viewActual); }catch(e){}  // re-render
+    try{ if(!skipRender && window.__viewActual && typeof go==='function') go(window.__viewActual); }catch(e){}  // re-render
+  };
+
+  // v6.81: refresco único da camada académica — dados reais em memória (a.faltas via
+  // carregarFaltasReais) + caches de %/média (carregarCacheAcademico) + re-render.
+  // Usar no arranque e após QUALQUER escrita de faltas/notas/aulas. reRender===false → silencioso.
+  window.refrescarAcademico=async function(reRender){
+    try{ if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais(); }catch(e){}
+    try{ if(typeof window.carregarCacheAcademico==='function') await window.carregarCacheAcademico(reRender===false); }catch(e){}
   };
 
   // ── override calcMediaGeralAluno ──
