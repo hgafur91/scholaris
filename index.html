@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.73</span>
+    <span class="logo-ver">v6.74</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -886,7 +886,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 <!-- ════ ALOCAÇÃO PROFESSORES (Secretário) ════ -->
 <div class="view" id="v-alocacao">
-  <div class="ph"><div><div class="ph-title">Alocação de Professores</div><div class="ph-sub">Atribuir professor → disciplina → turma → gerar horário automático</div></div><div class="ph-right"><button class="btn btn-p btn-sm" onclick="abrirModalAlocacao()"><i class="ti ti-plus"></i> Nova Alocação</button><button class="btn btn-tl btn-sm" onclick="gerarHorariosAuto()"><i class="ti ti-calendar-event"></i> Gerar Horários</button></div></div>
+  <div class="ph"><div><div class="ph-title">Alocação de Professores</div><div class="ph-sub">Atribuir professor → disciplina → turma → gerar horário automático</div></div><div class="ph-right"><button class="btn btn-p btn-sm" onclick="abrirModalAlocacao()"><i class="ti ti-plus"></i> Nova Alocação</button><button class="btn btn-tl btn-sm" onclick="gerarHorarioAuto()"><i class="ti ti-calendar-event"></i> Gerar Horários</button></div></div>
   <div class="ib-box ib-tl"><i class="ti ti-info-circle"></i> Após alocar todos os professores, clique em "Gerar Horários" para criar automaticamente os horários semanais sem conflitos.</div>
   <div class="card"><div class="tw"><table><thead><tr><th>Professor</th><th>Regime</th><th>Disciplina</th><th>Turma</th><th>Horas/Sem.</th><th>Dias</th><th>Hora Início</th><th>Estado</th><th></th></tr></thead><tbody id="tb-alocacao"></tbody></table></div></div>
 </div>
@@ -14089,6 +14089,7 @@ function gerarHorarioAuto() {
   });
 
   // Apply to HORARIO
+  for (var __hk in HORARIO) delete HORARIO[__hk];   // v6.74: limpar antes de aplicar o novo horário
   Object.assign(HORARIO, novoHorario);
 
   // Show result
@@ -14168,6 +14169,7 @@ async function carregarHorarioSaved() {
     const { data } = await window._supabase.from('horarios')
       .select('dados').eq('escola_id', window._escolaId).single();
     if (data?.dados) {
+      for (var __hk in HORARIO) delete HORARIO[__hk];   // v6.74: limpar antes de aplicar (sem turmas fantasma)
       Object.assign(HORARIO, data.dados);
       console.log('[Scholaris] Horário carregado do Supabase, turmas:', Object.keys(data.dados).length);
     }
@@ -14902,6 +14904,7 @@ gerarHorarioAuto = function() {
     });
   });
 
+  for (var __hk in HORARIO) delete HORARIO[__hk];   // v6.74: limpar antes de aplicar o novo horário
   Object.assign(HORARIO, novoHorario);
 
   // Show result with period labels
