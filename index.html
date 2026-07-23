@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.94</span>
+    <span class="logo-ver">v6.95</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -31654,7 +31654,7 @@ window.loadDespesasFirestore=async function(){
     var rows=res && res.data; if(!rows||!rows.length) return;
     if(typeof DESPESAS_REG==='undefined') window.DESPESAS_REG=[];
     var have={}; DESPESAS_REG.forEach(function(d){ have[d.id]=true; });
-    rows.forEach(function(r){ if(!have[r.desp_id]){ DESPESAS_REG.push({id:r.desp_id, data:r.data_desp, mes:r.mes, categoria:r.categoria, descricao:r.descricao, valor:r.valor, ref:r.ref}); } });
+    rows.forEach(function(r){ if(!have[r.desp_id]){ DESPESAS_REG.push({id:r.desp_id, data:r.data_desp, mes:((r.mes==null||r.mes==='')?null:(parseInt(r.mes,10)||null)), categoria:r.categoria, descricao:r.descricao, valor:r.valor, ref:r.ref}); } });  // v6.95: mes SEMPRE número (o splice usava === estrito)
     try{ if(typeof rDespesas==='function') rDespesas(); }catch(e){}
   }catch(e){ console.warn('loadDespesas', e && e.message); }
 };
@@ -33777,13 +33777,13 @@ window.__finV30=true;})();
     try{
       var bruto=(typeof window.__folhaBrutoMes==='function')?window.__folhaBrutoMes(m,a):0;
       if(typeof DESPESAS_REG!=='undefined' && Array.isArray(DESPESAS_REG)){
-        for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dmm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(dmm===m) DESPESAS_REG.splice(i,1); } }
+        for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dmm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(Number(dmm)===Number(m)) DESPESAS_REG.splice(i,1); } }
         var rec={ id:'SAL'+a+'-'+m, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha de Salários '+nomeMes(m)+' (inclui INSS empresa 4%)', valor:Math.round(bruto*1.04), ref:'FOLHA-'+m, registadoEm:new Date().toISOString() };
         DESPESAS_REG.push(rec);
         try{ if(typeof window.__salvarDespesaFolha==='function') window.__salvarDespesaFolha(rec); else if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(rec); }catch(e){}
       }
     }catch(e){}
-    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' aprovada e trancada'); window.__folhaRerender();
+    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' aprovada e trancada'); window.__folhaRerender(); try{ if(typeof window.__refreshFinanceiro==='function') window.__refreshFinanceiro(); }catch(e){}  // v6.95: balancete actualiza logo
   };
   function editavel(m){ var f=getFolha(ano(),m); return f && f.status==='rascunho' && podeEditar(); }
   window.__folhaModal=function(tipo,m,pid){
@@ -33920,11 +33920,11 @@ window.__finV30=true;})();
     f.status='rascunho'; f.aprovadaPor=null; f.aprovadaEm=null;
     try{
       if(typeof DESPESAS_REG!=='undefined' && Array.isArray(DESPESAS_REG)){
-        for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(dm===m) DESPESAS_REG.splice(i,1); } }
+        for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(Number(dm)===Number(m)) DESPESAS_REG.splice(i,1); } }
       }
       window.__delDespesaFolhaDB('SAL'+a+'-'+m);
     }catch(e){}
-    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' reaberta (rascunho)'); window.__folhaRerender();
+    persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' reaberta (rascunho)'); window.__folhaRerender(); try{ if(typeof window.__refreshFinanceiro==='function') window.__refreshFinanceiro(); }catch(e){}  // v6.95: sai logo do balancete
   };
   // Consolidação: a aba "Salarios" das Despesas passa a usar o módulo novo (editável)
   window.__v23RenderSalarios=function(mes){
