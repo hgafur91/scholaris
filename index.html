@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.88</span>
+    <span class="logo-ver">v6.89</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -12503,12 +12503,13 @@ function rAdmissoes() {
           <td style="font-family:var(--fm);font-size:11px">${c.tel}</td>
           <td style="color:var(--t2);font-size:12px">${c.data}</td>
           <td style="font-size:11px">${c.docs.join(', ')}</td>
-          <td><span class="badge ${c.estado==='aprovado'?'bok':c.estado==='rejeitado'?'ber':'bwn'}">${c.estado==='aprovado'?'Aprovado':c.estado==='rejeitado'?'Rejeitado':'Pendente'}</span></td>
+          <td><span class="badge ${c.estado==='aprovado'||c.estado==='matriculado'?'bok':c.estado==='rejeitado'?'ber':'bwn'}">${c.estado==='aprovado'?'Aprovado':c.estado==='matriculado'?'Matriculado':c.estado==='rejeitado'?'Rejeitado':'Pendente'}</span></td>
           <td>
             <div style="display:flex;gap:4px">
-              <button class="btn btn-gr btn-sm" onclick="aprovarCandidatura(${c.id})" ${c.estado==='aprovado'?'disabled':''}>Aprovar</button>
-              ${c.estado==='aprovado'?`<button class="btn btn-p btn-sm" onclick="matricularCandidatura(${c.id})"><i class="ti ti-user-check"></i> Matricular</button>`:''}
-              <button class="btn btn-re btn-sm" onclick="rejeitarCandidatura(${c.id})" ${c.estado==='rejeitado'?'disabled':''}>Rejeitar</button>
+              <button class="btn btn-gr btn-sm" onclick="aprovarCandidatura('${c.id}')" ${c.estado==='aprovado'||c.estado==='matriculado'?'disabled':''}>Aprovar</button>
+              ${c.estado==='aprovado'?`<button class="btn btn-p btn-sm" onclick="matricularCandidatura('${c.id}')"><i class="ti ti-user-check"></i> Matricular</button>`:''}
+              ${c.estado==='matriculado'?`<span class="badge bok"><i class="ti ti-user-check"></i> Matriculado</span>`:''}
+              <button class="btn btn-re btn-sm" onclick="rejeitarCandidatura('${c.id}')" ${c.estado==='rejeitado'||c.estado==='matriculado'?'disabled':''}>Rejeitar</button>
             </div>
           </td>
         </tr>`).join('')}
@@ -19037,6 +19038,14 @@ function guardarNovoAluno() {
     try{ closeM('m-novo-aluno'); }catch(_){}
     try{ closeM('m-naluno'); }catch(_){}
     toast('<i class="ti ti-check"></i> ' + nome + ' inscrito! Nº ' + aluno.num);
+    // v6.89: fechar a candidatura (matrícula concluída) NO PONTO DE SUCESSO REAL e a PERSISTIR
+    // (antes o wrapper verificava o modal antes da gravação terminar → nunca fechava → duplicados).
+    try {
+      if (window.__candMatricular) {
+        var _cid = window.__candMatricular; window.__candMatricular = null;
+        if (typeof window.actualizarEstadoCandidatura === 'function') window.actualizarEstadoCandidatura(_cid, 'matriculado');
+      }
+    } catch(_){}
     setTimeout(() => openAluno(newId), 200);
     if (typeof rAl === 'function') rAl();
   };
@@ -34534,8 +34543,10 @@ window.__finV30=true;})();
 
   // Matricular: abre o formulário completo de Novo Aluno já preenchido (incl. encarregado)
   window.matricularCandidatura=function(id){
-    var c=(typeof CANDIDATURAS!=='undefined'?CANDIDATURAS:[]).find(function(x){return x.id===id;});
+    var c=(typeof CANDIDATURAS!=='undefined'?CANDIDATURAS:[]).find(function(x){return String(x.id)===String(id);});
     if(!c){ if(typeof toast==='function') toast('Candidatura não encontrada'); return; }
+    if(c.estado==='matriculado'){ if(typeof toast==='function') toast('Esta candidatura já foi matriculada.'); return; }  // v6.89: sem duplicados
+    if(c.estado!=='aprovado'){ if(typeof toast==='function') toast('Aprove a candidatura antes de matricular.'); return; }
     if(typeof abrirNovoAluno==='function') abrirNovoAluno(); else { if(typeof toast==='function') toast('Formulário indisponível'); return; }
     window.__candMatricular=id;
     setTimeout(function(){
@@ -38341,7 +38352,7 @@ window.trimestreActual = function(d){
   // Persistir mudança de estado (aprovar/rejeitar) — hook genérico
   window.actualizarEstadoCandidatura=async function(id, estado){
     if(sb()&&window._escolaId){ try{ await sb().from('candidaturas').update({estado:estado}).eq('id',id); }catch(e){} }
-    var c=(typeof CANDIDATURAS!=='undefined'?CANDIDATURAS:[]).find(function(x){return x.id===id;});
+    var c=(typeof CANDIDATURAS!=='undefined'?CANDIDATURAS:[]).find(function(x){return String(x.id)===String(id);});
     if(c) c.estado=estado;
     if(typeof rAdmissoes==='function') rAdmissoes();
   };
