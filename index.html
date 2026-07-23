@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.96</span>
+    <span class="logo-ver">v6.97</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32857,7 +32857,9 @@ try{window.__aplicarMultasAutomaticas=function(aluno){try{
     Object.keys(a.propinas).forEach(function(k){var p=a.propinas[k];if(!p)return;if(p.st==='isento'||p.multaIsenta)return;
       var mesIdx=(typeof p.m!=='undefined')?(p.m-1):(parseInt(k,10));
       var venceMultaEm=new Date(anoL,mesIdx+1,dv);   // dia de vencimento do MÊS SEGUINTE
-      if(pct>0 && p.st==='npago' && hoje>=venceMultaEm){ p.st='multa';p.multaAuto=true;p.multaLock=true;p.multaPct=pct;p.v=Math.round(base);mudou=true; }
+      var deveTerMulta=(pct>0 && hoje>=venceMultaEm);
+      if(deveTerMulta && p.st==='npago'){ p.st='multa';p.multaAuto=true;p.multaLock=true;p.multaPct=pct;p.v=Math.round(base);mudou=true; }
+      else if(!deveTerMulta && p.st==='multa' && p.multaAuto){ p.st='npago';p.multaPct=0;p.multaAuto=false;p.multaLock=false;mudou=true; }  // reverter multa automática que já não se aplica (mês corrente ou multa a 0%)
     });
   });
   return mudou;
