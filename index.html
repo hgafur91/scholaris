@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.93</span>
+    <span class="logo-ver">v6.94</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -27821,16 +27821,32 @@ function exportarFolhaSalarios(mes) {
   const CSS      = typeof CSS_BASE!=='undefined'?CSS_BASE:'';
   const NP       = typeof NO_PRINT_BAR!=='undefined'?NO_PRINT_BAR:'';
 
-  // ── Tempo Inteiro (salário fixo) ──
-  const inteiroRows = PROFS.filter(p=>(p.salario||0)>0 && p.regime!=='parcial').map(p=>{
-    const bruto=p.salario||0;
-    const subsTotal=Object.values(SUBSIDIOS?.[p.id]?.[ano]?.[mes]||{}).flat().reduce((s,x)=>s+(x.valor||0),0);
-    const totalBruto=bruto+subsTotal;
-    const inss=Math.round(totalBruto*0.03);
-    const irps=calcIRPS?calcIRPS(totalBruto):Math.round(totalBruto*0.15);
-    const liquido=totalBruto-inss-irps;
-    return{p,bruto,subsTotal,totalBruto,inss,irps,liquido};
-  }).sort((a,b)=>(a.p.nome||'').localeCompare(b.p.nome||''));
+  // ── Tempo Inteiro — v6.94: LER DA MESMA FOLHA que a aba Salários (folha.linhas: base+subsídios+descontos).
+  // Antes lia PROFS + SUBSIDIOS (vazio) → o PDF ignorava os subsídios de Cargo e divergia do balancete.
+  const _folha = (CONFIG.folhas && CONFIG.folhas[ano] && CONFIG.folhas[ano][mes]) || null;
+  const _fAprov = _folha && _folha.status==='aprovada';
+  const _irps = (b)=>{ try{ return (typeof calcIRPS==='function')?calcIRPS(b):Math.round(b*0.15); }catch(e){ return Math.round(b*0.15); } };
+  let inteiroRows;
+  if (_folha && _folha.linhas) {
+    inteiroRows = Object.keys(_folha.linhas).filter(pid=>{
+      const _p=PROFS.find(x=>String(x.id)===String(pid)); return !_p || _p.regime!=='parcial';
+    }).map(pid=>{
+      const L=_folha.linhas[pid];
+      const p=PROFS.find(x=>String(x.id)===String(pid))||{nome:'(removido)',num:'',cargo:''};
+      const subsTotal=(L.subsidios||[]).reduce((s,x)=>s+(x.valor||0),0);
+      const base=_fAprov ? (L.base||0) : ((typeof window.__baseFolha==='function')?window.__baseFolha(p,mes):(L.base||0));
+      const totalBruto=(base||0)+subsTotal;
+      const inss=Math.round(totalBruto*0.03);
+      const irps=_irps(totalBruto);
+      const dm=(L.descontos||[]).reduce((s,x)=>s+(x.valor||0),0);
+      return{p,bruto:base,subsTotal,totalBruto,inss,irps,dm,liquido:totalBruto-inss-irps-dm};
+    }).sort((a,b)=>(a.p.nome||'').localeCompare(b.p.nome||''));
+  } else {
+    inteiroRows = PROFS.filter(p=>(p.salario||0)>0 && p.regime!=='parcial').map(p=>{
+      const bruto=p.salario||0; const inss=Math.round(bruto*0.03); const irps=_irps(bruto);
+      return{p,bruto,subsTotal:0,totalBruto:bruto,inss,irps,dm:0,liquido:bruto-inss-irps};
+    }).sort((a,b)=>(a.p.nome||'').localeCompare(b.p.nome||''));
+  }
 
   // ── Tempo Parcial (por aula, sem salário fixo) ──
   const valAula = CONFIG.valorAula||140;
@@ -27839,7 +27855,9 @@ function exportarFolhaSalarios(mes) {
     return{p,aulas,valAula,total:aulas*valAula};
   }).sort((a,b)=>(a.p.nome||'').localeCompare(b.p.nome||''));
 
-  const tiB=inteiroRows.reduce((s,r)=>s+r.totalBruto,0);
+  const tiBase=inteiroRows.reduce((s,r)=>s+(r.bruto||0),0);
+  const tiSubs=inteiroRows.reduce((s,r)=>s+(r.subsTotal||0),0);
+  const tiB=inteiroRows.reduce((s,r)=>s+r.totalBruto,0);   // = base + subsídios
   const tiI=inteiroRows.reduce((s,r)=>s+r.inss,0);
   const tiR=inteiroRows.reduce((s,r)=>s+r.irps,0);
   const tiL=inteiroRows.reduce((s,r)=>s+r.liquido,0);
@@ -27885,7 +27903,8 @@ function exportarFolhaSalarios(mes) {
       </tr>`).join(''):`<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:8px">Sem colaboradores a tempo inteiro.</td></tr>`}
       <tr style="font-weight:800;border-top:2px solid #e2e8f0">
         <td colspan="3">SUBTOTAL — INTEIRO</td>
-        <td style="text-align:right">${fmt(tiB)}</td><td></td>
+        <td style="text-align:right">${fmt(tiBase)}</td>
+        <td style="text-align:right">${tiSubs?'+'+fmt(tiSubs):'—'}</td>
         <td style="text-align:right">-${fmt(tiI)}</td>
         <td style="text-align:right">-${fmt(tiR)}</td>
         <td style="text-align:right;color:#166534">${fmt(tiL)}</td>
