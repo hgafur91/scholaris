@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.91</span>
+    <span class="logo-ver">v6.92</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33854,7 +33854,9 @@ window.__finV30=true;})();
     var tEmpresa=rows.reduce(function(s,r){return s+r.empresa;},0);
     var tCusto=rows.reduce(function(s,r){return s+r.custo;},0);
 
-    h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Bruto',tBruto,'var(--a)')+kpi('INSS + IRPS',tINSS+tIRPS,'var(--am)')+kpi('Total Líquido',tLiq,'var(--g)')+kpi('INSS Empresa (4%)',tEmpresa,'var(--am)')+kpi('Custo Total Escola',tCusto,'var(--r)')+'</div>';
+    var custoParcial = (typeof window.__totalParciais==='function') ? (window.__totalParciais(a,m)||0) : 0;
+    var custoTotalFolha = Math.round(tBruto*1.04) + custoParcial;   // v6.92: = despesa no balancete (inteiros c/ 4% INSS empresa + parciais por aula)
+    h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Bruto (inteiro)',tBruto,'var(--a)')+kpi('INSS + IRPS',tINSS+tIRPS,'var(--am)')+kpi('Líquido (inteiro)',tLiq,'var(--g)')+kpi('Parciais (por aula)',custoParcial,'var(--a2)')+kpi('Custo Total (Int.+Parc.)',custoTotalFolha,'var(--r)')+'</div>';
     h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Descontos</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th style="text-align:right">Líquido</th><th style="text-align:right">INSS Empresa (4%)</th><th style="text-align:right">Custo Total</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var subC=(r.L.subsidios||[]).map(function(s,si){return '<div style="color:var(--g);font-size:10px">+'+fmtN(s.valor)+' '+s.nome+(canEdit?' <a onclick="window.__rmSubsidio('+m+','+Q+r.pid+Q+','+si+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addSubsidio('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ subsídio</a>':'');
