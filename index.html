@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.90</span>
+    <span class="logo-ver">v6.91</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -27814,25 +27814,38 @@ function rFolhaSalarios() {
 }
 
 function exportarFolhaSalarios(mes) {
-  const mesLabel = MESES_SHORT[mes] + ' ' + (CONFIG.anoLectivo||2026);
+  const ano      = CONFIG.anoLectivo||2026;
+  const mesLabel = MESES_SHORT[mes] + ' ' + ano;
   const escola   = ESCOLA_SETTINGS?.nome || 'Scholaris';
   const hoje     = new Date().toLocaleDateString('pt-PT');
   const CSS      = typeof CSS_BASE!=='undefined'?CSS_BASE:'';
   const NP       = typeof NO_PRINT_BAR!=='undefined'?NO_PRINT_BAR:'';
-  const profs    = PROFS.filter(p=>p.salario>0);
-  const rows     = profs.map(p=>{
+
+  // ── Tempo Inteiro (salário fixo) ──
+  const inteiroRows = PROFS.filter(p=>(p.salario||0)>0 && p.regime!=='parcial').map(p=>{
     const bruto=p.salario||0;
-    const subsTotal=Object.values(SUBSIDIOS?.[p.id]?.[CONFIG.anoLectivo||2026]?.[mes]||{}).flat().reduce((s,x)=>s+(x.valor||0),0);
+    const subsTotal=Object.values(SUBSIDIOS?.[p.id]?.[ano]?.[mes]||{}).flat().reduce((s,x)=>s+(x.valor||0),0);
     const totalBruto=bruto+subsTotal;
     const inss=Math.round(totalBruto*0.03);
     const irps=calcIRPS?calcIRPS(totalBruto):Math.round(totalBruto*0.15);
     const liquido=totalBruto-inss-irps;
     return{p,bruto,subsTotal,totalBruto,inss,irps,liquido};
-  });
-  const tB=rows.reduce((s,r)=>s+r.totalBruto,0);
-  const tI=rows.reduce((s,r)=>s+r.inss,0);
-  const tR=rows.reduce((s,r)=>s+r.irps,0);
-  const tL=rows.reduce((s,r)=>s+r.liquido,0);
+  }).sort((a,b)=>(a.p.nome||'').localeCompare(b.p.nome||''));
+
+  // ── Tempo Parcial (por aula, sem salário fixo) ──
+  const valAula = CONFIG.valorAula||140;
+  const parcialRows = PROFS.filter(p=>p.regime==='parcial').map(p=>{
+    const aulas=(typeof window.__aulasParcial==='function')?(window.__aulasParcial(p.id,ano,mes)||0):0;
+    return{p,aulas,valAula,total:aulas*valAula};
+  }).sort((a,b)=>(a.p.nome||'').localeCompare(b.p.nome||''));
+
+  const tiB=inteiroRows.reduce((s,r)=>s+r.totalBruto,0);
+  const tiI=inteiroRows.reduce((s,r)=>s+r.inss,0);
+  const tiR=inteiroRows.reduce((s,r)=>s+r.irps,0);
+  const tiL=inteiroRows.reduce((s,r)=>s+r.liquido,0);
+  const tpA=parcialRows.reduce((s,r)=>s+r.aulas,0);
+  const tpT=parcialRows.reduce((s,r)=>s+r.total,0);
+  const totalPagar=tiL+tpT;
 
   const htmlDoc=`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Folha de Salários — ${mesLabel}</title>${CSS}</head><body>${NP}
@@ -27840,24 +27853,26 @@ function exportarFolhaSalarios(mes) {
     <div class="hdr">
       <div><div class="hdr-nome">${escola}</div><div class="hdr-sub">Folha de Pagamento — ${mesLabel}</div></div>
       <div class="hdr-tipo"><div class="tipo">Folha de Salários</div>
-        <div class="cod">FS-${mes.toString().padStart(2,'0')}-${CONFIG.anoLectivo||2026}</div>
+        <div class="cod">FS-${mes.toString().padStart(2,'0')}-${ano}</div>
         <div style="font-size:9px;color:#94a3b8">${hoje}</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-      ${[{l:'Total Bruto',v:fmt(tB)},{l:'INSS (3%)',v:fmt(tI)},{l:'IRPS',v:fmt(tR)},{l:'Total Líquido',v:fmt(tL)}]
+      ${[{l:'Líquido Inteiros',v:fmt(tiL)},{l:'Total Parciais',v:fmt(tpT)},{l:'INSS + IRPS',v:fmt(tiI+tiR)},{l:'Total a Pagar',v:fmt(totalPagar)}]
         .map(k=>`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
           <div style="font-size:16px;font-weight:800;color:#0D1526">${k.v} MZM</div>
           <div style="font-size:9px;color:#64748b">${k.l}</div>
         </div>`).join('')}
     </div>
+
+    <div style="font-weight:800;font-size:13px;color:#0D1526;margin:6px 0">Tempo Inteiro <span style="font-weight:400;color:#64748b;font-size:11px">— salário fixo · ${inteiroRows.length} colaborador(es)</span></div>
     <table><thead><tr>
       <th>Nº</th><th style="text-align:left">Funcionário</th><th style="text-align:left">Cargo</th>
       <th style="text-align:right">Bruto</th><th style="text-align:right">Subsídios</th>
       <th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th>
       <th style="text-align:right">Líquido</th>
     </tr></thead><tbody>
-      ${rows.map((r,i)=>`<tr>
+      ${inteiroRows.length?inteiroRows.map((r,i)=>`<tr>
         <td style="text-align:center;font-size:10px">${i+1}</td>
         <td style="font-weight:700">${r.p.nome}</td><td style="font-size:10px">${r.p.cargo||'Professor'}</td>
         <td style="text-align:right;font-family:monospace">${fmt(r.bruto)}</td>
@@ -27865,21 +27880,47 @@ function exportarFolhaSalarios(mes) {
         <td style="text-align:right;font-family:monospace">-${fmt(r.inss)}</td>
         <td style="text-align:right;font-family:monospace">-${fmt(r.irps)}</td>
         <td style="text-align:right;font-family:monospace;font-weight:800">${fmt(r.liquido)}</td>
-      </tr>`).join('')}
+      </tr>`).join(''):`<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:8px">Sem colaboradores a tempo inteiro.</td></tr>`}
       <tr style="font-weight:800;border-top:2px solid #e2e8f0">
-        <td colspan="3">TOTAL</td>
-        <td style="text-align:right">${fmt(tB)}</td><td></td>
-        <td style="text-align:right">-${fmt(tI)}</td>
-        <td style="text-align:right">-${fmt(tR)}</td>
-        <td style="text-align:right;color:#166534">${fmt(tL)}</td>
+        <td colspan="3">SUBTOTAL — INTEIRO</td>
+        <td style="text-align:right">${fmt(tiB)}</td><td></td>
+        <td style="text-align:right">-${fmt(tiI)}</td>
+        <td style="text-align:right">-${fmt(tiR)}</td>
+        <td style="text-align:right;color:#166534">${fmt(tiL)}</td>
       </tr>
     </tbody></table>
+
+    <div style="font-weight:800;font-size:13px;color:#0D1526;margin:16px 0 6px">Tempo Parcial <span style="font-weight:400;color:#64748b;font-size:11px">— por aula · ${fmt(valAula)} MZM/aula · ${parcialRows.length} colaborador(es)</span></div>
+    <table><thead><tr>
+      <th>Nº</th><th style="text-align:left">Funcionário</th>
+      <th style="text-align:right">Aulas Dadas</th><th style="text-align:right">Valor/Aula</th>
+      <th style="text-align:right">Total a Pagar</th>
+    </tr></thead><tbody>
+      ${parcialRows.length?parcialRows.map((r,i)=>`<tr>
+        <td style="text-align:center;font-size:10px">${i+1}</td>
+        <td style="font-weight:700">${r.p.nome}<span style="font-size:9px;color:#94a3b8"> · ${r.p.num||''}</span></td>
+        <td style="text-align:right;font-family:monospace">${r.aulas}</td>
+        <td style="text-align:right;font-family:monospace">${fmt(r.valAula)}</td>
+        <td style="text-align:right;font-family:monospace;font-weight:800">${fmt(r.total)}</td>
+      </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:8px">Sem colaboradores a tempo parcial.</td></tr>`}
+      <tr style="font-weight:800;border-top:2px solid #e2e8f0">
+        <td colspan="2">SUBTOTAL — PARCIAL</td>
+        <td style="text-align:right">${tpA}</td><td></td>
+        <td style="text-align:right;color:#166534">${fmt(tpT)}</td>
+      </tr>
+    </tbody></table>
+
+    <div style="margin-top:14px;padding:11px 16px;background:#0D1526;color:#fff;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700">TOTAL A PAGAR — Tempo Inteiro + Tempo Parcial</span>
+      <span style="font-weight:800;font-size:18px">${fmt(totalPagar)} MZM</span>
+    </div>
+
     <div class="sig sig3" style="margin-top:24px">
       <div><div class="sig-line">Gestor Geral</div></div>
       <div><div class="sig-line">Responsável Financeiro</div></div>
       <div><div class="sig-line">Director Geral<br>e Carimbo</div></div>
     </div>
-    <div class="footer"><span>${escola} · ${hoje}</span><span>FS-${mes.toString().padStart(2,'0')}-${CONFIG.anoLectivo||2026}</span><span>Confidencial</span></div>
+    <div class="footer"><span>${escola} · ${hoje}</span><span>FS-${mes.toString().padStart(2,'0')}-${ano}</span><span>Confidencial</span></div>
   </div></body></html>`;
   const w=window.open('','_blank','width=960,height=800');
   if(w){w.document.write(htmlDoc);w.document.close();}
@@ -33793,7 +33834,10 @@ window.__finV30=true;})();
     if(!f){ el.innerHTML=h+'<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem folha para '+nomeMes(m)+'. '+(podeEditar()?'Carregue em "Gerar Folha do Mês".':'')+'</div>'; return; }
 
     var __fAprovada = (f && f.status==='aprovada');
-    var rows=Object.keys(f.linhas).map(function(pid){
+    var rows=Object.keys(f.linhas).filter(function(pid){   // v6.91: parciais SÓ na aba Parcial (elimina o overlap com Inteiro em folhas antigas)
+      var _p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);});
+      return !_p || _p.regime!=='parcial';
+    }).map(function(pid){
       var L=f.linhas[pid];
       var p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);})||{nome:'(removido)',num:'',cargo:''};
       var subs=(L.subsidios||[]).reduce(function(s,x){return s+(x.valor||0);},0);
