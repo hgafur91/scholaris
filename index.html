@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.97</span>
+    <span class="logo-ver">v6.98</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -12900,7 +12900,7 @@ go = function(id) {
       'notas':       () => { const el=document.getElementById('notas-c'); if(el&&el.innerHTML.trim()==='') rNotasTurmas(); },
       'propinas':    () => { const el=document.getElementById('prop-c'); if(el&&el.innerHTML.trim()==='') rPropTurmas(); },
       'despesas':    () => { const el=document.getElementById('desp-c'); if(el&&el.innerHTML.trim()==='') rDespesas(); },
-      'faltas':      () => { const el=document.getElementById('faltas-c'); if(el&&el.innerHTML.trim()==='') rFaltas(); },
+      'faltas':      () => rFaltas(),   // v6.98: verificava 'faltas-c' (não existe; a vista usa 'faltas-alunos') → nunca renderizava
       'inventario':  () => { const el=document.getElementById('inv-c'); if(el&&el.innerHTML.trim()==='') rInv(); },
       'comunicados': () => { const el=document.getElementById('com-c'); if(el&&el.innerHTML.trim()==='') rComunicados(); },
       'disciplina':  () => { const el=document.getElementById('disc-c'); if(el&&el.innerHTML.trim()==='') rDisciplina(); },
@@ -18456,37 +18456,36 @@ function filtrarAuditTrail() {
     'PERFIL_PROF_EDITADO':       {l:'Perfil Editado',         c:'var(--t2)', ic:'ti-user-edit'},
   };
 
-  el.innerHTML = logs.length ? `
-    <div class="card"><div class="tw"><table>
-      <thead><tr>
-        <th>Data / Hora</th><th>Utilizador</th><th>Role</th>
-        <th>Acção</th><th>Entidade</th><th>Detalhe</th>
-        <th>Valor Antes</th><th>Valor Depois</th>
-      </tr></thead>
-      <tbody>
-        ${logs.map(l=>{
-          const info = ACCAO_LABEL[l.accao]||{l:l.accao,c:'var(--t2)',ic:'ti-activity'};
-          const ts   = new Date(l.timestamp);
-          return `<tr>
-            <td style="font-family:var(--fm);font-size:10px;white-space:nowrap">
-              ${ts.toLocaleDateString('pt-PT')}<br>
-              <span style="color:var(--t3)">${ts.toLocaleTimeString('pt-PT')}</span>
-            </td>
-            <td style="font-weight:700;font-size:12px">${l.utilizador}</td>
-            <td><span class="badge bin" style="font-size:9px">${l.role}</span></td>
-            <td>
-              <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:${info.c};font-weight:600">
-                <i class="ti ${info.ic}" style="font-size:12px"></i>${info.l}
-              </span>
-            </td>
-            <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.entidade}</td>
-            <td style="font-size:10px;color:var(--t2);max-width:180px">${l.detalhe}</td>
-            <td style="font-size:11px;color:var(--t3)">${l.valorAntes||'—'}</td>
-            <td style="font-size:11px;color:var(--g)">${l.valorDepois||'—'}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div></div>` :
+  // v6.98: linha da tabela (reutilizada nos grupos por semana)
+  const _linha = (l) => {
+    const info = ACCAO_LABEL[l.accao]||{l:l.accao,c:'var(--t2)',ic:'ti-activity'};
+    const ts   = new Date(l.timestamp);
+    return `<tr>
+      <td style="font-family:var(--fm);font-size:10px;white-space:nowrap">${ts.toLocaleDateString('pt-PT')}<br><span style="color:var(--t3)">${ts.toLocaleTimeString('pt-PT')}</span></td>
+      <td style="font-weight:700;font-size:12px">${l.utilizador}</td>
+      <td><span class="badge bin" style="font-size:9px">${l.role}</span></td>
+      <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:${info.c};font-weight:600"><i class="ti ${info.ic}" style="font-size:12px"></i>${info.l}</span></td>
+      <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.entidade}</td>
+      <td style="font-size:10px;color:var(--t2);max-width:180px">${l.detalhe}</td>
+      <td style="font-size:11px;color:var(--t3)">${l.valorAntes||'—'}</td>
+      <td style="font-size:11px;color:var(--g)">${l.valorDepois||'—'}</td>
+    </tr>`;
+  };
+  // v6.98: agrupar por SEMANA DO ANO (ISO), em janelas colapsáveis, mais recente primeiro.
+  const _isoWeek = (d) => { const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-day+3); const firstThu=new Date(Date.UTC(t.getUTCFullYear(),0,4)); const w=1+Math.round(((t-firstThu)/86400000-3+((firstThu.getUTCDay()+6)%7))/7); return {ano:t.getUTCFullYear(), semana:w}; };
+  const grupos={}, ordem=[];
+  logs.forEach(l=>{ const ts=new Date(l.timestamp); const iw=_isoWeek(ts); const key=iw.ano+'-W'+String(iw.semana).padStart(2,'0'); if(!grupos[key]){ grupos[key]={ano:iw.ano,semana:iw.semana,itens:[],min:ts,max:ts}; ordem.push(key); } grupos[key].itens.push(l); if(ts<grupos[key].min)grupos[key].min=ts; if(ts>grupos[key].max)grupos[key].max=ts; });
+  ordem.sort((a,b)=> a<b?1:a>b?-1:0);
+  el.innerHTML = logs.length ? ordem.map((key,gi)=>{ const g=grupos[key];
+    const intervalo = g.min.toLocaleDateString('pt-PT')+' – '+g.max.toLocaleDateString('pt-PT');
+    return `<details ${gi===0?'open':''} style="margin-bottom:10px;border:1px solid var(--b);border-radius:var(--rad);overflow:hidden">
+      <summary style="cursor:pointer;padding:12px 16px;background:var(--bg3);font-weight:700;display:flex;justify-content:space-between;align-items:center">
+        <span><i class="ti ti-calendar-week" style="margin-right:6px;color:var(--tl)"></i>Semana ${g.semana} de ${g.ano} <span style="font-weight:400;color:var(--t2);font-size:12px">· ${intervalo}</span></span>
+        <span class="badge bin">${g.itens.length} registo(s)</span>
+      </summary>
+      <div class="tw"><table><thead><tr><th>Data / Hora</th><th>Utilizador</th><th>Role</th><th>Acção</th><th>Entidade</th><th>Detalhe</th><th>Antes</th><th>Depois</th></tr></thead><tbody>${g.itens.map(_linha).join('')}</tbody></table></div>
+    </details>`;
+  }).join('') :
     `<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Sem registos de auditoria para os filtros seleccionados.</div>`;
 }
 
@@ -31636,12 +31635,19 @@ try{ window.__fixDespModal(); }catch(e){}
 window.loadDespesasFirestore=async function(){
   try{
     if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')) return;
-    var res=await window._supabase.from('despesas').select('*').eq('escola_id', window._escolaId);
-    var rows=res && res.data; if(!rows||!rows.length) return;
     if(typeof DESPESAS_REG==='undefined') window.DESPESAS_REG=[];
     var have={}; DESPESAS_REG.forEach(function(d){ have[d.id]=true; });
-    rows.forEach(function(r){ if(!have[r.desp_id]){ DESPESAS_REG.push({id:r.desp_id, data:r.data_desp, mes:((r.mes==null||r.mes==='')?null:(parseInt(r.mes,10)||null)), categoria:r.categoria, descricao:r.descricao, valor:r.valor, ref:r.ref}); } });  // v6.95: mes SEMPRE número (o splice usava === estrito)
+    var _from=0, _step=1000;   // v6.98: paginar (o load antigo cortava silenciosamente acima de 1000 despesas)
+    while(true){
+      var res=await window._supabase.from('despesas').select('*').eq('escola_id', window._escolaId).range(_from,_from+_step-1);
+      var rows=(res && res.data)||[]; if(!rows.length) break;
+      rows.forEach(function(r){ if(!have[r.desp_id]){ have[r.desp_id]=true; DESPESAS_REG.push({id:r.desp_id, data:r.data_desp, mes:((r.mes==null||r.mes==='')?null:(parseInt(r.mes,10)||null)), categoria:r.categoria, descricao:r.descricao, valor:r.valor, ref:r.ref}); } });  // v6.95: mes SEMPRE número
+      if(rows.length<_step) break; _from+=_step;
+    }
+    // v6.98: as despesas carregam ASYNC — re-renderizar a vista actual para os cartões
+    // financeiros (dashboard/balancete) deixarem de mostrar 0 até mudar de aba.
     try{ if(typeof rDespesas==='function') rDespesas(); }catch(e){}
+    try{ if(window.__viewActual && typeof go==='function') go(window.__viewActual); }catch(e){}
   }catch(e){ console.warn('loadDespesas', e && e.message); }
 };
 try{ setTimeout(function(){ window.loadDespesasFirestore(); }, 2000); }catch(e){}
