@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.92</span>
+    <span class="logo-ver">v6.93</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -27845,7 +27845,9 @@ function exportarFolhaSalarios(mes) {
   const tiL=inteiroRows.reduce((s,r)=>s+r.liquido,0);
   const tpA=parcialRows.reduce((s,r)=>s+r.aulas,0);
   const tpT=parcialRows.reduce((s,r)=>s+r.total,0);
-  const totalPagar=tiL+tpT;
+  const totalPagar=tiL+tpT;                    // líquido a pagar aos colaboradores
+  const custoInteiro=Math.round(tiB*1.04);     // v6.92: inteiros c/ 4% INSS empresa
+  const custoTotal=custoInteiro+tpT;           // = despesa da folha no balancete
 
   const htmlDoc=`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Folha de Salários — ${mesLabel}</title>${CSS}</head><body>${NP}
@@ -27858,7 +27860,7 @@ function exportarFolhaSalarios(mes) {
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-      ${[{l:'Líquido Inteiros',v:fmt(tiL)},{l:'Total Parciais',v:fmt(tpT)},{l:'INSS + IRPS',v:fmt(tiI+tiR)},{l:'Total a Pagar',v:fmt(totalPagar)}]
+      ${[{l:'Bruto (inteiro)',v:fmt(tiB)},{l:'Líquido a Pagar',v:fmt(totalPagar)},{l:'Parciais (por aula)',v:fmt(tpT)},{l:'Custo Total (= balancete)',v:fmt(custoTotal)}]
         .map(k=>`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
           <div style="font-size:16px;font-weight:800;color:#0D1526">${k.v} MZM</div>
           <div style="font-size:9px;color:#64748b">${k.l}</div>
@@ -27910,9 +27912,15 @@ function exportarFolhaSalarios(mes) {
       </tr>
     </tbody></table>
 
-    <div style="margin-top:14px;padding:11px 16px;background:#0D1526;color:#fff;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-weight:700">TOTAL A PAGAR — Tempo Inteiro + Tempo Parcial</span>
-      <span style="font-weight:800;font-size:18px">${fmt(totalPagar)} MZM</span>
+    <div style="margin-top:14px;padding:11px 16px;background:#0D1526;color:#fff;border-radius:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700">CUSTO TOTAL DA FOLHA — Inteiro + Parcial <span style="font-weight:400;font-size:10px;color:#94a3b8">(valor no balancete)</span></span>
+        <span style="font-weight:800;font-size:18px">${fmt(custoTotal)} MZM</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:11px;color:#cbd5e1">
+        <span>Líquido a pagar aos colaboradores (após INSS/IRPS)</span>
+        <span style="font-weight:700">${fmt(totalPagar)} MZM</span>
+      </div>
     </div>
 
     <div class="sig sig3" style="margin-top:24px">
