@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.95</span>
+    <span class="logo-ver">v6.96</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1895,13 +1895,11 @@ console.log('[Scholaris] Supabase v2 inicializado');
 
 <!-- Modal: Configurar Escalões de Multa -->
 <div class="modal-ov" id="m-escaloes"><div class="modal">
-  <div class="mhd"><span class="mt">Configurar Escalões de Multa</span><button class="mclose" onclick="closeM('m-escaloes')"><i class="ti ti-x"></i></button></div>
+  <div class="mhd"><span class="mt">Multa de Atraso</span><button class="mclose" onclick="closeM('m-escaloes')"><i class="ti ti-x"></i></button></div>
   <div class="mbod">
-    <div class="ib-box ib-am"><i class="ti ti-info-circle"></i> O sistema calcula automaticamente a multa com base na data de pagamento.</div>
     <div id="escaloes-lista"></div>
-    <button class="btn btn-g btn-sm" style="margin-top:10px;width:100%" onclick="addEscalao()"><i class="ti ti-plus"></i> Adicionar Escalão</button>
   </div>
-  <div class="mft"><button class="btn btn-g" onclick="closeM('m-escaloes')">Cancelar</button><button class="btn btn-p" onclick="guardarEscaloes()">Guardar Escalões</button></div>
+  <div class="mft"><button class="btn btn-p" onclick="guardarEscaloes()">Concluído</button></div>
 </div></div>
 
 <!-- Modal: Desconto / Isenção -->
@@ -3845,7 +3843,7 @@ function rConfig(){
     <div class="setting-row"><div><div class="setting-label">Exame obrigatório na média</div></div><button class="toggle ${CONFIG.exameObrigatorio?'on':''}" onclick="CONFIG.exameObrigatorio=!CONFIG.exameObrigatorio;this.classList.toggle('on');toast('Guardado!')"></button></div>`;
   document.getElementById('config-fin').innerHTML=`
     <div class="setting-row"><div><div class="setting-label">Valor da propina</div><div class="setting-desc">Definido por classe em "Valores por Classe" (abaixo). Cada turma usa a propina da sua classe.</div></div></div>
-    <div class="setting-row"><div><div class="setting-label">Multa de atraso (%)</div><div class="setting-desc">Percentagem adicionada após dia 10</div></div><input type="number" class="ffi" style="width:80px" value="${CONFIG.multaPropina}" onchange="CONFIG.multaPropina=+this.value;toast('Guardado!')"></div>`;
+    <div class="setting-row"><div><div class="setting-label">Multa de atraso (%)</div><div class="setting-desc">% única sobre a propina, só em meses já vencidos. O mês corrente não tem multa (começa no dia de vencimento do mês seguinte).</div></div><input type="number" class="ffi" style="width:80px" value="${CONFIG.multaPropina}" onchange="__setMultaPct(this.value)"></div>`;
   document.getElementById('config-faltas').innerHTML=`
     <div class="setting-row"><div><div class="setting-label">% Máxima de faltas por semestre</div><div class="setting-desc">Acima deste valor o aluno é assinalado "excluído" (indicador — não bloqueia matrícula/acesso automaticamente)</div></div><div style="display:flex;align-items:center;gap:8px"><input type="number" class="ffi" style="width:80px" value="${CONFIG.faltasMaxPct}" onchange="CONFIG.faltasMaxPct=+this.value;toast('% actualizada!');rFaltas&&rFaltas()"><span style="font-size:13px;color:var(--t2)">%</span></div></div>
     <div class="setting-row"><div><div class="setting-label">Total de aulas por trimestre</div></div><div style="display:flex;gap:8px"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT1}" onchange="CONFIG.totalAulasT1=+this.value;toast('T1 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT2}" onchange="CONFIG.totalAulasT2=+this.value;toast('T2 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT3}" onchange="CONFIG.totalAulasT3=+this.value;toast('T3 guardado!')""></div></div>
@@ -6594,45 +6592,33 @@ function openEscaloes() {
 function renderEscaloes() {
   const el = document.getElementById('escaloes-lista');
   if (!el) return;
-  const esc = CONFIG.escaloesMulta || [];
-  if (!esc.length) {
-    el.innerHTML = '<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem escalões definidos. Adicione pelo menos um.</div>';
-    return;
-  }
-  el.innerHTML = esc.map((e, i) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg3);border-radius:var(--rads);margin-bottom:8px;border:1px solid var(--b)">
-      <div style="flex:1;display:flex;gap:12px;align-items:center">
-        <div>
-          <div class="fl" style="margin-bottom:4px">A partir do dia</div>
-          <input type="number" class="ffi" style="width:80px" value="${e.dia}" min="1" max="31"
-            onchange="CONFIG.escaloesMulta[${i}].dia=+this.value">
-        </div>
-        <div style="font-size:20px;color:var(--t3)">→</div>
-        <div>
-          <div class="fl" style="margin-bottom:4px">Multa (%)</div>
-          <input type="number" class="ffi" style="width:80px" value="${e.pct}" min="0" max="200"
-            onchange="CONFIG.escaloesMulta[${i}].pct=+this.value">
-        </div>
-        <div style="padding:0 8px">
-          <div style="font-size:11px;color:var(--t2)">Valor com multa</div>
-          <div style="font-size:16px;font-weight:800;color:var(--am)">${Math.round(CONFIG.valorPropina*(1+e.pct/100)).toLocaleString()} MZM</div>
-        </div>
+  // v6.96: controlo ÚNICO de multa (substitui os escalões). Uma % + dia de vencimento.
+  const pct  = (CONFIG.multaPropina!=null) ? CONFIG.multaPropina : 0;
+  const dv   = CONFIG.diaVencimento || 5;
+  const base = CONFIG.valorPropina || 4500;
+  const canEdit = ['gestor','director'].includes(curRole);
+  const dis = canEdit ? '' : 'disabled';
+  el.innerHTML = `
+    <div class="ib-box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i>
+      <strong>Como funciona a multa:</strong> uma única percentagem sobre a propina, aplicada <strong>só a meses já vencidos</strong>.
+      O <strong>mês corrente nunca tem multa</strong> — ela só começa a contar no <strong>dia ${dv} do mês seguinte</strong>
+      ao mês da propina.</div>
+    <div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px">
+      <div>
+        <div class="fl" style="margin-bottom:4px">Percentagem de multa (%)</div>
+        <input type="number" class="ffi" style="width:110px" value="${pct}" min="0" max="200" ${dis} onchange="__setMultaPct(this.value)">
       </div>
-      <button class="btn btn-re btn-sm" onclick="CONFIG.escaloesMulta.splice(${i},1);renderEscaloes()">
-        <i class="ti ti-trash"></i>
-      </button>
-    </div>`).join('');
-
-  // Preview actual multa
-  const multaActual = calcMultaActual();
-  el.innerHTML += `
-    <div class="ib-box ib-${multaActual>0?'am':'gr'}" style="margin-top:12px">
-      <i class="ti ti-${multaActual>0?'alert-triangle':'check'}"></i>
-      <strong>Hoje (dia ${new Date().getDate()}):</strong>
-      ${multaActual>0
-        ? `Multa activa de <strong>${multaActual}%</strong> — propina de ${CONFIG.valorPropina.toLocaleString()} MZM passa a <strong>${Math.round(CONFIG.valorPropina*(1+multaActual/100)).toLocaleString()} MZM</strong>`
-        : `Sem multa activa — propina base: <strong>${CONFIG.valorPropina.toLocaleString()} MZM</strong>`}
-    </div>`;
+      <div>
+        <div class="fl" style="margin-bottom:4px">Dia de vencimento</div>
+        <input type="number" class="ffi" style="width:110px" value="${dv}" min="1" max="28" ${dis} onchange="__setDiaVenc(this.value)">
+      </div>
+    </div>
+    <div class="ib-box ib-${pct>0?'am':'gr'}" style="margin-top:14px"><i class="ti ti-${pct>0?'alert-triangle':'check'}"></i>
+      ${pct>0
+        ? `Uma propina de <strong>${base.toLocaleString()} MZM</strong> vencida (mês já terminado) passa a <strong>${Math.round(base*(1+pct/100)).toLocaleString()} MZM</strong> — multa de ${pct}%.`
+        : `Multa a <strong>0%</strong> — as propinas vencidas ficam apenas em dívida pelo valor base, sem acréscimo.`}
+    </div>
+    ${canEdit?'':'<div class="setting-desc" style="margin-top:8px">Apenas o gestor e o director podem alterar.</div>'}`;
 }
 
 function addEscalao() {
@@ -6642,10 +6628,10 @@ function addEscalao() {
 }
 
 async function guardarEscaloes() {
-  CONFIG.escaloesMulta.sort((a,b) => a.dia - b.dia);
-  await saveConfigToFirestore();
+  // v6.96: já não há escalões — a % e o dia de vencimento persistem no onchange (__setMultaPct/__setDiaVenc).
+  try { if (typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); else await saveConfigToFirestore(); } catch(e){}
   closeM('m-escaloes');
-  toast('Escalões de multa guardados!');
+  toast('Multa de atraso guardada.');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -7319,11 +7305,11 @@ rConfig = function() {
     el.innerHTML += `
       <div class="setting-row">
         <div>
-          <div class="setting-label">Escalões de Multa</div>
-          <div class="setting-desc">Configure as percentagens por data de pagamento em atraso</div>
+          <div class="setting-label">Multa de Atraso</div>
+          <div class="setting-desc">Percentagem única + dia de vencimento (o mês corrente não tem multa)</div>
         </div>
         <button class="btn btn-am btn-sm" onclick="openEscaloes()">
-          <i class="ti ti-stairs"></i> Configurar Escalões
+          <i class="ti ti-stairs"></i> Configurar Multa
         </button>
       </div>
       <div class="setting-row">
@@ -7672,8 +7658,8 @@ function rConfigFin() {
   if (!el) return;
   el.innerHTML = `
     <div class="setting-row"><div><div class="setting-label">Valor da propina</div><div class="setting-desc">Definido por classe em "Valores por Classe" (abaixo). Cada turma usa a propina da sua classe.</div></div></div>
-    <div class="setting-row"><div><div class="setting-label">Multa de atraso base (%)</div><div class="setting-desc">Use escalões para multas progressivas</div></div><input type="number" class="ffi" style="width:80px" value="${CONFIG.multaPropina}" onchange="CONFIG.multaPropina=+this.value;toast('Guardado!')"></div>
-    <div class="setting-row"><div><div class="setting-label">Escalões de Multa</div><div class="setting-desc">Percentagens progressivas por data</div></div><button class="btn btn-am btn-sm" onclick="openEscaloes()"><i class="ti ti-stairs"></i> Configurar Escalões</button></div>
+    <div class="setting-row"><div><div class="setting-label">Multa de atraso (%)</div><div class="setting-desc">% única sobre a propina, só em meses já vencidos (o mês corrente não tem multa)</div></div><input type="number" class="ffi" style="width:80px" value="${CONFIG.multaPropina}" onchange="__setMultaPct(this.value)"></div>
+    <div class="setting-row"><div><div class="setting-label">Multa de Atraso</div><div class="setting-desc">Percentagem única + dia de vencimento</div></div><button class="btn btn-am btn-sm" onclick="openEscaloes()"><i class="ti ti-stairs"></i> Configurar Multa</button></div>
     <div class="setting-row"><div><div class="setting-label">Descontos / Isenções</div><div class="setting-desc">Bolseiros, filhos de professores</div></div><button class="btn btn-tl btn-sm" onclick="openM('m-desconto')"><i class="ti ti-discount"></i> Gerir Descontos</button></div>`;
 }
 function rConfigFaltas() {
@@ -32857,8 +32843,35 @@ window.__diasAtrasoPropina=function(mesIdx){try{var hoje=new Date();var ano=(typ
 window.__multaPropina=function(turmaId,mesIdx){try{var base=(typeof getPropinaTurma==='function')?getPropinaTurma(turmaId):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);return Math.round(base*pct/100);}catch(e){return 0;}};
 try{window.calcMulta=function(prop,mesIdx){try{return (prop&&prop.st==='multa')?Math.round((prop.v||0)*((prop.multaPct||0)/100)):0;}catch(e){return 0;}};}catch(e){}
 try{window.updatePagValor=function(){try{var a=(typeof ALUNOS!=='undefined')?ALUNOS.find(function(x){return x.id===_pagAlunoId;}):null;if(!a)return;var semMulta=!!(document.getElementById('pag-sem-multa')&&document.getElementById('pag-sem-multa').checked);var total=0;_pagMesesSel.forEach(function(mi){var p=a.propinas[mi];var base=(p&&p.v!=null)?p.v:((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):4500);var m=(semMulta||!p||p.st!=='multa')?0:Math.round((p.v||0)*((p.multaPct||0)/100));total+=base+m;});var el=document.getElementById('pag-valor');if(el)el.value=total;}catch(e){}};}catch(e){}
-try{window.__aplicarMultasAutomaticas=function(aluno){try{var lista=aluno?[aluno]:((typeof ALUNOS!=='undefined')?ALUNOS:[]);var mudou=false;lista.forEach(function(a){if(!a||!a.propinas)return;var _bol=(a.bolsaPct||0);if(_bol>=100)return;var base=((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500))*(1-_bol/100);Object.keys(a.propinas).forEach(function(k){var p=a.propinas[k];if(!p)return;if(p.st==='isento'||p.multaIsenta)return;var mesIdx=(typeof p.m!=='undefined')?(p.m-1):(parseInt(k,10));var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);if(p.st==='npago'&&pct>0){p.st='multa';p.multaAuto=true;p.multaLock=true;p.multaPct=pct;p.v=Math.round(base);mudou=true;}});});return mudou;}catch(e){return false;}};}catch(e){}
-window.__setDiaVenc=function(v){try{if(typeof CONFIG!=='undefined')CONFIG.diaVencimento=parseInt(v,10)||5;if(typeof toast==='function')toast('Guardado');if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}};
+try{window.__aplicarMultasAutomaticas=function(aluno){try{
+  /* v6.96 — MODELO ÚNICO DE MULTA: uma só % (CONFIG.multaPropina), aplicada SÓ a meses já
+     vencidos. A multa começa a contar no dia de vencimento (CONFIG.diaVencimento) do MÊS
+     SEGUINTE ao mês da propina → o mês corrente nunca tem multa. */
+  var pct=(typeof CONFIG!=='undefined'&&CONFIG.multaPropina!=null)?(parseFloat(CONFIG.multaPropina)||0):0;
+  var dv=(typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)?(parseInt(CONFIG.diaVencimento,10)||5):5;
+  var anoL=(typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear();
+  var hoje=new Date();
+  var lista=aluno?[aluno]:((typeof ALUNOS!=='undefined')?ALUNOS:[]);var mudou=false;
+  lista.forEach(function(a){if(!a||!a.propinas)return;var _bol=(a.bolsaPct||0);if(_bol>=100)return;
+    var base=((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500))*(1-_bol/100);
+    Object.keys(a.propinas).forEach(function(k){var p=a.propinas[k];if(!p)return;if(p.st==='isento'||p.multaIsenta)return;
+      var mesIdx=(typeof p.m!=='undefined')?(p.m-1):(parseInt(k,10));
+      var venceMultaEm=new Date(anoL,mesIdx+1,dv);   // dia de vencimento do MÊS SEGUINTE
+      if(pct>0 && p.st==='npago' && hoje>=venceMultaEm){ p.st='multa';p.multaAuto=true;p.multaLock=true;p.multaPct=pct;p.v=Math.round(base);mudou=true; }
+    });
+  });
+  return mudou;
+}catch(e){return false;}};}catch(e){}
+window.__setDiaVenc=function(v){try{if(typeof CONFIG!=='undefined')CONFIG.diaVencimento=parseInt(v,10)||5;if(typeof window.__aplicarMultasAutomaticas==='function')window.__aplicarMultasAutomaticas();if(typeof window.__persistConfigSilent==='function')window.__persistConfigSilent();if(typeof toast==='function')toast('Dia de vencimento: '+(CONFIG.diaVencimento));if(typeof renderEscaloes==='function'&&document.getElementById('escaloes-lista'))renderEscaloes();if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}};
+// v6.96: setter ÚNICO da percentagem de multa — actualiza as multas já aplicadas, recalcula, persiste e refresca.
+window.__setMultaPct=function(v){try{var n=parseFloat(v);if(isNaN(n)||n<0)n=0;if(typeof CONFIG!=='undefined')CONFIG.multaPropina=n;
+  try{(typeof ALUNOS!=='undefined'?ALUNOS:[]).forEach(function(a){if(!a||!a.propinas)return;Object.keys(a.propinas).forEach(function(k){var p=a.propinas[k];if(p&&p.st==='multa'&&!p.multaIsenta)p.multaPct=n;});});}catch(e){}
+  if(typeof window.__aplicarMultasAutomaticas==='function')window.__aplicarMultasAutomaticas();
+  if(typeof window.__persistConfigSilent==='function')window.__persistConfigSilent();
+  if(typeof toast==='function')toast('Multa de atraso: '+n+'%');
+  if(typeof renderEscaloes==='function'&&document.getElementById('escaloes-lista'))renderEscaloes();
+  if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();
+}catch(e){}};
 window.__applyValorClasse=function(classe,campo,val){try{val=parseFloat(val)||0;if(typeof CONFIG!=='undefined'){if(!CONFIG.valoresPorClasse)CONFIG.valoresPorClasse={};if(!CONFIG.valoresPorClasse[classe])CONFIG.valoresPorClasse[classe]={};CONFIG.valoresPorClasse[classe][campo]=val;}if(typeof TURMAS!=='undefined'){TURMAS.forEach(function(t){if((''+t.classe)===(''+classe)){t[campo]=val;}});}if(typeof window.__persistConfigSilent==='function')window.__persistConfigSilent();if(typeof toast==='function')toast('Guardado');if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}};
 window.__syncValoresClasse=function(){try{if(typeof CONFIG==='undefined'||!CONFIG.valoresPorClasse||typeof TURMAS==='undefined')return;TURMAS.forEach(function(t){var v=CONFIG.valoresPorClasse[t.classe];if(v){if(v.propina!==undefined)t.propina=v.propina;if(v.inscricao!==undefined)t.inscricao=v.inscricao;if(v.matricula!==undefined)t.matricula=v.matricula;}});}catch(e){}};
 window.__renderValoresClasse=function(){try{var host=document.getElementById('config-fin');if(!host)return;if(document.getElementById('vpc-box'))return;window.__syncValoresClasse();var can=(typeof curRole!=='undefined')&&(curRole==='gestor'||curRole==='director');var dis=can?'':'disabled';var classes=[];try{if(typeof TURMAS!=='undefined')TURMAS.forEach(function(t){if(classes.indexOf(''+t.classe)<0)classes.push(''+t.classe);});}catch(e){}classes.sort(function(a,b){return (parseFloat(a)||0)-(parseFloat(b)||0);});var dv=(typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)||5;var pp=(typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500;var Q=String.fromCharCode(34);var A=String.fromCharCode(39);var box=document.createElement('div');box.id='vpc-box';box.style.marginTop='18px';var h='';h+='<div class='+Q+'setting-row'+Q+'><div><div class='+Q+'setting-label'+Q+'>Dia de vencimento da propina</div><div class='+Q+'setting-desc'+Q+'>Dia do mes em que a propina vence. A multa conta os dias de atraso a partir deste dia.</div></div><div><input type='+Q+'number'+Q+' min='+Q+'1'+Q+' max='+Q+'28'+Q+' class='+Q+'ffi'+Q+' style='+Q+'width:80px'+Q+' value='+Q+dv+Q+' '+dis+' onchange='+Q+'__setDiaVenc(this.value)'+Q+'></div></div>';h+='<div style='+Q+'margin-top:16px;font-weight:600'+Q+'>Valores por Classe</div><div class='+Q+'setting-desc'+Q+' style='+Q+'margin-bottom:8px'+Q+'>Propina, inscricao e matricula por classe. Aplica-se a todas as turmas da mesma classe.</div>';if(!classes.length){h+='<div class='+Q+'ib box ib-am'+Q+'>Sem turmas. Crie turmas para definir os valores por classe.</div>';}else{h+='<table style='+Q+'width:100%;border-collapse:collapse'+Q+'><tr style='+Q+'text-align:left;color:var(--t3);font-size:12px'+Q+'><th style='+Q+'padding:6px'+Q+'>Classe</th><th style='+Q+'padding:6px'+Q+'>Propina</th><th style='+Q+'padding:6px'+Q+'>Inscricao</th><th style='+Q+'padding:6px'+Q+'>Matricula</th></tr>';classes.forEach(function(c){var vp=(CONFIG.valoresPorClasse&&CONFIG.valoresPorClasse[c])||{};function inp(campo,val,ph){return '<input type='+Q+'number'+Q+' class='+Q+'ffi'+Q+' style='+Q+'width:90px'+Q+' '+dis+' value='+Q+(val!==undefined?val:'')+Q+' placeholder='+Q+ph+Q+' onchange='+Q+'__applyValorClasse('+A+c+A+','+A+campo+A+',this.value)'+Q+'>';}h+='<tr style='+Q+'border-top:1px solid var(--b)'+Q+'><td style='+Q+'padding:6px;font-weight:600'+Q+'>'+c+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('propina',vp.propina,pp)+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('inscricao',vp.inscricao,'0')+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('matricula',vp.matricula,'0')+'</td></tr>';});h+='</table>';}if(!can)h+='<div class='+Q+'setting-desc'+Q+' style='+Q+'margin-top:8px'+Q+'>Apenas o gestor e o director podem alterar estes valores.</div>';box.innerHTML=h;host.appendChild(box);}catch(e){}};
