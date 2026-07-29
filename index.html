@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.98</span>
+    <span class="logo-ver">v6.99</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3397,7 +3397,7 @@ const ROLES={
   professor:{nome:'Professor',cargo:'Professor',avt:'CM',color:'var(--g)',badge:'Professor',
     sidebar:[
       {sl:'Portal Professor',flat:[{i:'ti-layout-dashboard',l:'As Minhas Aulas',id:'portal-prof'},{i:'ti-school',l:'As Minhas Turmas',id:'minhas-turmas'},{i:'ti-id-badge',l:'O Meu Perfil',id:'meu-perfil-prof'},{i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},{i:'ti-star',l:'Lançar Notas',id:'notas'},{i:'ti-calendar',l:'O Meu Horário',id:'horario'}]},
-      {sl:'Consulta',flat:[{i:'ti-school',l:'Planos Analíticos',id:'curr-planos'},{i:'ti-books',l:'Biblioteca',id:'bib'}]},{sl:'Comunicação',flat:[{i:'ti-speakerphone',l:'Comunicados',id:'comunicados-prof'},{i:'ti-clipboard-list',l:'Trabalhos',id:'trabalhos-prof'}]},
+      {sl:'Consulta',flat:[{i:'ti-school',l:'Planos Analíticos',id:'curr-planos'},{i:'ti-calendar-event',l:'Calendário Escolar',id:'calendario-escolar'},{i:'ti-books',l:'Biblioteca',id:'bib'}]},{sl:'Comunicação',flat:[{i:'ti-speakerphone',l:'Comunicados',id:'comunicados-prof'},{i:'ti-clipboard-list',l:'Trabalhos',id:'trabalhos-prof'}]},
     ]},
   aluno:{nome:'Aaron Chaimite',cargo:'Aluno',avt:'AC',color:'var(--am)',badge:'Aluno',
     sidebar:[
@@ -3409,6 +3409,7 @@ const ROLES={
         {i:'ti-clipboard-list', l:'Trabalhos',          id:'portal',tab:'trabalhos'},
         {i:'ti-books',          l:'Materiais & Quiz',   id:'portal',tab:'materiais'},
         {i:'ti-speakerphone',   l:'Comunicados',        id:'portal',tab:'comunicados'},
+        {i:'ti-calendar-event', l:'Calendário Escolar', id:'calendario-escolar'},
       ]},
     ]},
   director:{nome:'Dr. João Machava',cargo:'Director Escolar',avt:'JM',color:'var(--a2)',badge:'Director',
@@ -3480,6 +3481,7 @@ const ROLES={
         {i:'ti-clipboard-list',l:'Trabalhos',id:'portal-enc-trabalhos'},
         {i:'ti-credit-card',l:'Propinas',id:'portal-enc-propinas'},
         {i:'ti-calendar',l:'Horário',id:'portal-enc-horario'},
+        {i:'ti-calendar-event',l:'Calendário Escolar',id:'calendario-escolar'},
       ]},
       {sl:'Comunicação',flat:[
         {i:'ti-speakerphone',l:'Comunicados',id:'comunicados'},
@@ -8504,7 +8506,7 @@ function salvarCalendarioEscolar() {
 // ── RENDER PLANO ANUAL ────────────────────────────────────────
 function rCalendarioEscolar() {
   loadCalendarioEscolar();
-  const canEdit = (curRole === 'gestor' || curRole === 'director');
+  const canEdit = ['director','dir-pedagogico','gestor'].includes(curRole);  // v6.99: DG + DP (+ gestor/dono); todos os outros só vêem
   const editInfo = document.getElementById('calendario-edit-info');
   const btnSalvar = document.getElementById('btn-salvar-calendario');
   if (editInfo) editInfo.style.display = canEdit ? '' : 'none';
@@ -11083,7 +11085,7 @@ rCalendarioEscolar = function() {
       loadCalendarioEscolar();
     }
   }
-  const canEdit = (curRole === 'gestor' || curRole === 'director');
+  const canEdit = ['director','dir-pedagogico','gestor'].includes(curRole);  // v6.99: DG + DP (+ gestor/dono); todos os outros só vêem
   const editInfo = document.getElementById('calendario-edit-info');
   const btnSalvar = document.getElementById('btn-salvar-calendario');
   if (editInfo) editInfo.style.display = canEdit ? '' : 'none';
