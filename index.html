@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.101</span>
+    <span class="logo-ver">v6.102</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -37318,7 +37318,11 @@ window.trimestreActual = function(d){
            || (window.souDT && window.souDT());
   };
 
-  // Detalhe de faltas de um aluno (modal) com opção de remover/justificar
+  // v6.102: helpers do fecho de trimestre de faltas
+  window.__trimDe = function(data){ try{ var m=parseInt(String(data).slice(5,7),10)||1; return m<=4?1:(m<=8?2:3); }catch(e){ return 1; } };
+  window.__faltasFechado = function(turmaId, trim){ try{ return !!(typeof CONFIG!=='undefined' && CONFIG.faltasFechado && CONFIG.faltasFechado[turmaId+'-'+trim]); }catch(e){ return false; } };
+
+  // Detalhe de faltas de um aluno (modal) — Justificar / Não Justificar / Retirar; respeita o fecho do trimestre
   window.verFaltasAluno = async function(alunoDbId, nome, turmaId){
     if(!(window._supabase && window._escolaId)) { toast('Sem ligação.'); return; }
     var res = await window._supabase.from('faltas').select('*')
@@ -37327,33 +37331,52 @@ window.trimestreActual = function(d){
     if(res.error){ toast('Erro: '+res.error.message); return; }
     var rows = res.data || [];
     var pode = window.podeEditarFaltas();
+    var _q = function(s){ return String(s==null?'':s).replace(/\x27/g,''); };
     var linhas = rows.length ? rows.map(function(f){
-      return '<tr>'
-        + '<td style="font-family:var(--fm);font-size:11px">'+f.data+'</td>'
-        + '<td>'+(f.disciplina||'—')+'</td>'
-        + '<td style="text-align:center"><span class="badge '+(f.tipo==='J'||f.justif?'bok':f.tipo==='A'?'bwn':'ber')+'">'+(f.justif?'Justif.':f.tipo==='A'?'Atraso':'Falta')+'</span></td>'
-        + (pode?('<td style="text-align:center;white-space:nowrap">'
-            + (f.justif?'':'<button class="btn btn-g btn-sm" title="Justificar" onclick="justificarFalta(\''+f.id+'\',\''+alunoDbId+'\',\''+nome.replace(/\x27/g,"")+'\',\''+turmaId+'\')"><i class="ti ti-check"></i></button> ')
-            + '<button class="btn btn-re btn-sm" title="Retirar" onclick="retirarFalta(\''+f.id+'\',\''+alunoDbId+'\',\''+nome.replace(/\x27/g,"")+'\',\''+turmaId+'\')"><i class="ti ti-trash"></i></button>'
-          + '</td>'):'')
-      + '</tr>';
-    }).join('') : '<tr><td colspan="'+(pode?4:3)+'" style="text-align:center;color:var(--t3);padding:16px">Sem faltas registadas.</td></tr>';
+      var trim = f.trimestre || window.__trimDe(f.data);
+      var fechado = window.__faltasFechado(turmaId, trim);
+      var badge = '<span class="badge '+(f.justif?'bok':f.tipo==='A'?'bwn':'ber')+'">'+(f.justif?'Justificada':f.tipo==='A'?'Atraso':'Falta')+'</span>';
+      var acc='';
+      if(pode){
+        if(fechado){ acc = '<span style="font-size:10px;color:var(--t3)"><i class="ti ti-lock"></i> '+trim+'º trim. fechado</span>'; }
+        else {
+          var args="('"+f.id+"','"+alunoDbId+"','"+_q(nome)+"','"+turmaId+"',"+trim+")";
+          if(f.tipo!=='A'){
+            acc += f.justif
+              ? '<button class="btn btn-am btn-sm" title="Marcar NÃO justificada (volta a contar)" onclick="desjustificarFalta'+args+'">Não Justif.</button> '
+              : '<button class="btn btn-g btn-sm" title="Justificar (não conta)" onclick="justificarFalta'+args+'"><i class="ti ti-check"></i> Justificar</button> ';
+          }
+          acc += '<button class="btn btn-re btn-sm" title="Retirar" onclick="retirarFalta'+args+'"><i class="ti ti-trash"></i></button>';
+        }
+      }
+      return '<tr><td style="font-family:var(--fm);font-size:11px">'+f.data+'</td><td>'+(f.disciplina||'—')+'</td><td style="text-align:center">'+trim+'º</td><td style="text-align:center">'+badge+'</td>'+(pode?'<td style="text-align:center;white-space:nowrap">'+acc+'</td>':'')+'</tr>';
+    }).join('') : '<tr><td colspan="'+(pode?5:4)+'" style="text-align:center;color:var(--t3);padding:16px">Sem faltas registadas.</td></tr>';
+
+    var podeReabrir = ['gestor','director'].includes(curRole);
+    var fecharCtl = pode ? ('<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--b)"><span style="color:var(--t2)">Fecho do trimestre (faltas):</span>'
+      + [1,2,3].map(function(t){ var fc=window.__faltasFechado(turmaId,t);
+          return fc
+            ? '<button class="btn btn-re btn-sm" '+(podeReabrir?'':'disabled title="Só o Gestor/Director reabre"')+' onclick="reabrirTrimestreFaltas(\''+turmaId+'\','+t+',\''+alunoDbId+'\',\''+_q(nome)+'\')"><i class="ti ti-lock"></i> '+t+'º (fechado)</button>'
+            : '<button class="btn btn-g btn-sm" onclick="fecharTrimestreFaltas(\''+turmaId+'\','+t+',\''+alunoDbId+'\',\''+_q(nome)+'\')">Fechar '+t+'º</button>';
+        }).join('') + '</div>') : '';
 
     var ex=document.getElementById('m-faltas-aluno'); if(ex) ex.remove();
     var m=document.createElement('div');
     m.id='m-faltas-aluno'; m.className='modal-ov'; m.style.display='flex';
-    m.innerHTML='<div class="modal" style="max-width:520px"><div class="mhd">'
+    m.innerHTML='<div class="modal" style="max-width:560px"><div class="mhd">'
       + '<span class="mt"><i class="ti ti-user-x"></i> Faltas — '+nome+'</span>'
       + '<button class="mclose" onclick="document.getElementById(\'m-faltas-aluno\').remove()"><i class="ti ti-x"></i></button></div>'
-      + '<div class="mbod"><div class="tw"><table><thead><tr><th>Data</th><th>Disciplina</th><th style="text-align:center">Tipo</th>'
-      + (pode?'<th style="text-align:center">Acção</th>':'')+'</tr></thead><tbody>'+linhas+'</tbody></table></div></div>'
+      + '<div class="mbod"><div class="tw"><table><thead><tr><th>Data</th><th>Disciplina</th><th style="text-align:center">Trim.</th><th style="text-align:center">Tipo</th>'
+      + (pode?'<th style="text-align:center">Acção</th>':'')+'</tr></thead><tbody>'+linhas+'</tbody></table></div>'
+      + fecharCtl + '</div>'
       + (pode?('<div class="mft"><button class="btn btn-p btn-sm" onclick="document.getElementById(\'m-faltas-aluno\').remove();abrirLancarFaltaAluno(\''+turmaId+'\')"><i class="ti ti-plus"></i> Adicionar Falta</button></div>'):'')
       + '</div>';
     document.body.appendChild(m);
   };
 
-  window.retirarFalta = async function(faltaId, alunoDbId, nome, turmaId){
+  window.retirarFalta = async function(faltaId, alunoDbId, nome, turmaId, trim){
     if(!window.podeEditarFaltas()){ toast('Sem permissão.'); return; }
+    if(trim && window.__faltasFechado(turmaId, trim)){ toast(trim+'º trimestre fechado — não é possível alterar as faltas.'); return; }
     if(!confirm('Retirar esta falta? Esta acção não pode ser desfeita.')) return;
     var res = await window._supabase.from('faltas').delete().eq('id', faltaId);
     if(res.error){ toast('Erro: '+res.error.message); return; }
@@ -37362,15 +37385,44 @@ window.trimestreActual = function(d){
     window.verFaltasAluno(alunoDbId, nome, turmaId);
   };
 
-  window.justificarFalta = async function(faltaId, alunoDbId, nome, turmaId){
+  window.justificarFalta = async function(faltaId, alunoDbId, nome, turmaId, trim){
     if(!window.podeEditarFaltas()){ toast('Sem permissão.'); return; }
+    if(trim && window.__faltasFechado(turmaId, trim)){ toast(trim+'º trimestre fechado — não é possível justificar.'); return; }
     var motivo = prompt('Motivo da justificação:') || '';
     var res = await window._supabase.from('faltas')
-      .update({ justif:true, tipo:'J', motivo:motivo }).eq('id', faltaId);
+      .update({ justif:true, motivo:motivo }).eq('id', faltaId);
     if(res.error){ toast('Erro: '+res.error.message); return; }
-    toast('Falta justificada.');
+    toast('Falta justificada — deixa de contar no total.');
     if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(); else if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais();
     window.verFaltasAluno(alunoDbId, nome, turmaId);
+  };
+
+  // v6.102: reverter uma justificação (volta a contar como falta)
+  window.desjustificarFalta = async function(faltaId, alunoDbId, nome, turmaId, trim){
+    if(!window.podeEditarFaltas()){ toast('Sem permissão.'); return; }
+    if(trim && window.__faltasFechado(turmaId, trim)){ toast(trim+'º trimestre fechado — não é possível alterar.'); return; }
+    var res = await window._supabase.from('faltas')
+      .update({ justif:false, tipo:'F', motivo:null }).eq('id', faltaId);
+    if(res.error){ toast('Erro: '+res.error.message); return; }
+    toast('Falta marcada como NÃO justificada — volta a contar.');
+    if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(); else if(typeof window.carregarFaltasReais==='function') await window.carregarFaltasReais();
+    window.verFaltasAluno(alunoDbId, nome, turmaId);
+  };
+
+  // v6.102: fechar/reabrir o trimestre de faltas de uma turma (DT fecha; gestor/director reabre)
+  window.fecharTrimestreFaltas = function(turmaId, trim, alunoDbId, nome){
+    if(!window.podeEditarFaltas()){ toast('Sem permissão.'); return; }
+    if(!confirm('Fechar as faltas do '+trim+'º trimestre da turma '+turmaId+'?\n\nDepois de fechado, já NÃO é possível justificar nem alterar as faltas desse trimestre (só no próximo). O Gestor/Director pode reabrir.')) return;
+    try{ if(typeof CONFIG!=='undefined'){ if(!CONFIG.faltasFechado) CONFIG.faltasFechado={}; CONFIG.faltasFechado[turmaId+'-'+trim]=true; if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); } }catch(e){}
+    toast(trim+'º trimestre de faltas fechado.');
+    if(alunoDbId) window.verFaltasAluno(alunoDbId, nome, turmaId);
+  };
+  window.reabrirTrimestreFaltas = function(turmaId, trim, alunoDbId, nome){
+    if(!['gestor','director'].includes(curRole)){ toast('Só o Gestor/Director pode reabrir um trimestre fechado.'); return; }
+    if(!confirm('Reabrir as faltas do '+trim+'º trimestre da turma '+turmaId+'?')) return;
+    try{ if(typeof CONFIG!=='undefined' && CONFIG.faltasFechado){ delete CONFIG.faltasFechado[turmaId+'-'+trim]; if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); } }catch(e){}
+    toast(trim+'º trimestre de faltas reaberto.');
+    if(alunoDbId) window.verFaltasAluno(alunoDbId, nome, turmaId);
   };
 
   // Tornar a aba Faltas da turma clicável (abre detalhe do aluno)
