@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.102</span>
+    <span class="logo-ver">v6.103</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3373,7 +3373,7 @@ const ROLES={
   secretario:{nome:'Maria Nhampule',cargo:'Secretária Académica',avt:'MN',color:'var(--tl)',badge:'Secretário',
     sidebar:[
       {sl:'Principal',flat:[{i:'ti-layout-dashboard',l:'Dashboard',id:'dash'}]},
-      {sl:'Académico',sub:[{i:'ti-layout-grid',l:'Turmas',id:'turmas'},{i:'ti-users',l:'Alunos',id:'alunos'},{i:'ti-heart',l:'Encarregados',id:'encarregados'},{i:'ti-calendar',l:'Horário',id:'horario'},{i:'ti-check',l:'Presenças',id:'presencas'},{i:'ti-star',l:'Notas Finais',id:'notas'},{i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'}]},
+      {sl:'Académico',sub:[{i:'ti-layout-grid',l:'Turmas',id:'turmas'},{i:'ti-users',l:'Alunos',id:'alunos'},{i:'ti-heart',l:'Encarregados',id:'encarregados'},{i:'ti-calendar',l:'Horário',id:'horario'},{i:'ti-star',l:'Notas Finais',id:'notas'},{i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'}]},
       {sl:'Gestão Financeira',sub:[{i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},{i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'}]},
       {sl:'Gestão Curricular',sub:[
         {i:'ti-circles',l:'Ciclos',id:'ciclos'},
@@ -13275,7 +13275,6 @@ ROLES['dir-pedagogico'] = {
       {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
       {i:'ti-calendar',l:'Horário',id:'horario'},
       {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
-      {i:'ti-check',l:'Presenças',id:'presencas'},
       {i:'ti-star',l:'Notas',id:'notas'},
     ]},
     {sl:'Gestão', flat:[
@@ -37352,8 +37351,9 @@ window.trimestreActual = function(d){
       return '<tr><td style="font-family:var(--fm);font-size:11px">'+f.data+'</td><td>'+(f.disciplina||'—')+'</td><td style="text-align:center">'+trim+'º</td><td style="text-align:center">'+badge+'</td>'+(pode?'<td style="text-align:center;white-space:nowrap">'+acc+'</td>':'')+'</tr>';
     }).join('') : '<tr><td colspan="'+(pode?5:4)+'" style="text-align:center;color:var(--t3);padding:16px">Sem faltas registadas.</td></tr>';
 
-    var podeReabrir = ['gestor','director'].includes(curRole);
-    var fecharCtl = pode ? ('<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--b)"><span style="color:var(--t2)">Fecho do trimestre (faltas):</span>'
+    var podeFechar = ['dir-pedagogico','director','gestor'].includes(curRole);   // v6.103: fecho definitivo do DP para cima (o DT não fecha)
+    var podeReabrir = podeFechar;
+    var fecharCtl = podeFechar ? ('<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--b)"><span style="color:var(--t2)">Fecho do trimestre (faltas):</span>'
       + [1,2,3].map(function(t){ var fc=window.__faltasFechado(turmaId,t);
           return fc
             ? '<button class="btn btn-re btn-sm" '+(podeReabrir?'':'disabled title="Só o Gestor/Director reabre"')+' onclick="reabrirTrimestreFaltas(\''+turmaId+'\','+t+',\''+alunoDbId+'\',\''+_q(nome)+'\')"><i class="ti ti-lock"></i> '+t+'º (fechado)</button>'
@@ -37411,14 +37411,14 @@ window.trimestreActual = function(d){
 
   // v6.102: fechar/reabrir o trimestre de faltas de uma turma (DT fecha; gestor/director reabre)
   window.fecharTrimestreFaltas = function(turmaId, trim, alunoDbId, nome){
-    if(!window.podeEditarFaltas()){ toast('Sem permissão.'); return; }
+    if(!['dir-pedagogico','director','gestor'].includes(curRole)){ toast('Só o Director Pedagógico ou superior pode fechar o trimestre.'); return; }
     if(!confirm('Fechar as faltas do '+trim+'º trimestre da turma '+turmaId+'?\n\nDepois de fechado, já NÃO é possível justificar nem alterar as faltas desse trimestre (só no próximo). O Gestor/Director pode reabrir.')) return;
     try{ if(typeof CONFIG!=='undefined'){ if(!CONFIG.faltasFechado) CONFIG.faltasFechado={}; CONFIG.faltasFechado[turmaId+'-'+trim]=true; if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); } }catch(e){}
     toast(trim+'º trimestre de faltas fechado.');
     if(alunoDbId) window.verFaltasAluno(alunoDbId, nome, turmaId);
   };
   window.reabrirTrimestreFaltas = function(turmaId, trim, alunoDbId, nome){
-    if(!['gestor','director'].includes(curRole)){ toast('Só o Gestor/Director pode reabrir um trimestre fechado.'); return; }
+    if(!['dir-pedagogico','director','gestor'].includes(curRole)){ toast('Só o Director Pedagógico ou superior pode reabrir.'); return; }
     if(!confirm('Reabrir as faltas do '+trim+'º trimestre da turma '+turmaId+'?')) return;
     try{ if(typeof CONFIG!=='undefined' && CONFIG.faltasFechado){ delete CONFIG.faltasFechado[turmaId+'-'+trim]; if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); } }catch(e){}
     toast(trim+'º trimestre de faltas reaberto.');
