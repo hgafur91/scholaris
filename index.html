@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.100</span>
+    <span class="logo-ver">v6.101</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3350,7 +3350,6 @@ const ROLES={
         {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
         {i:'ti-calendar',l:'Horário',id:'horario'},
         {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
-        {i:'ti-check',l:'Presenças',id:'presencas'},
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
@@ -3436,7 +3435,6 @@ const ROLES={
         {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
         {i:'ti-calendar',l:'Horário',id:'horario'},
         {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
-        {i:'ti-check',l:'Presenças',id:'presencas'},
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
@@ -25222,28 +25220,33 @@ function maCarregarAlunos() {
   const lista = document.getElementById('ma-faltas-lista');
   if (!lista) return;
 
-  lista.innerHTML = alunos.map(a => `
-    <label style="display:flex;align-items:center;gap:10px;padding:7px 10px;
-      border-radius:var(--rads);cursor:pointer;background:var(--bg3);margin-bottom:4px"
-      onclick="this.classList.toggle('falta-marcada');this.querySelector('input').click()">
-      <input type="checkbox" id="falta-${a.id}" value="${a.id}"
-        style="display:none" onclick="event.stopPropagation()">
-      <div style="width:32px;height:32px;border-radius:8px;background:var(--a)18;
-        display:flex;align-items:center;justify-content:center;
-        font-size:11px;font-weight:800;color:var(--a);flex-shrink:0">
-        ${ini(a.nome)}
-      </div>
-      <span style="flex:1;font-size:13px">${a.nome}</span>
-      <span class="falta-icon" style="font-size:16px"></span>
-    </label>`).join('');
-
-  // CSS for marked absence
-  if (!document.getElementById('falta-style')) {
-    const s = document.createElement('style');
-    s.id = 'falta-style';
-    s.textContent = `.falta-marcada{background:var(--r)10!important;border:1px solid var(--r)40!important}.falta-marcada .falta-icon::before{content:'';}.falta-marcada .falta-icon{font-size:0}.falta-marcada .falta-icon::before{font-size:16px}`;
-    document.head.appendChild(s);
+  // v6.101: 3 estados por aluno — Presente (defeito) / Falta / Atraso
+  window._maPres = {};
+  function _pbtn(aid,t,label){
+    var on=(t==='P');
+    var bg=on?(t==='P'?'var(--g)':t==='F'?'var(--r)':'var(--am)'):'transparent';
+    var col=on?'#fff':'var(--t2)';
+    return '<button type="button" class="ma-pbtn" data-t="'+t+'" onclick="maSetPres('+aid+',\''+t+'\',this)" style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--b);cursor:pointer;background:'+bg+';color:'+col+'">'+label+'</button>';
   }
+  lista.innerHTML = alunos.map(function(a){ window._maPres[a.id]='P'; return ''
+    +'<div data-aid="'+a.id+'" style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--rads);background:var(--bg3);margin-bottom:4px">'
+    +'<div style="width:30px;height:30px;border-radius:8px;background:var(--a)18;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--a);flex-shrink:0">'+ini(a.nome)+'</div>'
+    +'<span style="flex:1;font-size:13px">'+a.nome+'</span>'
+    +'<div style="display:flex;gap:4px">'+_pbtn(a.id,'P','Presente')+_pbtn(a.id,'F','Falta')+_pbtn(a.id,'A','Atraso')+'</div>'
+    +'</div>';
+  }).join('');
+}
+
+// v6.101: definir o estado (P/F/A) de um aluno na Minha Aula e realçar o botão
+function maSetPres(id, tipo, btn){
+  window._maPres = window._maPres || {};
+  window._maPres[id] = tipo;
+  var row = (btn && btn.closest) ? btn.closest('[data-aid]') : null; if(!row) return;
+  row.querySelectorAll('.ma-pbtn').forEach(function(b){
+    var t=b.getAttribute('data-t'), on=(t===tipo);
+    b.style.background = on ? (t==='P'?'var(--g)':t==='F'?'var(--r)':'var(--am)') : 'transparent';
+    b.style.color = on ? '#fff' : 'var(--t2)';
+  });
 }
 
 // Get faltosos from the form
@@ -25539,10 +25542,13 @@ maRegistar = async function() {
 
   try {
     // Faltosos marcados no ecrã
-    var faltosos = (typeof getFaltosos==='function') ? getFaltosos() : [];
+    // v6.101: 3 estados (Presente/Falta/Atraso) da lista da Minha Aula
+    var _pres = window._maPres || {};
+    var faltosos  = Object.keys(_pres).filter(function(k){return _pres[k]==='F';}).map(function(k){return parseInt(k,10);});
+    var atrasados = Object.keys(_pres).filter(function(k){return _pres[k]==='A';}).map(function(k){return parseInt(k,10);});
     var alunosT  = (ALUNOS||[]).filter(function(a){ return String(a.turma)===String(turmaId); });
     var nFaltas  = faltosos.length;
-    var nPres    = Math.max(0, alunosT.length - nFaltas);
+    var nPres    = Math.max(0, alunosT.length - nFaltas);   // atrasados contam como presentes
     var mes = new Date(dataAula).getMonth()+1;
     var trim = mes<=4?1:(mes<=8?2:3);
     var sumario = [obs, metodo?('Método: '+metodo):'', aval?('Avaliação: '+aval):'', obsTurma?('Obs. turma: '+obsTurma):''].filter(Boolean).join(' · ');
@@ -25599,20 +25605,13 @@ maRegistar = async function() {
         .eq('disciplina', disc).eq('data', dataAula);
 
       var rows = [];
-      faltosos.forEach(function(aid){
+      function _pushFalta(aid, tipo){
         var al = (ALUNOS||[]).find(function(x){ return String(x.id)===String(aid) || String(x._dbId)===String(aid); });
         if (!al || !al._dbId) return;
-        rows.push({
-          escola_id: window._escolaId,
-          aluno_id: al._dbId,
-          turma: String(turmaId),
-          disciplina: disc,
-          data: dataAula,
-          trimestre: trim,
-          tipo: 'F',
-          justif: false
-        });
-      });
+        rows.push({ escola_id: window._escolaId, aluno_id: al._dbId, turma: String(turmaId), disciplina: disc, data: dataAula, trimestre: trim, tipo: tipo, justif: false });
+      }
+      faltosos.forEach(function(aid){ _pushFalta(aid,'F'); });    // v6.101: faltas (contam)
+      atrasados.forEach(function(aid){ _pushFalta(aid,'A'); });   // v6.101: atrasos (registados, não contam como falta)
       if (rows.length) {
         var fi = await window._supabase.from('faltas').insert(rows);
         if (fi.error) toast('Aula registada, mas falhou gravar faltas: '+fi.error.message);
@@ -25644,7 +25643,7 @@ maRegistar = async function() {
     var tm=document.getElementById('ma-tema'); if(tm) tm.value='';
     var c=document.getElementById('ma-conteudo'); if(c) c.value='';
     var ot=document.getElementById('ma-obs-turma'); if(ot) ot.value='';
-    document.querySelectorAll('#ma-faltas-lista label').forEach(function(l){ l.classList.remove('falta-marcada'); });
+    try{ maCarregarAlunos(); }catch(_){}   // v6.101: repõe a lista com todos a Presente
     maCarregarHistorico();
     try{ if(typeof window.refrescarAcademico==='function') await window.refrescarAcademico(false); }catch(_){}  // v6.81: faltas/% ao vivo (silencioso)
   } catch(e) {
