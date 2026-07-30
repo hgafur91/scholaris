@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.105</span>
+    <span class="logo-ver">v6.106</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1147,6 +1147,14 @@ console.log('[Scholaris] Supabase v2 inicializado');
     <div><div class="ph-title">Registo de Disciplina</div><div class="ph-sub">Ocorrências, evidências e desfechos</div></div>
   </div>
   <div id="disc-c"></div>
+</div>
+
+<!-- ════ GESTÃO DE MULTAS DE ATRASO ════ -->
+<div class="view" id="v-multas">
+  <div class="ph">
+    <div><div class="ph-title">Multas de Atraso</div><div class="ph-sub">Perdoar total ou acordar um valor parcial — o valor acordado passa a aparecer no registo de pagamento</div></div>
+  </div>
+  <div id="multas-c"></div>
 </div>
 
 <!-- ════ RELATÓRIO DE COBRANÇA ════ -->
@@ -3351,7 +3359,7 @@ const ROLES={
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
       {sl:'Gestão RH',sub:[
         {i:'ti-briefcase',l:'Staff / Dep.',id:'staff'},
         {i:'ti-star',l:'Avaliações',id:'aval'},
@@ -3442,6 +3450,7 @@ const ROLES={
         {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
+        {i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},
         {i:'ti-cash',l:'Despesas',id:'despesas'},
         {i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},
         {i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},
@@ -4405,7 +4414,7 @@ function rAl(list){
   document.getElementById('tb-al').innerHTML=list.map(a=>{
     const f=calcFaltas(a.id);
     const nMeses=(window.__propsEmAtraso?window.__propsEmAtraso(a):0);
-    const risco=_verFin && (window.__emRiscoSuspensao?window.__emRiscoSuspensao(a):nMeses>2);
+    const risco=_verFin && (window.__emRiscoSuspensao?window.__emRiscoSuspensao(a):nMeses>=2);
     const trStyle=risco?' style="background:rgba(245,158,11,.14);border-left:3px solid #f59e0b"':'';
     const nomeExtra=risco?` <span class="badge bwn" style="font-size:9px" title="Deve ${nMeses} meses — em risco de suspensão por falta de pagamento"><i class="ti ti-cash-off"></i> ${nMeses}m dívida</span>`:'';
     return`<tr${trStyle} onclick="openAluno(${a.id})"><td>${mkAv(a.nome,28,ALUNOS.indexOf(a),false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${a.num}</td><td style="font-weight:700">${a.nome}${nomeExtra}</td><td><span class="badge bin">${a.turma}</span></td><td style="color:var(--t2);font-size:12px">${a.classe}</td><td><span class="badge ${f.excluido?'ber':f.emRisco?'bwn':'bok'}">${f.pct}%${f.excluido?' <i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':f.emRisco?' <i class="ti ti-bolt" style="color:#f59e0b"></i>':''}</span></td><td><span class="badge ${a.verif?'bok':'bwn'}">${a.verif?'Verificado':'Pendente'}</span></td><td><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openAluno(${a.id})">Ver</button></td></tr>`;
@@ -12054,7 +12063,7 @@ function rPortalEncPropinas() {
   el.innerHTML = filhos.map(a => {
     const div = a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
     const nMeses=(window.__propsEmAtraso?window.__propsEmAtraso(a):0);
-    const risco=(window.__emRiscoSuspensao?window.__emRiscoSuspensao(a):nMeses>2);
+    const risco=(window.__emRiscoSuspensao?window.__emRiscoSuspensao(a):nMeses>=2);
     return `
       <div style="font-size:15px;font-weight:800;color:var(--t);margin:16px 0 10px;display:flex;align-items:center;gap:8px">
         ${mkAv(a.nome,28,ALUNOS.indexOf(a),false)} ${a.nome}
@@ -17752,6 +17761,8 @@ function abrirRegistarPagamento(alunoId) {
   _pagMesesSel = new Set();
   const a       = ALUNOS.find(x=>x.id===alunoId);
   if (!a) return;
+  const _acordoPag  = (window.__getMultaAcordo?window.__getMultaAcordo(a):null);
+  const _temAcordoPag = !!(_acordoPag && _acordoPag.estado==='pendente');
   const mesesDivida = a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida');
 
   // Info box
@@ -17781,16 +17792,16 @@ function abrirRegistarPagamento(alunoId) {
         <div>
           <div style="font-weight:700">${M[mi]}${p.st==='pago'?' ✓':p.st==='isento'?' (isento)':''}</div>
           <div style="font-size:9px;color:var(--t2)">${base.toLocaleString()} MZM</div>
-          ${multa>0?`<div style="font-size:9px;color:var(--am)">+${multa.toLocaleString()} multa</div>`:''}
+          ${(multa>0 && !_temAcordoPag)?`<div style="font-size:9px;color:var(--am)">+${multa.toLocaleString()} multa</div>`:''}
         </div>
       </label>`;
     }).join('');
   }
-  // Toggle "sem multa" (gestor/director)
+  // Toggle "sem multa" (gestor/director) — escondido quando há acordo de multa em vigor
   try {
     const _mEl = document.getElementById('pag-meses-sel');
     let smWrap = document.getElementById('pag-sem-multa-wrap');
-    if (['gestor','director'].includes(curRole) && _mEl) {
+    if (['gestor','director'].includes(curRole) && !_temAcordoPag && _mEl) {
       if (!smWrap) {
         smWrap = document.createElement('label');
         smWrap.id = 'pag-sem-multa-wrap';
@@ -17801,6 +17812,22 @@ function abrirRegistarPagamento(alunoId) {
         const cb=document.getElementById('pag-sem-multa'); if(cb) cb.checked=false;
       }
     } else if (smWrap) { smWrap.remove(); }
+  } catch(e){}
+
+  // Linha da MULTA ACORDADA pelo Director (aparece para o secretário cobrar)
+  try {
+    const _mEl2 = document.getElementById('pag-meses-sel');
+    let acWrap = document.getElementById('pag-acordo-wrap');
+    if (_temAcordoPag && _mEl2) {
+      if (!acWrap) {
+        acWrap = document.createElement('label');
+        acWrap.id = 'pag-acordo-wrap';
+        acWrap.style.cssText='display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:12px;cursor:pointer;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:var(--rads);padding:10px';
+        (document.getElementById('pag-sem-multa-wrap')||_mEl2).insertAdjacentElement('afterend', acWrap);
+      }
+      const _mot = _acordoPag.motivo?(' · '+_acordoPag.motivo):'';
+      acWrap.innerHTML='<input type="checkbox" id="pag-multa-acordo" checked onchange="updatePagValor()" style="accent-color:var(--am);margin-top:2px"><span><strong>Multa acordada pelo Director:</strong> '+(_acordoPag.valorAprovado||0).toLocaleString('pt-PT')+' MZM'+(_acordoPag.valorAprovado===0?' (perdão total)':'')+'<div style="font-size:10px;color:var(--t2)">Aprovado por '+(_acordoPag.por||'—')+_mot+'. Incluir neste pagamento.</div></span>';
+    } else if (acWrap) { acWrap.remove(); }
   } catch(e){}
 
   // Set today
@@ -17828,21 +17855,32 @@ function togglePagMes(mesIdx, checked) {
 function updatePagValor() {
   const a = ALUNOS.find(x=>x.id===_pagAlunoId);
   if (!a) return;
+  const acordo   = (window.__getMultaAcordo?window.__getMultaAcordo(a):null);
+  const temAcordo= !!(acordo && acordo.estado==='pendente');
   const semMulta = !!(document.getElementById('pag-sem-multa') && document.getElementById('pag-sem-multa').checked);
   let total = 0;
   _pagMesesSel.forEach(mi => {
     const p = a.propinas[mi];
     const base = (p && p.v != null) ? p.v : getPropinaTurma(a.turma);
-    const multa = semMulta ? 0 : calcMulta(p, mi);
+    // com acordo, a multa por mês não conta (fica substituída pelo valor acordado)
+    const multa = (temAcordo || semMulta) ? 0 : calcMulta(p, mi);
     total += base + multa;
   });
+  if (temAcordo) {
+    const cb = document.getElementById('pag-multa-acordo');
+    if (cb && cb.checked) total += (acordo.valorAprovado||0);
+  }
   const el = document.getElementById('pag-valor');
   if (el) el.value = total;
 }
 
 function confirmarRegistoPagamento() {
   const a   = ALUNOS.find(x=>x.id===_pagAlunoId);
-  if (!a || !_pagMesesSel.size) { toast('Seleccione pelo menos um mês'); return; }
+  if (!a) return;
+  const _acordoConf  = (window.__getMultaAcordo?window.__getMultaAcordo(a):null);
+  const _incluiAcordo= !!(_acordoConf && _acordoConf.estado==='pendente'
+                          && document.getElementById('pag-multa-acordo') && document.getElementById('pag-multa-acordo').checked);
+  if (!_pagMesesSel.size && !_incluiAcordo) { toast('Seleccione pelo menos um mês (ou inclua a multa acordada)'); return; }
 
   const ref   = document.getElementById('pag-ref')?.value.trim();
   const data  = document.getElementById('pag-data')?.value;
@@ -17882,6 +17920,7 @@ function confirmarRegistoPagamento() {
     confirmedRef: _precisaConfBanco ? null : ref,
     registadoPor: curUser?.nome||'',
     registadoEm: new Date().toISOString(),
+    multaAcordada: _incluiAcordo ? (_acordoConf.valorAprovado||0) : 0,
   };
   PAGAMENTOS.push(pag);
   // Persistir na base de dados (Supabase)
@@ -17901,6 +17940,11 @@ function confirmarRegistoPagamento() {
       p.estadoBanco = _estadoInicial;
     }
   });
+
+  // Liquidar o acordo de multa (limpa a multa dos meses ainda por pagar)
+  if (_incluiAcordo && typeof window.__liquidarMultaAcordo==='function') {
+    window.__liquidarMultaAcordo(a, pagId);
+  }
 
   // AUDIT LOG
   logAudit(
@@ -32863,7 +32907,7 @@ window.__pctEscalaoAtraso=function(diasAtraso){try{var esc=(typeof CONFIG!=='und
 window.__diasAtrasoPropina=function(mesIdx){try{var hoje=new Date();var ano=(typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)?CONFIG.anoLectivo:hoje.getFullYear();var dia=(typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)?(parseInt(CONFIG.diaVencimento,10)||5):5;var venc=new Date(ano,mesIdx,dia);var ms=hoje.getTime()-venc.getTime();return Math.max(0,Math.floor(ms/86400000));}catch(e){return 0;}};
 window.__multaPropina=function(turmaId,mesIdx){try{var base=(typeof getPropinaTurma==='function')?getPropinaTurma(turmaId):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500);var dias=window.__diasAtrasoPropina(mesIdx);var pct=window.__pctEscalaoAtraso(dias);return Math.round(base*pct/100);}catch(e){return 0;}};
 try{window.calcMulta=function(prop,mesIdx){try{return (prop&&prop.st==='multa')?Math.round((prop.v||0)*((prop.multaPct||0)/100)):0;}catch(e){return 0;}};}catch(e){}
-try{window.updatePagValor=function(){try{var a=(typeof ALUNOS!=='undefined')?ALUNOS.find(function(x){return x.id===_pagAlunoId;}):null;if(!a)return;var semMulta=!!(document.getElementById('pag-sem-multa')&&document.getElementById('pag-sem-multa').checked);var total=0;_pagMesesSel.forEach(function(mi){var p=a.propinas[mi];var base=(p&&p.v!=null)?p.v:((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):4500);var m=(semMulta||!p||p.st!=='multa')?0:Math.round((p.v||0)*((p.multaPct||0)/100));total+=base+m;});var el=document.getElementById('pag-valor');if(el)el.value=total;}catch(e){}};}catch(e){}
+try{window.updatePagValor=function(){try{var a=(typeof ALUNOS!=='undefined')?ALUNOS.find(function(x){return x.id===_pagAlunoId;}):null;if(!a)return;var acordo=(window.__getMultaAcordo?window.__getMultaAcordo(a):null);var temAcordo=!!(acordo&&acordo.estado==='pendente');var semMulta=!!(document.getElementById('pag-sem-multa')&&document.getElementById('pag-sem-multa').checked);var total=0;_pagMesesSel.forEach(function(mi){var p=a.propinas[mi];var base=(p&&p.v!=null)?p.v:((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):4500);var m=(temAcordo||semMulta||!p||p.st!=='multa')?0:Math.round((p.v||0)*((p.multaPct||0)/100));total+=base+m;});if(temAcordo){var cb=document.getElementById('pag-multa-acordo');if(cb&&cb.checked)total+=(acordo.valorAprovado||0);}var el=document.getElementById('pag-valor');if(el)el.value=total;}catch(e){}};}catch(e){}
 try{window.__aplicarMultasAutomaticas=function(aluno){try{
   /* v6.96 — MODELO ÚNICO DE MULTA: uma só % (CONFIG.multaPropina), aplicada SÓ a meses já
      vencidos. A multa começa a contar no dia de vencimento (CONFIG.diaVencimento) do MÊS
@@ -33530,10 +33574,10 @@ window.__finV30=true;})();
       }).length;
     }catch(e){ return 0; }
   };
-  // v6.105: aluno em risco de suspensão por falta de pagamento = deve MAIS de 2 meses (>2 vencidos)
+  // v6.105/v6.106: aluno em risco de suspensão por falta de pagamento = deve A PARTIR de 2 meses (>=2 vencidos)
   window.__RISCO_SUSP_MESES = 2;
   window.__emRiscoSuspensao = function(a){
-    try{ return (window.__propsEmAtraso ? window.__propsEmAtraso(a) : 0) > (window.__RISCO_SUSP_MESES||2); }catch(e){ return false; }
+    try{ return (window.__propsEmAtraso ? window.__propsEmAtraso(a) : 0) >= (window.__RISCO_SUSP_MESES||2); }catch(e){ return false; }
   };
   window.__finV37 = true;
 })();
@@ -40032,6 +40076,129 @@ window.trimestreActual = function(d){
     window.calcMedia=function(aid,disc){ return _anual(aid,disc); };
     window.calcNotaFinal=function(aid,disc){ return _anual(aid,disc); };
   })();
+})();
+</script>
+
+<script>
+/* ═══ v6.106 — Gestão de Multas de Atraso (perdão total / acordo parcial) ═══ */
+(function(){
+  if(window.__finMultas106) return;
+  function isDG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'); }catch(e){ return false; } }
+  function keyAluno(a){ return String(a&&(a._dbId||a.num||a.id)); }
+  function acordos(){ if(typeof CONFIG==='undefined'){ return {}; } if(!CONFIG.multaAcordos) CONFIG.multaAcordos={}; return CONFIG.multaAcordos; }
+  function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+
+  // multa computada total do aluno (soma dos meses actualmente em 'multa')
+  window.__multaTotalAluno=function(a){ try{ if(!a||!a.propinas) return 0; var t=0; Object.keys(a.propinas).forEach(function(k){ var p=a.propinas[k]; if(p&&p.st==='multa'){ t+=Math.round((p.v||0)*((p.multaPct||0)/100)); } }); return t; }catch(e){ return 0; } };
+  window.__mesesComMulta=function(a){ try{ if(!a||!a.propinas) return 0; var n=0; Object.keys(a.propinas).forEach(function(k){ var p=a.propinas[k]; if(p&&p.st==='multa') n++; }); return n; }catch(e){ return 0; } };
+  window.__getMultaAcordo=function(a){ try{ return acordos()[keyAluno(a)]||null; }catch(e){ return null; } };
+
+  // modal para o DG definir o valor acordado
+  window.__definirMultaAcordo=function(aid){
+    if(!isDG()){ toast('Apenas gestor ou director'); return; }
+    var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x.id===aid;}); if(!a) return;
+    var orig=window.__multaTotalAluno(a);
+    var ac=window.__getMultaAcordo(a);
+    var base=(ac&&ac.estado==='pendente')?ac.valorAprovado:orig;
+    var ex=document.getElementById('m-multa-acordo'); if(ex) ex.remove();
+    var m=document.createElement('div'); m.id='m-multa-acordo'; m.className='modal-ov'; m.style.display='flex';
+    m.innerHTML='<div class="modal" style="max-width:500px"><div class="mhd"><span class="mt"><i class="ti ti-cash-off"></i> Acordar / Perdoar Multa</span><button class="mclose" onclick="document.getElementById(\'m-multa-acordo\').remove()"><i class="ti ti-x"></i></button></div>'
+      +'<div class="mbod">'
+      +'<div class="ib-box ib-am" style="margin-bottom:12px"><strong>'+a.nome+'</strong> · Turma '+(a.turma||'')+'<br>Multa de atraso actual: <strong>'+fmt(orig)+' MZM</strong></div>'
+      +'<div class="fgr full"><label class="fl">Valor de multa acordado (MZM)</label><input class="ffi" type="number" id="ma-valor" min="0" step="100" value="'+base+'"><div style="font-size:11px;color:var(--t2);margin-top:4px">0 = perdão total. O restante fica perdoado. Este valor passa a aparecer no registo de pagamento.</div></div>'
+      +'<div class="fgr full"><label class="fl">Motivo / acordo</label><textarea class="ffi" id="ma-motivo" rows="2" placeholder="Ex: acordo com o encarregado, dificuldade financeira...">'+((ac&&ac.motivo)?ac.motivo:'')+'</textarea></div>'
+      +'</div>'
+      +'<div class="mft"><button class="btn btn-g" onclick="document.getElementById(\'m-multa-acordo\').remove()">Cancelar</button><button class="btn btn-p" onclick="__guardarMultaAcordo('+aid+')"><i class="ti ti-check"></i> Guardar Acordo</button></div></div>';
+    document.body.appendChild(m);
+  };
+  window.__guardarMultaAcordo=function(aid){
+    if(!isDG()){ toast('Sem permissão'); return; }
+    var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x.id===aid;}); if(!a) return;
+    var orig=window.__multaTotalAluno(a);
+    var v=parseFloat((document.getElementById('ma-valor')||{}).value); if(isNaN(v)||v<0) v=0;
+    if(v>orig){ toast('O valor acordado não pode ser maior que a multa actual ('+fmt(orig)+' MZM).'); return; }
+    var motivo=((document.getElementById('ma-motivo')||{}).value||'').trim();
+    acordos()[keyAluno(a)]={ valorOriginal:orig, valorAprovado:Math.round(v), motivo:motivo,
+      por:((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||'', em:new Date().toISOString(), estado:'pendente' };
+    persist();
+    var m=document.getElementById('m-multa-acordo'); if(m) m.remove();
+    if(typeof window.rMultas==='function') window.rMultas();
+    toast('Acordo guardado: multa de '+fmt(v)+' MZM. Já aparece no registo de pagamento.');
+  };
+  window.__removerMultaAcordo=function(aid){
+    if(!isDG()){ toast('Sem permissão'); return; }
+    var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x.id===aid;}); if(!a) return;
+    var k=keyAluno(a); if(acordos()[k]){ delete acordos()[k]; persist(); }
+    if(typeof window.rMultas==='function') window.rMultas();
+    toast('Acordo removido — volta a valer a multa cheia.');
+  };
+  // chamado ao confirmar o pagamento (liquida o acordo e limpa a multa dos meses)
+  window.__liquidarMultaAcordo=function(a, pagId){
+    try{
+      var ac=window.__getMultaAcordo(a); if(!ac) return;
+      ac.estado='liquidado'; ac.pagamentoId=pagId||null; ac.liquidadoEm=new Date().toISOString(); ac.liquidadoPor=((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||'';
+      acordos()[keyAluno(a)]=ac; persist();
+      // limpar a multa dos meses ainda em 'multa' (fica só a base em dívida)
+      if(a.propinas) Object.keys(a.propinas).forEach(function(k){ var p=a.propinas[k]; if(p&&p.st==='multa'){ p.multaPct=0; p.multaIsenta=true; p.st='npago'; } });
+    }catch(e){}
+  };
+
+  // ── Aba ─────────────────────────────────────────────────────────
+  window.rMultas=function(){
+    var el=document.getElementById('multas-c'); if(!el) return;
+    if(!isDG()){ el.innerHTML='<div class="ib-box ib-re">Acesso restrito ao Gestor e Director.</div>'; return; }
+    var lista=(typeof ALUNOS!=='undefined'?ALUNOS:[]).map(function(a){
+      var orig=window.__multaTotalAluno(a); var ac=window.__getMultaAcordo(a);
+      return {a:a, orig:orig, meses:window.__mesesComMulta(a), ac:ac};
+    }).filter(function(r){ return r.orig>0 || (r.ac && r.ac.estado==='pendente'); })
+      .sort(function(x,y){ return y.orig-x.orig; });
+    var totMulta=lista.reduce(function(s,r){return s+r.orig;},0);
+    var totAcordo=lista.filter(function(r){return r.ac&&r.ac.estado==='pendente';}).reduce(function(s,r){return s+(r.ac.valorAprovado||0);},0);
+    var nPerdao=lista.filter(function(r){return r.ac&&r.ac.estado==='pendente';}).length;
+    var kpis=[
+      {l:'Alunos com multa',v:lista.length,c:'var(--a)',ic:'ti-users'},
+      {l:'Multa total (MZM)',v:fmt(totMulta),c:'var(--am)',ic:'ti-cash-off'},
+      {l:'Acordos pendentes',v:nPerdao,c:'var(--tl)',ic:'ti-handshake'},
+      {l:'Valor acordado (MZM)',v:fmt(totAcordo),c:'var(--g)',ic:'ti-discount'}
+    ];
+    var html='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">'
+      +kpis.map(function(k){return '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><i class="ti '+k.ic+'" style="color:'+k.c+';font-size:18px;display:block;margin-bottom:6px"></i><div style="font-size:20px;font-weight:800;color:'+k.c+'">'+k.v+'</div><div style="font-size:10px;color:var(--t2)">'+k.l+'</div></div>';}).join('')
+      +'</div>';
+    if(!lista.length){ el.innerHTML=html+'<div class="ib-box ib-blue"><i class="ti ti-circle-check"></i> Nenhum aluno com multa de atraso.</div>'; return; }
+    html+='<div class="card"><div class="tw"><table><thead><tr><th>Nº</th><th>Aluno</th><th>Turma</th><th>Meses</th><th>Multa (MZM)</th><th>Acordo</th><th></th></tr></thead><tbody>';
+    lista.forEach(function(r){
+      var a=r.a; var ac=r.ac; var pend=(ac&&ac.estado==='pendente'); var liq=(ac&&ac.estado==='liquidado');
+      var acCell = pend
+        ? '<span class="badge bwn" title="'+(ac.motivo||'')+'">Acordado: '+fmt(ac.valorAprovado)+' MZM'+(ac.valorAprovado===0?' (perdão total)':'')+'</span>'
+        : (liq ? '<span class="badge bok">Liquidado: '+fmt(ac.valorAprovado)+' MZM</span>' : '<span style="color:var(--t3);font-size:11px">—</span>');
+      var acoes = pend
+        ? '<button class="btn btn-g btn-sm" onclick="__definirMultaAcordo('+a.id+')">Editar</button> <button class="btn btn-g btn-sm" onclick="__removerMultaAcordo('+a.id+')" title="Anular acordo"><i class="ti ti-trash"></i></button>'
+        : '<button class="btn btn-p btn-sm" onclick="__definirMultaAcordo('+a.id+')"><i class="ti ti-handshake"></i> Acordar / Perdoar</button>';
+      html+='<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+(a.num||'')+'</td><td style="font-weight:700">'+a.nome+'</td><td><span class="badge bin">'+(a.turma||'')+'</span></td><td style="text-align:center">'+r.meses+'</td><td style="font-weight:700;color:var(--am)">'+fmt(r.orig)+'</td><td>'+acCell+'</td><td style="text-align:right">'+acoes+'</td></tr>';
+    });
+    html+='</tbody></table></div></div>';
+    el.innerHTML=html;
+  };
+
+  // ── Routing ─────────────────────────────────────────────────────
+  if(typeof VM!=='undefined'){ try{ VM.multas='v-multas'; }catch(e){} }
+  var _prevGo=window.go;
+  window.go=function(id){
+    if(id==='multas'){
+      try{
+        document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on');});
+        document.querySelectorAll('.si,.ssi').forEach(function(s){s.classList.remove('on');});
+        var ve=document.getElementById('v-multas'); if(ve) ve.classList.add('on');
+        var se=document.getElementById('si-multas'); if(se) se.classList.add('on');
+        window.rMultas();
+      }catch(e){}
+      return;
+    }
+    return _prevGo.apply(this, arguments);
+  };
+
+  window.__finMultas106=true;
 })();
 </script>
 
