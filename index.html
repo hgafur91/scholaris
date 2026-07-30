@@ -660,7 +660,7 @@ console.log('[Scholaris] Supabase v2 inicializado');
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.106</span>
+    <span class="logo-ver">v6.107</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -40199,6 +40199,110 @@ window.trimestreActual = function(d){
   };
 
   window.__finMultas106=true;
+})();
+</script>
+
+<script>
+/* ═══ v6.107 — Painel "As Minhas Tarefas" (guia semanal por perfil) ═══ */
+(function(){
+  if(window.__finTarefas107) return;
+  var MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var DIA_FECHO_MES=20; // a partir deste dia o director/gestor deve fechar o mês
+  function hoje(){ return new Date(); }
+  function trimAtual(){ var m=hoje().getMonth()+1; if(m<=4)return 1; if(m<=8)return 2; return 3; }
+  function epocaAvaliacao(){ var m=hoje().getMonth()+1; return (m===4||m===8||m===11); } // fim de cada trimestre
+  function meuProf(){ try{ return (typeof PROFS!=='undefined'?PROFS:[]).find(function(p){return p.nome===(typeof curUser!=='undefined'&&curUser?curUser.nome:'');})||null; }catch(e){ return null; } }
+  function souDT(prof){ try{
+    if(!prof) return false;
+    if(prof.dirTurma) return true;
+    if(Array.isArray(prof.cargos) && prof.cargos.some(function(c){return String(c).indexOf('dir-turma')>=0;})) return true;
+    return (typeof TURMAS!=='undefined'?TURMAS:[]).some(function(t){ return t.dirTurma && (t.dirTurma===prof.num||t.dirTurma===prof.nome||t.dirTurma===prof._dbId||t.dirTurma===prof.id); });
+  }catch(e){ return false; } }
+  function cont(arr,fn){ try{ return (arr||[]).filter(fn).length; }catch(e){ return 0; } }
+
+  function folhaFeitaMes(m){ try{ return (typeof DESPESAS_REG!=='undefined'?DESPESAS_REG:[]).some(function(d){ if(!d||d.categoria!=='salarios')return false; var dm=(d.mes!=null)?d.mes:(d.data?parseInt(String(d.data).slice(5,7),10):0); return Number(dm)===Number(m); }); }catch(e){ return false; } }
+  function mesFechado(m){ try{ return (typeof window.__mesFechado==='function')?!!window.__mesFechado(m):false; }catch(e){ return false; } }
+  function nOcorrenciasAbertas(){ try{ return cont(typeof OCORRENCIAS_DISC!=='undefined'?OCORRENCIAS_DISC:[], function(o){ return o && (o.estado?o.estado!=='resolvida':o.fase!=='resolvido'); }); }catch(e){ return 0; } }
+  function nRiscoSusp(){ try{ return cont(typeof ALUNOS!=='undefined'?ALUNOS:[], function(a){ return window.__emRiscoSuspensao?window.__emRiscoSuspensao(a):false; }); }catch(e){ return 0; } }
+  function nAcordosPend(){ try{ var o=(typeof CONFIG!=='undefined'&&CONFIG.multaAcordos)?CONFIG.multaAcordos:{}; return Object.keys(o).filter(function(k){return o[k]&&o[k].estado==='pendente';}).length; }catch(e){ return 0; } }
+  function nPagPorConfirmar(){ try{ return cont(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[], function(p){ return p && p.estado==='por_confirmar'; }); }catch(e){ return 0; } }
+
+  // ── Motor: tarefas para o curRole ───────────────────────────────
+  window.__minhasTarefas=function(){
+    var t=[]; var r=(typeof curRole!=='undefined')?curRole:''; var d=hoje().getDate(); var m=hoje().getMonth()+1; var trim=trimAtual();
+    function fin(){
+      var folha=folhaFeitaMes(m), fech=mesFechado(m); var passou20=(d>=DIA_FECHO_MES);
+      if(passou20 || folha) t.push({txt:'Finalizar a <strong>folha de salários</strong> de '+MESES[m], tipo:folha?'feito':(passou20?'alerta':'pendente'), rota:'folha-salarios'});
+      if(passou20 || fech)  t.push({txt:'Fechar as <strong>despesas</strong> de '+MESES[m], tipo:fech?'feito':(passou20?'alerta':'pendente'), rota:'despesas'});
+      if(passou20)          t.push({txt:'Produzir o <strong>balancete</strong> de '+MESES[m], tipo:'pendente', rota:'pagamentos'});
+      var noc=nOcorrenciasAbertas(); if(noc>0) t.push({txt:'Dar desfecho a <strong>'+noc+'</strong> ocorrência(s) disciplinar(es)', tipo:'pendente', rota:'disciplina'});
+      var nrs=nRiscoSusp(); if(nrs>0) t.push({txt:'<strong>'+nrs+'</strong> aluno(s) em risco de suspensão por dívida', tipo:'alerta', rota:'multas'});
+    }
+    if(r==='professor'){
+      var prof=meuProf();
+      t.push({txt:'Registar as <strong>aulas de hoje</strong> (presenças e sumário)', tipo:'info', rota:'minha-aula'});
+      t.push({txt:'Lançar as <strong>notas do '+trim+'º trimestre</strong>', tipo:epocaAvaliacao()?'pendente':'info', rota:'notas'});
+      if(souDT(prof)){
+        t.push({txt:'DT: rever e <strong>justificar as faltas</strong> da tua turma', tipo:'info', rota:'faltas'});
+        if(epocaAvaliacao()) t.push({txt:'DT: <strong>fechar o trimestre de faltas</strong> no fim do período', tipo:'info', rota:'faltas'});
+      }
+    } else if(r==='director' || r==='gestor'){
+      fin();
+    } else if(r==='dir-pedagogico'){
+      t.push({txt:'Rever o <strong>lançamento de notas</strong> do '+trim+'º trimestre', tipo:epocaAvaliacao()?'pendente':'info', rota:'notas'});
+      t.push({txt:'<strong>Fechar o trimestre de faltas</strong> quando o período terminar', tipo:'info', rota:'faltas'});
+      var noc2=nOcorrenciasAbertas(); if(noc2>0) t.push({txt:'Acompanhar <strong>'+noc2+'</strong> ocorrência(s) disciplinar(es) em aberto', tipo:'info', rota:'disciplina'});
+    } else if(r==='dir-ciclo'){
+      t.push({txt:'Acompanhar o <strong>desempenho das turmas</strong> do teu ciclo', tipo:'info', rota:'ciclo-visao'});
+      t.push({txt:'Rever <strong>alertas por turma</strong> (faltas e notas)', tipo:'info', rota:'alertas-ciclo'});
+    } else if(r==='secretario'){
+      var npc=nPagPorConfirmar(); if(npc>0) t.push({txt:'Confirmar <strong>'+npc+'</strong> pagamento(s) por confirmar', tipo:'pendente', rota:'pagamentos'});
+      var nac=nAcordosPend(); if(nac>0) t.push({txt:'<strong>'+nac+'</strong> multa(s) acordada(s) pelo Director a cobrar', tipo:'info', rota:'pagamentos'});
+      t.push({txt:'Registar os <strong>pagamentos de propinas</strong> recebidos', tipo:'info', rota:'pagamentos'});
+    }
+    return t;
+  };
+
+  // ── Render do cartão ────────────────────────────────────────────
+  var ICON={ pendente:{i:'ti-clock',c:'var(--am)'}, feito:{i:'ti-circle-check',c:'var(--g)'}, info:{i:'ti-info-circle',c:'var(--a)'}, alerta:{i:'ti-alert-triangle',c:'var(--r)'} };
+  function diaSemana(){ var ds=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']; var h=hoje(); return ds[h.getDay()]+', '+h.getDate()+' de '+MESES[h.getMonth()+1]; }
+  window.__renderTarefasCard=function(viewId){
+    var view=document.getElementById(viewId); if(!view) return;
+    var old=view.querySelector('#tarefas-card'); if(old) old.remove();
+    var tarefas=(typeof window.__minhasTarefas==='function')?window.__minhasTarefas():[];
+    if(!tarefas.length) return;
+    var pend=tarefas.filter(function(x){return x.tipo==='pendente'||x.tipo==='alerta';}).length;
+    var linhas=tarefas.map(function(x){
+      var ic=ICON[x.tipo]||ICON.info; var clic=x.rota?(' onclick="go(\''+x.rota+'\')" style="cursor:pointer"'):'';
+      var done=(x.tipo==='feito');
+      return '<div class="tarefa-row"'+clic+'><i class="ti '+ic.i+'" style="color:'+ic.c+';font-size:17px;flex-shrink:0"></i>'
+        +'<span style="flex:1;font-size:13px;color:var(--t)'+(done?';text-decoration:line-through;opacity:.65':'')+'">'+x.txt+'</span>'
+        +(x.rota&&!done?'<i class="ti ti-chevron-right" style="color:var(--t3);font-size:15px"></i>':'')+'</div>';
+    }).join('');
+    var card=document.createElement('div');
+    card.id='tarefas-card'; card.className='card';
+    card.style.cssText='margin-bottom:16px;border-left:4px solid '+(pend>0?'var(--am)':'var(--g)');
+    card.innerHTML='<div class="ch"><span class="ct"><i class="ti ti-checklist" style="margin-right:6px"></i>As Minhas Tarefas</span>'
+      +'<span style="font-size:11px;color:var(--t2)">'+diaSemana()+(pend>0?(' · <strong style="color:var(--am)">'+pend+' por fazer</strong>'):' · <strong style="color:var(--g)">tudo em dia</strong>')+'</span></div>'
+      +'<div class="cb" style="padding:6px 0">'+linhas+'</div>';
+    var ph=view.querySelector('.ph');
+    if(ph && ph.parentNode===view) ph.insertAdjacentElement('afterend', card);
+    else view.insertBefore(card, view.firstChild);
+  };
+
+  // estilo das linhas (hover)
+  try{ var st=document.createElement('style'); st.textContent='.tarefa-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--b)}.tarefa-row:last-child{border-bottom:none}.tarefa-row[onclick]:hover{background:var(--bg3)}'; document.head.appendChild(st); }catch(e){}
+
+  // ── Hook ao go() para injectar na página inicial de cada perfil ──
+  var HOME={ 'dash':'v-dash', 'portal-prof':'v-portal-prof', 'dash-enc':'v-dash-enc' };
+  var _goTarefas=window.go;
+  window.go=function(id){
+    var r=_goTarefas.apply(this, arguments);
+    try{ if(HOME[id]) setTimeout(function(){ try{ window.__renderTarefasCard(HOME[id]); }catch(e){} }, 80); }catch(e){}
+    return r;
+  };
+
+  window.__finTarefas107=true;
 })();
 </script>
 
