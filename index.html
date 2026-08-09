@@ -4442,13 +4442,18 @@ function rAl(list){
   list=list||ALUNOS;
   document.getElementById('alunos-sub').textContent=`${list.length} aluno(s)`;
   const _verFin=['gestor','director'].includes(typeof curRole!=='undefined'?curRole:'');
+  const H=window.__escH;                      // v6.109: nomes/turmas vêm da BD
+  // v6.109: índice pré-calculado. Antes chamava ALUNOS.indexOf(a) DENTRO do map,
+  // o que tornava a listagem O(n²) — com 1000 alunos são ~1M comparações por
+  // render, e o rAl corre a cada clique num filtro.
+  const _pos=new Map(); ALUNOS.forEach((a,i)=>_pos.set(a,i));
   document.getElementById('tb-al').innerHTML=list.map(a=>{
     const f=calcFaltas(a.id);
     const nMeses=(window.__propsEmAtraso?window.__propsEmAtraso(a):0);
     const risco=_verFin && (window.__emRiscoSuspensao?window.__emRiscoSuspensao(a):nMeses>=2);
     const trStyle=risco?' style="background:rgba(245,158,11,.14);border-left:3px solid #f59e0b"':'';
     const nomeExtra=risco?` <span class="badge bwn" style="font-size:9px" title="Deve ${nMeses} meses — em risco de suspensão por falta de pagamento"><i class="ti ti-cash-off"></i> ${nMeses}m dívida</span>`:'';
-    return`<tr${trStyle} onclick="openAluno(${a.id})"><td>${mkAv(a.nome,28,ALUNOS.indexOf(a),false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${a.num}</td><td style="font-weight:700">${a.nome}${nomeExtra}</td><td><span class="badge bin">${a.turma}</span></td><td style="color:var(--t2);font-size:12px">${a.classe}</td><td><span class="badge ${f.excluido?'ber':f.emRisco?'bwn':'bok'}">${f.pct}%${f.excluido?' <i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':f.emRisco?' <i class="ti ti-bolt" style="color:#f59e0b"></i>':''}</span></td><td><span class="badge ${a.verif?'bok':'bwn'}">${a.verif?'Verificado':'Pendente'}</span></td><td><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openAluno(${a.id})">Ver</button></td></tr>`;
+    return`<tr${trStyle} onclick="openAluno(${a.id})"><td>${mkAv(a.nome,28,_pos.get(a)??0,false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${H(a.num)}</td><td style="font-weight:700">${H(a.nome)}${nomeExtra}</td><td><span class="badge bin">${H(a.turma)}</span></td><td style="color:var(--t2);font-size:12px">${H(a.classe)}</td><td><span class="badge ${f.excluido?'ber':f.emRisco?'bwn':'bok'}">${f.pct}%${f.excluido?' <i class="ti ti-alert-triangle" style="color:#f59e0b"></i>':f.emRisco?' <i class="ti ti-bolt" style="color:#f59e0b"></i>':''}</span></td><td><span class="badge ${a.verif?'bok':'bwn'}">${a.verif?'Verificado':'Pendente'}</span></td><td><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openAluno(${a.id})">Ver</button></td></tr>`;
   }).join('');
 }
 function fAl(f,btn){document.querySelectorAll('#al-filtros .chip').forEach(c=>c.classList.remove('on'));if(btn)btn.classList.add('on');rAl(f==='todos'?null:f==='verif'?ALUNOS.filter(a=>a.verif):ALUNOS.filter(a=>!a.verif))}
