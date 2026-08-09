@@ -581,6 +581,37 @@ window._fs = {
 console.log('[Scholaris] Supabase v2 inicializado');
 </script>
 
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  ESCAPE DE HTML — helpers globais (v6.109)
+//  Existem ~10 funções esc() no ficheiro, todas locais a um IIFE ou
+//  a uma função, e uma delas (inventário) devolve o escola_id. Por
+//  isso NÃO se pode confiar em esc() fora do bloco onde foi definida.
+//  Estes dois helpers são globais, têm nome único e servem os dois
+//  contextos onde interpolamos dados da BD:
+//    __escH → texto dentro de HTML   (innerHTML)
+//    __escA → valor dentro de uma string JS num atributo HTML
+//             ex.: onclick="fn('${__escA(x)}')"
+// ═══════════════════════════════════════════════════════════════
+window.__escH = function (s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+window.__escA = function (s) {
+  return String(s == null ? '' : s)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+};
+</script>
+
 </head>
 <body>
 
@@ -6042,8 +6073,15 @@ async function fbLogin() {
     };
 
     try {
-      const { data: perfil } = await window._supabase
-        .from('perfis').select('*').eq('id', user.id).single();
+      // v6.109: maybeSingle() + erro tratado. Antes usava .single() e ignorava
+      // o erro: se o perfil falhasse (rede, RLS, duplicado) o login CONTINUAVA
+      // em silêncio com escola_demo e sem perfil — sem qualquer aviso.
+      const { data: perfil, error: perfilErr } = await window._supabase
+        .from('perfis').select('*').eq('id', user.id).maybeSingle();
+      if (perfilErr) {
+        console.error('[login] falha ao ler o perfil de', user.id, perfilErr);
+        if (typeof toast === 'function') toast('Não foi possível carregar o seu perfil. Alguns dados podem não aparecer — contacte o gestor.');
+      }
       if (perfil) {
         if (perfil.ativo === false) {
           await window._supabase.auth.signOut().catch(()=>{});
@@ -17482,12 +17520,13 @@ function renderOcorrenciaCard(o, canEdit) {
   const tipo = (typeof TIPO_OCORRENCIA!=='undefined' && (TIPO_OCORRENCIA[o.tipo]||TIPO_OCORRENCIA.outro)) || {cor:'var(--a)',ic:'ti-clipboard-list',label:o.tipo||'Ocorrência'};
   const resolvido = o.estado === 'resolvida';
   const podeDesfecho = ['director','gestor'].includes(typeof curRole!=='undefined'?curRole:'');
-  const nomes = ((o.alunos&&o.alunos.length? o.alunos.map(x=>x.nome) : []).filter(Boolean).join(', ')) || 'Aluno';
-  const evid = (o.evidencias||[]).map((e,i)=>`<button class="btn btn-g btn-sm" onclick="verEvidencia('${(e.path||'').replace(/'/g,'')}')"><i class="ti ti-paperclip"></i> ${e.nome||('Evidência '+(i+1))}</button>`).join(' ');
+  const H = window.__escH, A = window.__escA;   // v6.109: dados da BD escapados (XSS)
+  const nomes = H(((o.alunos&&o.alunos.length? o.alunos.map(x=>x.nome) : []).filter(Boolean).join(', ')) || 'Aluno');
+  const evid = (o.evidencias||[]).map((e,i)=>`<button class="btn btn-g btn-sm" onclick="verEvidencia('${A(e.path||'')}')"><i class="ti ti-paperclip"></i> ${H(e.nome||('Evidência '+(i+1)))}</button>`).join(' ');
   const desfHtml = resolvido ? `<div class="ib-box ib-blue" style="margin-top:10px">
-      <div style="font-weight:700"><i class="ti ti-gavel"></i> Desfecho: ${DESF[o.desfecho]||o.desfecho||'—'}${(o.desfecho==='suspensao'&&o.desfecho_dias)?(' — '+o.desfecho_dias+' dia(s)'):''}</div>
-      ${o.relatorio?`<div style="font-size:12px;color:var(--t2);margin-top:6px"><strong>Relatório:</strong> ${o.relatorio}</div>`:''}
-      ${o.resolvidoPor?`<div style="font-size:10px;color:var(--t3);margin-top:4px">Decidido por ${o.resolvidoPor}</div>`:''}
+      <div style="font-weight:700"><i class="ti ti-gavel"></i> Desfecho: ${H(DESF[o.desfecho]||o.desfecho||'—')}${(o.desfecho==='suspensao'&&o.desfecho_dias)?(' — '+H(o.desfecho_dias)+' dia(s)'):''}</div>
+      ${o.relatorio?`<div style="font-size:12px;color:var(--t2);margin-top:6px"><strong>Relatório:</strong> ${H(o.relatorio)}</div>`:''}
+      ${o.resolvidoPor?`<div style="font-size:10px;color:var(--t3);margin-top:4px">Decidido por ${H(o.resolvidoPor)}</div>`:''}
     </div>` : '';
 
   return `<div class="card" style="border-left:4px solid ${tipo.cor}">
@@ -17496,7 +17535,7 @@ function renderOcorrenciaCard(o, canEdit) {
         <i class="ti ${tipo.ic}" style="color:${tipo.cor};font-size:22px"></i>
         <div>
           <div style="font-size:14px;font-weight:700">${nomes}</div>
-          <div style="font-size:11px;color:var(--t2)">${o.turmaId?('Turma '+o.turmaId+' · '):''}${o.data||''}${o.registadoPorNome?(' · por '+o.registadoPorNome):''}</div>
+          <div style="font-size:11px;color:var(--t2)">${o.turmaId?('Turma '+H(o.turmaId)+' · '):''}${H(o.data||'')}${o.registadoPorNome?(' · por '+H(o.registadoPorNome)):''}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -17505,11 +17544,11 @@ function renderOcorrenciaCard(o, canEdit) {
       </div>
     </div>
     <div class="cb">
-      <div style="font-size:13px;color:var(--t);margin-bottom:8px">${o.descricao||''}</div>
-      ${o.local?`<div style="font-size:11px;color:var(--t3);margin-bottom:6px"><i class="ti ti-map-pin"></i> ${o.local}</div>`:''}
+      <div style="font-size:13px;color:var(--t);margin-bottom:8px">${H(o.descricao||'')}</div>
+      ${o.local?`<div style="font-size:11px;color:var(--t3);margin-bottom:6px"><i class="ti ti-map-pin"></i> ${H(o.local)}</div>`:''}
       ${evid?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${evid}</div>`:''}
       ${desfHtml}
-      ${(!resolvido && podeDesfecho)?`<div style="margin-top:10px"><button class="btn btn-p btn-sm" onclick="abrirDesfecho('${o.id}')"><i class="ti ti-gavel"></i> Dar Desfecho</button></div>`:''}
+      ${(!resolvido && podeDesfecho)?`<div style="margin-top:10px"><button class="btn btn-p btn-sm" onclick="abrirDesfecho('${A(o.id)}')"><i class="ti ti-gavel"></i> Dar Desfecho</button></div>`:''}
     </div>
   </div>`;
 }
@@ -34331,16 +34370,19 @@ window.__finV30=true;})();
 
   function podeBackup(){ try{ return curRole==='gestor'||curRole==='director'; }catch(e){ return false; } }
 
+  // v6.109: o backup NUNCA pode alargar o âmbito.
+  //  - sem escola activa  -> aborta (antes exportava TUDO, sem filtro)
+  //  - erro na query      -> aborta (antes repetia a query SEM filtro, o que
+  //                          exportava os dados das outras escolas)
+  //  - falha              -> propaga (antes devolvia [] e o backup ficava
+  //                          silenciosamente vazio para essa tabela)
   async function fetchTabela(t){
-    try{
-      var eid=window._escolaId;
-      var col=(t==='escolas')?'id':'escola_id';
-      var q=window._supabase.from(t).select('*');
-      if(eid && eid!=='escola_demo') q=q.eq(col, eid);
-      var r=await q;
-      if(r && r.error){ var r2=await window._supabase.from(t).select('*'); return (r2&&r2.data)||[]; }
-      return (r&&r.data)||[];
-    }catch(e){ return []; }
+    var eid=window._escolaId;
+    if(!eid || eid==='escola_demo') throw new Error('Sem escola activa — backup cancelado');
+    var col=(t==='escolas')?'id':'escola_id';
+    var r=await window._supabase.from(t).select('*').eq(col, eid);
+    if(r && r.error) throw new Error('Tabela "'+t+'": '+r.error.message);
+    return (r&&r.data)||[];
   }
 
   function dl(blob, nome){ var u=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=u; a.download=nome; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
