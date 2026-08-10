@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.108</span>
+    <span class="logo-ver">v6.109</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33892,7 +33892,12 @@ window.__finV30=true;})();
       var prev=(ex&&ex.linhas&&ex.linhas[p.id])||{};
       var subs=(prev.subsidios)?prev.subsidios.slice():[];
       if((p.subsidioCargo||0)>0 && !subs.some(function(s){return s.nome==='Cargo';})){ subs.push({nome:'Cargo', valor:p.subsidioCargo}); }
-      linhas[p.id]={ base:p.salario||0, subsidios:subs, descontos:prev.descontos||[] };
+      var descs=(prev.descontos)?prev.descontos.slice():[];
+      try{
+        (window.__fixosSubs?window.__fixosSubs(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0 && !subs.some(function(s){return s.nome===fx.nome;})) subs.push({nome:fx.nome, valor:fx.valor, fixo:true}); });
+        (window.__fixosDesc?window.__fixosDesc(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0 && !descs.some(function(s){return s.nome===fx.nome;})) descs.push({nome:fx.nome, valor:fx.valor, fixo:true}); });
+      }catch(e){}
+      linhas[p.id]={ base:p.salario||0, subsidios:subs, descontos:descs };
     });
     F[a][m]={ status:'rascunho', linhas:linhas, geradaEm:new Date().toISOString(), aprovadaPor:null, aprovadaEm:null };
     persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' gerada (rascunho)'); window.__folhaRerender();
@@ -33905,9 +33910,10 @@ window.__finV30=true;})();
     // Escrever UMA linha de despesa (salários) para o mês — alimenta o balancete
     try{
       var bruto=(typeof window.__folhaBrutoMes==='function')?window.__folhaBrutoMes(m,a):0;
+      var descTot=Object.keys(f.linhas).reduce(function(s,pid){var L=f.linhas[pid];return s+((L.descontos||[]).reduce(function(ss,x){return ss+(x.valor||0);},0));},0);
       if(typeof DESPESAS_REG!=='undefined' && Array.isArray(DESPESAS_REG)){
         for(var i=DESPESAS_REG.length-1;i>=0;i--){ var d=DESPESAS_REG[i]; if(d && d.categoria==='salarios'){ var dmm=(d.mes!=null)?d.mes:(d.data?parseInt(d.data.slice(5,7),10):0); if(Number(dmm)===Number(m)) DESPESAS_REG.splice(i,1); } }
-        var rec={ id:'SAL'+a+'-'+m, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha de Salários '+nomeMes(m)+' (inclui INSS empresa 4%)', valor:Math.round(bruto*1.04), ref:'FOLHA-'+m, registadoEm:new Date().toISOString() };
+        var rec={ id:'SAL'+a+'-'+m, data:a+'-'+String(m).padStart(2,'0')+'-05', mes:m, categoria:'salarios', descricao:'Folha de Salários '+nomeMes(m)+' (inclui INSS empresa 4%, menos descontos)', valor:Math.round(bruto*1.04)-descTot, ref:'FOLHA-'+m, registadoEm:new Date().toISOString() };
         DESPESAS_REG.push(rec);
         try{ if(typeof window.__salvarDespesaFolha==='function') window.__salvarDespesaFolha(rec); else if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(rec); }catch(e){}
       }
@@ -33981,7 +33987,12 @@ window.__finV30=true;})();
       var linhasAuto={};
       (PROFS||[]).filter(function(p){return (p.salario||0)>0 && p.regime!=='parcial';}).forEach(function(p){  // v6.90: parciais só na aba Parcial (por aula)
         var subs=[]; if((p.subsidioCargo||0)>0) subs.push({nome:'Cargo',valor:p.subsidioCargo});
-        linhasAuto[p.id]={ base:p.salario||0, subsidios:subs, descontos:[] };
+        var descs=[];
+        try{
+          (window.__fixosSubs?window.__fixosSubs(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0) subs.push({nome:fx.nome,valor:fx.valor,fixo:true}); });
+          (window.__fixosDesc?window.__fixosDesc(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0) descs.push({nome:fx.nome,valor:fx.valor,fixo:true}); });
+        }catch(e){}
+        linhasAuto[p.id]={ base:p.salario||0, subsidios:subs, descontos:descs };
       });
       if(!Object.keys(linhasAuto).length){ el.innerHTML=h+'<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem colaboradores com salário definido.</div>'; return; }
       f={ status:'auto', linhas:linhasAuto };
@@ -34001,7 +34012,7 @@ window.__finV30=true;})();
       var baseDin = __fAprovada ? (L.base||0) : (typeof window.__baseFolha==='function' ? window.__baseFolha(p,m) : (L.base||0));
       var bruto=(baseDin||0)+subs; var inss=Math.round(bruto*0.03); var irps=calcIRPSl(bruto);
       var dm=(L.descontos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
-      return {pid:pid,p:p,L:L,baseDin:baseDin,bruto:bruto,inss:inss,irps:irps,dm:dm,liquido:bruto-inss-irps-dm,empresa:Math.round(bruto*0.04),custo:bruto+Math.round(bruto*0.04)};
+      return {pid:pid,p:p,L:L,baseDin:baseDin,bruto:bruto,inss:inss,irps:irps,dm:dm,liquido:bruto-inss-irps-dm,empresa:Math.round(bruto*0.04),custo:bruto+Math.round(bruto*0.04)-dm};
     }).sort(function(x,y){return (x.p.nome||'').localeCompare(y.p.nome||'');});
     var tBase=rows.reduce(function(s,r){return s+(r.baseDin||0);},0);
     var tBruto=rows.reduce(function(s,r){return s+r.bruto;},0);
@@ -34011,11 +34022,11 @@ window.__finV30=true;})();
     var tCusto=rows.reduce(function(s,r){return s+r.custo;},0);
 
     var custoParcial = (typeof window.__totalParciais==='function') ? (window.__totalParciais(a,m)||0) : 0;
-    var custoTotalFolha = Math.round(tBruto*1.04) + custoParcial;   // v6.92: = despesa no balancete (inteiros c/ 4% INSS empresa + parciais por aula)
+    var custoTotalFolha = Math.round(tBruto*1.04) - tDM + custoParcial;   // v6.92/6.109: despesa no balancete (inteiros c/ 4% INSS empresa − descontos + parciais por aula)
     h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Bruto (inteiro)',tBruto,'var(--a)')+kpi('INSS + IRPS',tINSS+tIRPS,'var(--am)')+kpi('Líquido (inteiro)',tLiq,'var(--g)')+kpi('Parciais (por aula)',custoParcial,'var(--a2)')+kpi('Custo Total (Int.+Parc.)',custoTotalFolha,'var(--r)')+'</div>';
     h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Descontos</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th style="text-align:right">Líquido</th><th style="text-align:right">INSS Empresa (4%)</th><th style="text-align:right">Custo Total</th></tr></thead><tbody>';
     rows.forEach(function(r){
-      var subC=(r.L.subsidios||[]).map(function(s,si){return '<div style="color:var(--g);font-size:10px">+'+fmtN(s.valor)+' '+s.nome+(canEdit?' <a onclick="window.__rmSubsidio('+m+','+Q+r.pid+Q+','+si+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addSubsidio('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ subsídio</a>':'');
+      var subC=(r.L.subsidios||[]).map(function(s,si){return '<div style="color:var(--g);font-size:10px">+'+fmtN(s.valor)+' '+s.nome+(canEdit?' <a onclick="window.__rmSubsidio('+m+','+Q+r.pid+Q+','+si+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addSubsidio('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ subsídio</a> · <a onclick="window.__fixosModal('+Q+r.pid+Q+')" style="cursor:pointer;color:var(--tl);font-size:10px" title="Subsídios/descontos fixos (todos os meses)">fixos</a>':'');
       var desC=(r.L.descontos||[]).map(function(d,di){return '<div style="color:var(--r);font-size:10px">-'+fmtN(d.valor)+' '+d.nome+(canEdit?' <a onclick="window.__rmDesconto('+m+','+Q+r.pid+Q+','+di+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addDesconto('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ desconto</a>':'');
       h+='<tr><td><div style="font-weight:700">'+r.p.nome+'</div><div style="font-size:10px;color:var(--t2)">'+(r.p.num||'')+' · '+(r.p.cargo||'')+'</div></td>'
         +'<td style="text-align:right;font-family:var(--fm)">'+fmtN(r.baseDin)+(r.p.regime==='parcial'?'<div style="font-size:9px;color:var(--am)">parcial · por aulas</div>':'')+'</td>'
@@ -40350,6 +40361,61 @@ window.trimestreActual = function(d){
   };
 
   window.__finTarefas107=true;
+})();
+</script>
+
+<script>
+/* ═══ v6.109 — Subsídios e descontos FIXOS por trabalhador (recorrentes) ═══ */
+(function(){
+  if(window.__finFixos109) return;
+  function DG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'); }catch(e){ return false; } }
+  function store(kind){ if(typeof CONFIG==='undefined') return {}; var k=(kind==='sub')?'subsidiosFixos':'descontosFixos'; if(!CONFIG[k]) CONFIG[k]={}; return CONFIG[k]; }
+  function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+
+  window.__fixosSubs=function(pid){ try{ return store('sub')[String(pid)]||[]; }catch(e){ return []; } };
+  window.__fixosDesc=function(pid){ try{ return store('desc')[String(pid)]||[]; }catch(e){ return []; } };
+
+  window.__fixosAdd=function(pid,kind){
+    if(!DG()){ toast('Apenas gestor ou director'); return; }
+    var nomeEl=document.getElementById('fx-'+kind+'-nome'), valEl=document.getElementById('fx-'+kind+'-valor');
+    var nome=((nomeEl||{}).value||'').trim(); var valor=Math.round(parseFloat((valEl||{}).value)||0);
+    if(!nome){ toast('Indique o nome'); return; } if(!valor||valor<0){ toast('Indique um valor válido'); return; }
+    var s=store(kind); var k=String(pid); s[k]=s[k]||[];
+    if(s[k].some(function(x){return x.nome===nome;})){ toast('Já existe um item com esse nome'); return; }
+    s[k].push({nome:nome, valor:valor}); persist();
+    window.__fixosModal(pid);
+  };
+  window.__fixosRm=function(pid,kind,i){
+    if(!DG()) return; var s=store(kind); var arr=s[String(pid)]; if(arr){ arr.splice(i,1); persist(); window.__fixosModal(pid); }
+  };
+  window.__fixosAplicar=function(pid){
+    try{ var m=window.__folhaMes||(new Date().getMonth()+1); if(typeof window.__gerarFolha==='function') window.__gerarFolha(m); else if(typeof window.__folhaRerender==='function') window.__folhaRerender(); }catch(e){}
+    var mo=document.getElementById('m-fixos'); if(mo) mo.remove();
+    if(typeof toast==='function') toast('Fixos aplicados ao mês actual.');
+  };
+
+  window.__fixosModal=function(pid){
+    if(!DG()){ toast('Apenas gestor ou director'); return; }
+    var p=(typeof PROFS!=='undefined'?PROFS:[]).find(function(x){return String(x.id)===String(pid);}); if(!p){ return; }
+    var Q=String.fromCharCode(39);
+    var subs=window.__fixosSubs(pid), descs=window.__fixosDesc(pid);
+    function rows(arr,kind){ return arr.length? arr.map(function(x,i){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--b);font-size:12px"><span>'+x.nome+'</span><span style="display:flex;gap:10px;align-items:center"><strong style="color:'+(kind==='sub'?'var(--g)':'var(--r)')+'">'+(kind==='sub'?'+':'−')+fmt(x.valor)+' MZM</strong><i class="ti ti-trash" style="cursor:pointer;color:var(--r)" onclick="window.__fixosRm('+Q+pid+Q+','+Q+kind+Q+','+i+')"></i></span></div>'; }).join('') : '<div style="font-size:11px;color:var(--t3);padding:6px 0">Nenhum.</div>'; }
+    var ex=document.getElementById('m-fixos'); if(ex) ex.remove();
+    var mo=document.createElement('div'); mo.id='m-fixos'; mo.className='modal-ov'; mo.style.display='flex';
+    mo.innerHTML='<div class="modal" style="max-width:520px"><div class="mhd"><span class="mt"><i class="ti ti-pin"></i> Subsídios e Descontos Fixos</span><button class="mclose" onclick="document.getElementById(\'m-fixos\').remove()"><i class="ti ti-x"></i></button></div>'
+      +'<div class="mbod">'
+      +'<div class="ib-box ib-blue" style="margin-bottom:12px"><strong>'+p.nome+'</strong> · '+(p.cargo||'')+'<br><span style="font-size:11px">Aplicados automaticamente a todos os meses ao gerar/actualizar a folha.</span></div>'
+      +'<div style="font-weight:700;font-size:12px;color:var(--g);margin-bottom:4px">Subsídios fixos (+)</div>'+rows(subs,'sub')
+      +'<div style="display:flex;gap:6px;margin:8px 0 16px"><input class="ffi" id="fx-sub-nome" placeholder="Ex: Transporte, Habitação" style="flex:1"><input class="ffi" id="fx-sub-valor" type="number" min="1" placeholder="MZM" style="width:110px"><button class="btn btn-g btn-sm" onclick="window.__fixosAdd('+Q+pid+Q+',\'sub\')"><i class="ti ti-plus"></i></button></div>'
+      +'<div style="font-weight:700;font-size:12px;color:var(--r);margin-bottom:4px">Descontos fixos (−)</div>'+rows(descs,'desc')
+      +'<div style="display:flex;gap:6px;margin-top:8px"><input class="ffi" id="fx-desc-nome" placeholder="Ex: Empréstimo, Adiantamento" style="flex:1"><input class="ffi" id="fx-desc-valor" type="number" min="1" placeholder="MZM" style="width:110px"><button class="btn btn-g btn-sm" onclick="window.__fixosAdd('+Q+pid+Q+',\'desc\')"><i class="ti ti-plus"></i></button></div>'
+      +'</div>'
+      +'<div class="mft"><button class="btn btn-g" onclick="document.getElementById(\'m-fixos\').remove()">Fechar</button><button class="btn btn-p" onclick="window.__fixosAplicar('+Q+pid+Q+')"><i class="ti ti-refresh"></i> Aplicar ao mês actual</button></div></div>';
+    document.body.appendChild(mo);
+  };
+
+  window.__finFixos109=true;
 })();
 </script>
 
