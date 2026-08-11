@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.118</span>
+    <span class="logo-ver">v6.119</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3390,7 +3390,7 @@ const ROLES={
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-arrow-down-circle',l:'Entradas',id:'entradas'},{i:'ti-arrow-up-circle',l:'Saídas / Despesas',id:'saidas'},{i:'ti-alert-triangle',l:'Dívidas por Mês',id:'dividas-mes'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Relatório de Actividades',id:'relatorio-actividades'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
       {sl:'Gestão RH',sub:[
         {i:'ti-briefcase',l:'Staff / Dep.',id:'staff'},
         {i:'ti-star',l:'Avaliações',id:'aval'},
@@ -3477,7 +3477,7 @@ const ROLES={
       ]},
       {sl:'Gestão Financeira',sub:[
         {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
-        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-arrow-down-circle',l:'Entradas',id:'entradas'},{i:'ti-arrow-up-circle',l:'Saídas / Despesas',id:'saidas'},{i:'ti-alert-triangle',l:'Dívidas por Mês',id:'dividas-mes'},
+        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Relatório de Actividades',id:'relatorio-actividades'},
         {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
@@ -40905,34 +40905,44 @@ window.trimestreActual = function(d){
     if(kind==='pdf'){ var b=''; var g=0; meses.forEach(function(mm){ var rows=M[mm].slice().sort(function(x,y){return y.total-x.total;}); var sub=rows.reduce(function(s,r){return s+r.total;},0); g+=sub; b+='<h2>'+MZL[mm]+' — '+rows.length+' aluno(s) · '+fmt(sub)+' MZM</h2><table><thead><tr><th>Nº</th><th>Aluno</th><th>Turma</th><th class="r">Base</th><th class="r">Multa</th><th class="r">Total</th></tr></thead><tbody>'; rows.forEach(function(r){ b+='<tr><td>'+esc(r.num)+'</td><td>'+esc(r.nome)+'</td><td>'+esc(r.turma)+'</td><td class="r">'+fmt(r.base)+'</td><td class="r">'+(r.multa?fmt(r.multa):'-')+'</td><td class="r">'+fmt(r.total)+'</td></tr>'; }); b+='</tbody></table>'; }); b+='<div class="tg">TOTAL EM DÍVIDA: '+fmt(g)+' MZM</div>'; abrirPDF(titulo,b); }
     else { var L=[['Mês','Nº Aluno','Aluno','Turma','Base','Multa','Total (MZM)']]; meses.forEach(function(mm){ M[mm].forEach(function(r){ L.push([MZL[mm],r.num,r.nome,r.turma,r.base,r.multa,r.total]); }); }); baixarCSV('dividas_'+(window.__divMes>0?MZL[window.__divMes]:'ano')+'.csv',L); } };
 
-  // ── Views + routing ──
+  // ── View única "Relatório de Actividades" com separadores internos ──
+  var RA_TABS=[['entradas','Relatório de Entradas','entradas-c',rEntradas],['saidas','Relatório de Saídas','saidas-c',rSaidas],['dividas','Dívidas por Mês','dividas-mes-c',rDividasMes]];
+  window.__raTab=window.__raTab||'entradas';
   function ensureViews(){
     var ref=document.getElementById('v-fin-dashboard'); if(!ref||!ref.parentNode) return;
-    [['v-entradas','entradas-c'],['v-saidas','saidas-c'],['v-mov-dividas','dividas-mes-c']].forEach(function(pair){
-      if(document.getElementById(pair[0])) return;
-      var v=document.createElement('div'); v.className='view'; v.id=pair[0];
-      v.innerHTML='<div id="'+pair[1]+'"></div>';
-      ref.parentNode.insertBefore(v, ref.nextSibling);
-    });
-    // injectar o header (ph) com export dentro de cada view uma vez
+    if(document.getElementById('v-relatorio-actividades')) return;
+    var v=document.createElement('div'); v.className='view'; v.id='v-relatorio-actividades';
+    var tabs=RA_TABS.map(function(t){ return '<button class="tab" id="ra-tab-'+t[0]+'" onclick="window.__raGo(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('');
+    v.innerHTML='<div class="ph"><div><div class="ph-title">Relatório de Actividades</div><div class="ph-sub">Entradas, saídas e dívidas — por mês e categoria</div></div></div>'
+      +'<div class="tabs" id="ra-tabs">'+tabs+'</div>'
+      +'<div id="entradas-c"></div><div id="saidas-c" style="display:none"></div><div id="dividas-mes-c" style="display:none"></div>';
+    ref.parentNode.insertBefore(v, ref.nextSibling);
   }
   ensureViews();
-  try{ if(typeof VM!=='undefined'){ VM['entradas']='v-entradas'; VM['saidas']='v-saidas'; VM['dividas-mes']='v-mov-dividas'; } }catch(e){}
-  var ROUTES={ 'entradas':['v-entradas',rEntradas], 'saidas':['v-saidas',rSaidas], 'dividas-mes':['v-mov-dividas',rDividasMes] };
+  window.__raGo=function(tab){
+    ensureViews();
+    if(!RA_TABS.some(function(t){return t[0]===tab;})) tab='entradas';
+    window.__raTab=tab;
+    RA_TABS.forEach(function(t){ var c=document.getElementById(t[2]); if(c) c.style.display=(t[0]===tab)?'':'none'; var b=document.getElementById('ra-tab-'+t[0]); if(b) b.classList.toggle('on', t[0]===tab); });
+    var def=RA_TABS.filter(function(t){return t[0]===tab;})[0]; if(def){ try{ def[3](); }catch(e){} }
+  };
+  try{ if(typeof VM!=='undefined'){ VM['relatorio-actividades']='v-relatorio-actividades'; VM['entradas']='v-relatorio-actividades'; VM['saidas']='v-relatorio-actividades'; VM['dividas-mes']='v-relatorio-actividades'; } }catch(e){}
+  var RA_ALIAS={ 'entradas':'entradas', 'saidas':'saidas', 'dividas-mes':'dividas' };
   var _goV=window.go;
   window.go=function(id){
-    if(ROUTES[id]){ ensureViews();
+    if(id==='relatorio-actividades' || RA_ALIAS[id]){
+      ensureViews();
       try{ document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on');}); document.querySelectorAll('.si,.ssi').forEach(function(s){s.classList.remove('on');});
-        var ve=document.getElementById(ROUTES[id][0]); if(ve) ve.classList.add('on');
-        var se=document.getElementById('si-'+id); if(se) se.classList.add('on');
-        ROUTES[id][1]();
+        var ve=document.getElementById('v-relatorio-actividades'); if(ve) ve.classList.add('on');
+        var se=document.getElementById('si-relatorio-actividades'); if(se) se.classList.add('on');
+        window.__raGo(RA_ALIAS[id] || window.__raTab || 'entradas');
       }catch(e){}
       return;
     }
     return _goV.apply(this, arguments);
   };
 
-  // reapontar os antigos abridores de modal → navegar para as views
+  // reapontar os antigos abridores → abrir a aba certa dentro do relatório
   window.__verEntradas=function(a,b){ window.__entMes=(Number(a)===Number(b))?Number(a):0; window.__entCat=''; go('entradas'); };
   window.__verMovimentos=function(mes){ window.__entMes=Number(mes)||0; window.__entCat=''; go('entradas'); };
   window.__verDividas=function(){ window.__divMes=0; go('dividas-mes'); };
