@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.112</span>
+    <span class="logo-ver">v6.113</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -6339,6 +6339,7 @@ async function loadDadosEscola() {
           foto: null,
           bolseiro: _bolsaPct>0?'sim':'nao',
           bolsaPct: _bolsaPct,
+          bolsaMotivo: a.bolsa_motivo || '',
           isencoes: {matricula: a.isento_matricula===true, inscricao: a.isento_inscricao===true},
           faltas: {t1:[], t2:[], t3:[]},
           notas: {t1:[], t2:[], t3:[]},
@@ -33769,6 +33770,13 @@ window.__finV30=true;})();
       fillRows();
     }catch(e){}
   };
+  window.__setBolsaMotivo=function(alunoId, motivo){
+    try{
+      var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return String(x.id)===String(alunoId);}); if(!a) return;
+      a.bolsaMotivo=(motivo||'').trim();
+      if(sb()&&a._dbId){ sb().from('alunos').update({bolsa_motivo:a.bolsaMotivo}).eq('id',a._dbId).then(function(){},function(){}); }
+    }catch(e){}
+  };
   window.__setIsencaoBolsa=function(alunoId, tipo){
     try{
       var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return String(x.id)===String(alunoId);}); if(!a) return;
@@ -33793,7 +33801,7 @@ window.__finV30=true;})();
   function fillRows(){
     var tb=document.getElementById('bolsas-tbody'); if(!tb) return;
     var canEdit=isGestor(); var alunos=listaFiltrada(); var h='';
-    if(!alunos.length){ h='<tr><td colspan="7" style="padding:18px;text-align:center;color:var(--t2)">Sem alunos.</td></tr>'; }
+    if(!alunos.length){ h='<tr><td colspan="8" style="padding:18px;text-align:center;color:var(--t2)">Sem alunos.</td></tr>'; }
     alunos.forEach(function(a){
       var base=propinaBase(a); var pct=a.bolsaPct||0; var comb=Math.round(base*(1-pct/100));
       var isM=a.isencoes&&a.isencoes.matricula; var isI=a.isencoes&&a.isencoes.inscricao;
@@ -33804,6 +33812,7 @@ window.__finV30=true;})();
         +'<td style="padding:9px;text-align:right;color:var(--t2)">'+fmt(base)+'</td>'
         +'<td style="padding:9px;text-align:center"><input type="number" min="0" max="100" value="'+pct+'"'+(canEdit?'':' disabled')+' onchange="window.__setBolsa(\''+a.id+'\',this.value)" style="width:62px;text-align:right;background:var(--bg3);border:1px solid var(--b);border-radius:7px;padding:5px;color:var(--t);font-size:12px"> %</td>'
         +'<td style="padding:9px;text-align:right;font-weight:700;color:'+(pct>0?'#16a34a':'var(--t)')+'">'+fmt(comb)+'</td>'
+        +'<td style="padding:9px"><input type="text" list="bolsa-motivos" value="'+((a.bolsaMotivo||'').replace(/"/g,'&quot;'))+'"'+(canEdit?'':' disabled')+' placeholder="Motivo..." onchange="window.__setBolsaMotivo(\''+a.id+'\',this.value)" style="width:150px;background:var(--bg3);border:1px solid var(--b);border-radius:7px;padding:5px 8px;color:var(--t);font-size:12px"></td>'
         +'<td style="padding:9px;text-align:center;white-space:nowrap">'
         +'<button onclick="window.__setIsencaoBolsa(\''+a.id+'\',\'matricula\')"'+(canEdit?'':' disabled')+' style="margin:2px;padding:4px 8px;border-radius:7px;border:1px solid var(--b2);cursor:pointer;font-size:11px;font-weight:600;'+(isM?'background:#16a34a;color:#fff':'background:var(--bg3);color:var(--t2)')+'">Matrícula</button>'
         +'<button onclick="window.__setIsencaoBolsa(\''+a.id+'\',\'inscricao\')"'+(canEdit?'':' disabled')+' style="margin:2px;padding:4px 8px;border-radius:7px;border:1px solid var(--b2);cursor:pointer;font-size:11px;font-weight:600;'+(isI?'background:#16a34a;color:#fff':'background:var(--bg3);color:var(--t2)')+'">Inscrição</button>'
@@ -33821,7 +33830,7 @@ window.__finV30=true;})();
     h+='<div style="min-width:130px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px"><div style="font-size:11px;color:var(--t2)">Bolseiros</div><div id="bolsas-count" style="font-size:22px;font-weight:700;color:#4f8ef7">0</div></div>';
     h+='<div style="flex:1;min-width:220px;background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:14px;display:flex;align-items:center"><input type="text" id="bolsas-search" placeholder="Procurar aluno, nº ou turma..." value="'+f+'" oninput="window.__bolsaSearch(this.value)" style="width:100%;background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:9px 12px;color:var(--t);font-size:13px"></div>';
     h+='</div>';
-    h+='<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3);color:var(--t2);font-size:11px;text-align:left"><th style="padding:10px">Nº</th><th style="padding:10px">ALUNO</th><th style="padding:10px">TURMA</th><th style="padding:10px;text-align:right">PROPINA BASE</th><th style="padding:10px;text-align:center">BOLSA %</th><th style="padding:10px;text-align:right">PROPINA C/ BOLSA</th><th style="padding:10px;text-align:center">ISENÇÕES</th></tr></thead><tbody id="bolsas-tbody"></tbody></table></div></div>';
+    h+='<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3);color:var(--t2);font-size:11px;text-align:left"><th style="padding:10px">Nº</th><th style="padding:10px">ALUNO</th><th style="padding:10px">TURMA</th><th style="padding:10px;text-align:right">PROPINA BASE</th><th style="padding:10px;text-align:center">BOLSA %</th><th style="padding:10px;text-align:right">PROPINA C/ BOLSA</th><th style="padding:10px">MOTIVO</th><th style="padding:10px;text-align:center">ISENÇÕES</th></tr></thead><tbody id="bolsas-tbody"></tbody></table></div></div><datalist id="bolsa-motivos"><option value="Filho de funcionário"><option value="Filho de professor"><option value="Bolseiro (mérito)"><option value="Órfão"><option value="Dificuldade financeira"><option value="Irmãos na escola"></datalist>';
     host.innerHTML=h; fillRows();
   }
   window.rBolsas=rBolsas;
