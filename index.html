@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.116</span>
+    <span class="logo-ver">v6.117</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3390,7 +3390,7 @@ const ROLES={
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-arrows-exchange',l:'Movimentos',id:'movimentos'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-arrow-down-circle',l:'Entradas',id:'entradas'},{i:'ti-arrow-up-circle',l:'Saídas / Despesas',id:'saidas'},{i:'ti-alert-triangle',l:'Dívidas por Mês',id:'dividas-mes'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
       {sl:'Gestão RH',sub:[
         {i:'ti-briefcase',l:'Staff / Dep.',id:'staff'},
         {i:'ti-star',l:'Avaliações',id:'aval'},
@@ -3477,7 +3477,7 @@ const ROLES={
       ]},
       {sl:'Gestão Financeira',sub:[
         {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
-        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-arrows-exchange',l:'Movimentos',id:'movimentos'},
+        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-arrow-down-circle',l:'Entradas',id:'entradas'},{i:'ti-arrow-up-circle',l:'Saídas / Despesas',id:'saidas'},{i:'ti-alert-triangle',l:'Dívidas por Mês',id:'dividas-mes'},
         {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
@@ -18634,7 +18634,7 @@ function rFinDashboard() {
   const mesBlockHtml = '<div class="card" style="margin-bottom:20px"><div class="ch"><span class="ct"><i class="ti ti-calendar-dollar" style="margin-right:6px"></i>Balanço de '+_mesNome+' '+((new Date()).getFullYear())+'</span><button class="btn btn-g btn-sm" onclick="exportarEntradasMes('+mesAtual+')"><i class="ti ti-download"></i> Exportar entradas</button></div><div class="cb"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+mesCardsHtml+'</div>'+_detalheHtml+'</div></div>';
   const kpisHtml = [
     {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle', fn:'__verEntradas(1,12)'},
-    {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle', fn:'__verMovimentos(0)'},
+    {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle', fn:'__verSaidasView(0)'},
     {l:'Dividas', v:fmt(totalDivida)+' MZM', sub:'+'+fmt(porVencer)+' por vencer', c:'var(--am)', ic:'ti-alert-triangle', fn:'__verDividas()'},
     {l:'Saldo Actual', v:fmt(saldoActual)+' MZM', sub:'Entradas - Saidas', c:(saldoActual>=0?'var(--g)':'var(--r)'), ic:'ti-wallet'},
     {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:'Propinas anuais (com bolsas)', c:'var(--a)', ic:'ti-target'}
@@ -40808,6 +40808,136 @@ window.trimestreActual = function(d){
     return _goMovMenu.apply(this, arguments);
   };
   window.__finMovMenu116=true;
+})();
+</script>
+
+<script>
+/* ═══ v6.117 — Entradas / Saídas / Dívidas como VIEWS na app (filtro mês+categoria, CSV/PDF) ═══ */
+(function(){
+  if(window.__finViews117) return;
+  var MZL=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escolaN(){ try{ return (typeof CONFIG!=='undefined' && (CONFIG.nomeEscola||CONFIG.escola||CONFIG.nome)) || 'Scholaris'; }catch(e){ return 'Scholaris'; } }
+  function DG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'); }catch(e){ return false; } }
+  function distinct(a){ var s={},o=[]; a.forEach(function(x){ if(x&&!s[x]){s[x]=1;o.push(x);} }); return o.sort(); }
+  function sumV(a){ return a.reduce(function(s,r){return s+(r.valor||0);},0); }
+  function lock(){ return '<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito — apenas Gestor Geral e Director.</div>'; }
+
+  function abrirPDF(titulo, corpo){
+    var w=window.open('','_blank','width=940,height=780'); if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o PDF.'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(titulo)+'</title><style>body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#0f172a;padding:26px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:16px 0 6px;color:#1e3a8a;border-bottom:1px solid #cbd5e1;padding-bottom:3px}.sub{color:#64748b;font-size:11px;margin:2px 0 14px}table{width:100%;border-collapse:collapse;margin-bottom:6px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:11px}th{background:#f1f5f9}.r{text-align:right}.tg{text-align:right;font-weight:800;margin:8px 0;font-size:13px}@media print{.noprint{display:none}}</style></head><body><div class="noprint" style="margin-bottom:14px"><button onclick="window.print()" style="padding:9px 20px;background:#4f8ef7;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer">Imprimir / Guardar PDF</button></div><h1>'+esc(escolaN())+'</h1><div class="sub">'+esc(titulo)+' · '+new Date().toLocaleDateString('pt-PT')+'</div>'+corpo+'</body></html>');
+    w.document.close();
+  }
+  function baixarCSV(nome, linhas){
+    var e=function(v){ v=String(v==null?'':v); return /[";\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; };
+    var csv='﻿'+linhas.map(function(row){return row.map(e).join(';');}).join('\n');
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=nome; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
+  }
+  function mesSel(cur, fn){ var o='<option value="0"'+(cur===0?' selected':'')+'>Ano completo</option>'; for(var i=1;i<=12;i++)o+='<option value="'+i+'"'+(cur===i?' selected':'')+'>'+MZL[i]+'</option>'; return '<select class="ffi" style="width:150px" onchange="'+fn+'(this.value)">'+o+'</select>'; }
+  function catSel(cats, cur, fn){ var o='<option value=""'+(!cur?' selected':'')+'>Todas as categorias</option>'; cats.forEach(function(c){ o+='<option value="'+esc(c)+'"'+(cur===c?' selected':'')+'>'+esc(c)+'</option>'; }); return '<select class="ffi" style="width:200px" onchange="'+fn+'(this.value)">'+o+'</select>'; }
+  function kpi(l,v,c){ return '<div style="min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:10px;padding:12px 16px"><div style="font-size:20px;font-weight:800;color:'+c+'">'+fmt(v)+' MZM</div><div style="font-size:11px;color:var(--t2)">'+l+'</div></div>'; }
+  function chips(arr){ var by={}; arr.forEach(function(x){ by[x.cat]=(by[x.cat]||0)+(x.valor||0); }); return Object.keys(by).sort(function(a,b){return by[b]-by[a];}).map(function(k){ return '<span style="display:inline-block;background:var(--bg3);border:1px solid var(--b);border-radius:99px;padding:3px 10px;font-size:11px;margin:2px">'+esc(k)+': <strong>'+fmt(by[k])+'</strong></span>'; }).join(''); }
+  function ph(t,s,exp){ return '<div class="ph"><div><div class="ph-title">'+t+'</div><div class="ph-sub">'+s+'</div></div><div class="ph-right"><button class="btn btn-g btn-sm" onclick="'+exp+'(\'csv\')"><i class="ti ti-file-spreadsheet"></i> CSV</button><button class="btn btn-p btn-sm" onclick="'+exp+'(\'pdf\')"><i class="ti ti-file-type-pdf"></i> PDF</button></div></div>'; }
+
+  // ── ENTRADAS ──
+  window.__entMes=0; window.__entCat='';
+  window.__entSetMes=function(v){ window.__entMes=Number(v)||0; rEntradas(); };
+  window.__entSetCat=function(v){ window.__entCat=v||''; rEntradas(); };
+  function entLista(){ return (window.__entradasMov?window.__entradasMov(window.__entMes):[]).filter(function(r){ return !window.__entCat || r.cat===window.__entCat; }); }
+  function rEntradas(){ ensureViews(); var el=document.getElementById('entradas-c'); if(!el) return; if(!DG()){ el.innerHTML=lock(); return; }
+    var cats=distinct((window.__entradasMov?window.__entradasMov(0):[]).map(function(r){return r.cat;}));
+    var lista=entLista(); var tot=sumV(lista);
+    var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><label style="font-size:12px;color:var(--t2)">Mês:</label>'+mesSel(window.__entMes,'window.__entSetMes')+'<label style="font-size:12px;color:var(--t2)">Categoria:</label>'+catSel(cats,window.__entCat,'window.__entSetCat')+'<button class="btn btn-g btn-sm" onclick="window.__entExport(\'csv\')"><i class="ti ti-file-spreadsheet"></i> CSV</button><button class="btn btn-p btn-sm" onclick="window.__entExport(\'pdf\')"><i class="ti ti-file-type-pdf"></i> PDF</button><span style="flex:1"></span>'+kpi('Total de Entradas',tot,'var(--g)')+'</div>';
+    h+='<div style="margin-bottom:8px">'+chips(lista)+'</div>';
+    if(!lista.length){ el.innerHTML=h+'<div class="ib-box ib-blue">Sem entradas para este filtro.</div>'; return; }
+    h+='<div class="card"><div class="tw"><table><thead><tr><th>Data</th><th>Nº</th><th>Descrição da entrada</th><th>Categoria</th><th style="text-align:right">Valor (MZM)</th><th>Recibo</th></tr></thead><tbody>';
+    lista.forEach(function(r){ var e=r.estado==='por_confirmar'?' <span class="badge bwn" style="font-size:8px">p/ conf</span>':''; h+='<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+esc(r.data)+'</td><td style="font-family:var(--fm);font-size:11px">'+esc(r.num)+'</td><td>'+esc(r.desc)+' — <strong>'+esc(r.nome)+'</strong> ('+esc(r.turma)+')'+(r.canal?(' · '+esc(r.canal)):'')+e+'</td><td style="font-size:11px;color:var(--t2)">'+esc(r.cat)+'</td><td style="text-align:right;font-family:var(--fm)">'+fmt(r.valor)+'</td><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">'+esc(r.recibo||'—')+'</td></tr>'; });
+    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td colspan="4">TOTAL</td><td style="text-align:right;color:var(--g)">'+fmt(tot)+'</td><td></td></tr></tbody></table></div></div>';
+    var per=window.__entMes>0?MZL[window.__entMes]:'Ano completo'; el.innerHTML='<div style="font-size:12px;color:var(--t3);margin-bottom:6px">'+per+(window.__entCat?(' · '+esc(window.__entCat)):'')+' · '+lista.length+' entrada(s)</div>'+h;
+  }
+  window.rEntradas=rEntradas;
+  window.__entExport=function(kind){ var lista=entLista(); var per=window.__entMes>0?MZL[window.__entMes]:'Ano'; var titulo='Entradas — '+ (window.__entMes>0?MZL[window.__entMes]:'Ano completo')+(window.__entCat?(' · '+window.__entCat):'');
+    if(kind==='pdf'){ var b='<table><thead><tr><th>Data</th><th>Nº</th><th>Descrição</th><th>Categoria</th><th class="r">Valor</th><th>Recibo</th></tr></thead><tbody>'; lista.forEach(function(r){ b+='<tr><td>'+esc(r.data)+'</td><td>'+esc(r.num)+'</td><td>'+esc(r.desc)+' — '+esc(r.nome)+' ('+esc(r.turma)+')</td><td>'+esc(r.cat)+'</td><td class="r">'+fmt(r.valor)+'</td><td>'+esc(r.recibo||'-')+'</td></tr>'; }); b+='</tbody></table><div class="tg">Total: '+fmt(sumV(lista))+' MZM</div>'; abrirPDF(titulo,b); }
+    else { var L=[['Data','Nº Aluno','Nome','Turma','Descrição','Categoria','Canal','Recibo','Valor (MZM)']]; lista.forEach(function(r){ L.push([r.data,r.num,r.nome,r.turma,r.desc,r.cat,r.canal,r.recibo,r.valor]); }); L.push(['','','','','','','','TOTAL',sumV(lista)]); baixarCSV('entradas_'+per+'.csv',L); } };
+
+  // ── SAÍDAS / DESPESAS ──
+  window.__saiMes=0; window.__saiCat='';
+  window.__saiSetMes=function(v){ window.__saiMes=Number(v)||0; rSaidas(); };
+  window.__saiSetCat=function(v){ window.__saiCat=v||''; rSaidas(); };
+  window.__verSaidasView=function(mes){ window.__saiMes=Number(mes)||0; go('saidas'); };
+  function saiLista(){ return (window.__saidasMov?window.__saidasMov(window.__saiMes):[]).filter(function(r){ return !window.__saiCat || r.cat===window.__saiCat; }); }
+  function rSaidas(){ ensureViews(); var el=document.getElementById('saidas-c'); if(!el) return; if(!DG()){ el.innerHTML=lock(); return; }
+    var cats=distinct((window.__saidasMov?window.__saidasMov(0):[]).map(function(r){return r.cat;}));
+    var lista=saiLista(); var tot=sumV(lista);
+    var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><label style="font-size:12px;color:var(--t2)">Mês:</label>'+mesSel(window.__saiMes,'window.__saiSetMes')+'<label style="font-size:12px;color:var(--t2)">Categoria:</label>'+catSel(cats,window.__saiCat,'window.__saiSetCat')+'<button class="btn btn-g btn-sm" onclick="window.__saiExport(\'csv\')"><i class="ti ti-file-spreadsheet"></i> CSV</button><button class="btn btn-p btn-sm" onclick="window.__saiExport(\'pdf\')"><i class="ti ti-file-type-pdf"></i> PDF</button><span style="flex:1"></span>'+kpi('Total de Saídas',tot,'var(--r)')+'</div>';
+    h+='<div style="margin-bottom:8px">'+chips(lista)+'</div>';
+    if(!lista.length){ el.innerHTML=h+'<div class="ib-box ib-blue">Sem despesas para este filtro.</div>'; return; }
+    h+='<div class="card"><div class="tw"><table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th style="text-align:right">Valor (MZM)</th></tr></thead><tbody>';
+    lista.forEach(function(r){ h+='<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+esc(r.data||'—')+'</td><td style="font-weight:600;font-size:12px">'+esc(r.cat)+'</td><td>'+esc(r.desc)+'</td><td style="text-align:right;font-family:var(--fm);color:var(--r)">'+fmt(r.valor)+'</td></tr>'; });
+    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td colspan="3">TOTAL</td><td style="text-align:right;color:var(--r)">'+fmt(tot)+'</td></tr></tbody></table></div></div>';
+    var per=window.__saiMes>0?MZL[window.__saiMes]:'Ano completo'; el.innerHTML='<div style="font-size:12px;color:var(--t3);margin-bottom:6px">'+per+(window.__saiCat?(' · '+esc(window.__saiCat)):'')+' · '+lista.length+' despesa(s)</div>'+h;
+  }
+  window.rSaidas=rSaidas;
+  window.__saiExport=function(kind){ var lista=saiLista(); var per=window.__saiMes>0?MZL[window.__saiMes]:'Ano'; var titulo='Saídas / Despesas — '+(window.__saiMes>0?MZL[window.__saiMes]:'Ano completo')+(window.__saiCat?(' · '+window.__saiCat):'');
+    if(kind==='pdf'){ var b='<table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th class="r">Valor</th></tr></thead><tbody>'; lista.forEach(function(r){ b+='<tr><td>'+esc(r.data||'-')+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.desc)+'</td><td class="r">'+fmt(r.valor)+'</td></tr>'; }); b+='</tbody></table><div class="tg">Total: '+fmt(sumV(lista))+' MZM</div>'; abrirPDF(titulo,b); }
+    else { var L=[['Data','Categoria','Descrição','Referência','Valor (MZM)']]; lista.forEach(function(r){ L.push([r.data,r.cat,r.desc,r.ref||'',r.valor]); }); L.push(['','','','TOTAL',sumV(lista)]); baixarCSV('saidas_'+per+'.csv',L); } };
+
+  // ── DÍVIDAS por mês ──
+  window.__divMes=0;
+  window.__divSetMes=function(v){ window.__divMes=Number(v)||0; rDividasMes(); };
+  function divLista(){ var M=window.__dividasPorMes?window.__dividasPorMes():{}; if(window.__divMes>0){ var o={}; if(M[window.__divMes]) o[window.__divMes]=M[window.__divMes]; return o; } return M; }
+  function rDividasMes(){ ensureViews(); var el=document.getElementById('dividas-mes-c'); if(!el) return; if(!DG()){ el.innerHTML=lock(); return; }
+    var M=divLista(); var meses=Object.keys(M).map(Number).sort(function(a,b){return a-b;});
+    var grand=0, nTot=0; meses.forEach(function(mm){ M[mm].forEach(function(r){ grand+=r.total; nTot++; }); });
+    var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><label style="font-size:12px;color:var(--t2)">Mês:</label>'+mesSel(window.__divMes,'window.__divSetMes')+'<button class="btn btn-g btn-sm" onclick="window.__divExport(\'csv\')"><i class="ti ti-file-spreadsheet"></i> CSV</button><button class="btn btn-p btn-sm" onclick="window.__divExport(\'pdf\')"><i class="ti ti-file-type-pdf"></i> PDF</button><span style="flex:1"></span>'+kpi('Total em Dívida',grand,'var(--r)')+'</div>';
+    if(!meses.length){ el.innerHTML=h+'<div class="ib-box ib-blue"><i class="ti ti-circle-check"></i> Sem propinas em dívida para este filtro. 🎉</div>'; return; }
+    meses.forEach(function(mm){ var rows=M[mm].slice().sort(function(x,y){return y.total-x.total;}); var sub=rows.reduce(function(s,r){return s+r.total;},0);
+      h+='<div class="card" style="margin-bottom:12px"><div class="ch"><span class="ct">'+MZL[mm]+' — '+rows.length+' aluno(s)</span><span style="font-weight:700;color:var(--r)">'+fmt(sub)+' MZM</span></div><div class="tw"><table><thead><tr><th>Nº</th><th>Aluno</th><th>Turma</th><th style="text-align:right">Base</th><th style="text-align:right">Multa</th><th style="text-align:right">Total (MZM)</th></tr></thead><tbody>';
+      rows.forEach(function(r){ h+='<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+esc(r.num)+'</td><td style="font-weight:600">'+esc(r.nome)+'</td><td><span class="badge bin">'+esc(r.turma)+'</span></td><td style="text-align:right;font-family:var(--fm)">'+fmt(r.base)+'</td><td style="text-align:right;font-family:var(--fm);color:var(--am)">'+(r.multa?fmt(r.multa):'—')+'</td><td style="text-align:right;font-family:var(--fm);font-weight:700">'+fmt(r.total)+'</td></tr>'; });
+      h+='</tbody></table></div></div>'; });
+    el.innerHTML='<div style="font-size:12px;color:var(--t3);margin-bottom:6px">'+(window.__divMes>0?MZL[window.__divMes]:'Ano completo')+' · '+nTot+' registo(s) · '+fmt(grand)+' MZM</div>'+h;
+  }
+  window.rDividasMes=rDividasMes;
+  window.__divExport=function(kind){ var M=divLista(); var meses=Object.keys(M).map(Number).sort(function(a,b){return a-b;}); var titulo='Dívidas de propinas — '+(window.__divMes>0?MZL[window.__divMes]:'Ano completo');
+    if(kind==='pdf'){ var b=''; var g=0; meses.forEach(function(mm){ var rows=M[mm].slice().sort(function(x,y){return y.total-x.total;}); var sub=rows.reduce(function(s,r){return s+r.total;},0); g+=sub; b+='<h2>'+MZL[mm]+' — '+rows.length+' aluno(s) · '+fmt(sub)+' MZM</h2><table><thead><tr><th>Nº</th><th>Aluno</th><th>Turma</th><th class="r">Base</th><th class="r">Multa</th><th class="r">Total</th></tr></thead><tbody>'; rows.forEach(function(r){ b+='<tr><td>'+esc(r.num)+'</td><td>'+esc(r.nome)+'</td><td>'+esc(r.turma)+'</td><td class="r">'+fmt(r.base)+'</td><td class="r">'+(r.multa?fmt(r.multa):'-')+'</td><td class="r">'+fmt(r.total)+'</td></tr>'; }); b+='</tbody></table>'; }); b+='<div class="tg">TOTAL EM DÍVIDA: '+fmt(g)+' MZM</div>'; abrirPDF(titulo,b); }
+    else { var L=[['Mês','Nº Aluno','Aluno','Turma','Base','Multa','Total (MZM)']]; meses.forEach(function(mm){ M[mm].forEach(function(r){ L.push([MZL[mm],r.num,r.nome,r.turma,r.base,r.multa,r.total]); }); }); baixarCSV('dividas_'+(window.__divMes>0?MZL[window.__divMes]:'ano')+'.csv',L); } };
+
+  // ── Views + routing ──
+  function ensureViews(){
+    var ref=document.getElementById('v-fin-dashboard'); if(!ref||!ref.parentNode) return;
+    [['v-entradas','entradas-c'],['v-saidas','saidas-c'],['v-mov-dividas','dividas-mes-c']].forEach(function(pair){
+      if(document.getElementById(pair[0])) return;
+      var v=document.createElement('div'); v.className='view'; v.id=pair[0];
+      v.innerHTML='<div id="'+pair[1]+'"></div>';
+      ref.parentNode.insertBefore(v, ref.nextSibling);
+    });
+    // injectar o header (ph) com export dentro de cada view uma vez
+  }
+  ensureViews();
+  try{ if(typeof VM!=='undefined'){ VM['entradas']='v-entradas'; VM['saidas']='v-saidas'; VM['dividas-mes']='v-mov-dividas'; } }catch(e){}
+  var ROUTES={ 'entradas':['v-entradas',rEntradas], 'saidas':['v-saidas',rSaidas], 'dividas-mes':['v-mov-dividas',rDividasMes] };
+  var _goV=window.go;
+  window.go=function(id){
+    if(ROUTES[id]){ ensureViews();
+      try{ document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on');}); document.querySelectorAll('.si,.ssi').forEach(function(s){s.classList.remove('on');});
+        var ve=document.getElementById(ROUTES[id][0]); if(ve) ve.classList.add('on');
+        var se=document.getElementById('si-'+id); if(se) se.classList.add('on');
+        ROUTES[id][1]();
+      }catch(e){}
+      return;
+    }
+    return _goV.apply(this, arguments);
+  };
+
+  // reapontar os antigos abridores de modal → navegar para as views
+  window.__verEntradas=function(a,b){ window.__entMes=(Number(a)===Number(b))?Number(a):0; window.__entCat=''; go('entradas'); };
+  window.__verMovimentos=function(mes){ window.__entMes=Number(mes)||0; window.__entCat=''; go('entradas'); };
+  window.__verDividas=function(){ window.__divMes=0; go('dividas-mes'); };
+
+  window.__finViews117=true;
 })();
 </script>
 
