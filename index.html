@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.114</span>
+    <span class="logo-ver">v6.115</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -18634,7 +18634,7 @@ function rFinDashboard() {
   const mesBlockHtml = '<div class="card" style="margin-bottom:20px"><div class="ch"><span class="ct"><i class="ti ti-calendar-dollar" style="margin-right:6px"></i>Balanço de '+_mesNome+' '+((new Date()).getFullYear())+'</span><button class="btn btn-g btn-sm" onclick="exportarEntradasMes('+mesAtual+')"><i class="ti ti-download"></i> Exportar entradas</button></div><div class="cb"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+mesCardsHtml+'</div>'+_detalheHtml+'</div></div>';
   const kpisHtml = [
     {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle', fn:'__verEntradas(1,12)'},
-    {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle'},
+    {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle', fn:'__verMovimentos(0)'},
     {l:'Dividas', v:fmt(totalDivida)+' MZM', sub:'+'+fmt(porVencer)+' por vencer', c:'var(--am)', ic:'ti-alert-triangle', fn:'__verDividas()'},
     {l:'Saldo Actual', v:fmt(saldoActual)+' MZM', sub:'Entradas - Saidas', c:(saldoActual>=0?'var(--g)':'var(--r)'), ic:'ti-wallet'},
     {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:'Propinas anuais (com bolsas)', c:'var(--a)', ic:'ti-target'}
@@ -40673,6 +40673,125 @@ window.trimestreActual = function(d){
   window.__dividasPDF=function(){ abrirPDF('Dívidas de propinas por mês', dividasHtml().html); };
 
   window.__finFin114=true;
+})();
+</script>
+
+<script>
+/* ═══ v6.115 — Movimentos: Entradas + Saídas por mês/categoria/data (nº aluno) + CSV/PDF ═══ */
+(function(){
+  if(window.__finMov115) return;
+  var MZL=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var MZ=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function nomeMesL(m){ return MZL[m]||(''+m); }
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escolaN(){ try{ return (typeof CONFIG!=='undefined' && (CONFIG.nomeEscola||CONFIG.escola||CONFIG.nome)) || 'Scholaris'; }catch(e){ return 'Scholaris'; } }
+  function canalNome(c){ return ({numerario:'Numerário',transferencia:'Transferência',deposito:'Depósito',pos:'POS',cheque:'Cheque'})[c]||c||''; }
+  function catEntrada(p){ var f=p.familia; if(f==='taxa_fixa')return 'Taxa fixa'; if(f==='avulso')return 'Serviço avulso'; if(f==='propina'||(Array.isArray(p.meses)&&p.meses.length))return 'Propina'; return p.categoriaNome||'Outro'; }
+  function descEntrada(p){ var meses=(Array.isArray(p.meses)?p.meses:[]).map(function(mi){return MZ[mi]||('m'+(mi+1));}).join('/'); var c=catEntrada(p); return (c==='Propina')?('Propina'+(meses?(' '+meses):'')):c; }
+  function catDesp(d){ try{ return window.nomeCategoriaDespesa?window.nomeCategoriaDespesa(d.categoria):(d.categoria||'Outras'); }catch(e){ return d.categoria||'Outras'; } }
+  function rng(mes){ mes=Number(mes)||0; return mes>0?{i:mes,f:mes,per:nomeMesL(mes)}:{i:1,f:12,per:'Ano completo'}; }
+
+  function abrirPDF(titulo, corpo){
+    var w=window.open('','_blank','width=940,height=780');
+    if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o PDF.'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(titulo)+'</title>'
+      +'<style>body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#0f172a;padding:26px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:16px 0 6px;color:#1e3a8a;border-bottom:1px solid #cbd5e1;padding-bottom:3px}.sub{color:#64748b;font-size:11px;margin:2px 0 14px}table{width:100%;border-collapse:collapse;margin-bottom:6px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:11px}th{background:#f1f5f9}.r{text-align:right}.tg{text-align:right;font-weight:800;margin:8px 0;font-size:13px}@media print{.noprint{display:none}}</style></head><body>'
+      +'<div class="noprint" style="margin-bottom:14px"><button onclick="window.print()" style="padding:9px 20px;background:#4f8ef7;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer">Imprimir / Guardar PDF</button></div>'
+      +'<h1>'+esc(escolaN())+'</h1><div class="sub">'+esc(titulo)+' · '+new Date().toLocaleDateString('pt-PT')+'</div>'+corpo+'</body></html>');
+    w.document.close();
+  }
+
+  window.__entradasMov=function(mes){
+    var r=rng(mes);
+    return (typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[])
+      .filter(function(p){ if(!p||!p.data||p.estado==='estornado'||!((p.valorTotal||0)>0)) return false; var mm=parseInt(String(p.data).slice(5,7),10); return mm>=r.i && mm<=r.f; })
+      .map(function(p){ return { data:p.data||'', mes:parseInt(String(p.data).slice(5,7),10), num:p.alunoNum||'', nome:p.alunoNome||'', turma:p.turmaId||'', cat:catEntrada(p), desc:descEntrada(p), canal:canalNome(p.canal), recibo:p.reciboNum||'', valor:p.valorTotal||0, estado:p.estado||'' }; })
+      .sort(function(a,b){ return (a.data||'').localeCompare(b.data||''); });
+  };
+  window.__saidasMov=function(mes){
+    var r=rng(mes);
+    return (typeof DESPESAS_REG!=='undefined'?DESPESAS_REG:[])
+      .filter(function(d){ if(!d||!((d.valor||0)>0)) return false; var mm=d.data?parseInt(String(d.data).slice(5,7),10):(d.mes||0); return mm>=r.i && mm<=r.f; })
+      .map(function(d){ return { data:d.data||'', mes:(d.data?parseInt(String(d.data).slice(5,7),10):(d.mes||0)), cat:catDesp(d), desc:d.descricao||catDesp(d), ref:d.ref||'', valor:d.valor||0 }; })
+      .sort(function(a,b){ return (a.data||'').localeCompare(b.data||''); });
+  };
+
+  function chips(arr){
+    var by={}; arr.forEach(function(x){ by[x.cat]=(by[x.cat]||0)+(x.valor||0); });
+    return Object.keys(by).sort(function(a,b){return by[b]-by[a];}).map(function(k){ return '<span style="display:inline-block;background:var(--bg3);border:1px solid var(--b);border-radius:99px;padding:3px 10px;font-size:11px;margin:2px">'+esc(k)+': <strong>'+fmt(by[k])+'</strong></span>'; }).join('');
+  }
+  function entTbl(ent){
+    if(!ent.length) return '<div style="padding:12px;color:var(--t3);font-size:12px">Sem entradas.</div>';
+    var h='<div style="margin-bottom:6px">'+chips(ent)+'</div><div class="tw"><table><thead><tr><th>Data</th><th>Nº</th><th>Descrição da entrada</th><th>Categoria</th><th style="text-align:right">Valor (MZM)</th><th>Recibo</th></tr></thead><tbody>';
+    ent.forEach(function(r){ var e=r.estado==='por_confirmar'?' <span class="badge bwn" style="font-size:8px">p/ conf</span>':''; h+='<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+esc(r.data)+'</td><td style="font-family:var(--fm);font-size:11px">'+esc(r.num)+'</td><td>'+esc(r.desc)+' — <strong>'+esc(r.nome)+'</strong> ('+esc(r.turma)+')'+(r.canal?(' · '+esc(r.canal)):'')+e+'</td><td style="font-size:11px;color:var(--t2)">'+esc(r.cat)+'</td><td style="text-align:right;font-family:var(--fm)">'+fmt(r.valor)+'</td><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">'+esc(r.recibo||'—')+'</td></tr>'; });
+    h+='</tbody></table></div>'; return h;
+  }
+  function saiTbl(sai){
+    if(!sai.length) return '<div style="padding:12px;color:var(--t3);font-size:12px">Sem despesas.</div>';
+    var h='<div style="margin-bottom:6px">'+chips(sai)+'</div><div class="tw"><table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th style="text-align:right">Valor (MZM)</th></tr></thead><tbody>';
+    sai.forEach(function(r){ h+='<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+esc(r.data||'—')+'</td><td style="font-weight:600;font-size:12px">'+esc(r.cat)+'</td><td>'+esc(r.desc)+'</td><td style="text-align:right;font-family:var(--fm);color:var(--r)">'+fmt(r.valor)+'</td></tr>'; });
+    h+='</tbody></table></div>'; return h;
+  }
+
+  window.__verMovimentos=function(mes){
+    mes=Number(mes)||0;
+    var ent=window.__entradasMov(mes), sai=window.__saidasMov(mes);
+    var tE=ent.reduce(function(s,r){return s+(r.valor||0);},0), tS=sai.reduce(function(s,r){return s+(r.valor||0);},0);
+    var per=rng(mes).per;
+    var opt='<option value="0"'+(mes===0?' selected':'')+'>Ano completo</option>';
+    for(var i=1;i<=12;i++){ opt+='<option value="'+i+'"'+(mes===i?' selected':'')+'>'+MZL[i]+'</option>'; }
+    var kpi=function(l,v,c){ return '<div style="flex:1;min-width:120px;background:var(--card);border:1px solid var(--b);border-radius:10px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:800;color:'+c+'">'+fmt(v)+'</div><div style="font-size:10px;color:var(--t2)">'+l+'</div></div>'; };
+    var ex=document.getElementById('m-movimentos'); if(ex) ex.remove();
+    var mo=document.createElement('div'); mo.id='m-movimentos'; mo.className='modal-ov'; mo.style.display='flex';
+    mo.innerHTML='<div class="modal" style="max-width:900px"><div class="mhd"><span class="mt"><i class="ti ti-arrows-exchange"></i> Movimentos — Entradas e Saídas</span><button class="mclose" onclick="document.getElementById(\'m-movimentos\').remove()"><i class="ti ti-x"></i></button></div>'
+      +'<div class="mbod">'
+      +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><label style="font-size:12px;color:var(--t2)">Mês:</label><select class="ffi" style="width:170px" onchange="window.__verMovimentos(this.value)">'+opt+'</select>'
+      +'<span style="flex:1"></span><button class="btn btn-g btn-sm" onclick="window.__movimentosCSV('+mes+')"><i class="ti ti-file-spreadsheet"></i> CSV</button><button class="btn btn-p btn-sm" onclick="window.__movimentosPDF('+mes+')"><i class="ti ti-file-type-pdf"></i> PDF</button></div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:14px">'+kpi('Entradas',tE,'var(--g)')+kpi('Saídas',tS,'var(--r)')+kpi('Saldo',tE-tS,(tE-tS)>=0?'var(--g)':'var(--r)')+'</div>'
+      +'<div style="max-height:56vh;overflow:auto">'
+      +'<div style="font-weight:700;font-size:13px;color:var(--g);margin:6px 0 6px"><i class="ti ti-arrow-down-circle"></i> Entradas — '+esc(per)+' ('+ent.length+')</div>'+entTbl(ent)
+      +'<div style="font-weight:700;font-size:13px;color:var(--r);margin:16px 0 6px"><i class="ti ti-arrow-up-circle"></i> Saídas / Despesas — '+esc(per)+' ('+sai.length+')</div>'+saiTbl(sai)
+      +'</div></div>'
+      +'<div class="mft"><button class="btn btn-g" onclick="document.getElementById(\'m-movimentos\').remove()">Fechar</button></div></div>';
+    document.body.appendChild(mo);
+  };
+
+  window.__movimentosPDF=function(mes){
+    mes=Number(mes)||0; var ent=window.__entradasMov(mes), sai=window.__saidasMov(mes);
+    var tE=ent.reduce(function(s,r){return s+(r.valor||0);},0), tS=sai.reduce(function(s,r){return s+(r.valor||0);},0);
+    var per=rng(mes).per;
+    var h='<h2>Entradas — '+esc(per)+' ('+ent.length+')</h2>';
+    h+='<table><thead><tr><th>Data</th><th>Nº</th><th>Descrição</th><th>Categoria</th><th class="r">Valor</th><th>Recibo</th></tr></thead><tbody>';
+    ent.forEach(function(r){ h+='<tr><td>'+esc(r.data)+'</td><td>'+esc(r.num)+'</td><td>'+esc(r.desc)+' — '+esc(r.nome)+' ('+esc(r.turma)+')</td><td>'+esc(r.cat)+'</td><td class="r">'+fmt(r.valor)+'</td><td>'+esc(r.recibo||'-')+'</td></tr>'; });
+    h+='</tbody></table><div class="tg">Total Entradas: '+fmt(tE)+' MZM</div>';
+    h+='<h2>Saídas / Despesas — '+esc(per)+' ('+sai.length+')</h2>';
+    h+='<table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th class="r">Valor</th></tr></thead><tbody>';
+    sai.forEach(function(r){ h+='<tr><td>'+esc(r.data||'-')+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.desc)+'</td><td class="r">'+fmt(r.valor)+'</td></tr>'; });
+    h+='</tbody></table><div class="tg">Total Saídas: '+fmt(tS)+' MZM</div>';
+    h+='<div class="tg" style="font-size:15px">Saldo: '+fmt(tE-tS)+' MZM</div>';
+    abrirPDF('Movimentos ('+per+') — Entradas e Saídas', h);
+  };
+  window.__movimentosCSV=function(mes){
+    try{
+      mes=Number(mes)||0; var ent=window.__entradasMov(mes), sai=window.__saidasMov(mes);
+      var e=function(v){ v=String(v==null?'':v); return /[";\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; };
+      var L=['Tipo;Data;Nº Aluno;Categoria;Descrição;Recibo;Valor (MZM)'];
+      ent.forEach(function(r){ L.push(['Entrada',r.data,r.num,r.cat,(r.desc+' — '+r.nome+' ('+r.turma+')'),r.recibo,r.valor].map(e).join(';')); });
+      sai.forEach(function(r){ L.push(['Saída',r.data,'',r.cat,r.desc,'', -(r.valor||0)].map(e).join(';')); });
+      var per=rng(mes).per, ano=(new Date()).getFullYear();
+      var csv='﻿'+L.join('\n');
+      var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); var url=URL.createObjectURL(blob);
+      var a=document.createElement('a'); a.href=url; a.download='movimentos_'+per.replace(/\s+/g,'_')+'_'+ano+'.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
+      if(typeof toast==='function') toast('Movimentos exportados ('+ent.length+' entradas, '+sai.length+' saídas).');
+    }catch(err){ if(typeof toast==='function') toast('Erro ao exportar: '+(err&&err.message)); }
+  };
+
+  // repointar os cliques para o novo modal de movimentos
+  window.__verEntradas=function(mIni,mFim){ var m=(Number(mIni)===Number(mFim))?Number(mIni):0; window.__verMovimentos(m); };
+
+  window.__finMov115=true;
 })();
 </script>
 
