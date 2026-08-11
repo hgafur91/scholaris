@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.111</span>
+    <span class="logo-ver">v6.112</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1938,7 +1938,7 @@ window.__escA = function (s) {
   <div class="mbod">
     <div class="fg">
       <div class="fgr"><label class="fl">Aluno</label><select class="ffi" id="desc-aluno"><option>ALU000001 — Aaron Chaimite</option><option>ALU000002 — Abdulai Diallo</option><option>ALU000003 — Yasmin Tajú</option></select></div>
-      <div class="fgr"><label class="fl">Tipo de Desconto</label><select class="ffi" id="desc-tipo"><option value="bolseiro"><i class="ti ti-school"></i> Bolseiro</option><option value="filho-prof"><i class="ti ti-chalkboard"></i> Filho de Professor</option><option value="orfao"><i class="ti ti-heart" style="color:#ef4444"></i> Órfão</option><option value="outro">Outro</option></select></div>
+      <div class="fgr"><label class="fl">Tipo de Desconto</label><select class="ffi" id="desc-tipo"><option value="bolseiro"><i class="ti ti-school"></i> Bolseiro</option><option value="filho-prof"><i class="ti ti-chalkboard"></i> Filho de Professor</option><option value="filho-func"><i class="ti ti-briefcase"></i> Filho de Funcionário</option><option value="orfao"><i class="ti ti-heart" style="color:#ef4444"></i> Órfão</option><option value="outro">Outro</option></select></div>
       <div class="fgr"><label class="fl">Percentagem de Desconto</label><input class="ffi" type="number" id="desc-pct" value="100" min="0" max="100" placeholder="Ex: 50 para 50%"></div>
       <div class="fgr"><label class="fl">Válido até</label><input class="ffi" type="date" id="desc-ate" value="2026-12-31"></div>
       <div class="fgr full"><label class="fl">Justificação / Notas</label><input class="ffi" id="desc-nota" placeholder="Motivo do desconto..."></div>
@@ -18621,10 +18621,10 @@ function rFinDashboard() {
   const fmt = n => (n||0).toLocaleString('pt-PT');
   const mesCardsHtml = [
     {l:'Esperado', v:fmt(espMes), sub:'Propinas devidas em '+_mesNome+' (já com bolsas)', c:'var(--a)', ic:'ti-target'},
-    {l:'Recebido', v:fmt(recMes), sub:'Propinas de '+_mesNome+' já pagas', c:'var(--g)', ic:'ti-cash'},
+    {l:'Recebido', v:fmt(recMes), sub:'Propinas de '+_mesNome+' já pagas', c:'var(--g)', ic:'ti-cash', fn:'__verEntradas('+mesAtual+','+mesAtual+')'},
     {l:'Em dívida', v:fmt(divMes), sub:'Esperado − recebido neste mês', c:'var(--am)', ic:'ti-alert-triangle'},
     {l:'Multa em dívida', v:fmt(multaDevida), sub:'Multas de atraso por pagar (total)', c:'var(--r)', ic:'ti-cash-off'}
-  ].map(k=>`<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:18px;font-weight:800;color:${k.c}">${k.v} MZM</div><div style="font-size:11px;color:var(--t);font-weight:700;margin-top:2px">${k.l}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
+  ].map(k=>`<div ${k.fn?`onclick="${k.fn}"`:''} style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden;cursor:${k.fn?'pointer':'default'}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:18px;font-weight:800;color:${k.c}">${k.v} MZM</div><div style="font-size:11px;color:var(--t);font-weight:700;margin-top:2px">${k.l}${k.fn?' <i class=\"ti ti-external-link\" style=\"font-size:9px;color:var(--t3)\"></i>':''}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
   const _entrMes = (typeof __entradasDoMes==='function')?__entradasDoMes(mesAtual):[];
   const _entrRows = _entrMes.length
     ? _entrMes.map(r=>`<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${r.data}</td><td style="font-weight:600">${r.nome}</td><td><span class="badge bin">${r.turma}</span></td><td style="font-size:11px;color:var(--t2)">${r.mesesPagos}</td><td style="text-align:right;font-family:var(--fm)">${fmt(r.valor)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">${r.recibo||'—'}</td></tr>`).join('')
@@ -18632,12 +18632,12 @@ function rFinDashboard() {
   const _detalheHtml = '<div style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Entradas detalhadas — quem pagou e quanto</div><div class="tw" style="max-height:280px;overflow:auto"><table><thead><tr><th>Data</th><th>Aluno</th><th>Turma</th><th>Meses</th><th style="text-align:right">Valor (MZM)</th><th>Recibo</th></tr></thead><tbody>'+_entrRows+'</tbody></table></div></div>';
   const mesBlockHtml = '<div class="card" style="margin-bottom:20px"><div class="ch"><span class="ct"><i class="ti ti-calendar-dollar" style="margin-right:6px"></i>Balanço de '+_mesNome+' '+((new Date()).getFullYear())+'</span><button class="btn btn-g btn-sm" onclick="exportarEntradasMes('+mesAtual+')"><i class="ti ti-download"></i> Exportar entradas</button></div><div class="cb"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+mesCardsHtml+'</div>'+_detalheHtml+'</div></div>';
   const kpisHtml = [
-    {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle'},
+    {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle', fn:'__verEntradas(1,12)'},
     {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle'},
     {l:'Dividas', v:fmt(totalDivida)+' MZM', sub:'+'+fmt(porVencer)+' por vencer', c:'var(--am)', ic:'ti-alert-triangle'},
     {l:'Saldo Actual', v:fmt(saldoActual)+' MZM', sub:'Entradas - Saidas', c:(saldoActual>=0?'var(--g)':'var(--r)'), ic:'ti-wallet'},
     {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:'Propinas anuais (com bolsas)', c:'var(--a)', ic:'ti-target'}
-  ].map(k=>`<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:17px;font-weight:800;color:${k.c}">${k.v}</div><div style="font-size:10px;color:var(--t2);margin-top:2px">${k.l}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
+  ].map(k=>`<div ${k.fn?`onclick="${k.fn}"`:''} style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden;cursor:${k.fn?'pointer':'default'}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:17px;font-weight:800;color:${k.c}">${k.v}</div><div style="font-size:10px;color:var(--t2);margin-top:2px">${k.l}${k.fn?' <i class=\"ti ti-external-link\" style=\"font-size:9px;color:var(--t3)\"></i>':''}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
   // Grafico de linha: saldo mensal (SVG)
   const W=760, H=240, padL=70, padR=16, padT=16, padB=28;
           const innerW=W-padL-padR, innerH=H-padT-padB;
@@ -39367,7 +39367,7 @@ window.trimestreActual = function(d){
     h += '<thead><tr style="text-align:left;color:var(--t2);border-bottom:1px solid var(--b2)"><th style="padding:8px">Mes</th><th style="padding:8px;text-align:right">Propinas</th><th style="padding:8px;text-align:right">Taxas</th><th style="padding:8px;text-align:right">Avulsos</th><th style="padding:8px;text-align:right">Entradas</th><th style="padding:8px;text-align:right">Despesas</th><th style="padding:8px;text-align:right">Saldo</th></tr></thead><tbody>';
     for(var mm=mIni;mm<=mFim;mm++){
       var pm=dt.porMes[mm]; var ent=pm.propina+pm.taxa_fixa+pm.avulso; var saldo=ent-pm.despesa;
-      h += '<tr style="border-bottom:1px solid var(--b)"><td style="padding:8px;font-weight:600">'+MESES[mm-1]+'</td>'+
+      h += '<tr onclick="window.__verEntradas('+mm+','+mm+')" style="border-bottom:1px solid var(--b);cursor:pointer" title="Ver quem pagou em '+MESES[mm-1]+'"><td style="padding:8px;font-weight:600"><i class="ti ti-eye" style="font-size:11px;color:var(--t3);margin-right:5px"></i>'+MESES[mm-1]+'</td>'+
         '<td style="padding:8px;text-align:right">'+money(pm.propina)+'</td>'+
         '<td style="padding:8px;text-align:right">'+money(pm.taxa_fixa)+'</td>'+
         '<td style="padding:8px;text-align:right">'+money(pm.avulso)+'</td>'+
@@ -40480,6 +40480,65 @@ window.trimestreActual = function(d){
   };
 
   window.__finFixos109=true;
+})();
+</script>
+
+<script>
+/* ═══ v6.112 — Entradas detalhadas (modal): clicar Entradas no dashboard / linha no balancete ═══ */
+(function(){
+  if(window.__finEntradas112) return;
+  var MZ=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var MZL=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+
+  window.__entradasIntervalo=function(mIni,mFim){
+    mIni=Number(mIni)||1; mFim=Number(mFim)||12; if(mFim<mIni){ var t=mIni; mIni=mFim; mFim=t; }
+    return (typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[])
+      .filter(function(p){ if(!p||!p.data||p.estado==='estornado'||!((p.valorTotal||0)>0)) return false; var mm=parseInt(String(p.data).slice(5,7),10); return mm>=mIni && mm<=mFim; })
+      .map(function(p){ var meses=(Array.isArray(p.meses)?p.meses:[]).map(function(mi){return MZ[mi]||('m'+mi);}).join('/');
+        return { num:p.alunoNum||'', nome:p.alunoNome||'', turma:p.turmaId||'', mesesPagos:meses, valor:p.valorTotal||0, data:p.data||'', canal:p.canal||'', ref:p.ref||'', recibo:p.reciboNum||'', estado:p.estado||'' }; })
+      .sort(function(a,b){ return (a.data||'').localeCompare(b.data||'')||(a.nome||'').localeCompare(b.nome||''); });
+  };
+
+  window.exportarEntradas=function(mIni,mFim){
+    try{
+      mIni=Number(mIni)||1; mFim=Number(mFim)||12;
+      var linhas=window.__entradasIntervalo(mIni,mFim);
+      if(!linhas.length){ if(typeof toast==='function') toast('Sem entradas no período.'); return; }
+      var ano=(new Date()).getFullYear();
+      var head=['Data','Nº Aluno','Nome','Turma','Meses pagos','Valor (MZM)','Canal','Referência','Recibo','Estado'];
+      var esc=function(v){ v=String(v==null?'':v); return /[";\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; };
+      var rows=linhas.map(function(r){ return [r.data,r.num,r.nome,r.turma,r.mesesPagos,r.valor,r.canal,r.ref,r.recibo,r.estado].map(esc).join(';'); });
+      var total=linhas.reduce(function(s,r){return s+(r.valor||0);},0);
+      rows.push(['','','','','TOTAL',total,'','','',''].map(esc).join(';'));
+      var per=(mIni===mFim)?MZL[mIni]:(MZL[mIni]+'-'+MZL[mFim]);
+      var csv='﻿'+head.join(';')+'\n'+rows.join('\n');
+      var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); var url=URL.createObjectURL(blob);
+      var a=document.createElement('a'); a.href=url; a.download='entradas_'+per+'_'+ano+'.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
+      if(typeof toast==='function') toast('Entradas exportadas ('+linhas.length+' pagamentos).');
+    }catch(e){ if(typeof toast==='function') toast('Erro ao exportar: '+(e&&e.message)); }
+  };
+
+  window.__verEntradas=function(mIni,mFim){
+    mIni=Number(mIni)||1; mFim=Number(mFim)||12;
+    var linhas=window.__entradasIntervalo(mIni,mFim);
+    var per=(mIni===mFim)?(MZL[mIni]):(MZL[mIni]+' a '+MZL[mFim]);
+    var total=linhas.reduce(function(s,r){return s+(r.valor||0);},0);
+    var body=linhas.length? linhas.map(function(r){
+        var badge=r.estado==='por_confirmar'?'<span class="badge bwn" style="font-size:9px">por confirmar</span>':(r.estado==='confirmado'?'<span class="badge bok" style="font-size:9px">ok</span>':'');
+        return '<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+r.data+'</td><td style="font-weight:600">'+r.nome+'</td><td><span class="badge bin">'+r.turma+'</span></td><td style="font-size:11px;color:var(--t2)">'+r.mesesPagos+'</td><td style="text-align:right;font-family:var(--fm)">'+fmt(r.valor)+'</td><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">'+(r.recibo||'—')+'</td><td>'+badge+'</td></tr>';
+      }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--t3);padding:16px">Sem entradas registadas neste período.</td></tr>';
+    var ex=document.getElementById('m-entradas'); if(ex) ex.remove();
+    var mo=document.createElement('div'); mo.id='m-entradas'; mo.className='modal-ov'; mo.style.display='flex';
+    mo.innerHTML='<div class="modal" style="max-width:820px"><div class="mhd"><span class="mt"><i class="ti ti-cash"></i> Entradas — '+per+'</span><button class="mclose" onclick="document.getElementById(\'m-entradas\').remove()"><i class="ti ti-x"></i></button></div>'
+      +'<div class="mbod"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:12px;color:var(--t2)">'+linhas.length+' pagamento(s) · Total <strong style="color:var(--g)">'+fmt(total)+' MZM</strong></span><button class="btn btn-g btn-sm" onclick="window.exportarEntradas('+mIni+','+mFim+')"><i class="ti ti-download"></i> Exportar CSV</button></div>'
+      +'<div class="tw" style="max-height:60vh;overflow:auto"><table><thead><tr><th>Data</th><th>Aluno</th><th>Turma</th><th>Meses</th><th style="text-align:right">Valor (MZM)</th><th>Recibo</th><th></th></tr></thead><tbody>'+body+'</tbody></table></div></div>'
+      +'<div class="mft"><button class="btn btn-g" onclick="document.getElementById(\'m-entradas\').remove()">Fechar</button></div></div>';
+    document.body.appendChild(mo);
+  };
+
+  window.__finEntradas112=true;
 })();
 </script>
 
