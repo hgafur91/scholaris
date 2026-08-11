@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.109</span>
+    <span class="logo-ver">v6.110</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -18611,7 +18611,26 @@ function rFinDashboard() {
     const expected = ALUNOS.reduce((s,a)=>{ const p=a.propinas[mi]; return s+((p&&p.st!=='isento')?(p.v||0):0); },0);
     return {mes:M[mi], valor:pago, expected:expected};
   });
+  // v6.110 — Balanço do MÊS ACTUAL (esperado com bolsas / recebido / em dívida / multa)
+  const _mi0 = mesAtual-1;
+  const _mesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][_mi0];
+  const espMes = ALUNOS.reduce((s,a)=>{ const p=(a.propinas||[])[_mi0]; return s+((p&&p.st!=='isento')?(p.v||vp):0); },0);
+  const recMes = ALUNOS.reduce((s,a)=>{ const p=(a.propinas||[])[_mi0]; return s+((p&&p.st==='pago')?(p.v||vp):0); },0);
+  const divMes = Math.max(0, espMes - recMes);
+  const multaDevida = ALUNOS.reduce((s,a)=>s+(a.propinas||[]).reduce((ss,p)=>ss+((p&&p.st==='multa')?Math.round((p.v||0)*((p.multaPct||0)/100)):0),0),0);
   const fmt = n => (n||0).toLocaleString('pt-PT');
+  const mesCardsHtml = [
+    {l:'Esperado', v:fmt(espMes), sub:'Propinas devidas em '+_mesNome+' (já com bolsas)', c:'var(--a)', ic:'ti-target'},
+    {l:'Recebido', v:fmt(recMes), sub:'Propinas de '+_mesNome+' já pagas', c:'var(--g)', ic:'ti-cash'},
+    {l:'Em dívida', v:fmt(divMes), sub:'Esperado − recebido neste mês', c:'var(--am)', ic:'ti-alert-triangle'},
+    {l:'Multa em dívida', v:fmt(multaDevida), sub:'Multas de atraso por pagar (total)', c:'var(--r)', ic:'ti-cash-off'}
+  ].map(k=>`<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:18px;font-weight:800;color:${k.c}">${k.v} MZM</div><div style="font-size:11px;color:var(--t);font-weight:700;margin-top:2px">${k.l}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
+  const _entrMes = (typeof __entradasDoMes==='function')?__entradasDoMes(mesAtual):[];
+  const _entrRows = _entrMes.length
+    ? _entrMes.map(r=>`<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${r.data}</td><td style="font-weight:600">${r.nome}</td><td><span class="badge bin">${r.turma}</span></td><td style="font-size:11px;color:var(--t2)">${r.mesesPagos}</td><td style="text-align:right;font-family:var(--fm)">${fmt(r.valor)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">${r.recibo||'—'}</td></tr>`).join('')
+    : `<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:14px">Sem pagamentos registados em ${_mesNome}.</td></tr>`;
+  const _detalheHtml = '<div style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Entradas detalhadas — quem pagou e quanto</div><div class="tw" style="max-height:280px;overflow:auto"><table><thead><tr><th>Data</th><th>Aluno</th><th>Turma</th><th>Meses</th><th style="text-align:right">Valor (MZM)</th><th>Recibo</th></tr></thead><tbody>'+_entrRows+'</tbody></table></div></div>';
+  const mesBlockHtml = '<div class="card" style="margin-bottom:20px"><div class="ch"><span class="ct"><i class="ti ti-calendar-dollar" style="margin-right:6px"></i>Balanço de '+_mesNome+' '+((new Date()).getFullYear())+'</span><button class="btn btn-g btn-sm" onclick="exportarEntradasMes('+mesAtual+')"><i class="ti ti-download"></i> Exportar entradas</button></div><div class="cb"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+mesCardsHtml+'</div>'+_detalheHtml+'</div></div>';
   const kpisHtml = [
     {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle'},
     {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle'},
@@ -18641,6 +18660,7 @@ function rFinDashboard() {
           const xlabels=M.map(function(m,i){return '<text x="'+ptX(i).toFixed(1)+'" y="'+(H-8)+'" font-size="10" fill="#7a90bb" text-anchor="middle">'+m+'</text>';}).join('');
           const lineChart='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" preserveAspectRatio="none">'+grid_+ylab_+'<polyline fill="none" stroke="#4f8ef7" stroke-width="2" points="'+linePts+'"/>'+dots+xlabels+'</svg>';
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">'+kpisHtml+'</div>'
+    +mesBlockHtml
     +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Saldo Mensal 2026 (Entradas - Saidas)</span></div><div class="cb">'+lineChart+'</div></div>'
     +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Cobranca Mensal de Propinas - 2026</span></div><div class="cb"><div style="display:flex;gap:4px;align-items:flex-end;height:120px;padding:0 8px">'
     +cobrancaMensal.map((m,i)=>{ const pct=m.expected>0?Math.round(m.valor/m.expected*100):0; const cor=pct>=90?'var(--g)':pct>=60?'var(--am)':'var(--r)'; const h=Math.max(4,Math.round(pct/100*100)); return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:9px;font-weight:700;color:${cor}">${pct?pct+'%':''}</div><div style="width:100%;height:${h}px;background:${cor};border-radius:3px 3px 0 0;opacity:.85;min-height:4px"></div><div style="font-size:9px;color:var(--t3)">${m.mes}</div></div>`; }).join('')
@@ -18653,6 +18673,39 @@ function rFinDashboard() {
     +'</div>';
 }
 
+// v6.110 — Exportar as entradas detalhadas de um mês (que aluno pagou e quanto)
+function __entradasDoMes(mes){
+  var M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return (typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[])
+    .filter(function(p){ return p && p.data && parseInt(String(p.data).slice(5,7),10)===Number(mes) && p.estado!=='estornado' && (p.valorTotal||0)>0; })
+    .map(function(p){
+      var meses=(Array.isArray(p.meses)?p.meses:[]).map(function(mi){return M[mi]||('m'+mi);}).join('/');
+      return { num:p.alunoNum||'', nome:p.alunoNome||'', turma:p.turmaId||'', mesesPagos:meses,
+        valor:p.valorTotal||0, multa:p.multaAcordada||0, data:p.data||'', canal:p.canal||'', ref:p.ref||'',
+        recibo:p.reciboNum||'', estado:p.estado||'' };
+    })
+    .sort(function(a,b){ return (a.data||'').localeCompare(b.data||'')||(a.nome||'').localeCompare(b.nome||''); });
+}
+function exportarEntradasMes(mes){
+  try{
+    var M=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var linhas=__entradasDoMes(mes);
+    if(!linhas.length){ if(typeof toast==='function') toast('Sem entradas registadas em '+M[mes]+'.'); return; }
+    var ano=(new Date()).getFullYear();
+    var head=['Data','Nº Aluno','Nome','Turma','Meses pagos','Valor (MZM)','Multa (MZM)','Canal','Referência','Recibo','Estado'];
+    var esc=function(v){ v=String(v==null?'':v); return /[";\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; };
+    var rows=linhas.map(function(r){ return [r.data,r.num,r.nome,r.turma,r.mesesPagos,r.valor,r.multa,r.canal,r.ref,r.recibo,r.estado].map(esc).join(';'); });
+    var total=linhas.reduce(function(s,r){return s+(r.valor||0);},0);
+    rows.push(['','','','','TOTAL',total,'','','','',''].map(esc).join(';'));
+    var csv='﻿'+head.join(';')+'\n'+rows.join('\n');
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download='entradas_'+M[mes]+'_'+ano+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
+    if(typeof toast==='function') toast('Entradas de '+M[mes]+' exportadas ('+linhas.length+' pagamentos).');
+  }catch(e){ if(typeof toast==='function') toast('Erro ao exportar: '+(e&&e.message)); }
+}
 function calcFinanceiroMensal(){
   var M=(typeof MESES_ABBR!=='undefined')?MESES_ABBR:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   var vp=(typeof CONFIG!=='undefined'&&CONFIG.valorPropina)?CONFIG.valorPropina:4500;
