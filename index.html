@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.117</span>
+    <span class="logo-ver">v6.118</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -40706,14 +40706,14 @@ window.trimestreActual = function(d){
     var r=rng(mes);
     return (typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[])
       .filter(function(p){ if(!p||!p.data||p.estado==='estornado'||!((p.valorTotal||0)>0)) return false; var mm=parseInt(String(p.data).slice(5,7),10); return mm>=r.i && mm<=r.f; })
-      .map(function(p){ return { data:p.data||'', mes:parseInt(String(p.data).slice(5,7),10), num:p.alunoNum||'', nome:p.alunoNome||'', turma:p.turmaId||'', cat:catEntrada(p), desc:descEntrada(p), canal:canalNome(p.canal), recibo:p.reciboNum||'', valor:p.valorTotal||0, estado:p.estado||'' }; })
+      .map(function(p){ return { data:p.data||'', mes:parseInt(String(p.data).slice(5,7),10), num:p.alunoNum||'', nome:p.alunoNome||'', turma:p.turmaId||'', cat:catEntrada(p), desc:descEntrada(p), canal:canalNome(p.canal), recibo:(p.reciboNum||(window.__reciboDe?window.__reciboDe(p):'')), valor:p.valorTotal||0, estado:p.estado||'' }; })
       .sort(function(a,b){ return (a.data||'').localeCompare(b.data||''); });
   };
   window.__saidasMov=function(mes){
     var r=rng(mes);
     return (typeof DESPESAS_REG!=='undefined'?DESPESAS_REG:[])
       .filter(function(d){ if(!d||!((d.valor||0)>0)) return false; var mm=d.data?parseInt(String(d.data).slice(5,7),10):(d.mes||0); return mm>=r.i && mm<=r.f; })
-      .map(function(d){ return { data:d.data||'', mes:(d.data?parseInt(String(d.data).slice(5,7),10):(d.mes||0)), cat:catDesp(d), desc:d.descricao||catDesp(d), ref:d.ref||'', valor:d.valor||0 }; })
+      .map(function(d){ return { data:d.data||'', mes:(d.data?parseInt(String(d.data).slice(5,7),10):(d.mes||0)), codigo:(window.__codigoDespesaDe?window.__codigoDespesaDe(d):''), cat:catDesp(d), desc:d.descricao||catDesp(d), ref:d.ref||'', valor:d.valor||0 }; })
       .sort(function(a,b){ return (a.data||'').localeCompare(b.data||''); });
   };
 
@@ -40875,15 +40875,15 @@ window.trimestreActual = function(d){
     var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><label style="font-size:12px;color:var(--t2)">Mês:</label>'+mesSel(window.__saiMes,'window.__saiSetMes')+'<label style="font-size:12px;color:var(--t2)">Categoria:</label>'+catSel(cats,window.__saiCat,'window.__saiSetCat')+'<button class="btn btn-g btn-sm" onclick="window.__saiExport(\'csv\')"><i class="ti ti-file-spreadsheet"></i> CSV</button><button class="btn btn-p btn-sm" onclick="window.__saiExport(\'pdf\')"><i class="ti ti-file-type-pdf"></i> PDF</button><span style="flex:1"></span>'+kpi('Total de Saídas',tot,'var(--r)')+'</div>';
     h+='<div style="margin-bottom:8px">'+chips(lista)+'</div>';
     if(!lista.length){ el.innerHTML=h+'<div class="ib-box ib-blue">Sem despesas para este filtro.</div>'; return; }
-    h+='<div class="card"><div class="tw"><table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th style="text-align:right">Valor (MZM)</th></tr></thead><tbody>';
-    lista.forEach(function(r){ h+='<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+esc(r.data||'—')+'</td><td style="font-weight:600;font-size:12px">'+esc(r.cat)+'</td><td>'+esc(r.desc)+'</td><td style="text-align:right;font-family:var(--fm);color:var(--r)">'+fmt(r.valor)+'</td></tr>'; });
-    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td colspan="3">TOTAL</td><td style="text-align:right;color:var(--r)">'+fmt(tot)+'</td></tr></tbody></table></div></div>';
+    h+='<div class="card"><div class="tw"><table><thead><tr><th>Código</th><th>Data</th><th>Categoria</th><th>Descrição</th><th style="text-align:right">Valor (MZM)</th></tr></thead><tbody>';
+    lista.forEach(function(r){ h+='<tr><td style="font-family:var(--fm);font-size:11px;color:var(--tl);font-weight:700">'+esc(r.codigo||'—')+'</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+esc(r.data||'—')+'</td><td style="font-weight:600;font-size:12px">'+esc(r.cat)+'</td><td>'+esc(r.desc)+'</td><td style="text-align:right;font-family:var(--fm);color:var(--r)">'+fmt(r.valor)+'</td></tr>'; });
+    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td colspan="4">TOTAL</td><td style="text-align:right;color:var(--r)">'+fmt(tot)+'</td></tr></tbody></table></div></div>';
     var per=window.__saiMes>0?MZL[window.__saiMes]:'Ano completo'; el.innerHTML='<div style="font-size:12px;color:var(--t3);margin-bottom:6px">'+per+(window.__saiCat?(' · '+esc(window.__saiCat)):'')+' · '+lista.length+' despesa(s)</div>'+h;
   }
   window.rSaidas=rSaidas;
   window.__saiExport=function(kind){ var lista=saiLista(); var per=window.__saiMes>0?MZL[window.__saiMes]:'Ano'; var titulo='Saídas / Despesas — '+(window.__saiMes>0?MZL[window.__saiMes]:'Ano completo')+(window.__saiCat?(' · '+window.__saiCat):'');
-    if(kind==='pdf'){ var b='<table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th class="r">Valor</th></tr></thead><tbody>'; lista.forEach(function(r){ b+='<tr><td>'+esc(r.data||'-')+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.desc)+'</td><td class="r">'+fmt(r.valor)+'</td></tr>'; }); b+='</tbody></table><div class="tg">Total: '+fmt(sumV(lista))+' MZM</div>'; abrirPDF(titulo,b); }
-    else { var L=[['Data','Categoria','Descrição','Referência','Valor (MZM)']]; lista.forEach(function(r){ L.push([r.data,r.cat,r.desc,r.ref||'',r.valor]); }); L.push(['','','','TOTAL',sumV(lista)]); baixarCSV('saidas_'+per+'.csv',L); } };
+    if(kind==='pdf'){ var b='<table><thead><tr><th>Código</th><th>Data</th><th>Categoria</th><th>Descrição</th><th class="r">Valor</th></tr></thead><tbody>'; lista.forEach(function(r){ b+='<tr><td>'+esc(r.codigo||'-')+'</td><td>'+esc(r.data||'-')+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.desc)+'</td><td class="r">'+fmt(r.valor)+'</td></tr>'; }); b+='</tbody></table><div class="tg">Total: '+fmt(sumV(lista))+' MZM</div>'; abrirPDF(titulo,b); }
+    else { var L=[['Código','Data','Categoria','Descrição','Referência','Valor (MZM)']]; lista.forEach(function(r){ L.push([r.codigo||'',r.data,r.cat,r.desc,r.ref||'',r.valor]); }); L.push(['','','','','TOTAL',sumV(lista)]); baixarCSV('saidas_'+per+'.csv',L); } };
 
   // ── DÍVIDAS por mês ──
   window.__divMes=0;
@@ -40938,6 +40938,41 @@ window.trimestreActual = function(d){
   window.__verDividas=function(){ window.__divMes=0; go('dividas-mes'); };
 
   window.__finViews117=true;
+})();
+</script>
+
+<script>
+/* ═══ v6.118 — Nº de recibo (entradas) e código interno (despesas) determinísticos e sempre presentes ═══ */
+(function(){
+  if(window.__finCod118) return;
+  function sigla(){ try{ var s=(typeof CONFIG!=='undefined'&&CONFIG.siglaRecibo) || (typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS&&ESCOLA_SETTINGS.sigla) || 'IQ'; return String(s).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)||'IQ'; }catch(e){ return 'IQ'; } }
+
+  // Nº de recibo = <SIGLA>-<mês>-<posição cronológica no mês>. Determinístico (não depende de contador nem de persistência).
+  window.__reciboDe=function(pag){
+    try{
+      if(!pag||!pag.data||pag.estado==='estornado') return (pag&&pag.reciboNum)||'';
+      var mm=String(pag.data).slice(5,7); var mesN=parseInt(mm,10);
+      var same=(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]).filter(function(p){ return p&&p.data&&p.estado!=='estornado'&&parseInt(String(p.data).slice(5,7),10)===mesN; });
+      same.sort(function(a,b){ return String(a.data||'').localeCompare(String(b.data||''))||String(a.id||a.ref||'').localeCompare(String(b.id||b.ref||'')); });
+      var rank=same.indexOf(pag)+1; if(rank<1) rank=same.length||1;
+      return sigla()+'-'+mm+'-'+String(rank).padStart(4,'0');
+    }catch(e){ return (pag&&pag.reciboNum)||''; }
+  };
+  // Código interno de despesa = <SIGLA>D-<mês>-<posição cronológica no mês>.
+  window.__codigoDespesaDe=function(d){
+    try{
+      if(!d) return '';
+      var dt=d.data?String(d.data):''; var mm=dt?dt.slice(5,7):(d.mes?String(d.mes).padStart(2,'0'):'00'); var mesN=parseInt(mm,10)||0;
+      var same=(typeof DESPESAS_REG!=='undefined'?DESPESAS_REG:[]).filter(function(x){ var xm=x.data?parseInt(String(x.data).slice(5,7),10):(x.mes||0); return xm===mesN; });
+      same.sort(function(a,b){ return String(a.data||'').localeCompare(String(b.data||''))||String(a.id||'').localeCompare(String(b.id||'')); });
+      var rank=same.indexOf(d)+1; if(rank<1) rank=same.length||1;
+      return sigla()+'D-'+mm+'-'+String(rank).padStart(4,'0');
+    }catch(e){ return ''; }
+  };
+  // o recibo impresso passa a usar o mesmo número
+  window.__numeroRecibo=function(pag){ if(!pag) return ''; pag.reciboNum=window.__reciboDe(pag); return pag.reciboNum; };
+
+  window.__finCod118=true;
 })();
 </script>
 
