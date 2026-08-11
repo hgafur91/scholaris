@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.115</span>
+    <span class="logo-ver">v6.116</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3390,7 +3390,7 @@ const ROLES={
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-arrows-exchange',l:'Movimentos',id:'movimentos'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
       {sl:'Gestão RH',sub:[
         {i:'ti-briefcase',l:'Staff / Dep.',id:'staff'},
         {i:'ti-star',l:'Avaliações',id:'aval'},
@@ -3477,7 +3477,7 @@ const ROLES={
       ]},
       {sl:'Gestão Financeira',sub:[
         {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
-        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},
+        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-arrows-exchange',l:'Movimentos',id:'movimentos'},
         {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
@@ -40792,6 +40792,22 @@ window.trimestreActual = function(d){
   window.__verEntradas=function(mIni,mFim){ var m=(Number(mIni)===Number(mFim))?Number(mIni):0; window.__verMovimentos(m); };
 
   window.__finMov115=true;
+})();
+</script>
+
+<script>
+/* v6.116 — item de menu "Movimentos" abre o modal directamente */
+(function(){
+  if(window.__finMovMenu116) return;
+  var _goMovMenu=window.go;
+  window.go=function(id){
+    if(id==='movimentos'){
+      try{ window.__verMovimentos(window.__folhaMes || (new Date().getMonth()+1)); }catch(e){}
+      return;
+    }
+    return _goMovMenu.apply(this, arguments);
+  };
+  window.__finMovMenu116=true;
 })();
 </script>
 
