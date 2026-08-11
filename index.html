@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.110</span>
+    <span class="logo-ver">v6.111</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -31577,10 +31577,8 @@ window.emitirReciboPag=function(pag){
     if(!pag) return;
     if(pag.estado==='por_confirmar'){ if(typeof toast==='function') toast('Depósito/transferência ainda por confirmar. Confirme na Reconciliação antes de emitir o recibo.'); return; }  // v6.90
     if(pag.estado==='estornado'){ if(typeof toast==='function') toast('Pagamento estornado — não tem recibo.'); return; }
-    if(typeof reciboCounter==='undefined'){ window.reciboCounter=100; }
-    reciboCounter++;
-    var ano=(pag.data&&pag.data.slice(0,4))||String(new Date().getFullYear());
-    var num='REC-'+ano+'-'+String(reciboCounter).padStart(6,'0');
+    var num = pag.reciboNum || (typeof window.__numeroRecibo==='function' ? window.__numeroRecibo(pag) : '');
+    if(!num){ if(typeof reciboCounter==='undefined'){ window.reciboCounter=100; } reciboCounter++; var ano=(pag.data&&pag.data.slice(0,4))||String(new Date().getFullYear()); num='REC-'+ano+'-'+String(reciboCounter).padStart(6,'0'); }
     var agora=new Date();
     var dt=agora.toLocaleDateString('pt-PT')+' as '+agora.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
     var setT=function(id,val){var el=document.getElementById(id); if(el) el.textContent=val;};
@@ -32952,10 +32950,23 @@ window.renderBalanceteRange=function(mIni,mFim){
   window.__numeroRecibo = function(pag){
     if(!pag) return '';
     if(pag.reciboNum) return pag.reciboNum;
-    if(typeof window.reciboCounter==='undefined') window.reciboCounter = 100;
-    window.reciboCounter++;
-    var ano = (pag.data? String(pag.data).slice(0,4) : String(new Date().getFullYear()));
-    pag.reciboNum = 'REC-'+ano+'-'+String(window.reciboCounter).padStart(6,'0');
+    // v6.111 — número sequencial POR MÊS: <SIGLA>-<mês>-<nº do mês>. Ex: IQ-08-0001
+    var dt  = pag.data ? String(pag.data) : '';
+    var ano = dt ? dt.slice(0,4) : String(new Date().getFullYear());
+    var mes = dt ? dt.slice(5,7) : String(new Date().getMonth()+1).padStart(2,'0');
+    var sigla='IQ';
+    try{ sigla = (typeof CONFIG!=='undefined' && CONFIG.siglaRecibo) || (typeof ESCOLA_SETTINGS!=='undefined' && ESCOLA_SETTINGS && ESCOLA_SETTINGS.sigla) || 'IQ'; }catch(e){}
+    sigla = String(sigla).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6) || 'IQ';
+    try{
+      if(typeof CONFIG!=='undefined'){
+        if(!CONFIG.reciboSeq) CONFIG.reciboSeq={};
+        var key=ano+'-'+mes; var n=(parseInt(CONFIG.reciboSeq[key],10)||0)+1; CONFIG.reciboSeq[key]=n;
+        pag.reciboNum = sigla+'-'+mes+'-'+String(n).padStart(4,'0');
+        if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent();
+      } else {
+        pag.reciboNum = sigla+'-'+mes+'-0001';
+      }
+    }catch(e){ pag.reciboNum = sigla+'-'+mes+'-0001'; }
     return pag.reciboNum;
   };
 
