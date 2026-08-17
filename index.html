@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.120</span>
+    <span class="logo-ver">v6.121</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -24797,13 +24797,19 @@ function maTemposDoDia(turmaId, disc, profNum, isoDate){
   try{
     var wd=new Date(isoDate+'T00:00:00').getDay();
     var dia=map[wd]; if(!dia) return out;
+    // v6.121: nº do tempo = posição no horário (períodos de AULA ordenados por hora de início),
+    // igual ao livro de ponto. Assim 3º/4º tempo aparecem como 3º/4º, não 1º/2º.
+    var aulaP=(typeof PERIODOS!=='undefined'?PERIODOS:[]).filter(function(p){return p.tipo==='aula';})
+                .slice().sort(function(a,b){return String(a.inicio||'').localeCompare(String(b.inicio||''));});
+    function numTempo(hora, ri){ for(var k=0;k<aulaP.length;k++){ if(String(aulaP[k].inicio)===String(hora)) return k+1; } return ri+1; }
     var rows=(typeof HORARIO!=='undefined' && HORARIO[turmaId]) || [];
     rows.forEach(function(row, ri){
       var slot=row&&row[dia];
       if(slot && String(slot.d)===String(disc) && (!profNum || String(slot.p)===String(profNum))){
-        out.push({periodo:ri+1, hora:(row.h||'')});   // v6.120: tempo REAL do horário (não índice)
+        out.push({periodo:numTempo(row.h, ri), hora:(row.h||'')});
       }
     });
+    out.sort(function(a,b){return a.periodo-b.periodo;});
   }catch(e){}
   return out;
 }
@@ -24811,23 +24817,26 @@ function maTemposDoDia(turmaId, disc, profNum, isoDate){
 function maRebuildTempos(){
   var sel=document.getElementById('ma-periodo-sel'); if(!sel) return;
   var prev=sel.value;
-  // v6.120: oferecer SEMPRE os tempos de aula do horário (1º–5º), não só onde a disciplina está marcada
-  var aulas=(typeof PERIODOS!=='undefined'?PERIODOS:[]).filter(function(p){return p.tipo==='aula';});
-  var opts=[];
-  if(aulas.length){
-    aulas.forEach(function(p,i){ var n=i+1; var h=p.inicio?(' · '+p.inicio+(p.fim?('–'+p.fim):'')):''; opts.push('<option value="'+n+'">'+n+'º tempo'+h+'</option>'); });
-  } else { for(var n=1;n<=5;n++) opts.push('<option value="'+n+'">'+n+'º tempo</option>'); }
-  sel.innerHTML=opts.join('');
-  // pré-seleccionar o tempo onde ESTA disciplina está no horário nesse dia (se houver)
-  try{
-    var turmaId=(document.getElementById('ma-turma')||{}).value || (document.getElementById('ma-turma-sel')||{}).value || '';
-    var disc=(document.getElementById('ma-disc')||{}).value || '';
-    var dia=(document.getElementById('ma-dia-sel')||{}).value || '';
-    var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
-    var tempos=(turmaId && disc && dia)? maTemposDoDia(turmaId, disc, prof?prof.num:null, dia) : [];
-    if(!prev && tempos.length && tempos[0].periodo) prev=String(tempos[0].periodo);
-  }catch(e){}
-  if(prev){ for(var o=0;o<sel.options.length;o++){ if(sel.options[o].value===String(prev)){ sel.selectedIndex=o; break; } } }
+  var turmaId=(document.getElementById('ma-turma')||{}).value || (document.getElementById('ma-turma-sel')||{}).value || '';
+  var disc=(document.getElementById('ma-disc')||{}).value || '';
+  var dia=(document.getElementById('ma-dia-sel')||{}).value || '';
+  var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
+  // v6.121: SÓ os tempos em que ESTE professor tem ESTA disciplina nesta turma nesse dia (pelo horário)
+  var tempos=(turmaId && disc && dia)? maTemposDoDia(turmaId, disc, prof?prof.num:null, dia) : [];
+  if(tempos.length){
+    sel.innerHTML=tempos.map(function(t){ return '<option value="'+t.periodo+'">'+t.periodo+'º tempo'+(t.hora?(' · '+t.hora):'')+'</option>'; }).join('');
+  } else {
+    var temHorario=(typeof HORARIO!=='undefined' && HORARIO[turmaId] && HORARIO[turmaId].length);
+    if(turmaId && disc && dia && temHorario){
+      sel.innerHTML='<option value="">— sem esta aula neste dia —</option>';   // não devia acontecer (o dia já é filtrado)
+    } else {
+      // sem horário definido para a turma → não bloquear: oferecer os tempos de aula 1º–5º
+      var aulas=(typeof PERIODOS!=='undefined'?PERIODOS:[]).filter(function(p){return p.tipo==='aula';});
+      var o=[]; if(aulas.length){ aulas.forEach(function(p,i){ o.push('<option value="'+(i+1)+'">'+(i+1)+'º tempo</option>'); }); } else { for(var n=1;n<=5;n++) o.push('<option value="'+n+'">'+n+'º tempo</option>'); }
+      sel.innerHTML=o.join('');
+    }
+  }
+  if(prev){ for(var oo=0;oo<sel.options.length;oo++){ if(sel.options[oo].value===String(prev)){ sel.selectedIndex=oo; break; } } }
 }
 
 // ── Load disciplines for selected turma ──────────────────────
