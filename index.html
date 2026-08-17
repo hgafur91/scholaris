@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.124</span>
+    <span class="logo-ver">v6.125</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3386,7 +3386,7 @@ const ROLES={
         {i:'ti-users-group',l:'Encarregados',id:'encarregados'},
         {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
         {i:'ti-calendar',l:'Horário',id:'horario'},
-        {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
+        {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
@@ -3432,7 +3432,7 @@ const ROLES={
     ]},
   professor:{nome:'Professor',cargo:'Professor',avt:'CM',color:'var(--g)',badge:'Professor',
     sidebar:[
-      {sl:'Portal Professor',flat:[{i:'ti-layout-dashboard',l:'As Minhas Aulas',id:'portal-prof'},{i:'ti-school',l:'As Minhas Turmas',id:'minhas-turmas'},{i:'ti-id-badge',l:'O Meu Perfil',id:'meu-perfil-prof'},{i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},{i:'ti-star',l:'Lançar Notas',id:'notas'},{i:'ti-calendar',l:'O Meu Horário',id:'horario'}]},
+      {sl:'Portal Professor',flat:[{i:'ti-layout-dashboard',l:'As Minhas Aulas',id:'portal-prof'},{i:'ti-school',l:'As Minhas Turmas',id:'minhas-turmas'},{i:'ti-id-badge',l:'O Meu Perfil',id:'meu-perfil-prof'},{i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},{i:'ti-star',l:'Lançar Notas',id:'notas'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},{i:'ti-calendar',l:'O Meu Horário',id:'horario'}]},
       {sl:'Consulta',flat:[{i:'ti-shield-exclamation',l:'Disciplina',id:'disciplina'},{i:'ti-school',l:'Planos Analíticos',id:'curr-planos'},{i:'ti-calendar-event',l:'Calendário Escolar',id:'calendario-escolar'},{i:'ti-books',l:'Biblioteca',id:'bib'}]},{sl:'Comunicação',flat:[{i:'ti-speakerphone',l:'Comunicados',id:'comunicados-prof'},{i:'ti-clipboard-list',l:'Trabalhos',id:'trabalhos-prof'}]},
     ]},
   aluno:{nome:'Aaron Chaimite',cargo:'Aluno',avt:'AC',color:'var(--am)',badge:'Aluno',
@@ -3471,7 +3471,7 @@ const ROLES={
         {i:'ti-users-group',l:'Encarregados',id:'encarregados'},
         {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
         {i:'ti-calendar',l:'Horário',id:'horario'},
-        {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
+        {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
@@ -13336,7 +13336,7 @@ ROLES['dir-pedagogico'] = {
       {i:'ti-users',l:'Alunos',id:'alunos'},
       {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
       {i:'ti-calendar',l:'Horário',id:'horario'},
-      {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},
+      {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
       {i:'ti-star',l:'Notas',id:'notas'},
     ]},
     {sl:'Gestão', flat:[
@@ -13359,7 +13359,7 @@ ROLES['dir-ciclo'] = {
     ]},
     {sl:'Como Professor', sub:[
       {i:'ti-school',l:'As Minhas Turmas',id:'minhas-turmas'},
-      {i:'ti-star',l:'Lançar Notas',id:'notas'},
+      {i:'ti-star',l:'Lançar Notas',id:'notas'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
       {i:'ti-calendar',l:'O Meu Horário',id:'horario'},
     ]},
     {sl:'Curricular', sub:[
@@ -41030,6 +41030,241 @@ window.trimestreActual = function(d){
   window.__numeroRecibo=function(pag){ if(!pag) return ''; pag.reciboNum=window.__reciboDe(pag); return pag.reciboNum; };
 
   window.__finCod118=true;
+})();
+</script>
+
+<script>
+/* ═══ v6.125 — Avaliação Trimestral (AT): calendário + supervisão + presença + estatística ═══ */
+(function(){
+  if(window.__finAT125) return;
+  var MZL=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
+  function DPGestor(){ try{ return ['gestor','director','dir-pedagogico'].includes(curRole); }catch(e){ return false; } }
+  function docente(){ try{ return ['professor','dir-ciclo'].includes(curRole); }catch(e){ return false; } }
+  function nomeT(id){ try{ var t=(TURMAS||[]).find(function(x){return String(x.id)===String(id);}); return t?(t.nome||t.id):id; }catch(e){ return id; } }
+  function profNome(num){ try{ var p=(PROFS||[]).find(function(x){return String(x.num)===String(num);}); return p?p.nome:(num||'—'); }catch(e){ return num||'—'; } }
+  function alunosTurma(code){ try{ return (ALUNOS||[]).filter(function(a){return String(a.turma)===String(code);}); }catch(e){ return []; } }
+  function meuProf(){ try{ return (typeof resolverMeuProf==='function')?resolverMeuProf():null; }catch(e){ return null; } }
+
+  window.__atCfg=function(){ if(typeof CONFIG==='undefined') return {discComExame:[]}; if(!CONFIG.at) CONFIG.at={discComExame:[]}; if(!Array.isArray(CONFIG.at.discComExame)) CONFIG.at.discComExame=[]; return CONFIG.at; };
+  window.__atTC=function(trim){ var c=window.__atCfg(); if(!c[trim]) c[trim]={inicio:'',fim:'',exames:[],presencas:{}}; if(!Array.isArray(c[trim].exames)) c[trim].exames=[]; if(!c[trim].presencas) c[trim].presencas={}; return c[trim]; };
+  window.__atTrim = window.__atTrim || (function(){ try{ return String((typeof getTrimestre==='function')?getTrimestre():1); }catch(e){ return '1'; } })();
+
+  function discsDaTurma(code){
+    var set={};
+    try{ (ALOCACOES||[]).forEach(function(a){ if(String(a.turma)===String(code)&&a.disc) set[a.disc]=1; }); }catch(e){}
+    try{ var rows=(typeof HORARIO!=='undefined'&&HORARIO[code])||[]; rows.forEach(function(r){ ['seg','ter','qua','qui','sex'].forEach(function(d){ var c=r[d]; if(c&&c.d) set[c.d]=1; }); }); }catch(e){}
+    return Object.keys(set).sort();
+  }
+  function discsTodas(){
+    var set={};
+    try{ (ALOCACOES||[]).forEach(function(a){ if(a.disc) set[a.disc]=1; }); }catch(e){}
+    try{ if(typeof HORARIO!=='undefined') Object.keys(HORARIO).forEach(function(t){ (HORARIO[t]||[]).forEach(function(r){ ['seg','ter','qua','qui','sex'].forEach(function(d){ var c=r[d]; if(c&&c.d) set[c.d]=1; }); }); }); }catch(e){}
+    return Object.keys(set).sort();
+  }
+  function profDaDisc(code, disc){
+    try{ var a=(ALOCACOES||[]).find(function(x){return String(x.turma)===String(code)&&String(x.disc)===String(disc)&&x.prof;}); if(a) return a.prof; }catch(e){}
+    try{ var rows=(typeof HORARIO!=='undefined'&&HORARIO[code])||[]; for(var i=0;i<rows.length;i++){ var r=rows[i],f=null; ['seg','ter','qua','qui','sex'].forEach(function(d){ var c=r[d]; if(c&&c.d===disc&&c.p) f=c.p; }); if(f) return f; } }catch(e){}
+    return null;
+  }
+  function isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function diasUteis(ini, fim){
+    var out=[]; try{ if(!ini||!fim) return out; var d=new Date(ini+'T00:00:00'), f=new Date(fim+'T00:00:00'); var guard=0;
+      while(d<=f && guard++<120){ var wd=d.getDay(); if(wd>=1&&wd<=5) out.push(isoLocal(d)); d.setDate(d.getDate()+1); } }catch(e){}
+    return out;
+  }
+  function atribuirSupervisores(exames){
+    var carga={}, slot={}; var profs=(PROFS||[]).map(function(p){return p.num;});
+    exames.forEach(function(e){
+      var teacher=profDaDisc(e.turma, e.disciplina);
+      var key=e.data+'|'+e.periodo; slot[key]=slot[key]||{};
+      var cand=profs.filter(function(n){ return n && n!==teacher && !slot[key][n]; });
+      if(!cand.length) cand=profs.filter(function(n){ return n && n!==teacher; });
+      cand.sort(function(a,b){ return (carga[a]||0)-(carga[b]||0); });
+      var ch=cand[0]||''; e.supervisor=ch; if(ch){ carga[ch]=(carga[ch]||0)+1; slot[key][ch]=1; }
+    });
+  }
+
+  // ── acções DP ───────────────────────────────────────────────────
+  window.__atSetTrim=function(t){ window.__atTrim=String(t); rAvaliacaoTrim(); };
+  window.__atSetData=function(campo, val){ if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); tc[campo]=val||''; persist(); };
+  window.__atToggleDisc=function(disc){ if(!DPGestor())return; var c=window.__atCfg(); var i=c.discComExame.indexOf(disc); if(i>=0)c.discComExame.splice(i,1); else c.discComExame.push(disc); persist(); rAvaliacaoTrim(); };
+  window.__atGerar=function(){
+    if(!DPGestor()){ toast('Sem permissão'); return; }
+    var trim=window.__atTrim; var tc=window.__atTC(trim);
+    if(!tc.inicio||!tc.fim){ toast('Defina primeiro o início e o fim da AT.'); return; }
+    var dias=diasUteis(tc.inicio, tc.fim); if(!dias.length){ toast('Janela sem dias úteis.'); return; }
+    var sel=window.__atCfg().discComExame; if(!sel.length){ toast('Escolha primeiro as disciplinas com exame.'); return; }
+    if(tc.exames.length && !confirm('Isto substitui o calendário actual do '+trim+'º trimestre. Continuar?')) return;
+    var exames=[]; var seq=1;
+    (TURMAS||[]).slice().sort(function(a,b){return String(nomeT(a.id)).localeCompare(String(nomeT(b.id)));}).forEach(function(t){
+      var discs=discsDaTurma(t.id).filter(function(d){return sel.indexOf(d)>=0;});
+      discs.forEach(function(disc,i){
+        exames.push({ id:'AT'+trim+'-'+(seq++), turma:t.id, disciplina:disc, data:dias[i%dias.length], periodo:1+Math.floor(i/dias.length), supervisor:'' });
+      });
+    });
+    atribuirSupervisores(exames);
+    tc.exames=exames; persist(); rAvaliacaoTrim();
+    toast('Calendário gerado: '+exames.length+' exames.');
+  };
+  window.__atSetExame=function(id, campo, val){
+    if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); var e=tc.exames.find(function(x){return x.id===id;}); if(!e)return;
+    if(campo==='supervisor'){ var teacher=profDaDisc(e.turma,e.disciplina); if(val && val===teacher){ toast('O professor da disciplina não pode ser supervisor do seu próprio exame.'); rAvaliacaoTrim(); return; } }
+    e[campo]=val; persist();
+  };
+  window.__atRemExame=function(id){ if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); tc.exames=tc.exames.filter(function(x){return x.id!==id;}); if(tc.presencas) delete tc.presencas[id]; persist(); rAvaliacaoTrim(); };
+  window.__atAddExame=function(){
+    if(!DPGestor())return; var tc=window.__atTC(window.__atTrim);
+    var turmas=(TURMAS||[]).slice().sort(function(a,b){return String(nomeT(a.id)).localeCompare(String(nomeT(b.id)));});
+    var ex=document.getElementById('m-at-add'); if(ex)ex.remove();
+    var m=document.createElement('div'); m.id='m-at-add'; m.className='modal-ov'; m.style.display='flex';
+    m.innerHTML='<div class="modal" style="max-width:460px"><div class="mhd"><span class="mt"><i class="ti ti-plus"></i> Adicionar exame</span><button class="mclose" onclick="document.getElementById(\'m-at-add\').remove()"><i class="ti ti-x"></i></button></div>'
+      +'<div class="mbod"><div class="fgr full"><label class="fl">Turma</label><select class="ffi" id="at-add-turma" onchange="window.__atAddDiscs()">'+turmas.map(function(t){return '<option value="'+esc(t.id)+'">'+esc(nomeT(t.id))+'</option>';}).join('')+'</select></div>'
+      +'<div class="fgr full"><label class="fl">Disciplina</label><select class="ffi" id="at-add-disc"></select></div>'
+      +'<div class="fgr"><label class="fl">Data</label><input class="ffi" type="date" id="at-add-data" value="'+esc(tc.inicio||'')+'"></div>'
+      +'<div class="fgr"><label class="fl">Tempo</label><select class="ffi" id="at-add-periodo">'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'">'+n+'º</option>';}).join('')+'</select></div></div>'
+      +'<div class="mft"><button class="btn btn-g" onclick="document.getElementById(\'m-at-add\').remove()">Cancelar</button><button class="btn btn-p" onclick="window.__atAddOk()">Adicionar</button></div></div>';
+    document.body.appendChild(m); window.__atAddDiscs();
+  };
+  window.__atAddDiscs=function(){ var t=(document.getElementById('at-add-turma')||{}).value; var ds=discsDaTurma(t); var s=document.getElementById('at-add-disc'); if(s) s.innerHTML=ds.map(function(d){return '<option value="'+esc(d)+'">'+esc(d)+'</option>';}).join(''); };
+  window.__atAddOk=function(){
+    var tc=window.__atTC(window.__atTrim);
+    var turma=(document.getElementById('at-add-turma')||{}).value, disc=(document.getElementById('at-add-disc')||{}).value;
+    var data=(document.getElementById('at-add-data')||{}).value, periodo=parseInt((document.getElementById('at-add-periodo')||{}).value,10)||1;
+    if(!turma||!disc||!data){ toast('Preencha turma, disciplina e data.'); return; }
+    var e={ id:'AT'+window.__atTrim+'-'+Date.now().toString(36), turma:turma, disciplina:disc, data:data, periodo:periodo, supervisor:'' };
+    atribuirSupervisores(tc.exames.concat([e]).slice(-1)); // supervisor para o novo (aproximado)
+    tc.exames.push(e); persist(); var m=document.getElementById('m-at-add'); if(m)m.remove(); rAvaliacaoTrim();
+  };
+
+  // ── chamada de presença (supervisor) ────────────────────────────
+  window.__atChamada=function(exameId){
+    var trim=window.__atTrim; var tc=window.__atTC(trim); var e=tc.exames.find(function(x){return x.id===exameId;}); if(!e){ toast('Exame não encontrado'); return; }
+    var mp=meuProf(); var sou = DPGestor() || (mp && String(e.supervisor)===String(mp.num));
+    if(!sou){ toast('Só o supervisor deste exame (ou a DP/Gestor) pode fazer a chamada.'); return; }
+    var als=alunosTurma(e.turma); tc.presencas[exameId]=tc.presencas[exameId]||{};
+    var pres=tc.presencas[exameId];
+    var linhas=als.map(function(a){ var st=pres[a.id]||'P';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-bottom:1px solid var(--b)"><span style="font-size:13px;font-weight:600">'+esc(a.nome)+'</span>'
+        +'<span style="display:flex;gap:4px"><button class="btn btn-sm '+(st==='P'?'btn-gr':'btn-g')+'" id="atp-'+a.id+'-P" onclick="window.__atMarcar(\''+exameId+'\','+a.id+',\'P\')">Presente</button>'
+        +'<button class="btn btn-sm '+(st==='F'?'btn-re':'btn-g')+'" id="atp-'+a.id+'-F" onclick="window.__atMarcar(\''+exameId+'\','+a.id+',\'F\')">Ausente</button></span></div>';
+    }).join('');
+    var ex=document.getElementById('m-at-chamada'); if(ex)ex.remove();
+    var m=document.createElement('div'); m.id='m-at-chamada'; m.className='modal-ov'; m.style.display='flex';
+    m.innerHTML='<div class="modal" style="max-width:560px"><div class="mhd"><span class="mt"><i class="ti ti-clipboard-check"></i> Chamada — '+esc(e.disciplina)+' · '+esc(nomeT(e.turma))+'</span><button class="mclose" onclick="document.getElementById(\'m-at-chamada\').remove()"><i class="ti ti-x"></i></button></div>'
+      +'<div class="mbod"><div class="ib-box ib-blue" style="margin-bottom:10px">'+esc(e.data)+' · '+e.periodo+'º tempo · '+als.length+' aluno(s). Todos <strong>Presente</strong> por defeito; marque os ausentes.</div>'
+      +'<div id="at-chamada-lista" style="max-height:56vh;overflow:auto">'+(linhas||'<div style="padding:14px;color:var(--t3)">Sem alunos nesta turma.</div>')+'</div></div>'
+      +'<div class="mft"><button class="btn btn-g" onclick="document.getElementById(\'m-at-chamada\').remove()">Fechar</button><button class="btn btn-p" onclick="window.__atGuardarChamada(\''+exameId+'\')"><i class="ti ti-check"></i> Guardar</button></div></div>';
+    document.body.appendChild(m);
+  };
+  window.__atMarcar=function(exameId, alunoId, tipo){
+    var tc=window.__atTC(window.__atTrim); tc.presencas[exameId]=tc.presencas[exameId]||{}; tc.presencas[exameId][alunoId]=tipo;
+    var bP=document.getElementById('atp-'+alunoId+'-P'), bF=document.getElementById('atp-'+alunoId+'-F');
+    if(bP) bP.className='btn btn-sm '+(tipo==='P'?'btn-gr':'btn-g'); if(bF) bF.className='btn btn-sm '+(tipo==='F'?'btn-re':'btn-g');
+  };
+  window.__atGuardarChamada=function(exameId){ persist(); var m=document.getElementById('m-at-chamada'); if(m)m.remove(); if(typeof rAvaliacaoTrim==='function') rAvaliacaoTrim(); toast('Chamada guardada.'); };
+
+  function statsExame(tc, e){ var als=alunosTurma(e.turma); var pres=tc.presencas[e.id]||{};
+    // esperados = todos os alunos da turma; presentes = os não marcados 'F' (só conta se já houve chamada)
+    var houve = Object.keys(pres).length>0;
+    var presentes = houve ? als.filter(function(a){return pres[a.id]!=='F';}).length : 0;
+    return { esperados:als.length, presentes:presentes, houve:houve };
+  }
+
+  // ── RENDER ──────────────────────────────────────────────────────
+  window.rAvaliacaoTrim=function(){
+    var el=document.getElementById('at-c'); if(!el) return;
+    var trim=window.__atTrim;
+    var tabs='<div class="tabs" style="margin-bottom:14px">'+['1','2','3'].map(function(t){ return '<button class="tab'+(t===trim?' on':'')+'" onclick="window.__atSetTrim(\''+t+'\')">'+t+'º Trimestre</button>'; }).join('')+'</div>';
+    if(DPGestor()){ el.innerHTML=tabs+renderDP(trim); }
+    else if(docente()){ el.innerHTML=tabs+renderProf(trim); }
+    else { el.innerHTML='<div class="ib-box ib-re">Acesso restrito.</div>'; }
+  };
+
+  function renderDP(trim){
+    var tc=window.__atTC(trim); var sel=window.__atCfg().discComExame; var todas=discsTodas();
+    var h='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Janela da Avaliação — '+trim+'º Trimestre</span></div><div class="cb">'
+      +'<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end">'
+      +'<div class="fgr"><label class="fl">Início</label><input class="ffi" type="date" value="'+esc(tc.inicio||'')+'" onchange="window.__atSetData(\'inicio\',this.value)"></div>'
+      +'<div class="fgr"><label class="fl">Fim</label><input class="ffi" type="date" value="'+esc(tc.fim||'')+'" onchange="window.__atSetData(\'fim\',this.value)"></div>'
+      +'<button class="btn btn-p" onclick="window.__atGerar()"><i class="ti ti-rocket"></i> Gerar calendário</button>'
+      +'<button class="btn btn-g" onclick="window.__atAddExame()"><i class="ti ti-plus"></i> Adicionar exame</button></div>'
+      +'<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Disciplinas com exame</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
+      +todas.map(function(d){ var on=sel.indexOf(d)>=0; return '<button class="badge '+(on?'bok':'bin')+'" style="cursor:pointer;border:1px solid var(--b);font-size:11px" onclick="window.__atToggleDisc(\''+esc(d).replace(/'/g,"\\\\'")+'\')">'+(on?'<i class=\"ti ti-check\"></i> ':'')+esc(d)+'</button>'; }).join('')
+      +'</div></div></div></div>';
+    // calendário
+    if(!tc.exames.length){ h+='<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Ainda sem exames. Defina a janela, escolha as disciplinas e carregue em "Gerar calendário".</div>'; return h; }
+    // stats globais
+    var tot=tc.exames.length, comCh=tc.exames.filter(function(e){return Object.keys(tc.presencas[e.id]||{}).length>0;}).length;
+    var espG=0,preG=0; tc.exames.forEach(function(e){ var s=statsExame(tc,e); if(s.houve){ espG+=s.esperados; preG+=s.presentes; } });
+    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">'
+      +kpi('Exames',tot,'var(--a)')+kpi('Chamadas feitas',comCh+'/'+tot,'var(--tl)')+kpi('Participação',espG?Math.round(preG/espG*100)+'%':'—','var(--g)')+kpi('Presentes/Esperados',preG+'/'+espG,'var(--am)')+'</div>';
+    h+='<div class="card"><div class="ch"><span class="ct">Calendário de exames — '+trim+'º Trimestre</span><span style="font-size:11px;color:var(--t2)">'+tot+' exames</span></div><div class="tw"><table><thead><tr><th>Turma</th><th>Disciplina</th><th>Prof. da disciplina</th><th>Data</th><th>Tempo</th><th>Supervisor</th><th>Presença</th><th></th></tr></thead><tbody>';
+    tc.exames.slice().sort(function(a,b){ return (a.data||'').localeCompare(b.data||'')||(a.periodo-b.periodo)||String(nomeT(a.turma)).localeCompare(String(nomeT(b.turma))); }).forEach(function(e){
+      var teacher=profDaDisc(e.turma,e.disciplina);
+      var supOpts='<option value="">— escolher —</option>'+(PROFS||[]).slice().sort(function(a,b){return String(a.nome).localeCompare(String(b.nome));}).filter(function(p){return p.num!==teacher;}).map(function(p){ return '<option value="'+esc(p.num)+'"'+(String(p.num)===String(e.supervisor)?' selected':'')+'>'+esc(p.nome)+'</option>'; }).join('');
+      var s=statsExame(tc,e);
+      h+='<tr><td style="font-weight:700">'+esc(nomeT(e.turma))+'</td><td>'+esc(e.disciplina)+'</td><td style="font-size:11px;color:var(--t2)">'+esc(profNome(teacher))+'</td>'
+        +'<td><input class="ffi" type="date" style="width:150px" value="'+esc(e.data||'')+'" onchange="window.__atSetExame(\''+e.id+'\',\'data\',this.value)"></td>'
+        +'<td><select class="ffi" style="width:64px" onchange="window.__atSetExame(\''+e.id+'\',\'periodo\',this.value)">'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(n===e.periodo?' selected':'')+'>'+n+'º</option>';}).join('')+'</select></td>'
+        +'<td><select class="ffi" style="width:170px" onchange="window.__atSetExame(\''+e.id+'\',\'supervisor\',this.value)">'+supOpts+'</select></td>'
+        +'<td style="font-size:11px">'+(s.houve?('<span class="badge bok">'+s.presentes+'/'+s.esperados+'</span>'):'<span class="badge bwn">por fazer</span>')+' <button class="btn btn-g btn-sm" onclick="window.__atChamada(\''+e.id+'\')">Chamada</button></td>'
+        +'<td><button class="btn btn-re btn-sm" onclick="window.__atRemExame(\''+e.id+'\')"><i class="ti ti-trash"></i></button></td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+    return h;
+  }
+
+  function renderProf(trim){
+    var tc=window.__atTC(trim); var mp=meuProf();
+    if(!tc.inicio && !tc.exames.length){ return '<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> As datas da Avaliação Trimestral ainda não foram definidas pela Direcção Pedagógica.</div>'; }
+    var pnum=mp&&mp.num;
+    var minhas=tc.exames.filter(function(e){ return String(profDaDisc(e.turma,e.disciplina))===String(pnum); });
+    var superviso=tc.exames.filter(function(e){ return String(e.supervisor)===String(pnum); });
+    var head='<div class="ib-box ib-blue" style="margin-bottom:12px"><i class="ti ti-calendar-event"></i> Avaliação do '+trim+'º Trimestre'+((tc.inicio&&tc.fim)?(' · '+esc(tc.inicio)+' a '+esc(tc.fim)):'')+'.</div>';
+    function tabela(list, comChamada){
+      if(!list.length) return '<div class="ib-box ib-am" style="font-size:12px">Nada nesta secção.</div>';
+      var r='<div class="tw"><table><thead><tr><th>Data</th><th>Tempo</th><th>Turma</th><th>Disciplina</th>'+(comChamada?'<th>Presença</th><th></th>':'<th>Supervisor</th>')+'</tr></thead><tbody>';
+      list.slice().sort(function(a,b){return (a.data||'').localeCompare(b.data||'')||(a.periodo-b.periodo);}).forEach(function(e){
+        r+='<tr><td style="font-family:var(--fm);font-size:12px">'+esc(e.data||'—')+'</td><td>'+e.periodo+'º</td><td style="font-weight:700">'+esc(nomeT(e.turma))+'</td><td>'+esc(e.disciplina)+'</td>';
+        if(comChamada){ var s=statsExame(tc,e); r+='<td>'+(s.houve?('<span class="badge bok">'+s.presentes+'/'+s.esperados+'</span>'):'<span class="badge bwn">por fazer</span>')+'</td><td><button class="btn btn-p btn-sm" onclick="window.__atChamada(\''+e.id+'\')"><i class="ti ti-clipboard-check"></i> Chamada</button></td>'; }
+        else { r+='<td style="font-size:11px;color:var(--t2)">'+esc(profNome(e.supervisor))+'</td>'; }
+        r+='</tr>';
+      });
+      return r+'</tbody></table></div>';
+    }
+    var h=head;
+    h+='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-file-check"></i> As minhas provas ('+minhas.length+')</span></div><div class="cb" style="padding:0">'+tabela(minhas,false)+'</div></div>';
+    h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-eye"></i> Onde sou supervisor ('+superviso.length+')</span></div><div class="cb" style="padding:0">'+tabela(superviso,true)+'</div></div>';
+    return h;
+  }
+  function kpi(l,v,c){ return '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:'+c+'">'+v+'</div><div style="font-size:10px;color:var(--t2)">'+l+'</div></div>'; }
+
+  // ── view + rota ────────────────────────────────────────────────
+  function ensureView(){
+    if(document.getElementById('v-avaliacao-trim')) return;
+    var ref=document.getElementById('v-fin-dashboard')||document.getElementById('v-dash'); if(!ref||!ref.parentNode) return;
+    var v=document.createElement('div'); v.className='view'; v.id='v-avaliacao-trim';
+    v.innerHTML='<div class="ph"><div><div class="ph-title">Avaliação Trimestral</div><div class="ph-sub">Calendário de exames, supervisão e presenças</div></div></div><div id="at-c"></div>';
+    ref.parentNode.insertBefore(v, ref.nextSibling);
+  }
+  ensureView();
+  try{ if(typeof VM!=='undefined') VM['avaliacao-trim']='v-avaliacao-trim'; }catch(e){}
+  var _goAT=window.go;
+  window.go=function(id){
+    if(id==='avaliacao-trim'){ ensureView();
+      try{ document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on');}); document.querySelectorAll('.si,.ssi').forEach(function(s){s.classList.remove('on');});
+        var ve=document.getElementById('v-avaliacao-trim'); if(ve) ve.classList.add('on');
+        var se=document.getElementById('si-avaliacao-trim'); if(se) se.classList.add('on');
+        rAvaliacaoTrim();
+      }catch(e){}
+      return;
+    }
+    return _goAT.apply(this, arguments);
+  };
+
+  window.__finAT125=true;
 })();
 </script>
 
