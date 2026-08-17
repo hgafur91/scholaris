@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.126</span>
+    <span class="logo-ver">v6.127</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -927,6 +927,7 @@ window.__escA = function (s) {
   <div class="ph"><div><div class="ph-title">Horário Semanal</div><div class="ph-sub" id="hor-sub">Seleccione uma turma</div></div>
     <div class="ph-right">
       <button class="btn btn-g btn-sm" id="hor-back" onclick="horBack()" style="display:none"><i class="ti ti-arrow-left"></i> Turmas</button>
+      <button class="btn btn-p btn-sm" onclick="exportarHorarioPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>
       <button class="btn btn-p btn-sm" id="btn-add-aula" onclick="abrirModalAlocacao()" style="display:none">Adicionar Aula</button>
     </div>
   </div>
@@ -5076,6 +5077,33 @@ function openHorTurma(tid){
     rows.map(row=>`<div class="hhr">${row.h}</div>${dias.map(d=>{const cell=row[d];return cell?`<div class="hc oc" title="${cell.d} — ${cell.p||'Sem professor'}"><div style="font-size:11px;font-weight:700;color:var(--a)">${cell.d}</div><div style="font-size:9px;color:var(--t3)">${nomeProfHorario(cell.p)}</div></div>`:`<div class="hc vz"></div>`}).join('')}`).join('');
 }
 function horBack(){document.getElementById('hor-s1').style.display='block';document.getElementById('hor-s2').style.display='none';document.getElementById('hor-back').style.display='none';document.getElementById('btn-add-aula').style.display='none'}
+
+// v6.127 — Exportar o horário visível em PDF (janela de impressão, tema claro, paisagem)
+function exportarHorarioPDF(){
+  try{
+    var host=document.getElementById('hor-s1');
+    var tbl=host&&host.querySelector('table');
+    if(!tbl){ toast('Abra um horário (turma, o seu, ou do ciclo) primeiro.'); return; }
+    var titulo=((document.getElementById('hor-sub')||{}).textContent||'Horário').trim().replace(/"/g,'');
+    var escola='Scholaris'; try{ escola=(typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nome)||(typeof CONFIG!=='undefined'&&(CONFIG.nomeEscola||CONFIG.escola))||'Scholaris'; }catch(e){}
+    escola=String(escola).replace(/"/g,'');
+    var w=window.open('','_blank','width=1000,height=760'); if(!w){ toast('Permita popups para gerar o PDF.'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+titulo+'</title>'
+      +'<style>:root{--a:#1e40af;--a2:#2563eb;--t:#0f172a;--t2:#475569;--t3:#94a3b8;--bg3:#f1f5f9;--card:#ffffff;--card2:#f8fafc;--b:#e2e8f0;--b2:#e2e8f0;--r:#dc2626;--g:#16a34a;--am:#d97706;--tl:#7c3aed;--pu:#7c3aed;--fm:ui-monospace,monospace}'
+      +'body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:22px;background:#fff}'
+      +'body *{overflow:visible!important}'
+      +'.card{border:1px solid #e2e8f0;border-radius:10px;background:#fff}.ch{padding:10px 14px;border-bottom:1px solid #eef2ff;font-weight:700}.cb{padding:12px}'
+      +'table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:5px 6px;font-size:10px;vertical-align:top}th{background:#eef2ff;color:#1e3a8a}'
+      +'.hc,.hhr{border:1px solid #cbd5e1;font-size:10px}'
+      +'h1{font-size:18px;margin:0}.sub{color:#64748b;font-size:12px;margin:2px 0 14px}'
+      +'@media print{.noprint{display:none}} @page{size:A4 landscape;margin:10mm}'
+      +'</style></head><body>'
+      +'<div class="noprint" style="margin-bottom:12px"><button onclick="window.print()" style="padding:9px 20px;background:#4f8ef7;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer">Imprimir / Guardar PDF</button></div>'
+      +'<h1>'+escola+'</h1><div class="sub">'+titulo+' &middot; '+new Date().toLocaleDateString('pt-PT')+'</div>'
+      +host.innerHTML+'</body></html>');
+    w.document.close();
+  }catch(e){ toast('Erro ao gerar PDF: '+(e&&e.message)); }
+}
 
 // ══ PRESENÇAS com JANELA TEMPORAL ══
 // ══ PRESENÇAS / REGISTO DE AULAS (janela de 5 dias, persistência real) ══
