@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.125</span>
+    <span class="logo-ver">v6.126</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -41048,7 +41048,7 @@ window.trimestreActual = function(d){
   function meuProf(){ try{ return (typeof resolverMeuProf==='function')?resolverMeuProf():null; }catch(e){ return null; } }
 
   window.__atCfg=function(){ if(typeof CONFIG==='undefined') return {discComExame:[]}; if(!CONFIG.at) CONFIG.at={discComExame:[]}; if(!Array.isArray(CONFIG.at.discComExame)) CONFIG.at.discComExame=[]; return CONFIG.at; };
-  window.__atTC=function(trim){ var c=window.__atCfg(); if(!c[trim]) c[trim]={inicio:'',fim:'',exames:[],presencas:{}}; if(!Array.isArray(c[trim].exames)) c[trim].exames=[]; if(!c[trim].presencas) c[trim].presencas={}; return c[trim]; };
+  window.__atTC=function(trim){ var c=window.__atCfg(); if(!c[trim]) c[trim]={inicio:'',fim:'',exames:[],presencas:{},estado:'rascunho'}; if(!Array.isArray(c[trim].exames)) c[trim].exames=[]; if(!c[trim].presencas) c[trim].presencas={}; if(!c[trim].estado) c[trim].estado='rascunho'; return c[trim]; };
   window.__atTrim = window.__atTrim || (function(){ try{ return String((typeof getTrimestre==='function')?getTrimestre():1); }catch(e){ return '1'; } })();
 
   function discsDaTurma(code){
@@ -41104,16 +41104,21 @@ window.trimestreActual = function(d){
         exames.push({ id:'AT'+trim+'-'+(seq++), turma:t.id, disciplina:disc, data:dias[i%dias.length], periodo:1+Math.floor(i/dias.length), supervisor:'' });
       });
     });
-    atribuirSupervisores(exames);
-    tc.exames=exames; persist(); rAvaliacaoTrim();
+    if(window.__atCfg().selfSup){ exames.forEach(function(e){ e.supervisor=profDaDisc(e.turma,e.disciplina)||''; }); }
+    else { atribuirSupervisores(exames); }
+    tc.exames=exames; tc.estado='rascunho'; persist(); rAvaliacaoTrim();
     toast('Calendário gerado: '+exames.length+' exames.');
   };
+  window.__atSetSelfSup=function(v){ if(!DPGestor())return; var c=window.__atCfg(); c.selfSup=!!v; persist(); };
+  window.__atAprovar=function(){ if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); if(!tc.exames.length){ toast('Nada para aprovar.'); return; } if(!confirm('Aprovar o calendário do '+window.__atTrim+'º trimestre?\nFica bloqueado e é publicado aos professores (só a DP pode reabrir).')) return; tc.estado='aprovada'; persist(); rAvaliacaoTrim(); toast('Calendário aprovado e publicado.'); };
+  window.__atReabrir=function(){ if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); tc.estado='rascunho'; persist(); rAvaliacaoTrim(); toast('Calendário reaberto para edição.'); };
+  function bloqueado(tc){ if(tc.estado==='aprovada'){ toast('Calendário aprovado. Reabra para editar.'); return true; } return false; }
   window.__atSetExame=function(id, campo, val){
-    if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); var e=tc.exames.find(function(x){return x.id===id;}); if(!e)return;
-    if(campo==='supervisor'){ var teacher=profDaDisc(e.turma,e.disciplina); if(val && val===teacher){ toast('O professor da disciplina não pode ser supervisor do seu próprio exame.'); rAvaliacaoTrim(); return; } }
-    e[campo]=val; persist();
+    if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); if(bloqueado(tc)){ rAvaliacaoTrim(); return; }
+    var e=tc.exames.find(function(x){return x.id===id;}); if(!e)return;
+    e[campo]=(campo==='periodo')?(parseInt(val,10)||1):val; persist();
   };
-  window.__atRemExame=function(id){ if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); tc.exames=tc.exames.filter(function(x){return x.id!==id;}); if(tc.presencas) delete tc.presencas[id]; persist(); rAvaliacaoTrim(); };
+  window.__atRemExame=function(id){ if(!DPGestor())return; var tc=window.__atTC(window.__atTrim); if(bloqueado(tc))return; tc.exames=tc.exames.filter(function(x){return x.id!==id;}); if(tc.presencas) delete tc.presencas[id]; persist(); rAvaliacaoTrim(); };
   window.__atAddExame=function(){
     if(!DPGestor())return; var tc=window.__atTC(window.__atTrim);
     var turmas=(TURMAS||[]).slice().sort(function(a,b){return String(nomeT(a.id)).localeCompare(String(nomeT(b.id)));});
@@ -41129,7 +41134,7 @@ window.trimestreActual = function(d){
   };
   window.__atAddDiscs=function(){ var t=(document.getElementById('at-add-turma')||{}).value; var ds=discsDaTurma(t); var s=document.getElementById('at-add-disc'); if(s) s.innerHTML=ds.map(function(d){return '<option value="'+esc(d)+'">'+esc(d)+'</option>';}).join(''); };
   window.__atAddOk=function(){
-    var tc=window.__atTC(window.__atTrim);
+    var tc=window.__atTC(window.__atTrim); if(tc.estado==='aprovada'){ toast('Calendário aprovado. Reabra para editar.'); return; }
     var turma=(document.getElementById('at-add-turma')||{}).value, disc=(document.getElementById('at-add-disc')||{}).value;
     var data=(document.getElementById('at-add-data')||{}).value, periodo=parseInt((document.getElementById('at-add-periodo')||{}).value,10)||1;
     if(!turma||!disc||!data){ toast('Preencha turma, disciplina e data.'); return; }
@@ -41182,43 +41187,58 @@ window.trimestreActual = function(d){
     else { el.innerHTML='<div class="ib-box ib-re">Acesso restrito.</div>'; }
   };
 
+  function diaLabel(iso){ try{ var ds=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; var d=new Date(iso+'T00:00:00'); return ds[d.getDay()]+' '+iso.slice(8,10)+'/'+iso.slice(5,7); }catch(e){ return iso; } }
+  function supOptions(e, teacher){ return '<option value="">—</option>'+(PROFS||[]).slice().sort(function(a,b){return String(a.nome).localeCompare(String(b.nome));}).map(function(p){ return '<option value="'+esc(p.num)+'"'+(String(p.num)===String(e.supervisor)?' selected':'')+'>'+esc(p.nome)+(String(p.num)===String(teacher)?' (prof.)':'')+'</option>'; }).join(''); }
+  function renderGrade(tc, editable){
+    var exames=tc.exames||[]; if(!exames.length) return '';
+    var datas=Object.keys(exames.reduce(function(m,e){ if(e.data)m[e.data]=1; return m; },{})).sort();
+    var turmas=Object.keys(exames.reduce(function(m,e){ m[e.turma]=1; return m; },{})).sort(function(a,b){return String(nomeT(a)).localeCompare(String(nomeT(b)));});
+    var h='<div class="tw"><table style="min-width:600px"><thead><tr><th>Data</th>'+turmas.map(function(t){return '<th style="text-align:center">'+esc(nomeT(t))+'</th>';}).join('')+'</tr></thead><tbody>';
+    datas.forEach(function(data){
+      h+='<tr><td style="font-family:var(--fm);font-size:11px;white-space:nowrap;font-weight:700">'+diaLabel(data)+'</td>';
+      turmas.forEach(function(t){
+        var cells=exames.filter(function(e){return e.data===data&&e.turma===t;}).sort(function(a,b){return a.periodo-b.periodo;});
+        h+='<td style="vertical-align:top;min-width:150px">'+(cells.length?cells.map(function(e){ var teacher=profDaDisc(e.turma,e.disciplina); var s=statsExame(tc,e);
+          var sup= editable
+            ? '<select class="ffi" style="font-size:10px;padding:2px 4px;width:100%;margin-top:3px" onchange="window.__atSetExame(\''+e.id+'\',\'supervisor\',this.value)">'+supOptions(e,teacher)+'</select>'
+            : '<div style="font-size:10px;color:var(--t2);margin-top:2px">Sup: <strong>'+esc(profNome(e.supervisor))+'</strong></div>';
+          var pres= s.houve ? '<span class="badge bok" style="font-size:8px">'+s.presentes+'/'+s.esperados+'</span>' : '<button class="btn btn-g btn-sm" style="font-size:9px;padding:1px 6px" onclick="window.__atChamada(\''+e.id+'\')">chamada</button>';
+          return '<div style="border:1px solid var(--b);border-radius:8px;padding:5px 7px;margin-bottom:5px;background:var(--card)"><div style="font-size:11px;font-weight:700;display:flex;justify-content:space-between;gap:4px">'+esc(e.disciplina)+'<span style="color:var(--t3);font-weight:400">'+e.periodo+'º'+(editable?' <i class="ti ti-x" style="cursor:pointer;color:var(--r)" onclick="window.__atRemExame(\''+e.id+'\')"></i>':'')+'</span></div>'+sup+'<div style="margin-top:3px">'+pres+'</div></div>';
+        }).join(''):'<span style="color:var(--t3);font-size:10px">—</span>')+'</td>';
+      });
+      h+='</tr>';
+    });
+    return h+'</tbody></table></div>';
+  }
   function renderDP(trim){
-    var tc=window.__atTC(trim); var sel=window.__atCfg().discComExame; var todas=discsTodas();
-    var h='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Janela da Avaliação — '+trim+'º Trimestre</span></div><div class="cb">'
-      +'<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end">'
-      +'<div class="fgr"><label class="fl">Início</label><input class="ffi" type="date" value="'+esc(tc.inicio||'')+'" onchange="window.__atSetData(\'inicio\',this.value)"></div>'
-      +'<div class="fgr"><label class="fl">Fim</label><input class="ffi" type="date" value="'+esc(tc.fim||'')+'" onchange="window.__atSetData(\'fim\',this.value)"></div>'
-      +'<button class="btn btn-p" onclick="window.__atGerar()"><i class="ti ti-rocket"></i> Gerar calendário</button>'
-      +'<button class="btn btn-g" onclick="window.__atAddExame()"><i class="ti ti-plus"></i> Adicionar exame</button></div>'
-      +'<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Disciplinas com exame</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
-      +todas.map(function(d){ var on=sel.indexOf(d)>=0; return '<button class="badge '+(on?'bok':'bin')+'" style="cursor:pointer;border:1px solid var(--b);font-size:11px" onclick="window.__atToggleDisc(\''+esc(d).replace(/'/g,"\\\\'")+'\')">'+(on?'<i class=\"ti ti-check\"></i> ':'')+esc(d)+'</button>'; }).join('')
-      +'</div></div></div></div>';
-    // calendário
-    if(!tc.exames.length){ h+='<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Ainda sem exames. Defina a janela, escolha as disciplinas e carregue em "Gerar calendário".</div>'; return h; }
-    // stats globais
+    var tc=window.__atTC(trim); var aprov=(tc.estado==='aprovada'); var sel=window.__atCfg().discComExame; var todas=discsTodas();
+    var h='';
+    if(aprov){
+      h+='<div class="ib-box" style="margin-bottom:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:var(--g);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><span><i class="ti ti-lock"></i> Calendário do '+trim+'º trimestre <strong>APROVADO</strong> — publicado aos professores.</span><button class="btn btn-g btn-sm" onclick="window.__atReabrir()"><i class="ti ti-lock-open"></i> Reabrir</button></div>';
+    } else {
+      h+='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Janela da Avaliação — '+trim+'º Trimestre</span></div><div class="cb">'
+        +'<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end">'
+        +'<div class="fgr"><label class="fl">Início</label><input class="ffi" type="date" value="'+esc(tc.inicio||'')+'" onchange="window.__atSetData(\'inicio\',this.value)"></div>'
+        +'<div class="fgr"><label class="fl">Fim</label><input class="ffi" type="date" value="'+esc(tc.fim||'')+'" onchange="window.__atSetData(\'fim\',this.value)"></div>'
+        +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding-bottom:8px"><input type="checkbox" '+(window.__atCfg().selfSup?'checked':'')+' onchange="window.__atSetSelfSup(this.checked)"> Cada professor supervisiona a sua turma</label>'
+        +'<button class="btn btn-p" onclick="window.__atGerar()"><i class="ti ti-rocket"></i> Gerar calendário</button>'
+        +'<button class="btn btn-g" onclick="window.__atAddExame()"><i class="ti ti-plus"></i> Adicionar exame</button></div>'
+        +'<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Disciplinas com exame</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
+        +todas.map(function(d){ var on=sel.indexOf(d)>=0; return '<button class="badge '+(on?'bok':'bin')+'" style="cursor:pointer;border:1px solid var(--b);font-size:11px" onclick="window.__atToggleDisc(\''+esc(d).replace(/\\\\/g,"\\\\\\\\").replace(/'/g,"\\\\'")+'\')">'+(on?'<i class=\"ti ti-check\"></i> ':'')+esc(d)+'</button>'; }).join('')
+        +'</div></div></div></div>';
+    }
+    if(!tc.exames.length){ return h+'<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Ainda sem exames. Defina a janela, escolha as disciplinas e carregue em "Gerar calendário".</div>'; }
     var tot=tc.exames.length, comCh=tc.exames.filter(function(e){return Object.keys(tc.presencas[e.id]||{}).length>0;}).length;
     var espG=0,preG=0; tc.exames.forEach(function(e){ var s=statsExame(tc,e); if(s.houve){ espG+=s.esperados; preG+=s.presentes; } });
     h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">'
       +kpi('Exames',tot,'var(--a)')+kpi('Chamadas feitas',comCh+'/'+tot,'var(--tl)')+kpi('Participação',espG?Math.round(preG/espG*100)+'%':'—','var(--g)')+kpi('Presentes/Esperados',preG+'/'+espG,'var(--am)')+'</div>';
-    h+='<div class="card"><div class="ch"><span class="ct">Calendário de exames — '+trim+'º Trimestre</span><span style="font-size:11px;color:var(--t2)">'+tot+' exames</span></div><div class="tw"><table><thead><tr><th>Turma</th><th>Disciplina</th><th>Prof. da disciplina</th><th>Data</th><th>Tempo</th><th>Supervisor</th><th>Presença</th><th></th></tr></thead><tbody>';
-    tc.exames.slice().sort(function(a,b){ return (a.data||'').localeCompare(b.data||'')||(a.periodo-b.periodo)||String(nomeT(a.turma)).localeCompare(String(nomeT(b.turma))); }).forEach(function(e){
-      var teacher=profDaDisc(e.turma,e.disciplina);
-      var supOpts='<option value="">— escolher —</option>'+(PROFS||[]).slice().sort(function(a,b){return String(a.nome).localeCompare(String(b.nome));}).filter(function(p){return p.num!==teacher;}).map(function(p){ return '<option value="'+esc(p.num)+'"'+(String(p.num)===String(e.supervisor)?' selected':'')+'>'+esc(p.nome)+'</option>'; }).join('');
-      var s=statsExame(tc,e);
-      h+='<tr><td style="font-weight:700">'+esc(nomeT(e.turma))+'</td><td>'+esc(e.disciplina)+'</td><td style="font-size:11px;color:var(--t2)">'+esc(profNome(teacher))+'</td>'
-        +'<td><input class="ffi" type="date" style="width:150px" value="'+esc(e.data||'')+'" onchange="window.__atSetExame(\''+e.id+'\',\'data\',this.value)"></td>'
-        +'<td><select class="ffi" style="width:64px" onchange="window.__atSetExame(\''+e.id+'\',\'periodo\',this.value)">'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(n===e.periodo?' selected':'')+'>'+n+'º</option>';}).join('')+'</select></td>'
-        +'<td><select class="ffi" style="width:170px" onchange="window.__atSetExame(\''+e.id+'\',\'supervisor\',this.value)">'+supOpts+'</select></td>'
-        +'<td style="font-size:11px">'+(s.houve?('<span class="badge bok">'+s.presentes+'/'+s.esperados+'</span>'):'<span class="badge bwn">por fazer</span>')+' <button class="btn btn-g btn-sm" onclick="window.__atChamada(\''+e.id+'\')">Chamada</button></td>'
-        +'<td><button class="btn btn-re btn-sm" onclick="window.__atRemExame(\''+e.id+'\')"><i class="ti ti-trash"></i></button></td></tr>';
-    });
-    h+='</tbody></table></div></div>';
+    h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-table"></i> Calendário de exames — '+trim+'º Trimestre</span>'+(aprov?'':'<button class="btn btn-p btn-sm" onclick="window.__atAprovar()"><i class="ti ti-lock"></i> Aprovar (bloquear)</button>')+'</div><div class="cb" style="padding:0">'+renderGrade(tc, !aprov)+'</div></div>';
     return h;
   }
 
   function renderProf(trim){
     var tc=window.__atTC(trim); var mp=meuProf();
-    if(!tc.inicio && !tc.exames.length){ return '<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> As datas da Avaliação Trimestral ainda não foram definidas pela Direcção Pedagógica.</div>'; }
+    if(tc.estado!=='aprovada'){ return '<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> O calendário da Avaliação do '+trim+'º trimestre ainda não foi publicado pela Direcção Pedagógica.</div>'; }
     var pnum=mp&&mp.num;
     var minhas=tc.exames.filter(function(e){ return String(profDaDisc(e.turma,e.disciplina))===String(pnum); });
     var superviso=tc.exames.filter(function(e){ return String(e.supervisor)===String(pnum); });
