@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.123</span>
+    <span class="logo-ver">v6.124</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -4929,7 +4929,9 @@ function rHorarioGrelha(turmaFiltro) {
     // v6.123: "O Meu Horário" do Chefe de Ciclo é o horário PESSOAL dele (as suas aulas), não o ciclo inteiro
     const prof = resolverMeuProf ? resolverMeuProf() : PROFS[0];
     profNum = prof?.num;
-    turmasIds = prof ? [...new Set(ALOCACOES.filter(a=>a.prof===prof.num).map(a=>a.turma))] : [];
+    // v6.124: varrer TODAS as turmas e filtrar por professor (profNum) — mostra todas as aulas dele,
+    // mesmo em turmas sem alocação registada (o horário é a fonte real).
+    turmasIds = Object.keys(HORARIO||{});
     titulo = `O Meu Horário — ${prof?.nome||''}`;
     document.getElementById('hor-sub').textContent = titulo;
   }
@@ -35692,13 +35694,34 @@ window.__finV30=true;})();
       return !!(this.__alocCache && this.__alocCache.length);
     },
     async _minhasAloc(){
-      // alocações do professor logado (turma_id + disciplina nome)
-      // Tabela correcta: 'atribuicoes' (professor_id, turma_id, disciplina_id)
+      // alocações do professor logado (turma_id + disciplina nome) da tabela 'atribuicoes'
       if(this.__alocCache) return this.__alocCache;
+      var base=[];
       var sid=this._staffId();
-      if(!sid){ this.__alocCache=[]; return this.__alocCache; }
-      var r=await sb().from('atribuicoes').select('turma_id, disciplina_id, disciplinas(nome)').eq('professor_id', sid).eq('escola_id', escola());
-      this.__alocCache=((r&&r.data)||[]);
+      if(sid){ try{ var r=await sb().from('atribuicoes').select('turma_id, disciplina_id, disciplinas(nome)').eq('professor_id', sid).eq('escola_id', escola()); base=((r&&r.data)||[]); }catch(e){} }
+      // v6.124: COMPLETAR com o horário (fonte operacional) — se o professor dá uma aula no horário
+      // mas a alocação nunca foi criada, a turma aparece na mesma (evita "turma em falta").
+      try{
+        var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
+        var pnum=prof&&prof.num;
+        if(pnum && typeof HORARIO!=='undefined' && typeof TURMAS!=='undefined'){
+          var have={}; base.forEach(function(a){ have[a.turma_id+'|'+((a.disciplinas&&a.disciplinas.nome)||'')]=1; });
+          Object.keys(HORARIO).forEach(function(code){
+            var t=(TURMAS||[]).find(function(x){return String(x.id)===String(code);});
+            var tid=t&&t._dbId; if(!tid) return;
+            (HORARIO[code]||[]).forEach(function(row){
+              ['seg','ter','qua','qui','sex'].forEach(function(d){
+                var c=row&&row[d];
+                if(c && c.d && String(c.p)===String(pnum)){
+                  var k=tid+'|'+c.d;
+                  if(!have[k]){ have[k]=1; base.push({turma_id:tid, disciplina_id:null, disciplinas:{nome:c.d}, _doHorario:true}); }
+                }
+              });
+            });
+          });
+        }
+      }catch(e){}
+      this.__alocCache=base;
       return this.__alocCache;
     },
     async turmas(){
