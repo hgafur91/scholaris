@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.122</span>
+    <span class="logo-ver">v6.123</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -4925,16 +4925,12 @@ function rHorarioGrelha(turmaFiltro) {
     const t = TURMAS.find(x=>x.id===turmaFiltro);
     titulo = `Horário — Turma ${turmaFiltro}${t?' · '+t.classe+'ª':''}`;
     document.getElementById('hor-sub').textContent = titulo;
-  } else if (curRole === 'professor') {
+  } else if (curRole === 'professor' || curRole === 'dir-ciclo') {
+    // v6.123: "O Meu Horário" do Chefe de Ciclo é o horário PESSOAL dele (as suas aulas), não o ciclo inteiro
     const prof = resolverMeuProf ? resolverMeuProf() : PROFS[0];
     profNum = prof?.num;
     turmasIds = prof ? [...new Set(ALOCACOES.filter(a=>a.prof===prof.num).map(a=>a.turma))] : [];
     titulo = `O Meu Horário — ${prof?.nome||''}`;
-    document.getElementById('hor-sub').textContent = titulo;
-  } else if (curRole === 'dir-ciclo') {
-    const ciclo = getMeuCiclo ? getMeuCiclo() : null;
-    turmasIds   = getTurmasDoCiclo ? getTurmasDoCiclo().map(t=>t.id) : [];
-    titulo = `Horário do Ciclo — ${ciclo?.sigla||''}`;
     document.getElementById('hor-sub').textContent = titulo;
   }
 
