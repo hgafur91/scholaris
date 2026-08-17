@@ -52,7 +52,7 @@ button,input,select,textarea{font-family:var(--ff);outline:none}
 .login-btn:hover{opacity:.88}
 
 /* ── APP SHELL ── */
-#app{display:none;flex-direction:column;height:100vh;overflow:hidden}
+#app{display:none;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
 #app.visible{display:flex}
 #topbar{display:flex;align-items:center;gap:12px;padding:0 22px;height:56px;background:var(--bg2);border-bottom:1px solid var(--b);flex-shrink:0;z-index:300;position:relative}#sb-toggle{display:none}
 #body{display:flex;flex:1;overflow:hidden}
@@ -391,7 +391,7 @@ tbody tr:last-child td{border:none}
 
 /* ══ MOBILE (480px) ══════════════════════════════════════════ */
 @media(max-width:480px){
-  .view{padding:12px 10px}
+  .view{padding:12px 10px 96px}
   .ph-title{font-size:18px}
   .ph-sub{font-size:11px}
 
@@ -468,7 +468,7 @@ tbody tr:last-child td{border:none}
 
 /* ══ VERY SMALL (360px) ══════════════════════════════════════ */
 @media(max-width:360px){
-  .view{padding:10px 8px}
+  .view{padding:10px 8px 96px}
   [style*="grid-template-columns:repeat"]{
     grid-template-columns:1fr!important
   }
@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.119</span>
+    <span class="logo-ver">v6.120</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -24798,28 +24798,36 @@ function maTemposDoDia(turmaId, disc, profNum, isoDate){
     var wd=new Date(isoDate+'T00:00:00').getDay();
     var dia=map[wd]; if(!dia) return out;
     var rows=(typeof HORARIO!=='undefined' && HORARIO[turmaId]) || [];
-    rows.forEach(function(row){
+    rows.forEach(function(row, ri){
       var slot=row&&row[dia];
       if(slot && String(slot.d)===String(disc) && (!profNum || String(slot.p)===String(profNum))){
-        out.push({hora:(row.h||'')});
+        out.push({periodo:ri+1, hora:(row.h||'')});   // v6.120: tempo REAL do horário (não índice)
       }
     });
   }catch(e){}
-  return out.map(function(t,i){ return {periodo:i+1, hora:t.hora}; });
+  return out;
 }
 
 function maRebuildTempos(){
   var sel=document.getElementById('ma-periodo-sel'); if(!sel) return;
-  var turmaId=(document.getElementById('ma-turma')||{}).value || (document.getElementById('ma-turma-sel')||{}).value || '';
-  var disc=(document.getElementById('ma-disc')||{}).value || '';
-  var dia=(document.getElementById('ma-dia-sel')||{}).value || '';
-  var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
-  var profNum=prof?prof.num:null;
-  var tempos=(turmaId && disc && dia)? maTemposDoDia(turmaId, disc, profNum, dia) : [];
   var prev=sel.value;
-  if(!tempos.length){ sel.innerHTML='<option value="1">1º tempo</option>'; return; }   // sem horário → 1 tempo
-  sel.innerHTML=tempos.map(function(t){ return '<option value="'+t.periodo+'">'+t.periodo+'º tempo'+(t.hora?(' · '+t.hora):'')+'</option>'; }).join('');
-  if(prev){ for(var o=0;o<sel.options.length;o++){ if(sel.options[o].value===prev){ sel.selectedIndex=o; break; } } }
+  // v6.120: oferecer SEMPRE os tempos de aula do horário (1º–5º), não só onde a disciplina está marcada
+  var aulas=(typeof PERIODOS!=='undefined'?PERIODOS:[]).filter(function(p){return p.tipo==='aula';});
+  var opts=[];
+  if(aulas.length){
+    aulas.forEach(function(p,i){ var n=i+1; var h=p.inicio?(' · '+p.inicio+(p.fim?('–'+p.fim):'')):''; opts.push('<option value="'+n+'">'+n+'º tempo'+h+'</option>'); });
+  } else { for(var n=1;n<=5;n++) opts.push('<option value="'+n+'">'+n+'º tempo</option>'); }
+  sel.innerHTML=opts.join('');
+  // pré-seleccionar o tempo onde ESTA disciplina está no horário nesse dia (se houver)
+  try{
+    var turmaId=(document.getElementById('ma-turma')||{}).value || (document.getElementById('ma-turma-sel')||{}).value || '';
+    var disc=(document.getElementById('ma-disc')||{}).value || '';
+    var dia=(document.getElementById('ma-dia-sel')||{}).value || '';
+    var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
+    var tempos=(turmaId && disc && dia)? maTemposDoDia(turmaId, disc, prof?prof.num:null, dia) : [];
+    if(!prev && tempos.length && tempos[0].periodo) prev=String(tempos[0].periodo);
+  }catch(e){}
+  if(prev){ for(var o=0;o<sel.options.length;o++){ if(sel.options[o].value===String(prev)){ sel.selectedIndex=o; break; } } }
 }
 
 // ── Load disciplines for selected turma ──────────────────────
