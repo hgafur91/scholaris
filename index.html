@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.121</span>
+    <span class="logo-ver">v6.122</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -9919,7 +9919,7 @@ function verTrabalho(trabId, alunoId) {
       <div style="font-size:13px;color:var(--t);line-height:1.7">${t.desc}</div>
     </div>
 
-    ${curRole==='professor'||curRole==='gestor'?`
+    ${['professor','dir-ciclo','gestor'].includes(curRole)?`
     <div style="margin-top:14px">
       <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Estado de Entregas</div>
       <div style="display:flex;flex-direction:column;gap:6px">
@@ -9929,7 +9929,7 @@ function verTrabalho(trabId, alunoId) {
             <span style="font-size:13px;font-weight:600">${a.nome}</span>
             <div style="display:flex;align-items:center;gap:8px">
               <span class="badge ${est==='entregue'?'bok':est==='atrasado'?'ber':'bwn'}">${est==='entregue'?'<i class="ti ti-check"></i> Entregue':est==='atrasado'?'<i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Atraso':'<i class="ti ti-hourglass"></i> Pendente'}</span>
-              ${curRole==='professor'||curRole==='gestor'?`<button class="btn btn-g btn-sm" onclick="toggleEntrega(${t.id},${a.id})" style="font-size:10px;padding:3px 8px">${est==='entregue'?'Desmarcar':'Marcar Entregue'}</button>`:''}
+              ${['professor','dir-ciclo','gestor'].includes(curRole)?`<button class="btn btn-g btn-sm" onclick="toggleEntrega(${t.id},${a.id})" style="font-size:10px;padding:3px 8px">${est==='entregue'?'Desmarcar':'Marcar Entregue'}</button>`:''}
             </div>
           </div>`;
         }).join('')}
@@ -10511,7 +10511,7 @@ verTrabalho = function(trabId, alunoId) {
       </div>
     </div>` : ''}
 
-    ${(curRole==='professor'||curRole==='gestor') ? `
+    ${(['professor','dir-ciclo','gestor'].includes(curRole)) ? `
     <div style="margin-top:10px">
       <div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Estado das Entregas</div>
       <div style="display:flex;flex-direction:column;gap:5px">
@@ -10539,7 +10539,7 @@ verTrabalho = function(trabId, alunoId) {
   const entBtn     = document.getElementById('mtr-entregar-btn');
 
   if (uploadArea) uploadArea.style.display = (curRole==='aluno' && estado !== 'corrigido') ? '' : 'none';
-  if (notaArea)   notaArea.style.display   = (curRole==='professor'||curRole==='gestor') ? '' : 'none';
+  if (notaArea)   notaArea.style.display   = (['professor','dir-ciclo','gestor'].includes(curRole)) ? '' : 'none';
   if (entBtn) {
     entBtn.style.display = (curRole==='aluno' && estado !== 'corrigido') ? '' : 'none';
     entBtn.innerHTML = '<i class="ti ti-upload"></i> ' + (estado==='entregue'?'Actualizar Entrega':'Entregar Trabalho');
@@ -13358,6 +13358,11 @@ ROLES['dir-ciclo'] = {
       {i:'ti-circles',l:'Visão do Ciclo',id:'ciclo-visao'},{i:'ti-chart-bar',l:'Monitor do Ciclo',id:'monitor-ciclo'},{i:'ti-alert-triangle',l:'Alertas por Turma',id:'alertas-ciclo'},{i:'ti-calendar-event',l:'Reuniões',id:'reunioes'},
       {i:'ti-shield-exclamation',l:'Disciplina',id:'disciplina'},
       {i:'ti-layout-grid',l:'Turmas do Ciclo',id:'ciclo-turmas'},
+    ]},
+    {sl:'Como Professor', sub:[
+      {i:'ti-school',l:'As Minhas Turmas',id:'minhas-turmas'},
+      {i:'ti-star',l:'Lançar Notas',id:'notas'},
+      {i:'ti-calendar',l:'O Meu Horário',id:'horario'},
     ]},
     {sl:'Curricular', sub:[
       {i:'ti-book',l:'Plano Temático',id:'curr-planos'},
@@ -35677,20 +35682,26 @@ window.__finV30=true;})();
   var DISC_PADRAO=['Português','Matemática','Inglês','Educação Física'];
 
   window.NT = {
+    _staffId(){
+      // ficha de professor da conta: perfil.staff_id OU, em falta, a ficha resolvida por nome/num
+      if(window._meuStaffId) return window._meuStaffId;
+      try{ var p=(typeof resolverMeuProf==='function')?resolverMeuProf():null; return (p&&p._dbId)||null; }catch(e){ return null; }
+    },
     _souProfessor(){
-      // Robusto: se o utilizador tem alocações carregadas, é professor com turmas.
-      // (curRole pode estar vazio neste contexto; não dependemos só dele.)
+      // Robusto: professor OU chefe/dir. de ciclo com ficha de professor (têm turmas alocadas).
       if(window.curRole==='gestor' || window.curRole==='director' || window.curRole==='dir-pedagogico') return false;
-      // Se o papel é explicitamente professor, é professor (mesmo que a cache esteja vazia)
       if(window.curRole==='professor') return true;
-      if(!window._meuStaffId) return false;
+      if(window.curRole==='dir-ciclo') return !!this._staffId();     // v6.122: CC lecciona como professor
+      if(!this._staffId()) return false;
       return !!(this.__alocCache && this.__alocCache.length);
     },
     async _minhasAloc(){
       // alocações do professor logado (turma_id + disciplina nome)
       // Tabela correcta: 'atribuicoes' (professor_id, turma_id, disciplina_id)
       if(this.__alocCache) return this.__alocCache;
-      var r=await sb().from('atribuicoes').select('turma_id, disciplina_id, disciplinas(nome)').eq('professor_id', window._meuStaffId).eq('escola_id', escola());
+      var sid=this._staffId();
+      if(!sid){ this.__alocCache=[]; return this.__alocCache; }
+      var r=await sb().from('atribuicoes').select('turma_id, disciplina_id, disciplinas(nome)').eq('professor_id', sid).eq('escola_id', escola());
       this.__alocCache=((r&&r.data)||[]);
       return this.__alocCache;
     },
@@ -37076,7 +37087,7 @@ window.trimestreActual = function(d){
   // ── Item de menu para o professor-DT (GLOBAL + à prova de timing) ──
   window.injectarMenuDT = function(){
     try{
-      if(curRole !== 'professor') return;
+      if(!['professor','dir-ciclo'].includes(curRole)) return;
       var turmas = window.minhasTurmasDT();
       if(!turmas.length) return;
       var sb = document.getElementById('sb-content');
@@ -37111,7 +37122,7 @@ window.trimestreActual = function(d){
   if(!window.__dtGuardInterval){
     window.__dtGuardInterval = setInterval(function(){
       try{
-        if(typeof curRole==='undefined' || curRole!=='professor') return;
+        if(typeof curRole==='undefined' || !['professor','dir-ciclo'].includes(curRole)) return;
         if(!(window.souDT && window.souDT())) return;
         var sb = document.getElementById('sb-content');
         if(!sb) return;
