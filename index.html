@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.135</span>
+    <span class="logo-ver">v6.136</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34564,6 +34564,58 @@ window.__finV30=true;})();
   window.__finPWA=true;
 })();
 
+</script>
+
+<script>
+/* ===== v6.136 — Skeleton de carregamento no arranque (enquanto os dados vêm do Supabase) ===== */
+(function(){
+  if(window.__skelInit) return; window.__skelInit=true;
+
+  var st=document.createElement('style');
+  st.textContent=''
+    +'.skel{position:relative;overflow:hidden;background:var(--bg3,#e9edf4);border-radius:10px}'
+    +'.skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(148,163,184,.18),transparent);animation:skelsh 1.25s infinite}'
+    +'@media (prefers-reduced-motion:reduce){.skel::after{animation:none}}'
+    +'@keyframes skelsh{100%{transform:translateX(100%)}}'
+    +'#boot-skel .sk-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}'
+    +'@media(max-width:820px){#boot-skel .sk-row{grid-template-columns:repeat(2,1fr)}}';
+  document.head.appendChild(st);
+
+  function box(h,w){ return '<div class="skel" style="height:'+h+'px'+(w?(';width:'+w):'')+'"></div>'; }
+  function skelHTML(){
+    var kpis=''; for(var i=0;i<5;i++) kpis+=box(84);
+    return ''
+      +box(30,'280px')
+      +'<div style="height:8px"></div>'
+      +box(15,'180px')
+      +'<div style="height:20px"></div>'
+      +'<div class="sk-row">'+kpis+'</div>'
+      +'<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">'+box(300)+box(300)+'</div>';
+  }
+  window.__bootSkeleton=function(show){
+    try{
+      var main=document.getElementById('main'); if(!main) return;
+      var el=document.getElementById('boot-skel');
+      if(show){
+        if(!el){ el=document.createElement('div'); el.id='boot-skel'; el.className='view'; el.innerHTML=skelHTML(); main.appendChild(el); }
+        document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+        el.classList.add('on');
+      } else if(el){ el.classList.remove('on'); }
+    }catch(e){}
+  };
+
+  function wrap(){
+    if(typeof window.loadDadosEscola!=='function' || window.loadDadosEscola.__skel) return;
+    var _ld=window.loadDadosEscola;
+    window.loadDadosEscola=async function(){
+      try{ window.__bootSkeleton(true); }catch(e){}
+      try{ return await _ld.apply(this, arguments); }
+      finally{ try{ window.__bootSkeleton(false); }catch(e){} }
+    };
+    window.loadDadosEscola.__skel=true;
+  }
+  wrap(); setTimeout(wrap,0); setTimeout(wrap,600);
+})();
 </script>
 <script>
 /* ===== PATCH v48: Exportar Backup (JSON + Excel) — só Gestor/Director ===== */
