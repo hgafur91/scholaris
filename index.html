@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.133</span>
+    <span class="logo-ver">v6.134</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -33555,9 +33555,9 @@ window.__finV30=true;})();
     var taxa=0; try{ var hist=window.__v31Hist(); }catch(e){}
     var rows=devs.map(function(d){
       var a=d.a||{};
-      return '<tr style="border-top:1px solid var(--bd,#eee)"><td style="padding:10px 12px"><b>'+_esc(a.nome)+'</b><br><span style="font-size:11px;color:#94a3b8">'+_esc(a.num||'')+'</span></td><td style="padding:10px 12px">'+_esc(a.turma||'')+'</td><td style="padding:10px 12px;text-align:center">'+d.meses+'</td><td style="padding:10px 12px;text-align:right">'+_fmt(d.propina)+'</td><td style="padding:10px 12px;text-align:right;color:#f59e0b">'+_fmt(d.multa)+'</td><td style="padding:10px 12px;text-align:right"><b>'+_fmt(d.total)+'</b></td><td style="padding:10px 12px;text-align:center"><span style="background:'+d.cor+'22;color:'+d.cor+';padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">'+d.sev+'</span></td></tr>';
+      return '<tr style="border-top:1px solid var(--bd,#eee)"><td style="padding:10px 12px"><b>'+_esc(a.nome)+'</b><br><span style="font-size:11px;color:#94a3b8">'+_esc(a.num||'')+'</span></td><td style="padding:10px 12px">'+_esc(a.turma||'')+'</td><td style="padding:10px 12px;text-align:center">'+d.meses+'</td><td style="padding:10px 12px;text-align:right">'+_fmt(d.propina)+'</td><td style="padding:10px 12px;text-align:right;color:#f59e0b">'+_fmt(d.multa)+'</td><td style="padding:10px 12px;text-align:right"><b>'+_fmt(d.total)+'</b></td><td style="padding:10px 12px;text-align:center"><span style="background:'+d.cor+'22;color:'+d.cor+';padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">'+d.sev+'</span></td><td style="padding:10px 12px;text-align:center">'+(window.__cobrancaCell?window.__cobrancaCell(a,d):'')+'</td></tr>';
     }).join('');
-    var listaInner = nDev? rows : '<tr><td colspan="7" style="padding:24px;text-align:center;color:#16a34a;font-weight:600">Sem dividas. Todos os pagamentos em dia.</td></tr>';
+    var listaInner = nDev? rows : '<tr><td colspan="8" style="padding:24px;text-align:center;color:#16a34a;font-weight:600">Sem dividas. Todos os pagamentos em dia.</td></tr>';
     var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">'
       +'<div style="background:var(--card,#fff);border:1px solid #fecaca;border-top:3px solid #dc2626;border-radius:14px;padding:18px;text-align:center"><div style="font-size:30px;font-weight:800;color:#dc2626">'+nDev+'</div><div style="color:#64748b;font-size:13px">Alunos Devedores</div></div>'
       +'<div style="background:var(--card,#fff);border:1px solid #fecaca;border-top:3px solid #dc2626;border-radius:14px;padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:#dc2626">'+_fmt(totalDivida)+'</div><div style="color:#64748b;font-size:13px">Total em Divida (c/ multa)</div></div>'
@@ -33570,7 +33570,7 @@ window.__finV30=true;})();
       +'<button onclick="__v31ToggleMensal()" style="background:#1e293b;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer">'+(showMensal?'Ocultar divida mensal':'Ver divida mes a mes')+'</button>'
       +'</div>'
       +'<div style="background:var(--card,#fff);border:1px solid var(--bd,#eee);border-radius:14px;overflow:hidden"><div style="padding:14px 16px;font-weight:700;border-bottom:1px solid var(--bd,#eee)">Lista de Devedores <span style="font-weight:400;color:#94a3b8;font-size:13px">'+nDev+' alunos &middot; '+_fmt(totalDivida)+' em divida</span></div>'
-      +'<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="color:#64748b;font-size:11px;text-transform:uppercase"><th style="text-align:left;padding:10px 12px">Aluno</th><th style="text-align:left;padding:10px 12px">Turma</th><th style="text-align:center;padding:10px 12px">Meses</th><th style="text-align:right;padding:10px 12px">Propina</th><th style="text-align:right;padding:10px 12px">Multa</th><th style="text-align:right;padding:10px 12px">Total Divida</th><th style="text-align:center;padding:10px 12px">Situacao</th></tr></thead><tbody>'+listaInner+'</tbody></table></div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="color:#64748b;font-size:11px;text-transform:uppercase"><th style="text-align:left;padding:10px 12px">Aluno</th><th style="text-align:left;padding:10px 12px">Turma</th><th style="text-align:center;padding:10px 12px">Meses</th><th style="text-align:right;padding:10px 12px">Propina</th><th style="text-align:right;padding:10px 12px">Multa</th><th style="text-align:right;padding:10px 12px">Total Divida</th><th style="text-align:center;padding:10px 12px">Situacao</th><th style="text-align:center;padding:10px 12px">Cobrança</th></tr></thead><tbody>'+listaInner+'</tbody></table></div>'
       + (showMensal? mensalHTML() : '');
     host.innerHTML=html; host.style.display='block';
   }
@@ -34963,6 +34963,55 @@ window.__finV30=true;})();
   window.__finOrc3=true;
 })();
 
+</script>
+
+<script>
+/* ===== v6.134 — Cobrança activa: lembrete de dívida ao encarregado via WhatsApp ===== */
+(function(){
+  if(window.__finCobranca) return; window.__finCobranca=true;
+  function escolaNome(){ try{ return (typeof CONFIG!=='undefined' && (CONFIG.nomeEscola||CONFIG.escola))||'Colégio iQRA'; }catch(e){ return 'Colégio iQRA'; } }
+  function fmtMZ(n){ try{ return Math.round(Number(n)||0).toLocaleString('pt-PT'); }catch(e){ return ''+(n||0); } }
+  // Normaliza telefone moçambicano para formato internacional wa.me (258XXXXXXXXX)
+  window.__cobrancaTel=function(raw){
+    var d=String(raw||'').replace(/\D/g,'');
+    if(!d) return '';
+    if(d.indexOf('258')===0 && d.length===12) return d;
+    if(d.charAt(0)==='0') d=d.slice(1);
+    if(d.length===9) return '258'+d;
+    if(d.length>9) return '258'+d.slice(-9);
+    return '';
+  };
+  window.__cobrancaMsg=function(nome, turma, meses, total){
+    return 'Caro(a) Encarregado(a), '+escolaNome()+' informa que o(a) aluno(a) '+(nome||'')+
+      (turma?(' ('+turma+')'):'')+' tem '+(meses||0)+' mes(es) de propina em atraso, no valor de '+
+      fmtMZ(total)+' MZM (com multa de atraso). Pedimos a regularizacao com brevidade para evitar a suspensao por falta de pagamento. Para qualquer duvida, contacte a secretaria. Obrigado.';
+  };
+  function store(){ try{ if(typeof CONFIG==='undefined') return {}; if(!CONFIG.cobranca) CONFIG.cobranca={}; return CONFIG.cobranca; }catch(e){ return {}; } }
+  window.__cobrancaLog=function(num){
+    try{ var s=store(); var dt=new Date();
+      s[num]={ data: dt.getFullYear()+'-'+('0'+(dt.getMonth()+1)).slice(-2)+'-'+('0'+dt.getDate()).slice(-2), canal:'whatsapp' };
+      if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent();
+      var el=document.getElementById('cobr-selo-'+num); if(el) el.textContent='Lembrado hoje';
+    }catch(e){}
+  };
+  window.__cobrancaSelo=function(num){
+    try{ var s=store(); var r=s[num]; if(!r||!r.data) return '';
+      var p=String(r.data).split('-'); return 'Lembrado '+p[2]+'/'+p[1];
+    }catch(e){ return ''; }
+  };
+  window.__cobrancaCell=function(a,d){
+    try{
+      var num=String((a&&a.num)||'');
+      var tel=window.__cobrancaTel(a&&a.encTel);
+      var msg=window.__cobrancaMsg(a&&a.nome, a&&a.turma, d&&d.meses, d&&d.total);
+      var selo=window.__cobrancaSelo(num);
+      var btn = tel
+        ? '<a href="https://wa.me/'+tel+'?text='+encodeURIComponent(msg)+'" target="_blank" rel="noopener" onclick="window.__cobrancaLog(\''+num+'\')" style="display:inline-flex;align-items:center;gap:5px;background:#25D366;color:#fff;text-decoration:none;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600"><i class="ti ti-brand-whatsapp"></i> Lembrar</a>'
+        : '<span style="font-size:11px;color:#94a3b8" title="Sem telefone do encarregado registado">sem contacto</span>';
+      return btn+'<div id="cobr-selo-'+num+'" style="font-size:10px;color:#16a34a;margin-top:3px">'+selo+'</div>';
+    }catch(e){ return ''; }
+  };
+})();
 </script>
 <script>
 /* ===== PATCH v52: comunicados — turmas reais nos destinatários + rótulos ===== */
