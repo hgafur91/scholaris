@@ -699,8 +699,8 @@ window.__escA = function (s) {
   </button>
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
-    <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.141</span>
+    <span class="logo-name">Colégio iQRA</span>
+    <span class="logo-ver">v6.142</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -6199,9 +6199,9 @@ async function loadDadosEscola() {
       ESCOLA_SETTINGS.email     = escola.email     || ESCOLA_SETTINGS.email;
       // Actualizar topbar
       const tb = document.querySelector('.logo-name');
-      if (tb) tb.textContent = escola.nome || 'Scholaris';
+      if (tb) tb.textContent = escola.nome || 'Colégio iQRA';
       const sb = document.getElementById('sb-school');
-      if (sb) sb.textContent = escola.nome || 'Scholaris';
+      if (sb) sb.textContent = escola.nome || 'Colégio iQRA';
       // Sincronizar nome para o ecrã de login + localStorage (para não ficar preso a valor antigo)
       try {
         if (escola.nome) {
@@ -31149,7 +31149,7 @@ async function finishWizard() {
   const lnEl = document.getElementById('login-escola-nome');
   if (lnEl) lnEl.textContent = ESCOLA_SETTINGS.nome;
   const lnEl2 = document.querySelector('.logo-name');
-  if (lnEl2) lnEl2.textContent = ESCOLA_SETTINGS.nome;
+  if (lnEl2) lnEl2.textContent = ESCOLA_SETTINGS.nome || 'Colégio iQRA';
 
   // ── Guardar no Supabase ──────────────────────────────────
   if (window._supabase && window._wizLicencaId) {
@@ -41636,5 +41636,56 @@ window.trimestreActual = function(d){
   };
 })();
 </script>
+
+<style id="scholaris-polish">
+/* v6.142 - Polimento visual: elevacao, profundidade e estados (aditivo) */
+:root{
+  --sh-1:0 1px 2px rgba(0,0,0,.5),0 1px 3px rgba(0,0,0,.4);
+  --sh-2:0 4px 12px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.42);
+  --sh-3:0 12px 34px rgba(0,0,0,.6),0 22px 60px rgba(0,0,0,.5);
+  --sh-a:0 4px 14px rgba(79,142,247,.45);
+}
+body.day-mode{
+  --sh-1:0 1px 2px rgba(16,32,64,.06),0 1px 3px rgba(16,32,64,.05);
+  --sh-2:0 6px 16px rgba(16,32,64,.09),0 12px 30px rgba(16,32,64,.07);
+  --sh-3:0 18px 44px rgba(16,32,64,.14),0 30px 70px rgba(16,32,64,.10);
+  --sh-a:0 6px 16px rgba(79,142,247,.30);
+}
+#main{
+  background:
+    radial-gradient(1100px 460px at 10% -8%, rgba(79,142,247,.10), transparent 60%),
+    radial-gradient(900px 460px at 100% -6%, rgba(26,154,168,.09), transparent 55%),
+    var(--bg);
+}
+body.day-mode #main{
+  background:
+    radial-gradient(1100px 460px at 10% -8%, rgba(79,142,247,.07), transparent 60%),
+    radial-gradient(900px 460px at 100% -6%, rgba(26,154,168,.06), transparent 55%),
+    var(--bg);
+}
+.card{ box-shadow:var(--sh-2); transition:box-shadow .22s ease, border-color .22s ease; }
+.card:hover{ box-shadow:var(--sh-3); border-color:var(--b2); }
+.hero{ box-shadow:var(--sh-2); }
+.btn{ box-shadow:var(--sh-1); transition:all .16s ease; }
+.btn:hover{ transform:translateY(-1px); box-shadow:var(--sh-2); }
+.btn:active{ transform:translateY(0); box-shadow:var(--sh-1); }
+.btn-p{ box-shadow:var(--sh-a); }
+.btn-p:hover{ box-shadow:0 8px 22px rgba(79,142,247,.55); }
+.fi:focus,.ffi:focus,select.ffi:focus,textarea:focus{ outline:none; border-color:var(--a); box-shadow:0 0 0 3px rgba(79,142,247,.16); }
+.si{ transition:all .16s ease; }
+.si:hover{ background:rgba(120,140,180,.10); }
+.ssi:hover{ background:rgba(120,140,180,.07); color:var(--t2); }
+#topbar{ box-shadow:0 4px 18px rgba(0,0,0,.22); }
+body.day-mode #topbar{ box-shadow:0 4px 16px rgba(16,32,64,.06); }
+.sg>*{ transition:transform .2s ease, box-shadow .2s ease; }
+.sg>*:hover{ transform:translateY(-2px); box-shadow:var(--sh-2); }
+.modal{ box-shadow:var(--sh-3); }
+.modal-ov{ background:rgba(4,10,22,.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
+@media (prefers-reduced-motion:reduce){
+  .card,.btn,.si,.ssi,.sg>*{ transition:none; }
+  .btn:hover,.card:hover,.sg>*:hover,.btn:active{ transform:none; }
+}
+</style>
 </body>
 </html>
