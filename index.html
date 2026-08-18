@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.130</span>
+    <span class="logo-ver">v6.131</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32328,49 +32328,60 @@ window.renderBalanceteRange=function(mIni,mFim){
     setTimeout(function(){ try{ if(typeof window.pagTab==='function'){ window.pagTab(tab); } }catch(e){} },60);
   }
   window.__irEntradas=function(tab){ abrirTab(tab||'propinas'); };
-  var SUBS=[
-    {id:'v11-sub-propinas', lbl:'Propinas', tab:'propinas', ic:'ti-coin'},
-    {id:'v11-sub-taxas', lbl:'Matricula e Inscricao', tab:'taxas', ic:'ti-id-badge-2'},
-    {id:'v11-sub-servicos', lbl:'Servicos', tab:'avulsos', ic:'ti-file-certificate'}
+  /* v6.131 — 5 grupos definitivos (Visão Geral=Dashboard · Receitas · Despesas · Cobrança · Relatórios) */
+  var GRUPOS=[
+    {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
+      {id:'fg-propinas', lbl:'Propinas', ic:'ti-coin', go:'propinas'},
+      {id:'fg-pagamentos', lbl:'Pagamentos & Recibos', ic:'ti-credit-card', go:'pagamentos'},
+      {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'}
+    ]},
+    {id:'fg-despesas', lbl:'Despesas', ic:'ti-logout-2', itens:[
+      {id:'fg-desp', lbl:'Despesas', ic:'ti-cash', go:'despesas'},
+      {id:'fg-folha', lbl:'Folha de Salários', ic:'ti-users', go:'folha-salarios'}
+    ]},
+    {id:'fg-cobranca', lbl:'Cobrança', ic:'ti-alert-circle', itens:[
+      {id:'fg-dividas', lbl:'Dívidas', ic:'ti-report-money', go:'dividas'},
+      {id:'fg-multas', lbl:'Multas de Atraso', ic:'ti-cash-off', go:'multas'}
+    ]},
+    {id:'fg-relatorios', lbl:'Relatórios', ic:'ti-chart-histogram', itens:[
+      {id:'fg-ativ', lbl:'Relatório de Actividades', ic:'ti-clipboard-text', go:'relatorio-actividades'},
+      {id:'fg-fluxo', lbl:'Fluxo de Caixa', ic:'ti-trending-up', go:'fluxo-caixa'},
+      {id:'fg-orc', lbl:'Orçamento vs Real', ic:'ti-target', go:'orcamento'},
+      {id:'fg-prev', lbl:'Previsão de Receita', ic:'ti-telescope', go:'previsao-receita'}
+    ]}
   ];
-  function buildEntradas(sec){
-    if($('v11-mae-entradas')) return $('v11-mae-entradas');
-    var wrap=document.createElement('div');
-    wrap.id='v11-mae-entradas';
-    wrap.style.cssText='margin:0;';
-    var head=document.createElement('button');
-    head.className='si';
-    head.id='v11-head-entradas';
-    head.style.cssText='width:100%;display:flex;align-items:center;gap:8px;';
-    head.innerHTML='<i class="ti ti-login-2" style="font-size:16px"></i><span>Entradas</span><i class="ti ti-chevron-down" id="v11-chev" style="margin-left:auto;font-size:14px;transition:transform .2s"></i>';
-    var list=document.createElement('div');
-    list.id='v11-sublist';
-    list.style.cssText='display:none;flex-direction:column;padding-left:10px;';
-    SUBS.forEach(function(s){
-      var b=document.createElement('button');
-      b.className='si'; b.id=s.id;
+  var ESCONDER=['si-pagamentos','si-propinas','si-emolumentos','si-despesas','si-despesas-cat','si-folha-salarios','si-dividas','si-multas','si-fluxo-caixa','si-orcamento','si-previsao-receita','si-relatorio-fin','si-relatorio-actividades','si-balancete'];
+  var LEGADO=['v11-mae-entradas','si-mae-entradas','si-mae-despesas','si-mae-receitas','si-mae-cobranca','si-mae-relatorios'];
+  function irGo(id){ return function(){ try{ if(typeof window.go==='function') window.go(id); }catch(e){} }; }
+  function buildGrupo(g){
+    var wrap=document.createElement('div'); wrap.id=g.id; wrap.setAttribute('data-fingrp','1'); wrap.style.cssText='margin:0;';
+    var chev=g.id+'-chev';
+    var head=document.createElement('button'); head.className='si'; head.style.cssText='width:100%;display:flex;align-items:center;gap:8px;font-weight:600;';
+    head.innerHTML='<i class="ti '+g.ic+'" style="font-size:16px"></i><span>'+g.lbl+'</span><i class="ti ti-chevron-down" id="'+chev+'" style="margin-left:auto;font-size:14px;transition:transform .2s"></i>';
+    var list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;padding-left:10px;';
+    g.itens.forEach(function(s){
+      var b=document.createElement('button'); b.className='si'; b.id=s.id;
       b.style.cssText='width:100%;display:flex;align-items:center;gap:8px;font-size:13px;opacity:.92;';
       b.innerHTML='<i class="ti '+s.ic+'" style="font-size:14px"></i><span>'+s.lbl+'</span>';
-      b.onclick=function(){ window.__irEntradas(s.tab); };
+      b.onclick=irGo(s.go);
       list.appendChild(b);
     });
-    var open=false;
-    head.onclick=function(){ open=!open; list.style.display=open?'flex':'none'; var c=$('v11-chev'); if(c) c.style.transform=open?'rotate(180deg)':'rotate(0deg)'; };
+    var open=true;
+    head.onclick=function(){ open=!open; list.style.display=open?'flex':'none'; var c=$(chev); if(c) c.style.transform=open?'rotate(0deg)':'rotate(-90deg)'; };
     wrap.appendChild(head); wrap.appendChild(list);
     return wrap;
   }
   function reorg(){
     var sec=$(SECID); if(!sec) return;
-    ['si-pagamentos','si-propinas','si-emolumentos'].forEach(function(id){ var e=$(id); if(e) e.style.display='none'; });
-    ['si-mae-entradas','si-mae-despesas'].forEach(function(id){ var e=$(id); if(e) e.remove(); });
-    var mae=buildEntradas(sec);
+    LEGADO.forEach(function(id){ var e=$(id); if(e && e.parentNode) e.parentNode.removeChild(e); });
+    ESCONDER.forEach(function(id){ var e=$(id); if(e) e.style.display='none'; });
+    if($('fg-receitas')) return;
     var dash=$('si-fin-dashboard');
-    if(dash && dash.parentNode===sec){ if(mae.nextSibling!==null || dash.nextSibling!==mae){ sec.insertBefore(mae, dash.nextSibling); } }
-    else if(mae.parentNode!==sec){ sec.insertBefore(mae, sec.firstChild); }
-    var desp=$('si-despesas'); var bal=$('si-balancete');
-    if(desp) sec.insertBefore(desp, mae.nextSibling);
-    if(bal && desp) sec.insertBefore(bal, desp.nextSibling);
-    else if(bal) sec.insertBefore(bal, mae.nextSibling);
+    var anchor=(dash && dash.parentNode===sec) ? dash.nextSibling : sec.firstChild;
+    GRUPOS.forEach(function(g){
+      var el=buildGrupo(g);
+      if(anchor) sec.insertBefore(el, anchor); else sec.appendChild(el);
+    });
   }
   window.__v11reorg=reorg;
   try{
@@ -32381,7 +32392,7 @@ window.renderBalanceteRange=function(mIni,mFim){
     }
   }catch(e){}
   try{
-    var mo=new MutationObserver(function(){ if($(SECID) && !$('v11-mae-entradas')){ try{ reorg(); }catch(e){} } });
+    var mo=new MutationObserver(function(){ if($(SECID) && !$('fg-receitas')){ try{ reorg(); }catch(e){} } });
     var sb=document.querySelector('.sidebar')||document.body;
     mo.observe(sb,{childList:true,subtree:true});
   }catch(e){}
