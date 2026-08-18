@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.131</span>
+    <span class="logo-ver">v6.132</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1037,10 +1037,10 @@ window.__escA = function (s) {
 <div class="view" id="v-despesas">
   <div class="ph"><div><div class="ph-title">Despesas da Instituição</div><div class="ph-sub">Gestão de despesas operacionais</div></div><div class="ph-right"><button class="btn btn-p btn-sm" onclick="openM('m-nova-desp')"><i class="ti ti-plus"></i> Nova Despesa</button></div></div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-    <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--r);margin-bottom:4px" id="desp-total">0</div><div style="font-size:11px;color:var(--t2)">Total Despesas MZM</div></div>
-    <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--am);margin-bottom:4px" id="desp-sal">0</div><div style="font-size:11px;color:var(--t2)">Salários MZM</div></div>
-    <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--a);margin-bottom:4px">38,450</div><div style="font-size:11px;color:var(--t2)">Outras Despesas MZM</div></div>
-    <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--g);margin-bottom:4px" id="desp-saldo">0</div><div style="font-size:11px;color:var(--t2)">Saldo (Rec. − Desp.)</div></div>
+    <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--r);margin-bottom:4px" id="desp-total">0</div><div style="font-size:11px;color:var(--t2)">Total de Saídas · ano (MZM)</div></div>
+    <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--am);margin-bottom:4px" id="desp-sal">0</div><div style="font-size:11px;color:var(--t2)">Salários · base/mês (MZM)</div></div>
+    <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--g);margin-bottom:4px" id="desp-entradas">0</div><div style="font-size:11px;color:var(--t2)">Entradas · ano (MZM)</div></div>
+    <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--g);margin-bottom:4px" id="desp-saldo">0</div><div style="font-size:11px;color:var(--t2)">Saldo do ano (Ent. − Saí.)</div></div>
   </div>
   <div id="despesas-c"></div>
 </div>
@@ -5793,16 +5793,21 @@ function gerarFactura(mesIdx, incluirMulta){
 
 // ══ DESPESAS ══
 function rDespesas(){
-  if(!['gestor','director'].includes(curRole)){
+  if(!['gestor','director','gestor-financeiro'].includes(curRole)){
     const el=document.getElementById('despesas-c');
-    if(el)el.innerHTML='<div class="ib-box ib-am" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito — apenas Gestor Geral e Director.</div>';
+    if(el)el.innerHTML='<div class="ib-box ib-am" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito — apenas Gestor Geral, Director e Gestor Financeiro.</div>';
     return;
   }
   const totalSal=PROFS.reduce((s,p)=>s+(p.salario||0),0);
+  // v6.132: KPIs a partir da MESMA fonte do Dashboard (__finTotais) — entradas/saídas do ANO —
+  // para reconciliar. Antes o saldo misturava receita anual com despesa mensal + nº mágico 38450.
+  const _ft=(typeof window.__finTotais==='function')?window.__finTotais():null;
+  const saidasAno=_ft?(Number(_ft.saidas)||0):(totalSal+38450);
+  const entradasAno=_ft?(Number(_ft.entradas)||0):ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
   document.getElementById('desp-sal').textContent=totalSal.toLocaleString();
-  document.getElementById('desp-total').textContent=(totalSal+38450).toLocaleString();
-  const totalR=ALUNOS.reduce((s,a)=>s+a.propinas.filter(p=>p.st==='pago').reduce((ss,p)=>ss+p.v,0),0);
-  document.getElementById('desp-saldo').textContent=Math.max(0,totalR-totalSal-38450).toLocaleString();
+  document.getElementById('desp-total').textContent=saidasAno.toLocaleString();
+  var _entEl=document.getElementById('desp-entradas'); if(_entEl)_entEl.textContent=entradasAno.toLocaleString();
+  document.getElementById('desp-saldo').textContent=(entradasAno-saidasAno).toLocaleString();
   var _dtab = window.__despTab||'despesas';
   var _bar = '<div style="display:flex;gap:8px;margin-bottom:14px"><button class="btn '+(_dtab==='despesas'?'btn-p':'btn-g')+' btn-sm" onclick="window.__setDespTab(\'despesas\')"><i class="ti ti-cash"></i> Despesas Gerais</button><button class="btn '+(_dtab==='salarios'?'btn-p':'btn-g')+' btn-sm" onclick="window.__setDespTab(\'salarios\')"><i class="ti ti-users"></i> Salários</button></div>';
   if(_dtab==='salarios'){ document.getElementById('despesas-c').innerHTML=_bar+'<div id="desp-folha-c"></div>'; if(window.__folhaEdit) window.__folhaEdit(); return; }
@@ -32333,7 +32338,8 @@ window.renderBalanceteRange=function(mIni,mFim){
     {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
       {id:'fg-propinas', lbl:'Propinas', ic:'ti-coin', go:'propinas'},
       {id:'fg-pagamentos', lbl:'Pagamentos & Recibos', ic:'ti-credit-card', go:'pagamentos'},
-      {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'}
+      {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'},
+      {id:'fg-bolsas', lbl:'Bolsas / Bolseiros', ic:'ti-discount-2', go:'bolsas'}
     ]},
     {id:'fg-despesas', lbl:'Despesas', ic:'ti-logout-2', itens:[
       {id:'fg-desp', lbl:'Despesas', ic:'ti-cash', go:'despesas'},
@@ -32347,10 +32353,11 @@ window.renderBalanceteRange=function(mIni,mFim){
       {id:'fg-ativ', lbl:'Relatório de Actividades', ic:'ti-clipboard-text', go:'relatorio-actividades'},
       {id:'fg-fluxo', lbl:'Fluxo de Caixa', ic:'ti-trending-up', go:'fluxo-caixa'},
       {id:'fg-orc', lbl:'Orçamento vs Real', ic:'ti-target', go:'orcamento'},
-      {id:'fg-prev', lbl:'Previsão de Receita', ic:'ti-telescope', go:'previsao-receita'}
+      {id:'fg-prev', lbl:'Previsão de Receita', ic:'ti-telescope', go:'previsao-receita'},
+      {id:'fg-faltasprof', lbl:'Assiduidade Professores', ic:'ti-clipboard-list', go:'relat-faltas-prof'}
     ]}
   ];
-  var ESCONDER=['si-pagamentos','si-propinas','si-emolumentos','si-despesas','si-despesas-cat','si-folha-salarios','si-dividas','si-multas','si-fluxo-caixa','si-orcamento','si-previsao-receita','si-relatorio-fin','si-relatorio-actividades','si-balancete'];
+  var ESCONDER=['si-pagamentos','si-propinas','si-emolumentos','si-despesas','si-despesas-cat','si-folha-salarios','si-dividas','si-multas','si-fluxo-caixa','si-orcamento','si-previsao-receita','si-relatorio-fin','si-relatorio-actividades','si-balancete','si-bolsas-v39','si-relat-faltas-prof','v26-mae-despesas'];
   var LEGADO=['v11-mae-entradas','si-mae-entradas','si-mae-despesas','si-mae-receitas','si-mae-cobranca','si-mae-relatorios'];
   function irGo(id){ return function(){ try{ if(typeof window.go==='function') window.go(id); }catch(e){} }; }
   function buildGrupo(g){
@@ -32392,7 +32399,13 @@ window.renderBalanceteRange=function(mIni,mFim){
     }
   }catch(e){}
   try{
-    var mo=new MutationObserver(function(){ if($(SECID) && !$('fg-receitas')){ try{ reorg(); }catch(e){} } });
+    var FLOAT=['si-balancete','v26-mae-despesas','si-bolsas-v39','si-relat-faltas-prof'];
+    var mo=new MutationObserver(function(){
+      if(!$(SECID)) return;
+      var need=!$('fg-receitas');
+      if(!need){ for(var i=0;i<FLOAT.length;i++){ var e=$(FLOAT[i]); if(e && e.style.display!=='none'){ need=true; break; } } }
+      if(need){ try{ reorg(); }catch(e){} }
+    });
     var sb=document.querySelector('.sidebar')||document.body;
     mo.observe(sb,{childList:true,subtree:true});
   }catch(e){}
