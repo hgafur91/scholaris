@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.128</span>
+    <span class="logo-ver">v6.129</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -41270,7 +41270,7 @@ window.trimestreActual = function(d){
     var tc=window.__atTC(trim); var aprov=(tc.estado==='aprovada'); var sel=window.__atCfg().discComExame; var todas=discsTodas();
     var h='';
     if(aprov){
-      h+='<div class="ib-box" style="margin-bottom:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:var(--g);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><span><i class="ti ti-lock"></i> Calendário do '+trim+'º trimestre <strong>APROVADO</strong> — publicado aos professores.</span><button class="btn btn-g btn-sm" onclick="window.__atReabrir()"><i class="ti ti-lock-open"></i> Reabrir</button></div>';
+      h+='<div class="ib-box" style="margin-bottom:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:var(--g);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><span><i class="ti ti-lock"></i> Calendário do '+trim+'º trimestre <strong>APROVADO</strong> — publicado aos professores.</span><button class="btn btn-am btn-sm" onclick="window.__atReabrir()"><i class="ti ti-lock-open"></i> Destrancar</button></div>';
     } else {
       h+='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Janela da Avaliação — '+trim+'º Trimestre</span></div><div class="cb">'
         +'<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end">'
@@ -41288,7 +41288,7 @@ window.trimestreActual = function(d){
     var espG=0,preG=0; tc.exames.forEach(function(e){ var s=statsExame(tc,e); if(s.houve){ espG+=s.esperados; preG+=s.presentes; } });
     h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">'
       +kpi('Exames',tot,'var(--a)')+kpi('Chamadas feitas',comCh+'/'+tot,'var(--tl)')+kpi('Participação',espG?Math.round(preG/espG*100)+'%':'—','var(--g)')+kpi('Presentes/Esperados',preG+'/'+espG,'var(--am)')+'</div>';
-    h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-table"></i> Calendário de exames — '+trim+'º Trimestre</span><span style="display:flex;gap:6px"><button class="btn btn-g btn-sm" onclick="window.__atExportarPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>'+(aprov?'':'<button class="btn btn-p btn-sm" onclick="window.__atAprovar()"><i class="ti ti-lock"></i> Aprovar (bloquear)</button>')+'</span></div><div class="cb" style="padding:0">'+renderGrade(tc, !aprov)+'</div></div>';
+    h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-table"></i> Calendário de exames — '+trim+'º Trimestre</span><span style="display:flex;gap:6px"><button class="btn btn-g btn-sm" onclick="window.__atExportarPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>'+(aprov?'<button class="btn btn-am btn-sm" onclick="window.__atReabrir()"><i class="ti ti-lock-open"></i> Destrancar</button>':'<button class="btn btn-p btn-sm" onclick="window.__atAprovar()"><i class="ti ti-lock"></i> Aprovar (bloquear)</button>')+'</span></div><div class="cb" style="padding:0">'+renderGrade(tc, !aprov)+'</div></div>';
     return h;
   }
 
