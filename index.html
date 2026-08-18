@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.134</span>
+    <span class="logo-ver">v6.135</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32351,6 +32351,7 @@ window.renderBalanceteRange=function(mIni,mFim){
     ]},
     {id:'fg-relatorios', lbl:'Relatórios', ic:'ti-chart-histogram', itens:[
       {id:'fg-ativ', lbl:'Relatório de Actividades', ic:'ti-clipboard-text', go:'relatorio-actividades'},
+      {id:'fg-balancete', lbl:'Balancete', ic:'ti-file-invoice', go:'pagamentos', tab:'balancete'},
       {id:'fg-fluxo', lbl:'Fluxo de Caixa', ic:'ti-trending-up', go:'fluxo-caixa'},
       {id:'fg-orc', lbl:'Orçamento vs Real', ic:'ti-target', go:'orcamento'},
       {id:'fg-prev', lbl:'Previsão de Receita', ic:'ti-telescope', go:'previsao-receita'},
@@ -32370,7 +32371,9 @@ window.renderBalanceteRange=function(mIni,mFim){
       var b=document.createElement('button'); b.className='si'; b.id=s.id;
       b.style.cssText='width:100%;display:flex;align-items:center;gap:8px;font-size:13px;opacity:.92;';
       b.innerHTML='<i class="ti '+s.ic+'" style="font-size:14px"></i><span>'+s.lbl+'</span>';
-      b.onclick=irGo(s.go);
+      b.onclick = s.tab
+        ? (function(gid,tid){ return function(){ try{ if(typeof window.go==='function') window.go(gid); }catch(e){} setTimeout(function(){ try{ if(typeof window.pagTab==='function') window.pagTab(tid); }catch(e){} }, 70); }; })(s.go, s.tab)
+        : irGo(s.go);
       list.appendChild(b);
     });
     var open=true;
