@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.136</span>
+    <span class="logo-ver">v6.137</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34615,6 +34615,52 @@ window.__finV30=true;})();
     window.loadDadosEscola.__skel=true;
   }
   wrap(); setTimeout(wrap,0); setTimeout(wrap,600);
+})();
+</script>
+
+<script>
+/* ===== v6.137 — Skeleton em todas as abas (sobreposição breve na navegação) =====
+   Render continua síncrono (deep-links e pagTab intactos); o skeleton é uma
+   sobreposição que aparece por ~220ms e desaparece, dando efeito de carregamento. */
+(function(){
+  if(window.__navSkelInit) return; window.__navSkelInit=true;
+  var DELAY=220;
+  function box(h,w){ return '<div class="skel" style="height:'+h+'px'+(w?(';width:'+w):'')+';margin-bottom:12px"></div>'; }
+  function skelHTML(){
+    var cards='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 20px">';
+    for(var i=0;i<4;i++) cards+='<div class="skel" style="height:78px"></div>';
+    cards+='</div>';
+    var rows=''; for(var j=0;j<8;j++) rows+='<div class="skel" style="height:44px;margin-bottom:10px"></div>';
+    return box(28,'clamp(180px,40%,300px)')+box(14,'160px')+cards+rows;
+  }
+  function bgDe(el){ try{ var c=getComputedStyle(el).backgroundColor; if(c && c!=='rgba(0, 0, 0, 0)' && c!=='transparent') return c; }catch(e){} try{ return getComputedStyle(document.body).backgroundColor||'#eef2f8'; }catch(e){ return '#eef2f8'; } }
+  function show(){
+    try{
+      var main=document.getElementById('main'); if(!main) return;
+      var r=main.getBoundingClientRect(); if(r.width<40||r.height<40) return;
+      var ov=document.getElementById('nav-skel');
+      if(!ov){ ov=document.createElement('div'); ov.id='nav-skel'; document.body.appendChild(ov); }
+      ov.style.cssText='position:fixed;top:'+r.top+'px;left:'+r.left+'px;width:'+r.width+'px;height:'+r.height+'px;z-index:40;overflow:hidden;box-sizing:border-box;padding:clamp(16px,3vw,28px);background:'+bgDe(main);
+      ov.innerHTML=skelHTML();
+      ov.style.display='block';
+    }catch(e){}
+  }
+  function hide(){ var ov=document.getElementById('nav-skel'); if(ov) ov.style.display='none'; }
+  window.__navSkelShow=show; window.__navSkelHide=hide;
+
+  function hook(){
+    if(window.__goHookedSkel) return;
+    if(typeof window.go!=='function') return;
+    var _go=window.go;
+    window.go=function(){
+      try{ show(); }catch(e){}
+      var r; try{ r=_go.apply(this, arguments); }catch(e){ hide(); throw e; }
+      clearTimeout(window.__navSkelT); window.__navSkelT=setTimeout(hide, DELAY);
+      return r;
+    };
+    window.__goHookedSkel=true;
+  }
+  hook(); setTimeout(hook,0); setTimeout(hook,900);
 })();
 </script>
 <script>
