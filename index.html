@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.129</span>
+    <span class="logo-ver">v6.130</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -2942,6 +2942,7 @@ window.__escA = function (s) {
           <option value="dir-pedagogico">Director Pedagógico</option>
           <option value="secretario">Secretário</option>
           <option value="director">Director Escolar</option>
+          <option value="gestor-financeiro">Gestor Financeiro</option>
         </select>
         <div id="ns-role-preview" style="display:none;background:var(--bg3);border-radius:var(--rads);padding:8px 14px;font-size:12px;color:var(--t2);margin-top:4px;border:1px solid var(--b)"></div>
         <div id="ns-acesso-box" style="display:none;margin-top:8px;background:rgba(79,142,247,.07);border:1px solid var(--b);border-radius:var(--rads);padding:10px 12px">
@@ -3536,7 +3537,7 @@ function doLogin(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').classList.add('visible');
   setupRole();
-  go(curRole==='aluno'?'portal':curRole==='professor'?'portal-prof':'dash');
+  go(curRole==='aluno'?'portal':curRole==='professor'?'portal-prof':curRole==='gestor-financeiro'?'fin-dashboard':'dash');
 }
 
 // ── Propina helpers ────────────────────────────────────────────
@@ -3618,7 +3619,7 @@ function applyPermissions(){
   // Gestão académica (classes, planos)
   if(!gs){ hide('btn-nova-classe'); hide('btn-novo-plano'); }
 }
-function canSeeSalary(){return ['gestor','director'].includes(curRole);}
+function canSeeSalary(){return ['gestor','director','gestor-financeiro'].includes(curRole);}
 
 
 // ══ NAVEGAÇÃO ══
@@ -6087,11 +6088,11 @@ async function fbLogin() {
     if (!user) { showLoginError('Erro ao autenticar.'); resetBtn(); return; }
 
     // 2. Carregar perfil (papel canónico directo, sem mapa com fugas)
-    const CANON_ROLES = ['gestor','director','dir-pedagogico','dir-ciclo','secretario','professor','encarregado','aluno'];
+    const CANON_ROLES = ['gestor','director','gestor-financeiro','dir-pedagogico','dir-ciclo','secretario','professor','encarregado','aluno'];
     const normalizarPapel = (p) => {
       if (!p) return null;
       let r = String(p).trim().replace(/_/g, '-'); // dir_pedagogico -> dir-pedagogico
-      const legado = { 'admin-sistema':'gestor', 'admin':'gestor', 'subdirector':'dir-pedagogico', 'secretaria':'secretario' };
+      const legado = { 'admin-sistema':'gestor', 'admin':'gestor', 'subdirector':'dir-pedagogico', 'secretaria':'secretario', 'financeiro':'gestor-financeiro', 'gestor-fin':'gestor-financeiro' };
       r = legado[r] || r;
       return CANON_ROLES.includes(r) ? r : null;
     };
@@ -6157,7 +6158,7 @@ function _entrarNaApp(userData) {
   loadDadosEscola().then(() => {
     const startView = {
       aluno:'portal', professor:'portal-prof',
-      encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao'
+      encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard'
     }[curRole] || 'dash';
     go(startView);
     toast('Bem-vindo, ' + curUser.nome + '!');
@@ -6588,7 +6589,7 @@ function doLoginDemo() {
   curUser._profId = profMatch?.id  || null;
   const startView = {
     aluno:'portal', professor:'portal-prof',
-    encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao',
+    encarregado:'portal-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard',
   }[curRole] || 'dash';
   go(startView);
   toast('Modo demonstração activo — dados não são guardados');
@@ -13398,6 +13399,30 @@ ROLES['dir-ciclo'] = {
   ]
 };
 
+// ── GESTOR FINANCEIRO — só acesso à Gestão Financeira ────────
+// A secção "Gestão Financeira" é transformada em runtime pelo reorg()
+// nos 5 grupos (Visão Geral · Receitas · Despesas · Cobrança · Relatórios).
+ROLES['gestor-financeiro'] = {
+  nome:'Gestor Financeiro', cargo:'Gestor Financeiro', avt:'GF',
+  color:'#10b981', badge:'Gestor Financeiro',
+  sidebar:[
+    {sl:'Gestão Financeira', sub:[
+      {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
+      {i:'ti-credit-card',l:'Propinas',id:'propinas'},
+      {i:'ti-cash',l:'Pagamentos & Recibos',id:'pagamentos'},
+      {i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},
+      {i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},
+      {i:'ti-users',l:'Folha de Salários',id:'folha-salarios'},
+      {i:'ti-alert-circle',l:'Dívidas',id:'dividas'},
+      {i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},
+      {i:'ti-clipboard-text',l:'Relatório de Actividades',id:'relatorio-actividades'},
+      {i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},
+      {i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},
+      {i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},
+    ]},
+  ]
+};
+
 // ── EXTEND doLoginDemo FOR NEW ROLES ─────────────────────────
 const _origDoLoginDemoSch = doLoginDemo;
 doLoginDemo = function() {
@@ -13416,6 +13441,13 @@ doLoginDemo = function() {
     document.getElementById('app').classList.add('visible');
     setupRole(); go('ciclos'); toast('Director de Ciclo — 1º Ciclo Primário'); return;
   }
+  if (curRole === 'gestor-financeiro') {
+    window._currentUser = { nome:'Gestor Financeiro', avt:'GF', cargo:'Gestor Financeiro', badge:'Gestor Financeiro', color:'#10b981', role:'gestor-financeiro', email:'financeiro@scholaris.mz', escolaId:'escola_demo' };
+    window._escolaId = 'escola_demo';
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').classList.add('visible');
+    setupRole(); go('fin-dashboard'); toast('Gestor Financeiro — modo demonstração'); return;
+  }
   _origDoLoginDemoSch();
 };
 
@@ -13426,10 +13458,10 @@ setupRole = function() {
   // Extend colour maps for new roles in setupRole
   const pill = document.getElementById('role-pill');
   if (!pill) return;
-  const extraBgs   = {'dir-pedagogico':'rgba(6,182,212,.15)', 'dir-ciclo':'rgba(245,158,11,.15)'};
-  const extraBds   = {'dir-pedagogico':'rgba(6,182,212,.3)',  'dir-ciclo':'rgba(245,158,11,.3)'};
-  const extraIcons = {'dir-pedagogico':'ti-user-shield',      'dir-ciclo':'ti-circles'};
-  const extraColors= {'dir-pedagogico':'var(--tl)',           'dir-ciclo':'var(--am)'};
+  const extraBgs   = {'dir-pedagogico':'rgba(6,182,212,.15)', 'dir-ciclo':'rgba(245,158,11,.15)', 'gestor-financeiro':'rgba(16,185,129,.15)'};
+  const extraBds   = {'dir-pedagogico':'rgba(6,182,212,.3)',  'dir-ciclo':'rgba(245,158,11,.3)',  'gestor-financeiro':'rgba(16,185,129,.35)'};
+  const extraIcons = {'dir-pedagogico':'ti-user-shield',      'dir-ciclo':'ti-circles',           'gestor-financeiro':'ti-cash'};
+  const extraColors= {'dir-pedagogico':'var(--tl)',           'dir-ciclo':'var(--am)',            'gestor-financeiro':'#10b981'};
   if (extraBgs[curRole]) {
     pill.style.cssText = `background:${extraBgs[curRole]};border-color:${extraBds[curRole]};color:${extraColors[curRole]}`;
     pill.innerHTML = `<i class="ti ${extraIcons[curRole]}" style="font-size:12px"></i>${curUser.badge||curRole}`;
@@ -13445,14 +13477,15 @@ setupRole = function() {
   if (!rg) return;
   rg.style.gridTemplateColumns = 'repeat(4,1fr)';
   rg.innerHTML = [
-    ['gestor',          'ti-crown',         'Gestor Geral'],
-    ['director',        'ti-user-star',     'Director'],
-    ['dir-pedagogico',  'ti-user-shield',   'Dir. Pedagógico'],
-    ['dir-ciclo',       'ti-circles',       'Dir. de Ciclo'],
-    ['secretario',      'ti-clipboard',     'Secretário'],
-    ['professor',       'ti-chalkboard',    'Professor'],
-    ['aluno',           'ti-backpack',      'Aluno'],
-    ['encarregado',     'ti-heart-handshake','Encarregado'],
+    ['gestor',            'ti-crown',         'Gestor Geral'],
+    ['director',          'ti-user-star',     'Director'],
+    ['gestor-financeiro', 'ti-cash',          'Gestor Financeiro'],
+    ['dir-pedagogico',    'ti-user-shield',   'Dir. Pedagógico'],
+    ['dir-ciclo',         'ti-circles',       'Dir. de Ciclo'],
+    ['secretario',        'ti-clipboard',     'Secretário'],
+    ['professor',         'ti-chalkboard',    'Professor'],
+    ['aluno',             'ti-backpack',      'Aluno'],
+    ['encarregado',       'ti-heart-handshake','Encarregado'],
   ].map(([role, icon, label]) =>
     `<button class="role-btn" onclick="selRole('${role}',this)">
       <i class="ti ${icon}" style="font-size:24px;display:block;margin-bottom:6px;color:var(--a)"></i>
@@ -17799,7 +17832,7 @@ ALUNOS.forEach(a => {
 
 // ── Override renderPropTabela ─────────────────────────────────
 renderPropTabela = function(list) {
-  const canPay = ['gestor','secretario','director'].includes(curRole);
+  const canPay = ['gestor','secretario','director','gestor-financeiro'].includes(curRole);
   document.getElementById('tb-prop').innerHTML = list.map(a => {
     const div = a.propinas.filter(p=>(window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
     const pago = a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+(p.v||CONFIG.valorPropina||4500),0);
@@ -27784,8 +27817,8 @@ function getTotalDespesasMes(mes) {
 
 // ── Access guard ──────────────────────────────────────────────
 function finGuard(el) {
-  if (!['gestor','director'].includes(curRole)) {
-    if (el) el.innerHTML = '<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito — Gestor Geral e Director.</div>';
+  if (!['gestor','director','gestor-financeiro'].includes(curRole)) {
+    if (el) el.innerHTML = '<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito — Gestor Geral, Director e Gestor Financeiro.</div>';
     return false;
   }
   return true;
@@ -32009,36 +32042,42 @@ window.renderBalanceteRange=function(mIni,mFim){
     return wrap;
   }
 
-  /* 6. Reorganiza a seccao da sidebar */
+  /* 6. Reorganiza a seccao da sidebar em 5 grupos:
+        Vis\u00e3o Geral (Dashboard) \u00b7 Receitas \u00b7 Despesas \u00b7 Cobran\u00e7a \u00b7 Relat\u00f3rios */
   function reorg(){
     try {
       var sec = document.getElementById('sb-sec-Gest\u00e3oFinanceira');
       if (!sec || sec.querySelector('[data-finv6]')) return;
       var dash = document.getElementById('si-fin-dashboard');
-      /* esconder itens absorvidos */
-      ['si-pagamentos','si-propinas','si-despesas','si-despesas-cat','si-folha-salarios'].forEach(function(id){
+      /* esconder itens planos absorvidos nos grupos (o Dashboard fica como Vis\u00e3o Geral);
+         relatorio-fin e despesas-cat s\u00e3o removidos por redund\u00e2ncia */
+      ['si-relatorio-fin','si-relatorio-actividades','si-propinas','si-pagamentos','si-emolumentos','si-dividas','si-multas','si-despesas','si-despesas-cat','si-fluxo-caixa','si-orcamento','si-previsao-receita','si-folha-salarios'].forEach(function(id){
         var el = document.getElementById(id); if (el) el.style.display = 'none';
       });
-      var entradas = mkParent('si-mae-entradas','ti-arrow-down-circle','Entradas', [
-        { id:'si-e-propinas', icon:'ti-calendar-dollar', label:'Propinas', onclick:function(){ irEntrada('propinas'); } },
-        { id:'si-e-inscricao', icon:'ti-file-certificate', label:'Inscri\u00e7\u00e3o e Matr\u00edcula', onclick:function(){ irEntrada('taxas'); } },
-        { id:'si-e-servicos', icon:'ti-receipt', label:'Servi\u00e7os', onclick:function(){ irEntrada('avulsos'); } },
-        { id:'si-e-outros', icon:'ti-dots', label:'Outros', onclick:function(){ irEntrada('avulsos'); } }
+      function nav(id){ return function(){ if (typeof go === 'function') go(id); }; }
+      var receitas = mkParent('si-mae-receitas','ti-arrow-down-circle','Receitas', [
+        { id:'si-r-propinas', icon:'ti-calendar-dollar', label:'Propinas', onclick:nav('propinas') },
+        { id:'si-r-pagamentos', icon:'ti-credit-card', label:'Pagamentos & Recibos', onclick:nav('pagamentos') },
+        { id:'si-r-emolumentos', icon:'ti-receipt', label:'Emolumentos', onclick:nav('emolumentos') }
       ]);
       var despesas = mkParent('si-mae-despesas','ti-arrow-up-circle','Despesas', [
-        { id:'si-d-salarios', icon:'ti-users', label:'Sal\u00e1rios', onclick:function(){ irDespesa('salarios'); } },
-        { id:'si-d-utilidades', icon:'ti-bolt', label:'Utilidades', onclick:function(){ irDespesa('utilidades'); } },
-        { id:'si-d-manutencao', icon:'ti-tool', label:'Manuten\u00e7\u00e3o', onclick:function(){ irDespesa('manutencao'); } },
-        { id:'si-d-impostos', icon:'ti-receipt-tax', label:'Impostos', onclick:function(){ irDespesa('impostos'); } },
-        { id:'si-d-caixa', icon:'ti-cash', label:'Caixa Semanal', onclick:function(){ irDespesa('caixa'); } },
-        { id:'si-d-outras', icon:'ti-dots', label:'Outras Despesas', onclick:function(){ irDespesa('outros'); } }
+        { id:'si-d-despesas', icon:'ti-cash', label:'Despesas', onclick:nav('despesas') },
+        { id:'si-d-folha', icon:'ti-users', label:'Folha de Sal\u00e1rios', onclick:nav('folha-salarios') }
       ]);
-      if (dash && dash.nextSibling) {
-        sec.insertBefore(despesas, dash.nextSibling);
-        sec.insertBefore(entradas, despesas);
-      } else {
-        sec.appendChild(entradas); sec.appendChild(despesas);
-      }
+      var cobranca = mkParent('si-mae-cobranca','ti-alert-circle','Cobran\u00e7a', [
+        { id:'si-c-dividas', icon:'ti-report-money', label:'D\u00edvidas', onclick:nav('dividas') },
+        { id:'si-c-multas', icon:'ti-cash-off', label:'Multas de Atraso', onclick:nav('multas') }
+      ]);
+      var relatorios = mkParent('si-mae-relatorios','ti-chart-histogram','Relat\u00f3rios', [
+        { id:'si-rel-actividades', icon:'ti-clipboard-text', label:'Relat\u00f3rio de Actividades', onclick:nav('relatorio-actividades') },
+        { id:'si-rel-fluxo', icon:'ti-trending-up', label:'Fluxo de Caixa', onclick:nav('fluxo-caixa') },
+        { id:'si-rel-orcamento', icon:'ti-target', label:'Or\u00e7amento vs Real', onclick:nav('orcamento') },
+        { id:'si-rel-previsao', icon:'ti-telescope', label:'Previs\u00e3o de Receita', onclick:nav('previsao-receita') }
+      ]);
+      var anchor = (dash && dash.nextSibling) ? dash.nextSibling : null;
+      [receitas, despesas, cobranca, relatorios].forEach(function(g){
+        if (anchor) sec.insertBefore(g, anchor); else sec.appendChild(g);
+      });
     } catch(e){ console.error('v6 reorg', e); }
   }
   reorg();
@@ -33961,7 +34000,7 @@ window.__finV30=true;})();
   function nomeMes(m){ return MESES[m]||(''+m); }
   function ano(){ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||2026; }
   function fmtN(n){ try{ return Math.round(n||0).toLocaleString('pt-PT').replace(/\u00A0/g,' '); }catch(e){ return ''+(n||0); } }
-  function podeEditar(){ return curRole==='gestor'||curRole==='director'; }
+  function podeEditar(){ return curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'; }
   function calcIRPSl(b){ try{ return (typeof calcIRPS==='function')?calcIRPS(b):Math.round(b*0.15); }catch(e){ return Math.round(b*0.15); } }
   function getFolhas(){ if(typeof CONFIG==='undefined') return {}; if(!CONFIG.folhas) CONFIG.folhas={}; return CONFIG.folhas; }
   function getFolha(a,m){ var F=getFolhas(); return (F[a]&&F[a][m])||null; }
@@ -34079,7 +34118,7 @@ window.__finV30=true;})();
 
   window.__folhaRender=function(cid, soFechadas){
     var el=document.getElementById(cid||'folha-sal-c'); if(!el) return;
-    if(!['gestor','director'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito &mdash; apenas Gestor Geral e Director.</div>'; return; }
+    if(!['gestor','director','gestor-financeiro'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito &mdash; apenas Gestor Geral, Director e Gestor Financeiro.</div>'; return; }
     var a=ano();
     var m=window.__folhaMes||(new Date().getMonth()+1);
     var f=getFolha(a,m);
@@ -34800,7 +34839,7 @@ window.__finV30=true;})();
   /* ---- Render principal ---- */
   window.rOrcamento=function(){
     var el=document.getElementById('orcamento-c'); if(!el) return;
-    if(!['gestor','director'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
+    if(!['gestor','director','gestor-financeiro'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
     try{ if(typeof CONFIG!=='undefined' && CONFIG.orcamento && !window.__orcHydrated){ window.ORCAMENTO_ANUAL=CONFIG.orcamento; window.__orcHydrated=true; } }catch(e){}
     var o=window.ORCAMENTO_ANUAL; var t=window.orcTotais(); var r=window.orcTotaisReais(); var m=meses();
     var isLocked=o.estado==='aprovado';
@@ -34954,7 +34993,7 @@ window.__finV30=true;})();
 /* ===== PATCH v54: esconder botoes "Fechar Mes/Ano" para quem nao e gestor/director ===== */
 (function(){
   if(window.__finFecharGuard) return;
-  function podeFechar(){ try{ return curRole==='gestor'||curRole==='director'; }catch(e){ return false; } }
+  function podeFechar(){ try{ return curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'; }catch(e){ return false; } }
   function esconder(){
     if(podeFechar()) return;
     try{
@@ -35007,7 +35046,7 @@ window.__finV30=true;})();
   };
   function curMes(){ return window.__folhaMes||(new Date().getMonth()+1); }
   function getF(m){ try{ var a=anoL(); return (CONFIG.folhas&&CONFIG.folhas[a]&&CONFIG.folhas[a][m])||null; }catch(e){ return null; } }
-  function podeEd(){ try{ return curRole==='gestor'||curRole==='director'; }catch(e){ return false; } }
+  function podeEd(){ try{ return curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'; }catch(e){ return false; } }
   function parciais(){ return (PROFS||[]).filter(function(p){ if(p.regime!=='parcial') return false; var n=(p.nome||'').toLowerCase(); if(n.indexOf('nora ismael')>=0) return false; return true; }).sort(function(x,y){return (x.nome||'').localeCompare(y.nome||'');}); }
 
   window.__aulasParcial=function(pid,a,m){ var f=getF(m); var p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);}); if(!p) return 0;
@@ -40289,7 +40328,7 @@ window.trimestreActual = function(d){
 /* ═══ v6.106 — Gestão de Multas de Atraso (perdão total / acordo parcial) ═══ */
 (function(){
   if(window.__finMultas106) return;
-  function isDG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'); }catch(e){ return false; } }
+  function isDG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'); }catch(e){ return false; } }
   function keyAluno(a){ return String(a&&(a._dbId||a.num||a.id)); }
   function acordos(){ if(typeof CONFIG==='undefined'){ return {}; } if(!CONFIG.multaAcordos) CONFIG.multaAcordos={}; return CONFIG.multaAcordos; }
   function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
@@ -40516,7 +40555,7 @@ window.trimestreActual = function(d){
 /* ═══ v6.109 — Subsídios e descontos FIXOS por trabalhador (recorrentes) ═══ */
 (function(){
   if(window.__finFixos109) return;
-  function DG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'); }catch(e){ return false; } }
+  function DG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'); }catch(e){ return false; } }
   function store(kind){ if(typeof CONFIG==='undefined') return {}; var k=(kind==='sub')?'subsidiosFixos':'descontosFixos'; if(!CONFIG[k]) CONFIG[k]={}; return CONFIG[k]; }
   function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
   function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
@@ -40894,7 +40933,7 @@ window.trimestreActual = function(d){
   function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
   function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function escolaN(){ try{ return (typeof CONFIG!=='undefined' && (CONFIG.nomeEscola||CONFIG.escola||CONFIG.nome)) || 'Scholaris'; }catch(e){ return 'Scholaris'; } }
-  function DG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'); }catch(e){ return false; } }
+  function DG(){ try{ return typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'); }catch(e){ return false; } }
   function distinct(a){ var s={},o=[]; a.forEach(function(x){ if(x&&!s[x]){s[x]=1;o.push(x);} }); return o.sort(); }
   function sumV(a){ return a.reduce(function(s,r){return s+(r.valor||0);},0); }
   function lock(){ return '<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito — apenas Gestor Geral e Director.</div>'; }
