@@ -691,7 +691,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.132</span>
+    <span class="logo-ver">v6.133</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34775,6 +34775,48 @@ window.__finV30=true;})();
     abrirEditorOrcamento();
   };
 
+  /* ---- v6.133: Actualizar o orçamento com os dados REAIS ---- */
+  /* Receita = alunos INSCRITOS por classe (não capacidade); Despesa = TODAS as categorias
+     anualizadas a partir dos registos reais (DESPESAS_REG), não só salários. */
+  window.__orcRealista=function(){
+    var o=window.ORCAMENTO_ANUAL; if(!o) return;
+    if(o.estado==='aprovado'){ if(typeof toast==='function') toast('Orçamento aprovado — desbloqueia primeiro para actualizar'); return; }
+    var m=meses();
+    // 1. RECEITA — alunos inscritos reais por classe (mantém o preço já definido)
+    var reais=classesInfo();
+    var ant={}; (o.receitaClasses||[]).forEach(function(c){ ant[String(c.classe)]=c; });
+    o.receitaClasses=reais.map(function(rc){ var e=ant[String(rc.classe)]; return { classe:rc.classe, propina:(e&&e.propina)||rc.propina, alunos:rc.alunos }; });
+    // 2. DESPESAS — anualizar os registos reais por categoria (todas, não só salários)
+    var CATS=[
+      {cat:'salarios', label:'Salários (folha)', modo:'mensal'},
+      {cat:'agua', label:'Água', modo:'mensal'},
+      {cat:'luz', label:'Electricidade', modo:'mensal'},
+      {cat:'manutencao', label:'Manutenção e Obras', modo:'anual'},
+      {cat:'caixa', label:'Caixa / Operacional', modo:'anual'},
+      {cat:'impostos', label:'Impostos', modo:'anual'},
+      {cat:'material', label:'Material Didáctico', modo:'anual'},
+      {cat:'outros', label:'Outros / Imprevistos', modo:'anual'}
+    ];
+    var reg=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG:[];
+    var acc={};
+    reg.forEach(function(d){ var cat=d.categoria||'outros'; var mm=(d.mes!=null)?d.mes:(d.data?parseInt(String(d.data).substring(5,7)):0); if(!acc[cat]) acc[cat]={soma:0,meses:{}}; acc[cat].soma+=(Number(d.valor)||0); if(mm) acc[cat].meses[mm]=1; });
+    o.despesas=CATS.map(function(c){
+      var info=acc[c.cat]; var valor=0;
+      if(info){
+        if(c.modo==='mensal'){ var nm=Object.keys(info.meses).length||1; valor=Math.round(info.soma/nm); }
+        else { valor=Math.round(info.soma); }
+      } else if(c.cat==='salarios'){
+        valor=(typeof PROFS!=='undefined'?PROFS:[]).reduce(function(s,p){return s+(Number(p.salario)||0);},0);
+      }
+      return { id:'d-'+c.cat, label:c.label, modo:c.modo, valor:valor };
+    });
+    o.criadoPor=o.criadoPor||(((typeof curUser!=='undefined')&&curUser)?curUser.nome:'Gestor');
+    o.mesesLetivos=o.mesesLetivos||m;
+    if(typeof window.__persistOrcamento==='function') window.__persistOrcamento();
+    if(typeof toast==='function') toast('Orçamento actualizado com dados reais (alunos inscritos + despesas registadas)');
+    if(typeof rOrcamento==='function') rOrcamento();
+  };
+
   /* ---- Editor ---- */
   function editorBody(){
     var o=window.ORCAMENTO_ANUAL; var m=meses();
@@ -34893,7 +34935,7 @@ window.__finV30=true;})();
       +'<div class="ib-box '+(r.resultado>=t.resultado?'ib-g':'ib-am')+'" style="margin-top:12px"><i class="ti ti-target"></i> '+(r.resultado>=t.resultado?'Estás a atingir (ou acima) da meta de resultado.':'Estás abaixo da meta de resultado prevista — '+fmtN(t.resultado-r.resultado)+' MZM por recuperar.')+'</div>';
 
     var botoes='';
-    if(canEdit) botoes+='<button class="btn btn-p btn-sm" onclick="abrirEditorOrcamento()"><i class="ti ti-edit"></i> Editar</button> <button class="btn btn-am btn-sm" onclick="submeterOrcamento()"><i class="ti ti-send"></i> Submeter</button>';
+    if(canEdit) botoes+='<button class="btn btn-g btn-sm" onclick="window.__orcRealista()"><i class="ti ti-refresh"></i> Actualizar com dados reais</button> <button class="btn btn-p btn-sm" onclick="abrirEditorOrcamento()"><i class="ti ti-edit"></i> Editar</button> <button class="btn btn-am btn-sm" onclick="submeterOrcamento()"><i class="ti ti-send"></i> Submeter</button>';
     if(canApprove) botoes+='<button class="btn btn-g btn-sm" onclick="aprovarOrcamento()"><i class="ti ti-circle-check"></i> Aprovar</button> <button class="btn btn-r btn-sm" onclick="devolverOrcamento()"><i class="ti ti-arrow-back"></i> Devolver</button>';
     if(isLocked) botoes+='<button class="btn btn-g btn-sm" onclick="desbloquearOrcamento()"><i class="ti ti-lock-open"></i> Desbloquear</button>';
     if(!o.criadoPor) botoes='<button class="btn btn-p btn-sm" onclick="iniciarOrcamento()"><i class="ti ti-plus"></i> Criar Orçamento</button>';
