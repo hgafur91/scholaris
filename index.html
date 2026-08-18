@@ -489,9 +489,12 @@ tbody tr:last-child td{border:none}
 .login-wrap{width:420px;background:var(--bg2);border:1px solid var(--b2);border-radius:20px;padding:38px;animation:fu .3s ease;position:relative;z-index:1;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 body.day-mode .login-wrap{box-shadow:0 8px 40px rgba(0,0,0,.12)}
 body.day-mode #login-bg-deco{background:radial-gradient(ellipse at 20% 50%,rgba(79,142,247,.06) 0%,transparent 60%)}
-#login-bg-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none}
-#login-bg-veil{position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,rgba(8,16,32,.5) 0%,rgba(8,16,32,.66) 55%,rgba(8,16,32,.82) 100%)}
-@media (prefers-reduced-motion:reduce){#login-bg-vid{display:none}}
+.iqra-logo-anim{position:relative;display:inline-block;line-height:0;animation:iqraFloat 5.5s ease-in-out infinite;will-change:transform}
+.iqra-logo-anim img{display:block;height:140px;width:auto;user-select:none;-webkit-user-drag:none}
+.iqra-logo-anim .shine{position:absolute;inset:0;pointer-events:none;-webkit-mask:url("iqra-logo.png") center/contain no-repeat;mask:url("iqra-logo.png") center/contain no-repeat;background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.85) 50%,transparent 62%);background-size:250% 100%;background-position:210% 0;animation:iqraShine 5.5s ease-in-out infinite}
+@keyframes iqraFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes iqraShine{0%,55%{background-position:210% 0}90%,100%{background-position:-70% 0}}
+@media (prefers-reduced-motion:reduce){.iqra-logo-anim{animation:none}.iqra-logo-anim .shine{display:none}}
 .login-logo{display:flex;align-items:center;gap:14px;margin-bottom:28px;justify-content:center}
 .login-ico{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--primary2));display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
 .login-ico img{width:100%;height:100%;object-fit:contain;padding:4px}
@@ -621,20 +624,19 @@ window.__escA = function (s) {
 <!-- ═══ LOGIN ═══ -->
 <div id="login-screen" style="display:none">
   <div id="login-bg-deco"></div>
-  <video id="login-bg-vid" autoplay muted loop playsinline preload="auto" aria-hidden="true">
-    <source src="login-bg2.mp4" type="video/mp4">
-  </video>
-  <div id="login-bg-veil" aria-hidden="true"></div>
   <div class="login-wrap" id="login-card">
 
     <!-- Logo da escola -->
-    <div class="login-logo" id="login-logo-area">
-      <div class="login-ico" id="login-logo-img">
-        <i class="ti ti-school" style="font-size:22px;color:#fff"></i>
+    <div class="login-logo" id="login-logo-area" style="flex-direction:column;gap:8px">
+      <div class="iqra-logo-anim">
+        <img src="iqra-logo.png" alt="Colégio iQRA" draggable="false">
+        <div class="shine" aria-hidden="true"></div>
       </div>
-      <div>
-        <div class="login-title" id="login-escola-nome">Scholaris</div>
-        <div style="font-size:11px;color:var(--t2)" id="login-escola-sub">Sistema de Gestão Escolar</div>
+      <!-- mantidos (escondidos) para compatibilidade com o código dinâmico do logótipo/nome -->
+      <div class="login-ico" id="login-logo-img" style="display:none"><i class="ti ti-school"></i></div>
+      <div style="display:none">
+        <div class="login-title" id="login-escola-nome">iQRA</div>
+        <div id="login-escola-sub">Sistema de Gestão Escolar</div>
       </div>
     </div>
 
@@ -698,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico"><i class="ti ti-school" style="color:#fff;font-size:16px"></i></div>
     <span class="logo-name">Scholaris</span>
-    <span class="logo-ver">v6.139</span>
+    <span class="logo-ver">v6.140</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
