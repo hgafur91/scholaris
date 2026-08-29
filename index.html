@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.143</span>
+    <span class="logo-ver">v6.144</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -41710,6 +41710,123 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   migra(); aplica();
   setTimeout(function(){ migra(); aplica(); }, 500);
   setTimeout(function(){ migra(); aplica(); }, 1600);
+})();
+</script>
+
+<style id="nav-groups-css">
+/* v6.144 - Sidebar em grupos-mae colapsaveis (hover em cascata + clique) */
+.nav-group{margin:2px 8px 4px}
+.nav-head{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;background:none;cursor:pointer;border-radius:10px;color:var(--t2);font-family:var(--ff);font-size:12.5px;font-weight:700;letter-spacing:.02em;text-align:left;transition:background .15s ease,color .15s ease}
+.nav-head i.gi{font-size:16px;flex-shrink:0}
+.nav-head .gt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-head i.gc{font-size:13px;transition:transform .2s ease;flex-shrink:0;opacity:.7}
+.nav-head:hover{background:rgba(120,140,180,.10);color:var(--t)}
+.nav-group.open>.nav-head{color:var(--a)}
+.nav-group.open>.nav-head i.gc{transform:rotate(180deg)}
+.nav-items{display:none;padding-left:6px}
+.nav-group.open>.nav-items{display:block}
+/* cascata: os itens descem em escada quando o grupo abre */
+.nav-group.open>.nav-items .si,.nav-group.open>.nav-items .ssi{animation:navdrop .26s ease backwards}
+.nav-group.open>.nav-items>*:nth-child(1) .si,.nav-group.open>.nav-items>:nth-child(1){animation-delay:.02s}
+.nav-group.open>.nav-items>:nth-child(2),.nav-group.open>.nav-items .ssub>:nth-child(2){animation-delay:.05s}
+.nav-group.open>.nav-items>:nth-child(3),.nav-group.open>.nav-items .ssub>:nth-child(3){animation-delay:.08s}
+.nav-group.open>.nav-items>:nth-child(4),.nav-group.open>.nav-items .ssub>:nth-child(4){animation-delay:.11s}
+.nav-group.open>.nav-items>:nth-child(5),.nav-group.open>.nav-items .ssub>:nth-child(5){animation-delay:.14s}
+.nav-group.open>.nav-items>:nth-child(6),.nav-group.open>.nav-items .ssub>:nth-child(6){animation-delay:.17s}
+.nav-group.open>.nav-items>:nth-child(7),.nav-group.open>.nav-items .ssub>:nth-child(7){animation-delay:.20s}
+.nav-group.open>.nav-items>:nth-child(8),.nav-group.open>.nav-items .ssub>:nth-child(8){animation-delay:.23s}
+.nav-group.open>.nav-items>:nth-child(9),.nav-group.open>.nav-items .ssub>:nth-child(9){animation-delay:.26s}
+.nav-group.open>.nav-items>:nth-child(10),.nav-group.open>.nav-items .ssub>:nth-child(10){animation-delay:.29s}
+.nav-group.open>.nav-items>:nth-child(n+11),.nav-group.open>.nav-items .ssub>:nth-child(n+11){animation-delay:.31s}
+@keyframes navdrop{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.nav-group.open>.nav-items .si,.nav-group.open>.nav-items .ssi,.nav-group.open>.nav-items>*{animation:none!important}}
+</style>
+<script>
+/* v6.144 - agrupar a sidebar por seccoes-mae; hover abre (desktop), clique alterna (todos) */
+(function(){
+  if(window.__navGroups) return; window.__navGroups=true;
+  var HOVER = window.matchMedia && window.matchMedia('(hover:hover)').matches;
+  function norm(s){ try{ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }catch(e){ return (s||'').toLowerCase().trim(); } }
+  function icone(t){
+    var n=norm(t);
+    if(n.indexOf('geral')>=0&&n.indexOf('gestao')>=0) return 'ti-layout-dashboard';
+    if(n.indexOf('academic')>=0) return 'ti-school';
+    if(n.indexOf('financeir')>=0) return 'ti-cash';
+    if(n.indexOf('rh')>=0) return 'ti-briefcase';
+    if(n.indexOf('curricular')>=0) return 'ti-book';
+    if(n.indexOf('escolar')>=0) return 'ti-clipboard';
+    if(n.indexOf('monitor')>=0) return 'ti-eye';
+    if(n.indexOf('comunica')>=0) return 'ti-messages';
+    if(n.indexOf('consulta')>=0) return 'ti-books';
+    if(n.indexOf('ciclo')>=0) return 'ti-circles';
+    if(n.indexOf('professor')>=0) return 'ti-chalkboard';
+    if(n.indexOf('aluno')>=0) return 'ti-backpack';
+    if(n.indexOf('filho')>=0) return 'ti-heart';
+    return 'ti-layout-grid';
+  }
+  var fechaT=null;
+  function grupos(){ var sb=document.getElementById('sb-content'); return sb?Array.prototype.slice.call(sb.querySelectorAll('.nav-group')):[]; }
+  function fechaOutros(exc){ grupos().forEach(function(g){ if(g!==exc && !g.__pin) g.classList.remove('open'); }); }
+  function temActivo(g){ return !!g.querySelector('.si.on,.ssi.on'); }
+  function aplicar(){
+    var sb=document.getElementById('sb-content'); if(!sb) return;
+    if(!sb.querySelector(':scope>.sl')) return;   /* nada por agrupar */
+    var kids=Array.prototype.slice.call(sb.children);
+    var frag=document.createDocumentFragment();
+    var grp=null, items=null;
+    function novoGrupo(slEl){
+      var titulo=(slEl.textContent||'').trim();
+      if(norm(titulo)==='principal') titulo='Gest\u00e3o Geral';
+      grp=document.createElement('div'); grp.className='nav-group'; grp.setAttribute('data-navgrp','1');
+      var head=document.createElement('button'); head.className='nav-head'; head.type='button';
+      head.innerHTML='<i class="ti '+icone(titulo)+' gi"></i><span class="gt">'+titulo+'</span><i class="ti ti-chevron-down gc"></i>';
+      items=document.createElement('div'); items.className='nav-items';
+      grp.appendChild(head); grp.appendChild(items);
+      head.addEventListener('click',function(){
+        var abre=!grp.classList.contains('open');
+        grupos().forEach(function(g){ g.__pin=false; });
+        if(abre){ grp.classList.add('open'); grp.__pin=true; fechaOutros(grp); }
+        else{ grp.classList.remove('open'); }
+      });
+      if(HOVER){
+        grp.addEventListener('mouseenter',function(){ clearTimeout(fechaT); grp.classList.add('open'); fechaOutros(grp); });
+        grp.addEventListener('mouseleave',function(){ clearTimeout(fechaT); fechaT=setTimeout(function(){ if(!grp.__pin && !temActivo(grp)) grp.classList.remove('open'); },350); });
+      }
+      frag.appendChild(grp);
+      slEl.remove();
+    }
+    kids.forEach(function(ch){
+      if(ch.classList && ch.classList.contains('sl')){ novoGrupo(ch); }
+      else if(items){ items.appendChild(ch); }
+      else{ frag.appendChild(ch); }
+    });
+    sb.appendChild(frag);
+    /* estado inicial: abre o grupo com a vista activa; se so ha 1 grupo, abre-o */
+    var gs=grupos();
+    var aberto=false;
+    gs.forEach(function(g){ if(temActivo(g)){ g.classList.add('open'); g.__pin=true; aberto=true; } });
+    if(!aberto && gs.length===1){ gs[0].classList.add('open'); }
+    if(!aberto && gs.length>1){ gs[0].classList.add('open'); gs[0].__pin=true; }
+    /* grupos vazios: esconder */
+    gs.forEach(function(g){ var it=g.querySelector('.nav-items'); if(it && !it.children.length) g.style.display='none'; });
+  }
+  window.__navGroupsAplicar=aplicar;
+  /* clique num item: fixa o grupo e fecha os outros */
+  document.addEventListener('click',function(e){
+    var b=e.target && e.target.closest ? e.target.closest('.nav-items .si,.nav-items .ssi') : null;
+    if(!b) return;
+    var g=b.closest('.nav-group'); if(!g) return;
+    grupos().forEach(function(x){ x.__pin=false; });
+    g.__pin=true; g.classList.add('open'); fechaOutros(g);
+  },true);
+  aplicar();
+  try{
+    var sb=document.getElementById('sb-content');
+    var mo=new MutationObserver(function(){ try{ aplicar(); }catch(e){} });
+    if(sb) mo.observe(sb,{childList:true});
+    else mo.observe(document.body,{childList:true,subtree:true});
+    window.__navGroupsMO=mo;
+  }catch(e){}
 })();
 </script>
 </body>
