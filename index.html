@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.145</span>
+    <span class="logo-ver">v6.146</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32362,6 +32362,7 @@ window.renderBalanceteRange=function(mIni,mFim){
     ]},
     {id:'fg-relatorios', lbl:'Relatórios', ic:'ti-chart-histogram', itens:[
       {id:'fg-ativ', lbl:'Relatório de Actividades', ic:'ti-clipboard-text', go:'relatorio-actividades'},
+      {id:'fg-extracto', lbl:'Extracto da Escola', ic:'ti-receipt', go:'extracto-escola'},
       {id:'fg-balancete', lbl:'Balancete', ic:'ti-file-invoice', go:'pagamentos', tab:'balancete'},
       {id:'fg-fluxo', lbl:'Fluxo de Caixa', ic:'ti-trending-up', go:'fluxo-caixa'},
       {id:'fg-orc', lbl:'Orçamento vs Real', ic:'ti-target', go:'orcamento'},
@@ -42063,6 +42064,165 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   }
   window.rReconciliacao=function(){ render(); };
   try{ if(typeof RENDER_MAP!=='undefined') RENDER_MAP['reconciliacao']=function(){ render(); }; }catch(e){}
+})();
+</script>
+
+<script>
+/* ═══ v6.146 — Extracto da Escola: historial financeiro por aluno / turma / mês ═══ */
+(function(){
+  if(window.__finExtr146) return; window.__finExtr146=true;
+  var MZ=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function pagsArr(){ return (typeof PAGAMENTOS!=='undefined'&&Array.isArray(PAGAMENTOS))?PAGAMENTOS:[]; }
+  function recNum(p){ try{ return (typeof window.__reciboDe==='function'?window.__reciboDe(p):'')||p.reciboNum||''; }catch(e){ return p.reciboNum||''; } }
+  function descPag(p){
+    try{ if(p.meses&&p.meses.length) return 'Propina '+p.meses.map(function(mi){ return (typeof M!=='undefined'?M[mi]:MZ[mi])||mi; }).join(', '); }catch(e){}
+    try{ if(typeof nomeTipoRecibo==='function') return nomeTipoRecibo(p); }catch(e){}
+    return p.categoriaNome||p.tipo||'Pagamento';
+  }
+  function canalN(c){ return {transferencia:'Transferência',deposito:'Depósito',pos:'POS',numerario:'Numerário'}[c]||c||'—'; }
+
+  /* vista */
+  function ensureView(){
+    if(document.getElementById('v-extracto-escola')) return;
+    var main=document.getElementById('main'); if(!main) return;
+    var v=document.createElement('div'); v.className='view'; v.id='v-extracto-escola';
+    v.innerHTML='<div class="ph"><div><div class="ph-title">Extracto da Escola</div><div class="ph-sub">Historial financeiro — recibos e pagamentos por aluno, turma ou mês</div></div>'
+      +'<div class="ph-right"><button class="btn btn-g btn-sm" onclick="window.__extrCSV()"><i class="ti ti-file-spreadsheet"></i> CSV</button>'
+      +'<button class="btn btn-p btn-sm" onclick="window.__extrPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button></div></div>'
+      +'<div id="extracto-escola-c"></div>';
+    main.appendChild(v);
+  }
+  try{ if(typeof VM!=='undefined') VM['extracto-escola']='v-extracto-escola'; }catch(e){}
+  try{ if(typeof RENDER_MAP!=='undefined') RENDER_MAP['extracto-escola']=function(){ ensureView(); render(); }; }catch(e){}
+  ensureView();
+
+  window.__extrF = window.__extrF || { turma:'', aluno:'', mes:'', estado:'' };
+  window.__extrSet=function(k,v){ window.__extrF[k]=v; render(); };
+
+  function filtrar(){
+    var F=window.__extrF;
+    var lista=pagsArr().filter(function(p){ return p&&p.data; });
+    if(F.turma) lista=lista.filter(function(p){ return String(p.turmaId||'')===F.turma; });
+    if(F.mes) lista=lista.filter(function(p){ return String(p.data).slice(5,7)===F.mes; });
+    if(F.estado) lista=lista.filter(function(p){ return (p.estado||'')===F.estado; });
+    if(F.aluno){
+      var q=F.aluno.toLowerCase();
+      lista=lista.filter(function(p){ return String(p.alunoNome||'').toLowerCase().indexOf(q)>=0 || String(p.alunoNum||'').toLowerCase().indexOf(q)>=0; });
+    }
+    lista.sort(function(a,b){ return String(recNum(a)).localeCompare(String(recNum(b))); });
+    return lista;
+  }
+  function alunoUnico(lista){
+    var nums={}; lista.forEach(function(p){ if(p.alunoNum) nums[p.alunoNum]=1; });
+    var ks=Object.keys(nums);
+    if(ks.length!==1) return null;
+    try{ return (typeof ALUNOS!=='undefined')?ALUNOS.find(function(a){ return String(a.num)===ks[0]; }):null; }catch(e){ return null; }
+  }
+  function estadoBadge(p){
+    var e=p.estado||'';
+    if(e==='confirmado') return '<span class="badge bok" style="font-size:10px">Confirmado</span>';
+    if(e==='por_confirmar') return '<span class="badge bwn" style="font-size:10px">Por confirmar</span>';
+    if(e==='estornado') return '<span class="badge bre" style="font-size:10px">Estornado</span>';
+    return esc(e||'—');
+  }
+  function contaCorrente(a){
+    var h='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-user"></i> Conta-corrente — '+esc(a.nome)+' <span style="font-weight:400;color:var(--t3);font-size:12px">'+esc(a.num||'')+' · '+esc(a.turma||'')+'</span></span></div><div class="tw"><table><thead><tr><th>Mês</th><th style="text-align:right">Valor</th><th>Estado</th><th>Recibo</th><th>Data pag.</th></tr></thead><tbody>';
+    var tPago=0,tDiv=0;
+    (a.propinas||[]).forEach(function(pr,mi){
+      if(!pr) return;
+      var st=pr.st; try{ if(typeof window.__estadoPropina==='function') st=window.__estadoPropina(pr); }catch(e){}
+      var pag=pr.pagamentoId?pagsArr().find(function(p){ return p.id===pr.pagamentoId; }):null;
+      var badge, num='—', dt='—';
+      if(pr.st==='pago'){ badge='<span class="badge bok" style="font-size:10px">Pago</span>'; tPago+=(pr.v||0); if(pag){ num=recNum(pag)||'—'; dt=pag.data||'—'; } }
+      else if(pr.st==='isento'){ badge='<span class="badge bin" style="font-size:10px">Isento / Bolsa</span>'; }
+      else if(st==='divida'){ badge='<span class="badge bre" style="font-size:10px">Em dívida</span>'; tDiv+=(pr.v||0); }
+      else { badge='<span class="badge" style="font-size:10px;background:var(--bg3);color:var(--t3)">A vencer</span>'; }
+      h+='<tr><td>'+ (MZ[mi]||mi) +'</td><td style="text-align:right;font-family:var(--fm)">'+fmt(pr.v)+'</td><td>'+badge+'</td><td style="font-family:var(--fm);font-size:11px">'+esc(num)+'</td><td style="font-family:var(--fm);font-size:11px">'+esc(dt)+'</td></tr>';
+    });
+    h+='</tbody><tfoot><tr style="font-weight:800;border-top:2px solid var(--b2)"><td>Totais</td><td style="text-align:right;color:var(--g)">'+fmt(tPago)+' pago</td><td colspan="3" style="color:var(--r)">'+fmt(tDiv)+' em dívida</td></tr></tfoot></table></div></div>';
+    return h;
+  }
+  function render(){
+    ensureView();
+    var el=document.getElementById('extracto-escola-c'); if(!el) return;
+    if(!['gestor','director','gestor-financeiro','secretario'].includes(typeof curRole!=='undefined'?curRole:'')){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
+    var F=window.__extrF;
+    var turmas=[]; try{ turmas=(TURMAS||[]).slice().sort(function(a,b){ return (parseInt(a.classe)||99)-(parseInt(b.classe)||99) || String(a.id).localeCompare(String(b.id)); }); }catch(e){}
+    var lista=filtrar();
+    var total=lista.reduce(function(s,p){ return s+(p.estado==='estornado'?0:(p.valorTotal||0)); },0);
+    var h='';
+    h+='<div class="card" style="margin-bottom:14px"><div class="cb"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+      +'<div style="min-width:150px"><label class="fl">Turma</label><select class="ffi" onchange="window.__extrSet(\'turma\',this.value)">'
+        +'<option value="">Todas</option>'+turmas.map(function(t){ return '<option value="'+esc(t.id)+'"'+(F.turma===String(t.id)?' selected':'')+'>'+esc(t.nome||t.id)+'</option>'; }).join('')+'</select></div>'
+      +'<div style="min-width:150px"><label class="fl">Mês (data do pagamento)</label><select class="ffi" onchange="window.__extrSet(\'mes\',this.value)">'
+        +'<option value="">Ano completo</option>'+MZ.map(function(n,i){ var mm=String(i+1).padStart(2,'0'); return '<option value="'+mm+'"'+(F.mes===mm?' selected':'')+'>'+n+'</option>'; }).join('')+'</select></div>'
+      +'<div style="flex:1;min-width:200px"><label class="fl">Aluno (nome ou nº)</label><input class="ffi" value="'+esc(F.aluno)+'" placeholder="ex: ALU000123 ou nome" onchange="window.__extrSet(\'aluno\',this.value.trim())"></div>'
+      +'<div style="min-width:150px"><label class="fl">Estado</label><select class="ffi" onchange="window.__extrSet(\'estado\',this.value)">'
+        +'<option value="">Todos</option><option value="confirmado"'+(F.estado==='confirmado'?' selected':'')+'>Confirmados</option><option value="por_confirmar"'+(F.estado==='por_confirmar'?' selected':'')+'>Por confirmar</option><option value="estornado"'+(F.estado==='estornado'?' selected':'')+'>Estornados</option></select></div>'
+      +'</div></div></div>';
+    h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
+      +'<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--a)">'+lista.length+'</div><div style="font-size:10px;color:var(--t2)">Recibos / pagamentos</div></div>'
+      +'<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--g)">'+fmt(total)+'</div><div style="font-size:10px;color:var(--t2)">Total (MZM, sem estornados)</div></div>'
+      +'<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--tl)">'+(lista.length?((recNum(lista[0])||'—')+' → '+(recNum(lista[lista.length-1])||'—')):'—')+'</div><div style="font-size:10px;color:var(--t2)">Intervalo de recibos</div></div>'
+      +'</div>';
+    var au=F.aluno?alunoUnico(lista):null;
+    if(au) h+=contaCorrente(au);
+    h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-receipt"></i> Movimentos</span><span style="font-size:12px;color:var(--t2)">'+lista.length+' registo(s)</span></div><div class="tw"><table><thead><tr><th>Recibo</th><th>Data</th><th>Aluno</th><th>Turma</th><th>Descrição</th><th>Canal</th><th>Ref</th><th style="text-align:right">Valor</th><th>Estado</th><th></th></tr></thead><tbody>';
+    if(!lista.length) h+='<tr><td colspan="10" style="text-align:center;color:var(--t2);padding:22px">Sem movimentos para este filtro.</td></tr>';
+    lista.forEach(function(p){
+      h+='<tr><td style="font-family:var(--fm);font-size:11px;font-weight:700">'+esc(recNum(p)||'—')+'</td>'
+        +'<td style="font-family:var(--fm);font-size:11px">'+esc(p.data)+'</td>'
+        +'<td style="font-weight:700">'+esc((p.alunoNome||'').split(' ').slice(0,2).join(' '))+'<br><span style="font-size:10px;color:var(--t3);font-family:var(--fm)">'+esc(p.alunoNum||'')+'</span></td>'
+        +'<td><span class="badge bin">'+esc(p.turmaId||'—')+'</span></td>'
+        +'<td style="font-size:11px">'+esc(descPag(p))+'</td>'
+        +'<td style="font-size:11px">'+esc(canalN(p.canal))+'</td>'
+        +'<td><code style="font-size:10px;background:var(--bg3);padding:2px 5px;border-radius:4px">'+esc(p.ref||'—')+'</code></td>'
+        +'<td style="text-align:right;font-weight:700'+(p.estado==='estornado'?';text-decoration:line-through;color:var(--t3)':'')+'">'+fmt(p.valorTotal)+'</td>'
+        +'<td>'+estadoBadge(p)+'</td>'
+        +'<td>'+(p.estado==='confirmado'?'<button class="btn btn-g btn-sm" title="Reimprimir recibo" onclick="window.__extrRecibo(\''+esc(p.id)+'\')"><i class="ti ti-printer"></i></button>':'')+'</td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+    el.innerHTML=h;
+  }
+  window.__extrRender=render;
+  window.__extrRecibo=function(id){
+    var p=pagsArr().find(function(x){ return x.id===id; }); if(!p) return;
+    try{ if(p.familia && typeof window.emitirReciboPag==='function'){ window.emitirReciboPag(p); return; } }catch(e){}
+    try{ if(typeof emitirReciboPropina==='function'){ emitirReciboPropina(id); return; } }catch(e){}
+    if(typeof toast==='function') toast('Recibo indisponível para este registo.');
+  };
+  function tituloFiltro(){
+    var F=window.__extrF, parts=[];
+    if(F.turma) parts.push('Turma '+F.turma);
+    if(F.mes) parts.push(MZ[parseInt(F.mes,10)-1]);
+    if(F.aluno) parts.push('Aluno: '+F.aluno);
+    if(F.estado) parts.push(F.estado);
+    return parts.length?parts.join(' · '):'Ano completo — toda a escola';
+  }
+  window.__extrCSV=function(){
+    var lista=filtrar();
+    var L=[['Recibo','Data','Nº Aluno','Aluno','Turma','Descrição','Canal','Referência','Valor (MZM)','Estado']];
+    lista.forEach(function(p){ L.push([recNum(p),p.data,p.alunoNum||'',p.alunoNome||'',p.turmaId||'',descPag(p),canalN(p.canal),p.ref||'',p.valorTotal||0,p.estado||'']); });
+    L.push(['','','','','','','','TOTAL',lista.reduce(function(s,p){return s+(p.estado==='estornado'?0:(p.valorTotal||0));},0),'']);
+    var csv='\ufeff'+L.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(';'); }).join('\n');
+    var b=new Blob([csv],{type:'text/csv;charset=utf-8'}); var u=URL.createObjectURL(b);
+    var a=document.createElement('a'); a.href=u; a.download='extracto_escola.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); },800);
+  };
+  window.__extrPDF=function(){
+    var lista=filtrar();
+    var total=lista.reduce(function(s,p){ return s+(p.estado==='estornado'?0:(p.valorTotal||0)); },0);
+    var w=window.open('','_blank','width=980,height=760'); if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o PDF.'); return; }
+    var rows=lista.map(function(p){ return '<tr><td>'+esc(recNum(p))+'</td><td>'+esc(p.data)+'</td><td>'+esc(p.alunoNum||'')+'</td><td>'+esc(p.alunoNome||'')+'</td><td>'+esc(p.turmaId||'')+'</td><td>'+esc(descPag(p))+'</td><td>'+esc(canalN(p.canal))+'</td><td>'+esc(p.ref||'')+'</td><td class="r"'+(p.estado==='estornado'?' style="text-decoration:line-through;color:#94a3b8"':'')+'>'+fmt(p.valorTotal)+'</td><td>'+esc(p.estado||'')+'</td></tr>'; }).join('');
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Extracto da Escola</title>'
+      +'<style>body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;padding:24px}h1{font-size:17px;margin:0 0 2px}.sub{color:#64748b;font-size:11px;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:5px 7px;border-bottom:1px solid #e5e7eb;font-size:10px}th{background:#f1f5f9;text-transform:uppercase;font-size:9px}.r{text-align:right}tfoot td{font-weight:800;border-top:2px solid #94a3b8}@media print{.noprint{display:none}}@page{size:A4 landscape;margin:10mm}</style></head><body>'
+      +'<div class="noprint" style="margin-bottom:12px"><button onclick="window.print()" style="padding:9px 20px;background:#4f8ef7;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer">Imprimir / Guardar PDF</button></div>'
+      +'<h1>Extracto da Escola — Historial Financeiro</h1><div class="sub">'+esc(tituloFiltro())+' · '+lista.length+' movimento(s) · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
+      +'<table><thead><tr><th>Recibo</th><th>Data</th><th>Nº</th><th>Aluno</th><th>Turma</th><th>Descrição</th><th>Canal</th><th>Ref</th><th class="r">Valor</th><th>Estado</th></tr></thead><tbody>'+rows+'</tbody>'
+      +'<tfoot><tr><td colspan="8">TOTAL (sem estornados)</td><td class="r">'+fmt(total)+' MZM</td><td></td></tr></tfoot></table></body></html>');
+    w.document.close();
+  };
 })();
 </script>
 </body>
