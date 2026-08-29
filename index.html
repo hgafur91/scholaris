@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.144</span>
+    <span class="logo-ver">v6.145</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -19952,7 +19952,8 @@ function emitirReciboPropina(pagamentoId) {
   if (pag.estado === 'estornado')    { toast('Pagamento estornado — não tem recibo.'); return; }
   const a   = ALUNOS.find(x=>x.id===pag.alunoId);
   const d   = docData();
-  const cod = `REC-${pagamentoId}-${d.ano}`;
+  // v6.145: número de recibo unificado (AAAA+sequência anual) — igual em toda a app
+  const cod = (typeof window.__numeroRecibo==='function' ? window.__numeroRecibo(pag) : '') || `REC-${pagamentoId}-${d.ano}`;
   const _enc = (typeof ENCS!=='undefined') ? ENCS.find(e=>e.num===(a&&a.enc)) : null;
   const _encNome = (_enc&&_enc.nome) || (a&&a.erel) || '\u2014';
   // v6.59: dívida = só propinas vencidas e não pagas (não os meses futuros)
@@ -32348,6 +32349,7 @@ window.renderBalanceteRange=function(mIni,mFim){
       {id:'fg-propinas', lbl:'Propinas', ic:'ti-coin', go:'propinas'},
       {id:'fg-pagamentos', lbl:'Pagamentos & Recibos', ic:'ti-credit-card', go:'pagamentos'},
       {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'},
+      {id:'fg-reconciliacao', lbl:'Reconciliação Bancária', ic:'ti-file-check', go:'reconciliacao'},
       {id:'fg-bolsas', lbl:'Bolsas / Bolseiros', ic:'ti-discount-2', go:'bolsas'}
     ]},
     {id:'fg-despesas', lbl:'Despesas', ic:'ti-logout-2', itens:[
@@ -41827,6 +41829,240 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     else mo.observe(document.body,{childList:true,subtree:true});
     window.__navGroupsMO=mo;
   }catch(e){}
+})();
+</script>
+
+<script>
+/* ═══ v6.145 — Recibos AAAA#####  +  Reconciliação Bancária completa ═══ */
+(function(){
+  if(window.__finRecon145) return; window.__finRecon145=true;
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function pagsArr(){ return (typeof PAGAMENTOS!=='undefined'&&Array.isArray(PAGAMENTOS))?PAGAMENTOS:[]; }
+
+  /* ── 1. NÚMERO DE RECIBO ÚNICO: <ANO><sequência anual de 5 dígitos> — 202600001 ──
+     Determinístico: posição cronológica no ANO (data, registadoEm, id). Estornados
+     OCUPAM número (recibo anulado — correcto contabilisticamente) mas não emitem. */
+  var _rc={len:-1, map:{}};
+  function chave(p){ return String(p.pag_id||p.id||p.ref||''); }
+  function rebuild(){
+    var arr=pagsArr().filter(function(p){ return p&&p.data; });
+    var byAno={};
+    arr.forEach(function(p){ var a=String(p.data).slice(0,4); (byAno[a]=byAno[a]||[]).push(p); });
+    _rc.map={};
+    Object.keys(byAno).forEach(function(ano){
+      byAno[ano].sort(function(a,b){
+        return String(a.data||'').localeCompare(String(b.data||''))
+            || String(a.registadoEm||'').localeCompare(String(b.registadoEm||''))
+            || chave(a).localeCompare(chave(b));
+      });
+      byAno[ano].forEach(function(p,i){
+        var num=ano+String(i+1).padStart(5,'0');
+        _rc.map[chave(p)]=num;
+        try{ p.reciboNum=num; }catch(e){}
+      });
+    });
+    _rc.len=pagsArr().length;
+  }
+  window.__reciboSync=rebuild;
+  window.__reciboDe=function(pag){
+    try{
+      if(!pag||!pag.data) return '';
+      if(_rc.len!==pagsArr().length) rebuild();
+      return _rc.map[chave(pag)]||(function(){ rebuild(); return _rc.map[chave(pag)]||''; })();
+    }catch(e){ return ''; }
+  };
+  window.__numeroRecibo=function(pag){ if(!pag) return ''; var n=window.__reciboDe(pag); if(n) pag.reciboNum=n; return n||pag.reciboNum||''; };
+  setTimeout(function(){ try{ rebuild(); }catch(e){} }, 1500);
+  setTimeout(function(){ try{ rebuild(); }catch(e){} }, 5000);
+
+  /* ── 2. PARSER DE EXTRACTO (CSV/TXT; XLS/XLSX via SheetJS on-demand) ── */
+  function normRef(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+  function parseValores(linha){
+    var out=[]; var re=/\d{1,3}(?:[.\s]\d{3})+,\d{2}|\d+,\d{2}|\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2}/g; var m;
+    while((m=re.exec(linha))!==null){
+      var t=m[0], v;
+      if(t.indexOf(',')>=0 && /,\d{2}$/.test(t)){ v=parseFloat(t.replace(/[.\s]/g,'').replace(',','.')); }
+      else { v=parseFloat(t.replace(/,/g,'')); }
+      if(isFinite(v)&&v>0) out.push(Math.round(v*100)/100);
+    }
+    return out;
+  }
+  function parseData(linha){
+    var m=linha.match(/\b(\d{4})-(\d{2})-(\d{2})\b/); if(m) return m[1]+'-'+m[2]+'-'+m[3];
+    m=linha.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})\b/);
+    if(m){ var d=+m[1],mo=+m[2]; if(mo>12&&d<=12){var t=d;d=mo;mo=t;} return m[3]+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+    m=linha.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2})\b/);
+    if(m){ var d2=+m[1],mo2=+m[2]; if(mo2>12&&d2<=12){var t2=d2;d2=mo2;mo2=t2;} return '20'+m[3]+'-'+String(mo2).padStart(2,'0')+'-'+String(d2).padStart(2,'0'); }
+    return null;
+  }
+  function parseExtracto(texto){
+    return String(texto||'').split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean)
+      .map(function(l,i){ return { n:i+1, raw:l, txt:normRef(l), data:parseData(l), valores:parseValores(l), usado:false }; })
+      .filter(function(mv){ return mv.valores.length || mv.data; });
+  }
+  function diffDias(a,b){ try{ return Math.abs(new Date(a+'T00:00:00')-new Date(b+'T00:00:00'))/86400000; }catch(e){ return 99; } }
+  window.__extParse=parseExtracto;      /* exposto p/ testes */
+  window.__extParseData=parseData; window.__extParseValores=parseValores;
+
+  /* ── 3. MATCHING pagamentos ↔ movimentos ── */
+  function analisar(movs, de, ate){
+    var noRange=function(d){ if(!d) return true; if(de&&d<de) return false; if(ate&&d>ate) return false; return true; };
+    var pags=pagsArr().filter(function(p){ return p&&p.estado!=='estornado'&&p.data&&noRange(p.data); });
+    var mvs=movs.filter(function(m){ return noRange(m.data); });
+    var fortes=[], sugest=[], pagsSem=[];
+    pags.forEach(function(p){
+      var r=normRef(p.ref), r2=r.replace(/^0+/,'');
+      var hit=null;
+      if(r.length>=4){ hit=mvs.find(function(m){ return !m.usado && (m.txt.indexOf(r)>=0 || (r2.length>=4 && m.txt.indexOf(r2)>=0)); }); }
+      if(hit){ hit.usado=true; fortes.push({p:p,m:hit}); return; }
+      var v=Math.round((p.valorTotal||0)*100)/100;
+      hit=mvs.find(function(m){ return !m.usado && m.valores.indexOf(v)>=0 && (!m.data||diffDias(m.data,p.data)<=3); });
+      if(hit){ hit.usado=true; sugest.push({p:p,m:hit}); return; }
+      pagsSem.push(p);
+    });
+    var movsSem=mvs.filter(function(m){ return !m.usado; });
+    return { fortes:fortes, sugest:sugest, pagsSem:pagsSem, movsSem:movsSem, de:de, ate:ate, total:mvs.length };
+  }
+  window.__extMatch=analisar;           /* exposto p/ testes */
+
+  /* ── 4. Confirmar em lote (persistente, mesmo padrão do confirmar manual) ── */
+  function confirmarPag(p, refExt, dataExt){
+    p.estado='confirmado';
+    p.confirmedBy=((typeof curUser!=='undefined'&&curUser&&curUser.nome)||'')+' (extracto)';
+    p.confirmedAt=dataExt||new Date().toISOString().slice(0,10);
+    p.confirmedRef=refExt||p.ref;
+    try{
+      if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){
+        window._supabase.from('pagamentos').update({estado:'confirmado'})
+          .eq('pag_id', p.id||p.pag_id).eq('escola_id', window._escolaId)
+          .then(function(r){ if(r&&r.error&&typeof toast==='function') toast('Falhou gravar '+(p.ref||'')+': '+r.error.message); }, function(){});
+      }
+    }catch(e){}
+    try{
+      var a=(typeof ALUNOS!=='undefined')?ALUNOS.find(function(x){return x.id===p.alunoId;}):null;
+      if(a&&p.meses) p.meses.forEach(function(mi){ var pr=a.propinas[mi]; if(pr){ pr.estadoBanco='confirmado'; pr.dataConfirm=p.confirmedAt; } });
+    }catch(e){}
+    try{ if(typeof logAudit==='function') logAudit('PAGAMENTO_CONFIRMADO','Pagamento '+p.id+' — '+(p.alunoNome||''),'Reconciliação automática com extracto (ref '+(p.ref||'')+')','por_confirmar','confirmado'); }catch(e){}
+  }
+  window.__extConfirmarTodos=function(){
+    var R=window.__extRes; if(!R) return;
+    var alvo=R.fortes.filter(function(x){ return x.p.estado==='por_confirmar'; });
+    if(!alvo.length){ if(typeof toast==='function') toast('Nada por confirmar entre os correspondidos.'); return; }
+    alvo.forEach(function(x){ confirmarPag(x.p, x.m.raw.slice(0,60), x.m.data); });
+    if(typeof toast==='function') toast(alvo.length+' pagamento(s) confirmado(s) e gravado(s).');
+    render();
+  };
+
+  /* ── 5. Leitura do ficheiro (CSV/TXT directo; XLS/XLSX via SheetJS) ── */
+  function lerFicheiro(file, cb){
+    var nome=(file.name||'').toLowerCase();
+    if(/\.(xlsx|xls)$/.test(nome)){
+      var go2=function(){
+        var fr=new FileReader();
+        fr.onload=function(){ try{
+          var wb=XLSX.read(new Uint8Array(fr.result),{type:'array'});
+          var txt=wb.SheetNames.map(function(sn){ return XLSX.utils.sheet_to_csv(wb.Sheets[sn],{FS:';'}); }).join('\n');
+          cb(txt);
+        }catch(e){ if(typeof toast==='function') toast('Erro a ler Excel: '+e.message); } };
+        fr.readAsArrayBuffer(file);
+      };
+      if(window.XLSX) go2();
+      else { var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=go2; s.onerror=function(){ if(typeof toast==='function') toast('Sem internet para carregar o leitor de Excel — use CSV.'); }; document.head.appendChild(s); }
+      return;
+    }
+    var fr2=new FileReader();
+    fr2.onload=function(){ cb(String(fr2.result||'')); };
+    fr2.onerror=function(){ if(typeof toast==='function') toast('Não foi possível ler o ficheiro.'); };
+    fr2.readAsText(file,'utf-8');
+  }
+  window.__extAnalisar=function(){
+    var fi=document.getElementById('rec-ext-file');
+    var de=(document.getElementById('rec-ext-de')||{}).value||'';
+    var ate=(document.getElementById('rec-ext-ate')||{}).value||'';
+    var file=fi&&fi.files&&fi.files[0];
+    if(!file){ if(typeof toast==='function') toast('Escolha o ficheiro do extracto (CSV, TXT ou Excel).'); return; }
+    lerFicheiro(file, function(texto){
+      var movs=parseExtracto(texto);
+      if(!movs.length){ if(typeof toast==='function') toast('Não encontrei movimentos no ficheiro (linhas com data/valor).'); return; }
+      window.__extRes=analisar(movs, de, ate);
+      if(typeof toast==='function') toast('Extracto analisado: '+window.__extRes.total+' movimento(s) no período.');
+      render();
+    });
+  };
+
+  /* ── 6. VISTA (substitui rReconciliacao) ── */
+  function kpi(l,v,c,ic,sub){ return '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:'+c+'"></div><i class="ti '+ic+'" style="color:'+c+';font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:18px;font-weight:800;color:'+c+'">'+v+'</div><div style="font-size:10px;color:var(--t2)">'+l+'</div><div style="font-size:9px;color:var(--t3);margin-top:2px">'+(sub||'')+'</div></div>'; }
+  function linhaPag(p, extra){
+    return '<tr><td style="font-family:var(--fm);font-size:11px">'+esc(p.data)+'</td>'
+      +'<td style="font-weight:700">'+esc((p.alunoNome||'').split(' ').slice(0,2).join(' '))+'</td>'
+      +'<td><code style="font-size:11px;background:var(--bg3);padding:2px 6px;border-radius:4px">'+esc(p.ref||'—')+'</code></td>'
+      +'<td style="font-size:11px">'+esc(p.canal||'')+'</td>'
+      +'<td style="text-align:right;font-weight:700">'+fmt(p.valorTotal)+'</td>'
+      +'<td style="font-family:var(--fm);font-size:11px">'+esc((typeof window.__reciboDe==='function'?window.__reciboDe(p):'')||'—')+'</td>'
+      +(extra||'')+'</tr>';
+  }
+  function render(){
+    var el=document.getElementById('reconciliacao-c'); if(!el) return;
+    if(!['gestor','director','gestor-financeiro'].includes(typeof curRole!=='undefined'?curRole:'')){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito — Gestor Geral, Director e Gestor Financeiro.</div>'; return; }
+    try{ rebuild(); }catch(e){}
+    var P=pagsArr();
+    var porConf=P.filter(function(p){return p.estado==='por_confirmar';});
+    var conf=P.filter(function(p){return p.estado==='confirmado';});
+    var hoje=new Date(); var de1=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-01';
+    var hojeS=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
+    var R=window.__extRes;
+    var h='';
+    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">'
+      +kpi('Por Confirmar',String(porConf.length),'var(--am)','ti-clock',fmt(porConf.reduce(function(s,p){return s+(p.valorTotal||0);},0))+' MZM')
+      +kpi('Confirmados',String(conf.length),'var(--g)','ti-circle-check',fmt(conf.reduce(function(s,p){return s+(p.valorTotal||0);},0))+' MZM')
+      +kpi('Último recibo',(function(){ var mx=''; P.forEach(function(p){ var n=window.__reciboDe(p); if(n>mx) mx=n; }); return mx||'—'; })(),'var(--tl)','ti-receipt','sequência anual')
+      +kpi('Movimentos analisados',R?String(R.total):'—','var(--a)','ti-file-search',R?('período '+(R.de||'…')+' → '+(R.ate||'…')):'sem extracto')
+      +'</div>';
+    /* ferramenta de análise */
+    h+='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-file-check"></i> Verificação automática com o extracto</span></div><div class="cb">'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+      +'<div style="flex:2;min-width:220px"><label class="fl">Extracto (CSV, TXT ou Excel do banco)</label><input type="file" class="ffi" id="rec-ext-file" accept=".csv,.txt,.xls,.xlsx"></div>'
+      +'<div style="min-width:140px"><label class="fl">De</label><input type="date" class="ffi" id="rec-ext-de" value="'+de1+'"></div>'
+      +'<div style="min-width:140px"><label class="fl">Até</label><input type="date" class="ffi" id="rec-ext-ate" value="'+hojeS+'"></div>'
+      +'<button class="btn btn-p" onclick="window.__extAnalisar()"><i class="ti ti-refresh"></i> Analisar</button>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-top:8px">O sistema cruza o nº de talão / referência de cada pagamento com as linhas do extracto; sem referência, tenta por valor + data (±3 dias).</div>'
+      +'</div></div>';
+    /* resultados */
+    if(R){
+      var fortesPorConf=R.fortes.filter(function(x){return x.p.estado==='por_confirmar';}).length;
+      h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">'
+        +kpi('Correspondidos ✓',String(R.fortes.length),'var(--g)','ti-circle-check',fmt(R.fortes.reduce(function(s,x){return s+(x.p.valorTotal||0);},0))+' MZM')
+        +kpi('Prováveis (valor+data)',String(R.sugest.length),'var(--am)','ti-zoom-question','confirmar à mão')
+        +kpi('Sem correspondência',String(R.pagsSem.length)+' / '+String(R.movsSem.length),'var(--r)','ti-alert-triangle','registos / mov. do banco')
+        +'</div>';
+      if(fortesPorConf) h+='<div style="margin-bottom:14px"><button class="btn btn-g" style="background:var(--g);color:#fff" onclick="window.__extConfirmarTodos()"><i class="ti ti-checks"></i> Confirmar os '+fortesPorConf+' correspondidos por confirmar</button></div>';
+      if(R.fortes.length){ h+='<div class="card" style="margin-bottom:14px;border-left:4px solid var(--g)"><div class="ch"><span class="ct" style="color:var(--g)">Correspondidos no extracto</span></div><div class="tw"><table><thead><tr><th>Data</th><th>Aluno</th><th>Referência</th><th>Canal</th><th style="text-align:right">Valor</th><th>Recibo</th><th>Linha do extracto</th></tr></thead><tbody>'
+        +R.fortes.map(function(x){ return linhaPag(x.p,'<td style="font-size:10px;color:var(--t3);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.m.raw.slice(0,80))+'</td>'); }).join('')+'</tbody></table></div></div>'; }
+      if(R.sugest.length){ h+='<div class="card" style="margin-bottom:14px;border-left:4px solid var(--am)"><div class="ch"><span class="ct" style="color:var(--am)">Prováveis — mesmo valor e data próxima (verifique e confirme à mão)</span></div><div class="tw"><table><thead><tr><th>Data</th><th>Aluno</th><th>Referência</th><th>Canal</th><th style="text-align:right">Valor</th><th>Recibo</th><th>Linha do extracto</th></tr></thead><tbody>'
+        +R.sugest.map(function(x){ return linhaPag(x.p,'<td style="font-size:10px;color:var(--t3);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.m.raw.slice(0,80))+'</td>'); }).join('')+'</tbody></table></div></div>'; }
+      if(R.pagsSem.length){ h+='<div class="card" style="margin-bottom:14px;border-left:4px solid var(--r)"><div class="ch"><span class="ct" style="color:var(--r)">Registados no sistema SEM correspondência no extracto</span></div><div class="tw"><table><thead><tr><th>Data</th><th>Aluno</th><th>Referência</th><th>Canal</th><th style="text-align:right">Valor</th><th>Recibo</th></tr></thead><tbody>'
+        +R.pagsSem.map(function(p){ return linhaPag(p,''); }).join('')+'</tbody></table></div></div>'; }
+      if(R.movsSem.length){ h+='<div class="card" style="margin-bottom:14px;border-left:4px solid var(--r)"><div class="ch"><span class="ct" style="color:var(--r)">Movimentos do banco SEM registo no sistema ('+R.movsSem.length+')</span></div><div class="tw"><table><thead><tr><th>Data</th><th style="text-align:right">Valor(es)</th><th>Linha</th></tr></thead><tbody>'
+        +R.movsSem.slice(0,80).map(function(m){ return '<tr><td style="font-family:var(--fm);font-size:11px">'+esc(m.data||'—')+'</td><td style="text-align:right;font-family:var(--fm);font-size:11px">'+m.valores.map(fmt).join(' · ')+'</td><td style="font-size:10px;color:var(--t3);max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.raw.slice(0,110))+'</td></tr>'; }).join('')
+        +(R.movsSem.length>80?'<tr><td colspan="3" style="color:var(--t3);font-size:11px;padding:8px">… mais '+(R.movsSem.length-80)+' linha(s)</td></tr>':'')+'</tbody></table></div></div>'; }
+    }
+    /* por confirmar (acções existentes) */
+    if(porConf.length){
+      h+='<div class="card" style="margin-bottom:14px;border-left:4px solid var(--am)"><div class="ch"><span class="ct" style="color:var(--am)"><i class="ti ti-clock"></i> Aguardando Confirmação Bancária</span><span style="font-size:12px;color:var(--t2)">'+porConf.length+' pagamento(s)</span></div><div class="tw"><table><thead><tr><th>Data</th><th>Aluno</th><th>Referência</th><th>Canal</th><th style="text-align:right">Valor</th><th>Recibo</th><th></th></tr></thead><tbody>'
+        +porConf.map(function(p){ return linhaPag(p,'<td><button class="btn btn-p btn-sm" onclick="abrirConfirmarPag(\''+esc(p.id)+'\')"><i class="ti ti-check"></i></button> <button class="btn btn-re btn-sm" onclick="estornarPagamento(\''+esc(p.id)+'\')"><i class="ti ti-x"></i></button></td>'); }).join('')+'</tbody></table></div></div>';
+    } else {
+      h+='<div class="ib-box ib-blue" style="margin-bottom:14px"><i class="ti ti-circle-check" style="color:var(--g)"></i> Não há depósitos/transferências à espera de confirmação.</div>';
+    }
+    /* confirmados recentes */
+    h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-circle-check" style="color:var(--g)"></i> Confirmados recentemente</span></div><div class="tw"><table><thead><tr><th>Data</th><th>Aluno</th><th>Referência</th><th>Canal</th><th style="text-align:right">Valor</th><th>Recibo</th><th>Confirmado por</th></tr></thead><tbody>'
+      +conf.slice().sort(function(a,b){ return String(b.data).localeCompare(String(a.data)); }).slice(0,10).map(function(p){ return linhaPag(p,'<td style="font-size:11px;color:var(--t2)">'+esc(p.confirmedBy||'—')+'</td>'); }).join('')
+      +(conf.length?'':'<tr><td colspan="7" style="text-align:center;color:var(--t2);padding:18px">Sem confirmações ainda.</td></tr>')+'</tbody></table></div></div>';
+    el.innerHTML=h;
+  }
+  window.rReconciliacao=function(){ render(); };
+  try{ if(typeof RENDER_MAP!=='undefined') RENDER_MAP['reconciliacao']=function(){ render(); }; }catch(e){}
 })();
 </script>
 </body>
