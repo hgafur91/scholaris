@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.149</span>
+    <span class="logo-ver">v6.150</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -42216,6 +42216,215 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'<tfoot><tr><td colspan="8">TOTAL (sem estornados)</td><td class="r">'+fmt(total)+' MZM</td><td></td></tr></tfoot></table></body></html>');
     w.document.close();
   };
+})();
+</script>
+
+<script>
+/* ═══ v6.150 — Extracto completo do aluno/turma: PDF + Excel + facturas e recibos em LOTE ═══ */
+(function(){
+  if(window.__finLote150) return; window.__finLote150=true;
+  var MZ=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function pagsArr(){ return (typeof PAGAMENTOS!=='undefined'&&Array.isArray(PAGAMENTOS))?PAGAMENTOS:[]; }
+  function alunosArr(){ return (typeof ALUNOS!=='undefined'&&Array.isArray(ALUNOS))?ALUNOS:[]; }
+  function anoL(){ try{ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear(); }catch(e){ return new Date().getFullYear(); } }
+  function recNum(p){ try{ return (typeof window.__reciboDe==='function'?window.__reciboDe(p):'')||p.reciboNum||''; }catch(e){ return ''; } }
+  function encNome(a){
+    try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){return x.num===a.enc;}):null; if(e&&e.nome) return e.nome; }catch(er){}
+    return a.enome||a.erel||'—';
+  }
+  function estadoPr(pr){
+    if(!pr) return {t:'—',multa:0};
+    if(pr.st==='pago') return {t:'pago',multa:0};
+    if(pr.st==='isento') return {t:'isento',multa:0};
+    var st='divida';
+    try{ if(typeof window.__estadoPropina==='function') st=window.__estadoPropina(pr); }catch(e){}
+    if(st==='divida'){ var m=0; try{ m=(typeof window.__multaDe==='function')?(window.__multaDe(pr)||0):Math.round((pr.v||0)*(pr.multaPct||0)/100); }catch(e){} return {t:'divida',multa:m}; }
+    return {t:'vencer',multa:0};
+  }
+  function pagDe(pr){ if(!pr||!pr.pagamentoId) return null; return pagsArr().find(function(p){ return p.id===pr.pagamentoId; })||null; }
+  function abrirDoc(titulo, corpo, paisagem){
+    var w=window.open('','_blank','width=980,height=760'); if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o PDF.'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(titulo)+'</title>'
+      +'<style>body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#0f172a;padding:24px}h1{font-size:17px;margin:0 0 2px}h2{font-size:13px;margin:14px 0 6px;color:#12315f}.sub{color:#64748b;font-size:11px;margin-bottom:12px}table{width:100%;border-collapse:collapse;margin-bottom:8px}th,td{text-align:left;padding:5px 8px;border-bottom:1px solid #e5e7eb;font-size:11px}th{background:#f1f5f9;text-transform:uppercase;font-size:9px}.r{text-align:right}.c{text-align:center}tfoot td{font-weight:800;border-top:2px solid #94a3b8}.pb{page-break-after:always}.fat{border:1px solid #cbd5e1;border-radius:10px;padding:16px;margin-bottom:18px;page-break-inside:avoid}.fat-h{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1a8f9e;padding-bottom:8px;margin-bottom:10px}.fat-t{font-size:15px;font-weight:800;color:#12315f}.fat-n{font-family:monospace;font-size:12px;color:#1a8f9e;font-weight:700}.tot{background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;font-weight:800;font-size:14px;margin-top:6px}.nota{font-size:10px;color:#64748b;margin-top:8px}.bad{color:#b91c1c}.ok{color:#15803d}@media print{.noprint{display:none}}@page{size:A4 '+(paisagem?'landscape':'portrait')+';margin:11mm}</style></head><body>'
+      +'<div class="noprint" style="margin-bottom:12px"><button onclick="window.print()" style="padding:9px 20px;background:#4f8ef7;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer">Imprimir / Guardar PDF</button></div>'
+      +corpo+'</body></html>');
+    w.document.close();
+  }
+  function baixarCSV2(nome, linhas){
+    var csv='\ufeff'+linhas.map(function(r){ return r.map(function(c){ return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'; }).join(';'); }).join('\n');
+    var b=new Blob([csv],{type:'text/csv;charset=utf-8'}); var u=URL.createObjectURL(b);
+    var a=document.createElement('a'); a.href=u; a.download=nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); },800);
+  }
+
+  /* ── resolver aluno/turma a partir dos filtros ── */
+  function alunoDoFiltro(){
+    var q=(window.__extrF&&window.__extrF.aluno||'').trim().toLowerCase(); if(!q) return null;
+    var hits=alunosArr().filter(function(a){ return String(a.num||'').toLowerCase()===q; });
+    if(!hits.length) hits=alunosArr().filter(function(a){ return String(a.nome||'').toLowerCase().indexOf(q)>=0 || String(a.num||'').toLowerCase().indexOf(q)>=0; });
+    return hits.length===1?hits[0]:null;
+  }
+  function turmaDoFiltro(){ return (window.__extrF&&window.__extrF.turma)||''; }
+
+  /* ── A) EXTRACTO DO ALUNO ── */
+  function linhasAluno(a){
+    var out=[], tPago=0,tDiv=0,tMul=0;
+    (a.propinas||[]).forEach(function(pr,mi){
+      if(!pr) return;
+      var e=estadoPr(pr), pg=pagDe(pr);
+      if(e.t==='pago') tPago+=(pr.v||0);
+      if(e.t==='divida'){ tDiv+=(pr.v||0); tMul+=e.multa; }
+      out.push({ mes:MZ[mi]||('M'+mi), v:pr.v||0, e:e, recibo:pg?recNum(pg):'', dataPag:pg?(pg.data||''):'', canal:pg?(pg.canal||''):'' });
+    });
+    return { linhas:out, tPago:tPago, tDiv:tDiv, tMul:tMul };
+  }
+  window.__extrDocAluno=function(a){
+    var R=linhasAluno(a);
+    var rows=R.linhas.map(function(l){
+      var est = l.e.t==='pago'?'<span class="ok">Pago</span>' : l.e.t==='divida'?'<span class="bad">Em dívida</span>' : l.e.t==='isento'?'Isento / Bolsa':'A vencer';
+      return '<tr><td>'+l.mes+'</td><td class="r">'+fmt(l.v)+'</td><td>'+est+'</td><td class="r">'+(l.e.multa?fmt(l.e.multa):'—')+'</td><td class="r">'+(l.e.t==='divida'?fmt(l.v+l.e.multa):'—')+'</td><td>'+esc(l.recibo||'—')+'</td><td>'+esc(l.dataPag||'—')+'</td></tr>';
+    }).join('');
+    var recibos=pagsArr().filter(function(p){ return p.alunoNum===a.num && p.estado!=='estornado'; }).sort(function(x,y){ return recNum(x).localeCompare(recNum(y)); });
+    var recRows=recibos.map(function(p){ return '<tr><td>'+esc(recNum(p))+'</td><td>'+esc(p.data)+'</td><td>'+esc((p.meses&&p.meses.length)?p.meses.map(function(mi){return MZ[mi]||mi;}).join(', '):(p.categoriaNome||p.tipo||''))+'</td><td>'+esc(p.canal||'')+'</td><td>'+esc(p.ref||'')+'</td><td class="r">'+fmt(p.valorTotal)+'</td></tr>'; }).join('');
+    return '<h1>Extracto do Aluno — '+esc(a.nome)+'</h1>'
+      +'<div class="sub">Nº '+esc(a.num||'')+' · Turma '+esc(a.turma||'')+' · Encarregado: '+esc(encNome(a))+' · Ano lectivo '+anoL()+' · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
+      +'<h2>Propinas — mês a mês</h2>'
+      +'<table><thead><tr><th>Mês</th><th class="r">Propina</th><th>Estado</th><th class="r">Multa</th><th class="r">Total em dívida</th><th>Recibo</th><th>Data pag.</th></tr></thead><tbody>'+rows+'</tbody>'
+      +'<tfoot><tr><td>TOTAIS</td><td class="r ok">'+fmt(R.tPago)+' pago</td><td></td><td class="r bad">'+fmt(R.tMul)+'</td><td class="r bad">'+fmt(R.tDiv+R.tMul)+' em dívida</td><td colspan="2"></td></tr></tfoot></table>'
+      +(recibos.length?('<h2>Recibos emitidos ('+recibos.length+')</h2><table><thead><tr><th>Recibo</th><th>Data</th><th>Descrição</th><th>Canal</th><th>Ref</th><th class="r">Valor</th></tr></thead><tbody>'+recRows+'</tbody></table>'):'<div class="sub">Sem recibos emitidos.</div>');
+  };
+  window.__extrPdfAluno=function(){ var a=alunoDoFiltro(); if(!a){ if(typeof toast==='function') toast('Filtre um aluno único primeiro (nº ou nome).'); return; } abrirDoc('Extracto — '+a.nome, window.__extrDocAluno(a), false); };
+  window.__extrXlsAluno=function(){
+    var a=alunoDoFiltro(); if(!a){ if(typeof toast==='function') toast('Filtre um aluno único primeiro.'); return; }
+    var R=linhasAluno(a);
+    var L=[['Extracto do Aluno',a.nome,'Nº',a.num||'','Turma',a.turma||''],['Mês','Propina','Estado','Multa','Total em dívida','Recibo','Data pag.']];
+    R.linhas.forEach(function(l){ L.push([l.mes,l.v,(l.e.t==='pago'?'Pago':l.e.t==='divida'?'Em dívida':l.e.t==='isento'?'Isento':'A vencer'),l.e.multa||'',l.e.t==='divida'?(l.v+l.e.multa):'',l.recibo,l.dataPag]); });
+    L.push(['TOTAIS',R.tPago,'',R.tMul,R.tDiv+R.tMul,'','']);
+    baixarCSV2('extracto_'+(a.num||'aluno')+'.csv',L);
+  };
+
+  /* ── B) FACTURAS / RECIBOS EM LOTE ── */
+  function facturaHTML(a, mi, pr, multa){
+    var mm=String(mi+1).padStart(2,'0');
+    return '<div class="fat"><div class="fat-h"><span class="fat-t">FACTURA — Propina de '+(MZ[mi]||mi)+' '+anoL()+'</span><span class="fat-n">FT-'+anoL()+'-'+esc(a.num||'')+'-'+mm+'</span></div>'
+      +'<table><tbody>'
+      +'<tr><td style="width:30%;color:#64748b">Aluno</td><td style="font-weight:700">'+esc(a.nome)+'</td></tr>'
+      +'<tr><td style="color:#64748b">Nº / Turma</td><td>'+esc(a.num||'')+' · '+esc(a.turma||'')+'</td></tr>'
+      +'<tr><td style="color:#64748b">Encarregado</td><td>'+esc(encNome(a))+'</td></tr>'
+      +'<tr><td style="color:#64748b">Emitida a</td><td>'+new Date().toLocaleDateString('pt-PT')+'</td></tr>'
+      +'</tbody></table>'
+      +'<table><thead><tr><th>Descrição</th><th class="r">Valor (MZM)</th></tr></thead><tbody>'
+      +'<tr><td>Propina de '+(MZ[mi]||mi)+' '+anoL()+'</td><td class="r">'+fmt(pr.v||0)+'</td></tr>'
+      +(multa?('<tr><td>Multa de atraso</td><td class="r">'+fmt(multa)+'</td></tr>'):'')
+      +'</tbody></table>'
+      +'<div class="tot"><span>TOTAL A PAGAR</span><span>'+fmt((pr.v||0)+multa)+' MZM</span></div>'
+      +'<div class="nota">Pagamento na secretaria, por POS, ou por depósito/transferência — indique o Nº do aluno ('+esc(a.num||'')+') e guarde o talão como referência.</div>'
+      +'</div>';
+  }
+  function facturasDoAluno(a){
+    var out=[];
+    (a.propinas||[]).forEach(function(pr,mi){ if(!pr) return; var e=estadoPr(pr); if(e.t==='divida') out.push(facturaHTML(a,mi,pr,e.multa)); });
+    return out;
+  }
+  window.__extrFacturasAluno=function(){
+    var a=alunoDoFiltro(); if(!a){ if(typeof toast==='function') toast('Filtre um aluno único primeiro.'); return; }
+    var f=facturasDoAluno(a);
+    if(!f.length){ if(typeof toast==='function') toast(a.nome.split(' ')[0]+' não tem meses em dívida. 👏'); return; }
+    abrirDoc('Facturas — '+a.nome, '<h1>Facturas em dívida — '+esc(a.nome)+'</h1><div class="sub">'+f.length+' factura(s) · '+new Date().toLocaleDateString('pt-PT')+'</div>'+f.join('<div class="pb"></div>'), false);
+  };
+  function reciboHTML(a,p){
+    return '<div class="fat"><div class="fat-h"><span class="fat-t">RECIBO</span><span class="fat-n">'+esc(recNum(p))+'</span></div>'
+      +'<table><tbody>'
+      +'<tr><td style="width:30%;color:#64748b">Aluno</td><td style="font-weight:700">'+esc(a?a.nome:p.alunoNome||'')+' ('+esc(p.alunoNum||'')+' · '+esc(p.turmaId||'')+')</td></tr>'
+      +'<tr><td style="color:#64748b">Descrição</td><td>'+esc((p.meses&&p.meses.length)?('Propina '+p.meses.map(function(mi){return MZ[mi]||mi;}).join(', ')):(p.categoriaNome||p.tipo||'Pagamento'))+'</td></tr>'
+      +'<tr><td style="color:#64748b">Data / Canal / Ref</td><td>'+esc(p.data||'')+' · '+esc(p.canal||'')+' · '+esc(p.ref||'—')+'</td></tr>'
+      +'</tbody></table>'
+      +'<div class="tot"><span>VALOR RECEBIDO</span><span>'+fmt(p.valorTotal)+' MZM</span></div></div>';
+  }
+  window.__extrRecibosAluno=function(){
+    var a=alunoDoFiltro(); if(!a){ if(typeof toast==='function') toast('Filtre um aluno único primeiro.'); return; }
+    var recs=pagsArr().filter(function(p){ return p.alunoNum===a.num && p.estado==='confirmado'; }).sort(function(x,y){ return recNum(x).localeCompare(recNum(y)); });
+    if(!recs.length){ if(typeof toast==='function') toast('Sem recibos confirmados para este aluno.'); return; }
+    abrirDoc('Recibos — '+a.nome, '<h1>Recibos — '+esc(a.nome)+'</h1><div class="sub">'+recs.length+' recibo(s) · '+new Date().toLocaleDateString('pt-PT')+'</div>'+recs.map(function(p){ return reciboHTML(a,p); }).join(''), false);
+  };
+
+  /* ── C) EXTRACTO DA TURMA + facturas em lote ── */
+  function alunosDaTurma(t){ return alunosArr().filter(function(a){ return String(a.turma)===String(t); }).sort(function(x,y){ return String(x.nome||'').localeCompare(String(y.nome||'')); }); }
+  window.__extrPdfTurma=function(){
+    var t=turmaDoFiltro(); if(!t){ if(typeof toast==='function') toast('Seleccione uma turma no filtro.'); return; }
+    var als=alunosDaTurma(t); if(!als.length){ if(typeof toast==='function') toast('Turma sem alunos.'); return; }
+    var nM=(als[0].propinas||[]).length||12;
+    var head=''; for(var i=0;i<nM;i++) head+='<th class="c">'+(MZ[i]||'').slice(0,3)+'</th>';
+    var tTP=0,tTD=0;
+    var rows=als.map(function(a){
+      var R=linhasAluno(a); tTP+=R.tPago; tTD+=R.tDiv+R.tMul;
+      var cells=R.linhas.map(function(l){
+        var s=l.e.t==='pago'?'<span class="ok">P</span>':l.e.t==='divida'?'<span class="bad">D</span>':l.e.t==='isento'?'I':'·';
+        return '<td class="c">'+s+'</td>';
+      }).join('');
+      return '<tr><td>'+esc(a.nome)+'<br><span style="font-size:9px;color:#94a3b8">'+esc(a.num||'')+'</span></td>'+cells+'<td class="r ok">'+fmt(R.tPago)+'</td><td class="r bad">'+fmt(R.tDiv+R.tMul)+'</td></tr>';
+    }).join('');
+    abrirDoc('Extracto Turma '+t,
+      '<h1>Extracto da Turma '+esc(t)+'</h1><div class="sub">'+als.length+' aluno(s) · Ano lectivo '+anoL()+' · P=pago · D=em dívida · I=isento · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
+      +'<table><thead><tr><th>Aluno</th>'+head+'<th class="r">Pago</th><th class="r">Dívida (c/ multa)</th></tr></thead><tbody>'+rows+'</tbody>'
+      +'<tfoot><tr><td>TOTAIS DA TURMA</td><td colspan="'+nM+'"></td><td class="r ok">'+fmt(tTP)+'</td><td class="r bad">'+fmt(tTD)+'</td></tr></tfoot></table>', true);
+  };
+  window.__extrXlsTurma=function(){
+    var t=turmaDoFiltro(); if(!t){ if(typeof toast==='function') toast('Seleccione uma turma no filtro.'); return; }
+    var als=alunosDaTurma(t); if(!als.length){ if(typeof toast==='function') toast('Turma sem alunos.'); return; }
+    var nM=(als[0].propinas||[]).length||12;
+    var hdr=['Aluno','Nº']; for(var i=0;i<nM;i++) hdr.push((MZ[i]||'').slice(0,3)); hdr.push('Pago','Dívida c/ multa');
+    var L=[['Extracto da Turma',t,'Ano',anoL()],hdr];
+    als.forEach(function(a){
+      var R=linhasAluno(a); var row=[a.nome,a.num||''];
+      R.linhas.forEach(function(l){ row.push(l.e.t==='pago'?'P':l.e.t==='divida'?'D':l.e.t==='isento'?'I':''); });
+      row.push(R.tPago, R.tDiv+R.tMul); L.push(row);
+    });
+    baixarCSV2('extracto_turma_'+t+'.csv',L);
+  };
+  window.__extrFacturasTurma=function(){
+    var t=turmaDoFiltro(); if(!t){ if(typeof toast==='function') toast('Seleccione uma turma no filtro.'); return; }
+    var als=alunosDaTurma(t); var blocos=[], nAl=0;
+    als.forEach(function(a){ var f=facturasDoAluno(a); if(f.length){ nAl++; blocos.push(f.join('<div class="pb"></div>')); } });
+    if(!blocos.length){ if(typeof toast==='function') toast('Turma '+t+' sem meses em dívida. 👏'); return; }
+    var nFat=blocos.join('').split('class="fat"').length-1;
+    if(nFat>30 && !confirm('Vão ser geradas '+nFat+' facturas ('+nAl+' alunos). Continuar?')) return;
+    abrirDoc('Facturas Turma '+t, '<h1>Facturas em dívida — Turma '+esc(t)+'</h1><div class="sub">'+nAl+' aluno(s), '+nFat+' factura(s) · '+new Date().toLocaleDateString('pt-PT')+'</div>'+blocos.join('<div class="pb"></div>'), false);
+  };
+
+  /* ── barra de acções injectada na vista (após cada render) ── */
+  function injectar(){
+    var el=document.getElementById('extracto-escola-c'); if(!el||document.getElementById('extr-lote-bar')) return;
+    var filtros=el.querySelector('.card'); if(!filtros) return;
+    var a=alunoDoFiltro(), t=turmaDoFiltro();
+    if(!a && !t) return;
+    var bar=document.createElement('div'); bar.id='extr-lote-bar';
+    bar.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center';
+    var h='';
+    if(a){
+      h+='<span style="font-size:11px;color:var(--t2);font-weight:700"><i class="ti ti-user"></i> '+esc(a.nome.split(' ').slice(0,2).join(' '))+':</span>'
+        +'<button class="btn btn-p btn-sm" onclick="window.__extrPdfAluno()"><i class="ti ti-file-type-pdf"></i> Extracto (PDF)</button>'
+        +'<button class="btn btn-g btn-sm" onclick="window.__extrXlsAluno()"><i class="ti ti-file-spreadsheet"></i> Excel</button>'
+        +'<button class="btn btn-am btn-sm" onclick="window.__extrFacturasAluno()"><i class="ti ti-file-invoice"></i> Facturas em dívida (lote)</button>'
+        +'<button class="btn btn-g btn-sm" onclick="window.__extrRecibosAluno()"><i class="ti ti-receipt"></i> Recibos (lote)</button>';
+    } else if(t){
+      h+='<span style="font-size:11px;color:var(--t2);font-weight:700"><i class="ti ti-layout-grid"></i> Turma '+esc(t)+':</span>'
+        +'<button class="btn btn-p btn-sm" onclick="window.__extrPdfTurma()"><i class="ti ti-file-type-pdf"></i> Extracto da turma (PDF)</button>'
+        +'<button class="btn btn-g btn-sm" onclick="window.__extrXlsTurma()"><i class="ti ti-file-spreadsheet"></i> Excel</button>'
+        +'<button class="btn btn-am btn-sm" onclick="window.__extrFacturasTurma()"><i class="ti ti-file-invoice"></i> Facturas da turma (lote)</button>';
+    }
+    bar.innerHTML=h;
+    filtros.parentNode.insertBefore(bar, filtros.nextSibling);
+  }
+  try{
+    var alvo=document.getElementById('extracto-escola-c');
+    var mo=new MutationObserver(function(){ try{ injectar(); }catch(e){} });
+    if(alvo) mo.observe(alvo,{childList:true});
+    else mo.observe(document.body,{childList:true,subtree:true});
+    window.__extrLoteMO=mo;
+  }catch(e){}
+  setTimeout(function(){ try{ injectar(); }catch(e){} },800);
 })();
 </script>
 </body>
