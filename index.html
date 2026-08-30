@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.155</span>
+    <span class="logo-ver">v6.156</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -42608,6 +42608,22 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   window.__extrSet=function(k,v){ window.__extrF[k]=v; render(); };
   window.__extrRender2=render;
   try{ if(typeof RENDER_MAP!=='undefined') RENDER_MAP['extracto-escola']=function(){ render(); }; }catch(e){}
+  /* v6.156: o dispatch por RENDER_MAP não dispara para ids novos (mesma razão
+     pela qual RA/AT/Multas têm wrappers próprios) — tratar o id à mão. */
+  var _goExtr=window.go;
+  window.go=function(id){
+    if(id==='extracto-escola'){
+      try{
+        document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on');});
+        document.querySelectorAll('.si,.ssi').forEach(function(s){s.classList.remove('on');});
+        var ve=document.getElementById('v-extracto-escola'); if(ve) ve.classList.add('on');
+        var se=document.getElementById('fg-extracto'); if(se) se.classList.add('on');
+        render();
+      }catch(e){}
+      return;
+    }
+    return _goExtr.apply(this, arguments);
+  };
 })();
 </script>
 </body>
