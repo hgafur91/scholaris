@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.156</span>
+    <span class="logo-ver">v6.157</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -28072,17 +28072,18 @@ function exportarFolhaSalarios(mes) {
       const L=_folha.linhas[pid];
       const p=PROFS.find(x=>String(x.id)===String(pid))||{nome:'(removido)',num:'',cargo:''};
       const subsTotal=(L.subsidios||[]).reduce((s,x)=>s+(x.valor||0),0);
+      const mul=(L.multas||[]).reduce((s,x)=>s+(x.valor||0),0);   // v6.157: multa de serviço ANTES dos impostos
       const base=_fAprov ? (L.base||0) : ((typeof window.__baseFolha==='function')?window.__baseFolha(p,mes):(L.base||0));
-      const totalBruto=(base||0)+subsTotal;
+      const totalBruto=(base||0)+subsTotal-mul;
       const inss=Math.round(totalBruto*0.03);
       const irps=_irps(totalBruto);
       const dm=(L.descontos||[]).reduce((s,x)=>s+(x.valor||0),0);
-      return{p,bruto:base,subsTotal,totalBruto,inss,irps,dm,liquido:totalBruto-inss-irps-dm};
+      return{p,bruto:base,subsTotal,mul,totalBruto,inss,irps,dm,liquido:totalBruto-inss-irps-dm};
     }).sort((a,b)=>(a.p.nome||'').localeCompare(b.p.nome||''));
   } else {
     inteiroRows = PROFS.filter(p=>(p.salario||0)>0 && p.regime!=='parcial').map(p=>{
       const bruto=p.salario||0; const inss=Math.round(bruto*0.03); const irps=_irps(bruto);
-      return{p,bruto,subsTotal:0,totalBruto:bruto,inss,irps,dm:0,liquido:bruto-inss-irps};
+      return{p,bruto,subsTotal:0,mul:0,totalBruto:bruto,inss,irps,dm:0,liquido:bruto-inss-irps};
     }).sort((a,b)=>(a.p.nome||'').localeCompare(b.p.nome||''));
   }
 
@@ -28116,7 +28117,7 @@ function exportarFolhaSalarios(mes) {
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-      ${[{l:'Bruto (inteiro)',v:fmt(tiB)},{l:'Líquido a Pagar',v:fmt(totalPagar)},{l:'Parciais (por aula)',v:fmt(tpT)},{l:'Custo Total (= balancete)',v:fmt(custoTotal)}]
+      ${[{l:'Ilíquido (inteiro)',v:fmt(tiB)},{l:'Líquido a Pagar',v:fmt(totalPagar)},{l:'Parciais (por aula)',v:fmt(tpT)},{l:'Custo Total (= balancete)',v:fmt(custoTotal)}]
         .map(k=>`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
           <div style="font-size:16px;font-weight:800;color:#0D1526">${k.v} MZM</div>
           <div style="font-size:9px;color:#64748b">${k.l}</div>
@@ -28126,8 +28127,10 @@ function exportarFolhaSalarios(mes) {
     <div style="font-weight:800;font-size:13px;color:#0D1526;margin:6px 0">Tempo Inteiro <span style="font-weight:400;color:#64748b;font-size:11px">— salário fixo · ${inteiroRows.length} colaborador(es)</span></div>
     <table><thead><tr>
       <th>Nº</th><th style="text-align:left">Funcionário</th><th style="text-align:left">Cargo</th>
-      <th style="text-align:right">Bruto</th><th style="text-align:right">Subsídios</th>
+      <th style="text-align:right">Base</th><th style="text-align:right">Subsídios</th>
+      <th style="text-align:right">Multas serv.</th>
       <th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th>
+      <th style="text-align:right">Descontos</th>
       <th style="text-align:right">Líquido</th>
     </tr></thead><tbody>
       ${inteiroRows.length?inteiroRows.map((r,i)=>`<tr>
@@ -28135,16 +28138,20 @@ function exportarFolhaSalarios(mes) {
         <td style="font-weight:700">${r.p.nome}</td><td style="font-size:10px">${r.p.cargo||'Professor'}</td>
         <td style="text-align:right;font-family:monospace">${fmt(r.bruto)}</td>
         <td style="text-align:right;font-family:monospace">${r.subsTotal?'+'+fmt(r.subsTotal):'—'}</td>
+        <td style="text-align:right;font-family:monospace">${r.mul?'-'+fmt(r.mul):'—'}</td>
         <td style="text-align:right;font-family:monospace">-${fmt(r.inss)}</td>
         <td style="text-align:right;font-family:monospace">-${fmt(r.irps)}</td>
+        <td style="text-align:right;font-family:monospace">${r.dm?'-'+fmt(r.dm):'—'}</td>
         <td style="text-align:right;font-family:monospace;font-weight:800">${fmt(r.liquido)}</td>
-      </tr>`).join(''):`<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:8px">Sem colaboradores a tempo inteiro.</td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:8px">Sem colaboradores a tempo inteiro.</td></tr>`}
       <tr style="font-weight:800;border-top:2px solid #e2e8f0">
         <td colspan="3">SUBTOTAL — INTEIRO</td>
         <td style="text-align:right">${fmt(tiBase)}</td>
         <td style="text-align:right">${tiSubs?'+'+fmt(tiSubs):'—'}</td>
+        <td style="text-align:right">${(()=>{const tm=inteiroRows.reduce((s,r)=>s+(r.mul||0),0);return tm?'-'+fmt(tm):'—';})()}</td>
         <td style="text-align:right">-${fmt(tiI)}</td>
         <td style="text-align:right">-${fmt(tiR)}</td>
+        <td style="text-align:right">${(()=>{const td=inteiroRows.reduce((s,r)=>s+(r.dm||0),0);return td?'-'+fmt(td):'—';})()}</td>
         <td style="text-align:right;color:#166534">${fmt(tiL)}</td>
       </tr>
     </tbody></table>
@@ -34078,7 +34085,7 @@ window.__finV30=true;})();
     }catch(e){}
   };
   try{ if(typeof CONFIG!=='undefined' && CONFIG.aulasMes) window.__aulasMes=CONFIG.aulasMes; }catch(e){}
-  window.__folhaBrutoMes=function(m,a){ a=a||ano(); var f=getFolha(a,m); if(!f||f.status!=='aprovada') return 0; return Object.keys(f.linhas).reduce(function(s,pid){var L=f.linhas[pid];var subs=(L.subsidios||[]).reduce(function(ss,x){return ss+(x.valor||0);},0);return s+(L.base||0)+subs;},0); };
+  window.__folhaBrutoMes=function(m,a){ a=a||ano(); var f=getFolha(a,m); if(!f||f.status!=='aprovada') return 0; return Object.keys(f.linhas).reduce(function(s,pid){var L=f.linhas[pid];var subs=(L.subsidios||[]).reduce(function(ss,x){return ss+(x.valor||0);},0);var mul=(L.multas||[]).reduce(function(ss,x){return ss+(x.valor||0);},0);return s+(L.base||0)+subs-mul;},0); };
   function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
   function kpi(l,v,c){ return '<div style="background:var(--card2);border:1px solid var(--b2);border-radius:12px;padding:12px"><div style="font-size:11px;color:var(--t2)">'+l+'</div><div style="font-size:18px;font-weight:800;color:'+c+'">'+fmtN(v)+' MZM</div></div>'; }
 
@@ -34096,7 +34103,7 @@ window.__finV30=true;})();
         (window.__fixosSubs?window.__fixosSubs(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0 && !subs.some(function(s){return s.nome===fx.nome;})) subs.push({nome:fx.nome, valor:fx.valor, fixo:true}); });
         (window.__fixosDesc?window.__fixosDesc(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0 && !descs.some(function(s){return s.nome===fx.nome;})) descs.push({nome:fx.nome, valor:fx.valor, fixo:true}); });
       }catch(e){}
-      linhas[p.id]={ base:p.salario||0, subsidios:subs, descontos:descs };
+      linhas[p.id]={ base:p.salario||0, subsidios:subs, descontos:descs, multas:(prev.multas)?prev.multas.slice():[] };
     });
     F[a][m]={ status:'rascunho', linhas:linhas, geradaEm:new Date().toISOString(), aprovadaPor:null, aprovadaEm:null };
     persist(); if(typeof toast==='function') toast('Folha de '+nomeMes(m)+' gerada (rascunho)'); window.__folhaRerender();
@@ -34123,9 +34130,9 @@ window.__finV30=true;})();
   window.__folhaModal=function(tipo,m,pid){
     if(!editavel(m)){ if(typeof toast==='function') toast('Folha trancada ou sem permissão'); return; }
     var ex=document.getElementById('folha-add-modal'); if(ex) ex.remove();
-    var titulo=tipo==='subsidio'?'Adicionar Subsídio':'Adicionar Desconto';
-    var ph=tipo==='subsidio'?'Ex: Cargo, Transporte, Bónus':'Ex: Faltas, Adiantamento';
-    var cor=tipo==='subsidio'?'#16a34a':'#dc2626';
+    var titulo=tipo==='subsidio'?'Adicionar Subsídio':(tipo==='multa'?'Adicionar Multa de Serviço':'Adicionar Desconto');
+    var ph=tipo==='subsidio'?'Ex: Cargo, Transporte, Bónus':(tipo==='multa'?'Ex: Atraso, Falta injustificada':'Ex: Dívida à instituição, Adiantamento');
+    var cor=tipo==='subsidio'?'#16a34a':(tipo==='multa'?'#d97706':'#dc2626');
     var Q=String.fromCharCode(39);
     var html='<div id="folha-add-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">'
       +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:22px;width:380px;max-width:94vw">'
@@ -34147,11 +34154,14 @@ window.__finV30=true;})();
     if(valor<=0){ if(typeof toast==='function') toast('Indique um valor'); return; }
     var f=getFolha(ano(),m); if(!f||!f.linhas[pid]) return; var L=f.linhas[pid];
     if(tipo==='subsidio'){ L.subsidios=L.subsidios||[]; L.subsidios.push({nome:nome,valor:valor}); }
+    else if(tipo==='multa'){ L.multas=L.multas||[]; L.multas.push({nome:nome,valor:valor}); }
     else { L.descontos=L.descontos||[]; L.descontos.push({nome:nome,valor:valor}); }
     persist(); var mo=document.getElementById('folha-add-modal'); if(mo) mo.remove(); window.__folhaRerender();
   };
   window.__addSubsidio=function(m,pid){ window.__folhaModal('subsidio',m,pid); };
   window.__addDesconto=function(m,pid){ window.__folhaModal('desconto',m,pid); };
+  window.__addMultaFolha=function(m,pid){ window.__folhaModal('multa',m,pid); };
+  window.__rmMultaFolha=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.multas){L.multas.splice(i,1);persist();window.__folhaRerender();} };
   window.__rmSubsidio=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.subsidios){L.subsidios.splice(i,1);persist();window.__folhaRerender();} };
   window.__rmDesconto=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.descontos){L.descontos.splice(i,1);persist();window.__folhaRerender();} };
 
@@ -34167,7 +34177,7 @@ window.__finV30=true;})();
     var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
     h+='<select class="ffi" style="width:140px" onchange="window.__folhaMes=+this.value;'+rer+'">'+MESES.map(function(nm,i){return i===0?'':'<option value="'+i+'" '+(i===m?'selected':'')+'>'+nm+'</option>';}).join('')+'</select>';
     if(soFechadas){
-      if(f && f.status==='aprovada'){ h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span><button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> PDF</button>'; }
+      if(f && f.status==='aprovada'){ h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span><button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> Completo (interno)</button><button class="btn btn-p btn-sm" onclick="window.__folhaBanco('+m+')"><i class="ti ti-building-bank"></i> Folha Banco</button><button class="btn btn-am btn-sm" onclick="window.__folhaImpostos('+m+')"><i class="ti ti-receipt-tax"></i> Impostos</button><button class="btn btn-g btn-sm" onclick="window.__contasModal()"><i class="ti ti-credit-card"></i> Contas</button>'; }
     } else {
       if(!f){ if(podeEditar()) h+='<button class="btn btn-p btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-file-plus"></i> Gerar Folha do Mês</button>'; }
       else if(f.status==='rascunho'){
@@ -34178,7 +34188,7 @@ window.__finV30=true;})();
         h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada e trancada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span>';
         h+='<button class="btn btn-g btn-sm" onclick="window.__reabrirFolha('+m+')"><i class="ti ti-lock-open"></i> Destrancar folha</button>';
       }
-      if(f) h+='<button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> PDF</button>';
+      if(f) h+='<button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> Completo (interno)</button><button class="btn btn-p btn-sm" onclick="window.__folhaBanco('+m+')"><i class="ti ti-building-bank"></i> Folha Banco</button><button class="btn btn-am btn-sm" onclick="window.__folhaImpostos('+m+')"><i class="ti ti-receipt-tax"></i> Impostos</button><button class="btn btn-g btn-sm" onclick="window.__contasModal()"><i class="ti ti-credit-card"></i> Contas</button>';
     }
     h+='</div>';
     if(soFechadas && (!f || f.status!=='aprovada')){
@@ -34191,7 +34201,7 @@ window.__finV30=true;})();
           (window.__fixosSubs?window.__fixosSubs(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0) subs.push({nome:fx.nome,valor:fx.valor,fixo:true}); });
           (window.__fixosDesc?window.__fixosDesc(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0) descs.push({nome:fx.nome,valor:fx.valor,fixo:true}); });
         }catch(e){}
-        linhasAuto[p.id]={ base:p.salario||0, subsidios:subs, descontos:descs };
+        linhasAuto[p.id]={ base:p.salario||0, subsidios:subs, descontos:descs, multas:[] };
       });
       if(!Object.keys(linhasAuto).length){ el.innerHTML=h+'<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem colaboradores com salário definido.</div>'; return; }
       f={ status:'auto', linhas:linhasAuto };
@@ -34209,9 +34219,12 @@ window.__finV30=true;})();
       var subs=(L.subsidios||[]).reduce(function(s,x){return s+(x.valor||0);},0);
       // Base dinâmica enquanto não aprovada (inteiro=salário actual, parcial=por aulas); congelada após aprovar
       var baseDin = __fAprovada ? (L.base||0) : (typeof window.__baseFolha==='function' ? window.__baseFolha(p,m) : (L.base||0));
-      var bruto=(baseDin||0)+subs; var inss=Math.round(bruto*0.03); var irps=calcIRPSl(bruto);
+      // v6.157: ilíquido = base + subsídios − multas de serviço (multa ANTES dos impostos);
+      // impostos sobre o ilíquido; descontos (dívidas à instituição) só DEPOIS dos impostos.
+      var mul=(L.multas||[]).reduce(function(s,x){return s+(x.valor||0);},0);
+      var bruto=(baseDin||0)+subs-mul; var inss=Math.round(bruto*0.03); var irps=calcIRPSl(bruto);
       var dm=(L.descontos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
-      return {pid:pid,p:p,L:L,baseDin:baseDin,bruto:bruto,inss:inss,irps:irps,dm:dm,liquido:bruto-inss-irps-dm,empresa:Math.round(bruto*0.04),custo:bruto+Math.round(bruto*0.04)-dm};
+      return {pid:pid,p:p,L:L,baseDin:baseDin,mul:mul,bruto:bruto,inss:inss,irps:irps,dm:dm,liquido:bruto-inss-irps-dm,empresa:Math.round(bruto*0.04),custo:bruto+Math.round(bruto*0.04)-dm};
     }).sort(function(x,y){return (x.p.nome||'').localeCompare(y.p.nome||'');});
     var tBase=rows.reduce(function(s,r){return s+(r.baseDin||0);},0);
     var tBruto=rows.reduce(function(s,r){return s+r.bruto;},0);
@@ -34222,21 +34235,24 @@ window.__finV30=true;})();
 
     var custoParcial = (typeof window.__totalParciais==='function') ? (window.__totalParciais(a,m)||0) : 0;
     var custoTotalFolha = Math.round(tBruto*1.04) - tDM + custoParcial;   // v6.92/6.109: despesa no balancete (inteiros c/ 4% INSS empresa − descontos + parciais por aula)
-    h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Bruto (inteiro)',tBruto,'var(--a)')+kpi('INSS + IRPS',tINSS+tIRPS,'var(--am)')+kpi('Líquido (inteiro)',tLiq,'var(--g)')+kpi('Parciais (por aula)',custoParcial,'var(--a2)')+kpi('Custo Total (Int.+Parc.)',custoTotalFolha,'var(--r)')+'</div>';
-    h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Descontos</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th style="text-align:right">Líquido</th><th style="text-align:right">INSS Empresa (4%)</th><th style="text-align:right">Custo Total</th></tr></thead><tbody>';
+    h+='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Ilíquido (inteiro)',tBruto,'var(--a)')+kpi('Total INSS (3%)',tINSS,'var(--am)')+kpi('Total IRPS',tIRPS,'var(--am)')+kpi('Líquido (inteiro)',tLiq,'var(--g)')+kpi('Parciais (por aula)',custoParcial,'var(--a2)')+kpi('Custo Total (Int.+Parc.)',custoTotalFolha,'var(--r)')+'</div>';
+    h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Multas de serviço</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th>Descontos</th><th style="text-align:right">Líquido</th><th style="text-align:right">INSS Empresa (4%)</th><th style="text-align:right">Custo Total</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var subC=(r.L.subsidios||[]).map(function(s,si){return '<div style="color:var(--g);font-size:10px">+'+fmtN(s.valor)+' '+s.nome+(canEdit?' <a onclick="window.__rmSubsidio('+m+','+Q+r.pid+Q+','+si+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addSubsidio('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ subsídio</a> · <a onclick="window.__fixosModal('+Q+r.pid+Q+')" style="cursor:pointer;color:var(--tl);font-size:10px" title="Subsídios/descontos fixos (todos os meses)">fixos</a>':'');
       var desC=(r.L.descontos||[]).map(function(d,di){return '<div style="color:var(--r);font-size:10px">-'+fmtN(d.valor)+' '+d.nome+(canEdit?' <a onclick="window.__rmDesconto('+m+','+Q+r.pid+Q+','+di+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addDesconto('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ desconto</a>':'');
+      var mulC=(r.L.multas||[]).map(function(x,mi2){return '<div style="color:var(--am);font-size:10px">-'+fmtN(x.valor)+' '+x.nome+(canEdit?' <a onclick="window.__rmMultaFolha('+m+','+Q+r.pid+Q+','+mi2+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addMultaFolha('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--am);font-size:10px">+ multa</a>':'');
       h+='<tr><td><div style="font-weight:700">'+r.p.nome+'</div><div style="font-size:10px;color:var(--t2)">'+(r.p.num||'')+' · '+(r.p.cargo||'')+'</div></td>'
         +'<td style="text-align:right;font-family:var(--fm)">'+fmtN(r.baseDin)+(r.p.regime==='parcial'?'<div style="font-size:9px;color:var(--am)">parcial · por aulas</div>':'')+'</td>'
-        +'<td>'+(subC||'—')+'</td><td>'+(desC||'—')+'</td>'
+        +'<td>'+(subC||'—')+'</td><td>'+(mulC||'—')+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">-'+fmtN(r.inss)+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">-'+fmtN(r.irps)+'</td>'
+        +'<td>'+(desC||'—')+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);font-weight:800;color:var(--g)">'+fmtN(r.liquido)+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">'+fmtN(r.empresa)+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);font-weight:700;color:var(--r)">'+fmtN(r.custo)+'</td></tr>';
     });
-    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td>TOTAIS</td><td style="text-align:right">'+fmtN(tBase)+'</td><td></td><td style="text-align:right;color:var(--r)">-'+fmtN(tDM)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tINSS)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tIRPS)+'</td><td style="text-align:right;color:var(--g)">'+fmtN(tLiq)+'</td><td style="text-align:right;color:var(--am)">'+fmtN(tEmpresa)+'</td><td style="text-align:right;color:var(--r)">'+fmtN(tCusto)+'</td></tr>';
+    var tMul=rows.reduce(function(s,r){return s+(r.mul||0);},0);
+    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td>TOTAIS</td><td style="text-align:right">'+fmtN(tBase)+'</td><td></td><td style="text-align:right;color:var(--am)">-'+fmtN(tMul)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tINSS)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tIRPS)+'</td><td style="text-align:right;color:var(--r)">-'+fmtN(tDM)+'</td><td style="text-align:right;color:var(--g)">'+fmtN(tLiq)+'</td><td style="text-align:right;color:var(--am)">'+fmtN(tEmpresa)+'</td><td style="text-align:right;color:var(--r)">'+fmtN(tCusto)+'</td></tr>';
     h+='</tbody></table></div></div>';
     el.innerHTML=h;
   };
@@ -42623,6 +42639,125 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return;
     }
     return _goExtr.apply(this, arguments);
+  };
+})();
+</script>
+
+<script>
+/* ═══ v6.157 — Folha: exportações Banco e Impostos + contas bancárias (RH) ═══ */
+(function(){
+  if(window.__folhaExp157) return; window.__folhaExp157=true;
+  var MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function anoL(){ try{ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear(); }catch(e){ return new Date().getFullYear(); } }
+  function nuitEsc(){ try{ return (typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nuit)||''; }catch(e){ return ''; } }
+  function podeVer(){ return ['gestor','director','gestor-financeiro'].includes(typeof curRole!=='undefined'?curRole:''); }
+  function irpsDe(b){ try{ return (typeof calcIRPS==='function')?calcIRPS(b):Math.round(b*0.15); }catch(e){ return Math.round(b*0.15); } }
+
+  /* contas bancárias: CONFIG.contasBanco[staffId] = { banco, conta } */
+  function contas(){ if(typeof CONFIG==='undefined') return {}; if(!CONFIG.contasBanco) CONFIG.contasBanco={}; return CONFIG.contasBanco; }
+  window.__contaDe=function(pid){ var c=contas()[String(pid)]; return c||{banco:'',conta:''}; };
+  window.__contaSet=function(pid,campo,v){
+    var C=contas(); var k=String(pid); if(!C[k]) C[k]={banco:'',conta:''}; C[k][campo]=String(v||'').trim();
+    try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){}
+  };
+  window.__contasModal=function(){
+    if(!podeVer()) return;
+    var ex=document.getElementById('contas-banco-modal'); if(ex) ex.remove();
+    var lista=(PROFS||[]).filter(function(p){ return (p.salario||0)>0; }).sort(function(a,b){ return (a.nome||'').localeCompare(b.nome||''); });
+    var rows=lista.map(function(p){
+      var c=window.__contaDe(p.id);
+      return '<tr><td style="padding:6px 8px;font-size:13px"><b>'+esc(p.nome)+'</b><br><span style="font-size:10px;color:var(--t3)">'+esc(p.num||'')+'</span></td>'
+        +'<td style="padding:6px 8px"><input class="ffi" value="'+esc(c.banco)+'" placeholder="Banco (ex: BCI)" style="width:110px" onchange="window.__contaSet(\''+esc(p.id)+'\',\'banco\',this.value)"></td>'
+        +'<td style="padding:6px 8px"><input class="ffi" value="'+esc(c.conta)+'" placeholder="Nº de conta / NIB" style="width:200px;font-family:var(--fm)" onchange="window.__contaSet(\''+esc(p.id)+'\',\'conta\',this.value)"></td></tr>';
+    }).join('');
+    var html='<div id="contas-banco-modal" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:22px;width:560px;max-width:96vw;max-height:86vh;overflow:auto">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:800;font-size:16px"><i class="ti ti-credit-card"></i> Contas Bancárias (RH)</div><button onclick="document.getElementById(&quot;contas-banco-modal&quot;).remove()" style="background:none;border:none;color:var(--t2);cursor:pointer;font-size:20px">&times;</button></div>'
+      +'<div style="font-size:11px;color:var(--t2);margin-bottom:12px">Usadas na Folha para o Banco. Guardado automaticamente ao sair do campo.</div>'
+      +'<table style="width:100%;border-collapse:collapse">'+rows+'</table>'
+      +'</div></div>';
+    var d=document.createElement('div'); d.innerHTML=html; document.body.appendChild(d.firstChild);
+  };
+
+  /* cálculo partilhado (mesma regra do render v6.157):
+     ilíquido = base + subsídios − multas; impostos sobre ilíquido; líquido = ilíquido − INSS − IRPS − descontos */
+  function calcFolha(m){
+    var a=anoL();
+    var f=null; try{ f=(CONFIG.folhas&&CONFIG.folhas[a]&&CONFIG.folhas[a][m])||null; }catch(e){}
+    var aprovada=f&&f.status==='aprovada';
+    var linhas;
+    if(f&&f.linhas){ linhas=f.linhas; }
+    else{
+      linhas={};
+      (PROFS||[]).filter(function(p){return (p.salario||0)>0 && p.regime!=='parcial';}).forEach(function(p){
+        var subs=[]; if((p.subsidioCargo||0)>0) subs.push({nome:'Cargo',valor:p.subsidioCargo});
+        var descs=[];
+        try{
+          (window.__fixosSubs?window.__fixosSubs(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0) subs.push({nome:fx.nome,valor:fx.valor}); });
+          (window.__fixosDesc?window.__fixosDesc(p.id):[]).forEach(function(fx){ if((fx.valor||0)>0) descs.push({nome:fx.nome,valor:fx.valor}); });
+        }catch(e){}
+        linhas[p.id]={ base:p.salario||0, subsidios:subs, descontos:descs, multas:[] };
+      });
+    }
+    var rows=Object.keys(linhas).filter(function(pid){
+      var p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);});
+      return !p || p.regime!=='parcial';
+    }).map(function(pid){
+      var L=linhas[pid];
+      var p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);})||{nome:'(removido)',num:'',id:pid};
+      var subs=(L.subsidios||[]).reduce(function(s,x){return s+(x.valor||0);},0);
+      var mul=(L.multas||[]).reduce(function(s,x){return s+(x.valor||0);},0);
+      var base=aprovada?(L.base||0):(typeof window.__baseFolha==='function'?window.__baseFolha(p,m):(L.base||0));
+      var iliq=(base||0)+subs-mul;
+      var inss=Math.round(iliq*0.03), irps=irpsDe(iliq);
+      var dm=(L.descontos||[]).reduce(function(s,x){return s+(x.valor||0);},0);
+      return { p:p, base:base, subs:subs, mul:mul, iliq:iliq, inss:inss, irps:irps, dm:dm, liq:iliq-inss-irps-dm, empresa:Math.round(iliq*0.04) };
+    }).sort(function(x,y){ return (x.p.nome||'').localeCompare(y.p.nome||''); });
+    return { rows:rows, aprovada:aprovada };
+  }
+  function abrirDoc(titulo, corpo, paisagem){
+    var w=window.open('','_blank','width=940,height=740'); if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o PDF.'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(titulo)+'</title>'
+      +'<style>body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#0f172a;padding:24px}h1{font-size:17px;margin:0 0 2px}.sub{color:#64748b;font-size:11px;margin-bottom:12px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:11px}th{background:#f1f5f9;text-transform:uppercase;font-size:9px}.r{text-align:right}tfoot td{font-weight:800;border-top:2px solid #94a3b8}.warn{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;font-size:11px;margin:10px 0}@media print{.noprint{display:none}}@page{size:A4 '+(paisagem?'landscape':'portrait')+';margin:11mm}</style></head><body>'
+      +'<div class="noprint" style="margin-bottom:12px"><button onclick="window.print()" style="padding:9px 20px;background:#4f8ef7;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer">Imprimir / Guardar PDF</button></div>'
+      +corpo+'</body></html>');
+    w.document.close();
+  }
+
+  /* A) Folha para o BANCO — só nome, conta e LÍQUIDO */
+  window.__folhaBanco=function(m){
+    if(!podeVer()) return;
+    var R=calcFolha(m); if(!R.rows.length){ if(typeof toast==='function') toast('Sem linhas na folha.'); return; }
+    var semConta=[], tot=0;
+    var rows=R.rows.map(function(r){
+      var c=window.__contaDe(r.p.id); tot+=r.liq;
+      if(!c.conta) semConta.push(r.p.nome);
+      return '<tr><td>'+esc(r.p.nome)+'</td><td>'+esc(c.banco||'—')+'</td><td style="font-family:monospace">'+esc(c.conta||'— definir no botão Contas —')+'</td><td class="r"><b>'+fmt(r.liq)+'</b></td></tr>';
+    }).join('');
+    var corpo='<h1>Folha para o Banco — Salários de '+MESES[m]+' '+anoL()+'</h1>'
+      +'<div class="sub">'+R.rows.length+' funcionário(s) · valores LÍQUIDOS a transferir'+(nuitEsc()?(' · NUIT: '+nuitEsc()):'')+' · '+(R.aprovada?'folha APROVADA':'pré-visualização (folha não aprovada)')+' · emitida a '+new Date().toLocaleDateString('pt-PT')+'</div>'
+      +(semConta.length?('<div class="warn">⚠ Sem nº de conta: '+esc(semConta.join(', '))+' — preencha no botão "Contas" da Folha.</div>'):'')
+      +'<table><thead><tr><th>Funcionário</th><th>Banco</th><th>Nº de conta / NIB</th><th class="r">Valor líquido (MZM)</th></tr></thead><tbody>'+rows+'</tbody>'
+      +'<tfoot><tr><td colspan="3">TOTAL A TRANSFERIR</td><td class="r">'+fmt(tot)+' MZM</td></tr></tfoot></table>';
+    abrirDoc('Folha Banco — '+MESES[m], corpo, false);
+  };
+
+  /* B) Extracto de IMPOSTOS — INSS trabalhador + empresa e IRPS por funcionário */
+  window.__folhaImpostos=function(m){
+    if(!podeVer()) return;
+    var R=calcFolha(m); if(!R.rows.length){ if(typeof toast==='function') toast('Sem linhas na folha.'); return; }
+    var tI=0,tE=0,tR=0,tB=0;
+    var rows=R.rows.map(function(r){
+      tI+=r.inss; tE+=r.empresa; tR+=r.irps; tB+=r.iliq;
+      return '<tr><td>'+esc(r.p.nome)+'<br><span style="font-size:9px;color:#94a3b8">'+esc(r.p.num||'')+'</span></td><td class="r">'+fmt(r.iliq)+'</td><td class="r">'+fmt(r.inss)+'</td><td class="r">'+fmt(r.empresa)+'</td><td class="r">'+fmt(r.inss+r.empresa)+'</td><td class="r">'+fmt(r.irps)+'</td></tr>';
+    }).join('');
+    var corpo='<h1>Extracto de Impostos — Salários de '+MESES[m]+' '+anoL()+'</h1>'
+      +'<div class="sub">INSS trabalhador 3% + INSS empresa 4% (entrega total 7%) e IRPS retido'+(nuitEsc()?(' · NUIT da Escola: '+nuitEsc()):'')+' · '+(R.aprovada?'folha APROVADA':'pré-visualização')+' · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
+      +'<table><thead><tr><th>Funcionário</th><th class="r">Base tributável</th><th class="r">INSS trab. (3%)</th><th class="r">INSS empresa (4%)</th><th class="r">INSS a entregar</th><th class="r">IRPS retido</th></tr></thead><tbody>'+rows+'</tbody>'
+      +'<tfoot><tr><td>TOTAIS</td><td class="r">'+fmt(tB)+'</td><td class="r">'+fmt(tI)+'</td><td class="r">'+fmt(tE)+'</td><td class="r">'+fmt(tI+tE)+'</td><td class="r">'+fmt(tR)+'</td></tr></tfoot></table>';
+    abrirDoc('Impostos — '+MESES[m], corpo, false);
   };
 })();
 </script>
