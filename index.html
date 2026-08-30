@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.152</span>
+    <span class="logo-ver">v6.153</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -42284,15 +42284,15 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var R=linhasAluno(a);
     var rows=R.linhas.map(function(l){
       var est = l.e.t==='pago'?'<span class="ok">Pago</span>' : l.e.t==='divida'?'<span class="bad">Em dívida</span>' : l.e.t==='isento'?'Isento / Bolsa':'A vencer';
-      return '<tr><td>'+l.mes+'</td><td class="r">'+fmt(l.v)+'</td><td>'+est+'</td><td class="r">'+(l.e.multa?fmt(l.e.multa):'—')+'</td><td class="r">'+(l.e.t==='divida'?fmt(l.v+l.e.multa):'—')+'</td><td>'+esc(l.recibo||'—')+'</td><td>'+esc(l.dataPag||'—')+'</td></tr>';
+      return '<tr><td>'+l.mes+'</td><td class="r">'+fmt(l.v)+'</td><td>'+est+'</td><td class="r">'+(l.e.multa?fmt(l.e.multa):'—')+'</td><td>'+esc(l.recibo||'—')+'</td><td>'+esc(l.dataPag||'—')+'</td></tr>';
     }).join('');
     var recibos=pagsArr().filter(function(p){ return p.alunoNum===a.num && p.estado!=='estornado'; }).sort(function(x,y){ return recNum(x).localeCompare(recNum(y)); });
     var recRows=recibos.map(function(p){ return '<tr><td>'+esc(recNum(p))+'</td><td>'+esc(p.data)+'</td><td>'+esc((p.meses&&p.meses.length)?p.meses.map(function(mi){return MZ[mi]||mi;}).join(', '):(p.categoriaNome||p.tipo||''))+'</td><td>'+esc(p.canal||'')+'</td><td>'+esc(p.ref||'')+'</td><td class="r">'+fmt(p.valorTotal)+'</td></tr>'; }).join('');
     return '<h1>Extracto do Aluno — '+esc(a.nome)+'</h1>'
       +'<div class="sub">Nº '+esc(a.num||'')+' · Turma '+esc(a.turma||'')+' · Encarregado: '+esc(encNome(a))+' · Ano lectivo '+anoL()+(nuitEsc()?(' · NUIT da Escola: '+esc(nuitEsc())):'')+' · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
       +'<h2>Propinas — mês a mês</h2>'
-      +'<table><thead><tr><th>Mês</th><th class="r">Propina</th><th>Estado</th><th class="r">Multa</th><th class="r">Total em dívida</th><th>Recibo</th><th>Data pag.</th></tr></thead><tbody>'+rows+'</tbody>'
-      +'<tfoot><tr><td>TOTAIS</td><td class="r ok">'+fmt(R.tPago)+' pago</td><td></td><td class="r bad">'+fmt(R.tMul)+'</td><td class="r bad">'+fmt(R.tDiv+R.tMul)+' em dívida</td><td colspan="2"></td></tr></tfoot></table>'
+      +'<table><thead><tr><th>Mês</th><th class="r">Propina</th><th>Estado</th><th class="r">Multa</th><th>Recibo</th><th>Data pag.</th></tr></thead><tbody>'+rows+'</tbody>'
+      +'<tfoot><tr><td>TOTAIS</td><td class="r"><span class="ok">'+fmt(R.tPago)+' pago</span><br><span class="bad">'+fmt(R.tDiv)+' em dívida</span></td><td></td><td class="r" style="color:#b45309">'+fmt(R.tMul)+' multa</td><td colspan="2"></td></tr></tfoot></table>'
       +(recibos.length?('<h2>Recibos emitidos ('+recibos.length+')</h2><table><thead><tr><th>Recibo</th><th>Data</th><th>Descrição</th><th>Canal</th><th>Ref</th><th class="r">Valor</th></tr></thead><tbody>'+recRows+'</tbody></table>'):'<div class="sub">Sem recibos emitidos.</div>');
   };
   window.__extrPdfAluno=function(){ var a=alunoDoFiltro(); if(!a){ if(typeof toast==='function') toast('Filtre um aluno único primeiro (nº ou nome).'); return; } abrirDoc('Extracto — '+a.nome, window.__extrDocAluno(a), false); };
@@ -42359,30 +42359,30 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var als=alunosDaTurma(t); if(!als.length){ if(typeof toast==='function') toast('Turma sem alunos.'); return; }
     var nM=(als[0].propinas||[]).length||12;
     var head=''; for(var i=0;i<nM;i++) head+='<th class="c">'+(MZ[i]||'').slice(0,3)+'</th>';
-    var tTP=0,tTD=0;
+    var tTP=0,tTD=0,tTM=0;
     var rows=als.map(function(a){
-      var R=linhasAluno(a); tTP+=R.tPago; tTD+=R.tDiv+R.tMul;
+      var R=linhasAluno(a); tTP+=R.tPago; tTD+=R.tDiv; tTM+=R.tMul;
       var cells=R.linhas.map(function(l){
         var s=l.e.t==='pago'?'<span class="ok">P</span>':l.e.t==='divida'?'<span class="bad">D</span>':l.e.t==='isento'?'I':'·';
         return '<td class="c">'+s+'</td>';
       }).join('');
-      return '<tr><td>'+esc(a.nome)+'<br><span style="font-size:9px;color:#94a3b8">'+esc(a.num||'')+'</span></td>'+cells+'<td class="r ok">'+fmt(R.tPago)+'</td><td class="r bad">'+fmt(R.tDiv+R.tMul)+'</td></tr>';
+      return '<tr><td>'+esc(a.nome)+'<br><span style="font-size:9px;color:#94a3b8">'+esc(a.num||'')+'</span></td>'+cells+'<td class="r ok">'+fmt(R.tPago)+'</td><td class="r bad">'+fmt(R.tDiv)+'</td><td class="r" style="color:#b45309">'+fmt(R.tMul)+'</td></tr>';
     }).join('');
     abrirDoc('Extracto Turma '+t,
       '<h1>Extracto da Turma '+esc(t)+'</h1><div class="sub">'+als.length+' aluno(s) · Ano lectivo '+anoL()+(nuitEsc()?(' · NUIT da Escola: '+esc(nuitEsc())):'')+' · P=pago · D=em dívida · I=isento · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
-      +'<table><thead><tr><th>Aluno</th>'+head+'<th class="r">Pago</th><th class="r">Dívida (c/ multa)</th></tr></thead><tbody>'+rows+'</tbody>'
-      +'<tfoot><tr><td>TOTAIS DA TURMA</td><td colspan="'+nM+'"></td><td class="r ok">'+fmt(tTP)+'</td><td class="r bad">'+fmt(tTD)+'</td></tr></tfoot></table>', true);
+      +'<table><thead><tr><th>Aluno</th>'+head+'<th class="r">Pago</th><th class="r">Dívida</th><th class="r">Multa</th></tr></thead><tbody>'+rows+'</tbody>'
+      +'<tfoot><tr><td>TOTAIS DA TURMA</td><td colspan="'+nM+'"></td><td class="r ok">'+fmt(tTP)+'</td><td class="r bad">'+fmt(tTD)+'</td><td class="r" style="color:#b45309">'+fmt(tTM)+'</td></tr></tfoot></table>', true);
   };
   window.__extrXlsTurma=function(){
     var t=turmaDoFiltro(); if(!t){ if(typeof toast==='function') toast('Seleccione uma turma no filtro.'); return; }
     var als=alunosDaTurma(t); if(!als.length){ if(typeof toast==='function') toast('Turma sem alunos.'); return; }
     var nM=(als[0].propinas||[]).length||12;
-    var hdr=['Aluno','Nº']; for(var i=0;i<nM;i++) hdr.push((MZ[i]||'').slice(0,3)); hdr.push('Pago','Dívida c/ multa');
+    var hdr=['Aluno','Nº']; for(var i=0;i<nM;i++) hdr.push((MZ[i]||'').slice(0,3)); hdr.push('Pago','Dívida','Multa');
     var L=[['Extracto da Turma',t,'Ano',anoL()],hdr];
     als.forEach(function(a){
       var R=linhasAluno(a); var row=[a.nome,a.num||''];
       R.linhas.forEach(function(l){ row.push(l.e.t==='pago'?'P':l.e.t==='divida'?'D':l.e.t==='isento'?'I':''); });
-      row.push(R.tPago, R.tDiv+R.tMul); L.push(row);
+      row.push(R.tPago, R.tDiv, R.tMul); L.push(row);
     });
     baixarCSV2('extracto_turma_'+t+'.csv',L);
   };
@@ -42457,9 +42457,10 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     return {t:'vencer',multa:0};
   }
   function resumoAluno(a){
-    var tP=0,tD=0,nD=0;
-    (a.propinas||[]).forEach(function(pr){ if(!pr) return; var e=estadoPr(pr); if(e.t==='pago') tP+=(pr.v||0); if(e.t==='divida'){ tD+=(pr.v||0)+e.multa; nD++; } });
-    return {pago:tP, divida:tD, nDiv:nD};
+    /* v6.153: dívida (base) e multa NUNCA misturadas */
+    var tP=0,tD=0,tM=0,nD=0;
+    (a.propinas||[]).forEach(function(pr){ if(!pr) return; var e=estadoPr(pr); if(e.t==='pago') tP+=(pr.v||0); if(e.t==='divida'){ tD+=(pr.v||0); tM+=e.multa; nD++; } });
+    return {pago:tP, divida:tD, multa:tM, nDiv:nD};
   }
   function abrirDoc(titulo, corpo, paisagem){
     var w=window.open('','_blank','width=980,height=760'); if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o PDF.'); return; }
@@ -42512,15 +42513,15 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(!alsList.length){ if(typeof toast==='function') toast('Sem alunos.'); return null; }
     var nM=(alsList[0].propinas||[]).length||12;
     var head=''; for(var i=0;i<nM;i++) head+='<th class="c">'+(MZ[i]||'').slice(0,3)+'</th>';
-    var tP=0,tD=0;
+    var tP=0,tD=0,tM=0;
     var rows=alsList.map(function(a){
-      var cells='', R=resumoAluno(a); tP+=R.pago; tD+=R.divida;
+      var cells='', R=resumoAluno(a); tP+=R.pago; tD+=R.divida; tM+=R.multa;
       (a.propinas||[]).forEach(function(pr){ var e=estadoPr(pr); var s=e.t==='pago'?'<span class="ok">P</span>':e.t==='divida'?'<span class="bad">D</span>':e.t==='isento'?'I':'·'; cells+='<td class="c">'+s+'</td>'; });
-      return '<tr><td>'+esc(a.nome)+'<br><span style="font-size:9px;color:#94a3b8">'+esc(a.num||'')+'</span></td><td>'+esc(a.turma||'')+'</td>'+cells+'<td class="r ok">'+fmt(R.pago)+'</td><td class="r bad">'+fmt(R.divida)+'</td></tr>';
+      return '<tr><td>'+esc(a.nome)+'<br><span style="font-size:9px;color:#94a3b8">'+esc(a.num||'')+'</span></td><td>'+esc(a.turma||'')+'</td>'+cells+'<td class="r ok">'+fmt(R.pago)+'</td><td class="r bad">'+fmt(R.divida)+'</td><td class="r" style="color:#b45309">'+fmt(R.multa)+'</td></tr>';
     }).join('');
     return '<h1>'+esc(titulo)+'</h1><div class="sub">'+esc(sub)+'</div>'
-      +'<table><thead><tr><th>Aluno</th><th>Turma</th>'+head+'<th class="r">Pago</th><th class="r">Dívida c/ multa</th></tr></thead><tbody>'+rows+'</tbody>'
-      +'<tfoot><tr><td colspan="2">TOTAIS</td><td colspan="'+nM+'"></td><td class="r ok">'+fmt(tP)+'</td><td class="r bad">'+fmt(tD)+'</td></tr></tfoot></table>';
+      +'<table><thead><tr><th>Aluno</th><th>Turma</th>'+head+'<th class="r">Pago</th><th class="r">Dívida</th><th class="r">Multa</th></tr></thead><tbody>'+rows+'</tbody>'
+      +'<tfoot><tr><td colspan="2">TOTAIS</td><td colspan="'+nM+'"></td><td class="r ok">'+fmt(tP)+'</td><td class="r bad">'+fmt(tD)+'</td><td class="r" style="color:#b45309">'+fmt(tM)+'</td></tr></tfoot></table>';
   }
   function ordenados(){ return als().slice().sort(function(x,y){ return String(x.turma||'').localeCompare(String(y.turma||''))||String(x.nome||'').localeCompare(String(y.nome||'')); }); }
   window.__extrGeralPdf=function(){
@@ -42530,12 +42531,12 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   window.__extrGeralXls=function(){
     var lista=ordenados(); if(!lista.length){ if(typeof toast==='function') toast('Sem alunos.'); return; }
     var nM=(lista[0].propinas||[]).length||12;
-    var hdr=['Aluno','Nº','Turma']; for(var i=0;i<nM;i++) hdr.push((MZ[i]||'').slice(0,3)); hdr.push('Pago','Dívida c/ multa');
+    var hdr=['Aluno','Nº','Turma']; for(var i=0;i<nM;i++) hdr.push((MZ[i]||'').slice(0,3)); hdr.push('Pago','Dívida','Multa');
     var L=[['Extracto Geral da Escola','Ano',anoL()],hdr];
     lista.forEach(function(a){
       var row=[a.nome,a.num||'',a.turma||''];
       (a.propinas||[]).forEach(function(pr){ var e=estadoPr(pr); row.push(e.t==='pago'?'P':e.t==='divida'?'D':e.t==='isento'?'I':''); });
-      var R=resumoAluno(a); row.push(R.pago,R.divida); L.push(row);
+      var R=resumoAluno(a); row.push(R.pago,R.divida,R.multa); L.push(row);
     });
     csv2('extracto_geral.csv',L);
   };
@@ -42553,6 +42554,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   }
   function render(){
     var el=document.getElementById('extracto-escola-c'); if(!el) return;
+    try{ var phr=document.querySelector('#v-extracto-escola .ph-right'); if(phr) phr.style.display='none'; }catch(e){}
     if(!['gestor','director','gestor-financeiro','secretario'].includes(typeof curRole!=='undefined'?curRole:'')){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
     var F=window.__extrF;
     var turmas=[]; try{ turmas=(TURMAS||[]).slice().sort(function(a,b){ return (parseInt(a.classe)||99)-(parseInt(b.classe)||99)||String(a.id).localeCompare(String(b.id)); }); }catch(e){}
@@ -42582,14 +42584,15 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       var q=F.aluno.toLowerCase();
       var hits=als().filter(function(a){ return String(a.nome||'').toLowerCase().indexOf(q)>=0 || String(a.num||'').toLowerCase().indexOf(q)>=0; }).slice(0,20);
       h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-users"></i> Alunos encontrados</span><span style="font-size:12px;color:var(--t2)">'+hits.length+'</span></div><div class="tw"><table>'
-        +'<thead><tr><th>Aluno</th><th>Turma</th><th style="text-align:right">Pago</th><th style="text-align:right">Dívida (c/ multa)</th><th>Meses em dívida</th><th style="text-align:center">Acções</th></tr></thead><tbody>';
-      if(!hits.length) h+='<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:22px">Nenhum aluno encontrado.</td></tr>';
+        +'<thead><tr><th>Aluno</th><th>Turma</th><th style="text-align:right">Pago</th><th style="text-align:right">Dívida</th><th style="text-align:right">Multa</th><th>Meses em dívida</th><th style="text-align:center">Acções</th></tr></thead><tbody>';
+      if(!hits.length) h+='<tr><td colspan="7" style="text-align:center;color:var(--t2);padding:22px">Nenhum aluno encontrado.</td></tr>';
       hits.forEach(function(a){
         var R=resumoAluno(a);
         h+='<tr><td style="font-weight:700">'+esc(a.nome)+'<br><span style="font-size:10px;color:var(--t3);font-family:var(--fm)">'+esc(a.num||'')+'</span></td>'
           +'<td><span class="badge bin">'+esc(a.turma||'—')+'</span></td>'
           +'<td style="text-align:right;color:var(--g);font-weight:700">'+fmt(R.pago)+'</td>'
           +'<td style="text-align:right;color:'+(R.divida?'var(--r)':'var(--t3)')+';font-weight:700">'+fmt(R.divida)+'</td>'
+          +'<td style="text-align:right;color:'+(R.multa?'var(--am)':'var(--t3)')+';font-weight:700">'+fmt(R.multa)+'</td>'
           +'<td style="text-align:center">'+(R.nDiv?('<span class="badge bre">'+R.nDiv+'</span>'):'<span class="badge bok">0</span>')+'</td>'
           +'<td style="text-align:center;white-space:nowrap">'
             +'<button class="btn btn-p btn-sm" title="Extracto completo (PDF)" onclick="window.__extrExtNum(\''+esc(a.num)+'\')"><i class="ti ti-file-type-pdf"></i></button> '
@@ -42600,29 +42603,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       h+='</tbody></table></div></div>';
       el.innerHTML=h; return;
     }
-    /* sem pesquisa: KPIs + movimentos */
-    var lista=movimentos();
-    var total=lista.reduce(function(s,p){ return s+(p.estado==='estornado'?0:(p.valorTotal||0)); },0);
-    h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
-      +'<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--a)">'+lista.length+'</div><div style="font-size:10px;color:var(--t2)">Recibos / pagamentos</div></div>'
-      +'<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--g)">'+fmt(total)+'</div><div style="font-size:10px;color:var(--t2)">Total (MZM, sem estornados)</div></div>'
-      +'<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--tl)">'+(lista.length?((recNum(lista[0])||'—')+' → '+(recNum(lista[lista.length-1])||'—')):'—')+'</div><div style="font-size:10px;color:var(--t2)">Intervalo de recibos</div></div>'
-      +'</div>';
-    h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-receipt"></i> Movimentos</span><span style="font-size:12px;color:var(--t2)">'+lista.length+' registo(s)</span></div><div class="tw"><table><thead><tr><th>Recibo</th><th>Data</th><th>Aluno</th><th>Turma</th><th>Canal</th><th>Ref</th><th style="text-align:right">Valor</th><th>Estado</th><th></th></tr></thead><tbody>';
-    if(!lista.length) h+='<tr><td colspan="9" style="text-align:center;color:var(--t2);padding:22px">Sem movimentos para este filtro.</td></tr>';
-    lista.forEach(function(p){
-      var eb=p.estado==='confirmado'?'<span class="badge bok" style="font-size:10px">Confirmado</span>':p.estado==='por_confirmar'?'<span class="badge bwn" style="font-size:10px">Por confirmar</span>':p.estado==='estornado'?'<span class="badge bre" style="font-size:10px">Estornado</span>':esc(p.estado||'—');
-      h+='<tr><td style="font-family:var(--fm);font-size:11px;font-weight:700">'+esc(recNum(p)||'—')+'</td>'
-        +'<td style="font-family:var(--fm);font-size:11px">'+esc(p.data)+'</td>'
-        +'<td style="font-weight:700">'+esc((p.alunoNome||'').split(' ').slice(0,2).join(' '))+'<br><span style="font-size:10px;color:var(--t3);font-family:var(--fm)">'+esc(p.alunoNum||'')+'</span></td>'
-        +'<td><span class="badge bin">'+esc(p.turmaId||'—')+'</span></td>'
-        +'<td style="font-size:11px">'+esc(p.canal||'—')+'</td>'
-        +'<td><code style="font-size:10px;background:var(--bg3);padding:2px 5px;border-radius:4px">'+esc(p.ref||'—')+'</code></td>'
-        +'<td style="text-align:right;font-weight:700'+(p.estado==='estornado'?';text-decoration:line-through;color:var(--t3)':'')+'">'+fmt(p.valorTotal)+'</td>'
-        +'<td>'+eb+'</td>'
-        +'<td>'+(p.estado==='confirmado'?'<button class="btn btn-g btn-sm" title="Reimprimir recibo oficial" onclick="window.__extrRecibo(\''+esc(p.id)+'\')"><i class="ti ti-printer"></i></button>':'')+'</td></tr>';
-    });
-    h+='</tbody></table></div></div>';
+    /* v6.153: página limpa — sem listagem de recibos (essa vive no Relatório de Actividades → Entradas) */
+    h+='<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Pesquise um aluno para emitir o <b>extracto</b> e as <b>facturas</b> dele, ou use os botões acima para o extracto <b>geral</b> ou da <b>turma</b>. A listagem de recibos está no Relatório de Actividades → Entradas.</div>';
     el.innerHTML=h;
   }
   window.__extrSet=function(k,v){ window.__extrF[k]=v; render(); };
