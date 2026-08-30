@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.159</span>
+    <span class="logo-ver">v6.160</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -42984,6 +42984,133 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return;
     }
     return _goCx.apply(this, arguments);
+  };
+})();
+</script>
+
+<script>
+/* ═══ v6.160 — Factura/Recibo do aluno profissional (substitui o modal EC+timestamp) ═══
+   Mês PAGO → Recibo oficial (emitirReciboPropina, nº AAAA#####).
+   Mês em dívida/por vencer → Factura FT-<ano>-<nºaluno>-<mm> em PDF com NUIT e marca. */
+(function(){
+  if(window.__fact160) return; window.__fact160=true;
+  var MZ=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function anoL(){ try{ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear(); }catch(e){ return new Date().getFullYear(); } }
+  function nuitEsc(){ try{ return (typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nuit)||''; }catch(e){ return ''; } }
+  function encNome(a){
+    try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){return x.num===a.enc;}):null; if(e&&e.nome) return e.nome; }catch(er){}
+    return a.enome||a.erel||'—';
+  }
+  function multaDe(pr){ try{ if(typeof window.__multaDe==='function') return window.__multaDe(pr)||0; }catch(e){} try{ if(typeof calcMulta==='function') return calcMulta(pr,(pr.m||1)-1)||0; }catch(e){} return 0; }
+  function estadoDe(pr){
+    if(pr.st==='pago') return 'pago';
+    if(pr.st==='isento') return 'isento';
+    try{ if(typeof window.__estadoPropina==='function') return window.__estadoPropina(pr); }catch(e){}
+    return (pr.m<=((new Date()).getMonth()+1))?'divida':'vencer';
+  }
+
+  function facturaDoc(a, pr, comMulta){
+    var mi=(pr.m||1)-1, mm=String(pr.m).padStart(2,'0');
+    var est=estadoDe(pr);
+    var mul=(comMulta && est==='divida')?multaDe(pr):0;
+    var base=pr.v|| (typeof CONFIG!=='undefined'?(CONFIG.valorPropina||4500):4500);
+    return '<div style="border:1px solid #cbd5e1;border-radius:12px;padding:20px;max-width:620px;margin:0 auto">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1a8f9e;padding-bottom:10px;margin-bottom:6px">'
+        +'<span style="font-size:17px;font-weight:800;color:#12315f">FACTURA — Propina de '+(MZ[mi]||'')+' '+anoL()+'</span>'
+        +'<span style="font-family:monospace;font-size:13px;color:#1a8f9e;font-weight:700">FT-'+anoL()+'-'+esc(a.num||'')+'-'+mm+'</span>'
+      +'</div>'
+      +'<div style="font-size:10px;color:#64748b;margin-bottom:12px">NUIT da Escola: <b style="color:#12315f;font-family:monospace">'+esc(nuitEsc()||'—')+'</b> · emitida a '+new Date().toLocaleDateString('pt-PT')+(est==='vencer'?' · <b style="color:#b45309">PRÓ-FORMA (mês ainda por vencer)</b>':'')+'</div>'
+      +'<table style="width:100%;border-collapse:collapse;margin-bottom:10px">'
+        +'<tr><td style="width:32%;color:#64748b;padding:5px 8px;border-bottom:1px solid #e5e7eb">Aluno</td><td style="font-weight:700;padding:5px 8px;border-bottom:1px solid #e5e7eb">'+esc(a.nome)+'</td></tr>'
+        +'<tr><td style="color:#64748b;padding:5px 8px;border-bottom:1px solid #e5e7eb">Nº / Turma</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb">'+esc(a.num||'')+' · '+esc(a.turma||'')+'</td></tr>'
+        +'<tr><td style="color:#64748b;padding:5px 8px;border-bottom:1px solid #e5e7eb">Encarregado</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb">'+esc(encNome(a))+'</td></tr>'
+      +'</table>'
+      +'<table style="width:100%;border-collapse:collapse;margin-bottom:10px">'
+        +'<tr style="background:#f1f5f9"><th style="text-align:left;padding:6px 8px;font-size:10px;text-transform:uppercase">Descrição</th><th style="text-align:right;padding:6px 8px;font-size:10px;text-transform:uppercase">Valor (MZM)</th></tr>'
+        +'<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">Propina de '+(MZ[mi]||'')+' '+anoL()+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+fmt(base)+'</td></tr>'
+        +(mul?('<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">Multa de atraso</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+fmt(mul)+'</td></tr>'):'')
+      +'</table>'
+      +'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>TOTAL A PAGAR</span><span>'+fmt(base+mul)+' MZM</span></div>'
+      +'<div style="font-size:10px;color:#64748b;margin-top:10px">Pagamento na secretaria, por POS, ou por depósito/transferência — indique o Nº do aluno ('+esc(a.num||'')+') e guarde o talão como referência.</div>'
+      +'</div>';
+  }
+  function abrirFacturaPDF(a, pr, comMulta){
+    var w=window.open('','_blank','width=760,height=760'); if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o PDF.'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Factura — '+esc(a.nome)+'</title>'
+      +'<style>body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#0f172a;padding:24px}@media print{.noprint{display:none}}@page{size:A5 landscape;margin:9mm}</style></head><body>'
+      +'<div class="noprint" style="margin-bottom:12px;text-align:center"><button onclick="window.print()" style="padding:9px 22px;background:#4f8ef7;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer">Imprimir / Guardar PDF</button></div>'
+      +facturaDoc(a, pr, comMulta)
+      +'</body></html>');
+    w.document.close();
+  }
+  window.__factPDF=function(alunoId, m, comMulta){
+    var a=ALUNOS.find(function(x){ return x.id===alunoId; }); if(!a) return;
+    var pr=(a.propinas||[]).find(function(p){ return p.m===m; }); if(!pr) return;
+    abrirFacturaPDF(a, pr, comMulta);
+  };
+  window.__factRecibo=function(alunoId, m){
+    var a=ALUNOS.find(function(x){ return x.id===alunoId; }); if(!a) return;
+    var pr=(a.propinas||[]).find(function(p){ return p.m===m; });
+    if(pr && pr.pagamentoId && typeof emitirReciboPropina==='function'){ closeM('m-factura'); emitirReciboPropina(pr.pagamentoId); }
+    else if(typeof toast==='function') toast('Sem pagamento associado a este mês — recibo indisponível.');
+  };
+
+  /* override do modal */
+  window.gerarFactura=function(mesIdx, incluirMulta){
+    var a=ALUNOS.find(function(x){ return x.id===curAlunoId; }); if(!a) return;
+    var mesAtual=(new Date()).getMonth()+1;
+    if(mesIdx===undefined||mesIdx===null){
+      var prim=(a.propinas||[]).find(function(p){ return estadoDe(p)==='divida'; })||(a.propinas||[]).find(function(p){ return p.st==='pago'; })||(a.propinas||[])[0];
+      mesIdx=prim?prim.m:1;
+    }
+    mesIdx=parseInt(mesIdx,10);
+    incluirMulta=(incluirMulta===undefined||incluirMulta===null)?true:(incluirMulta===true||incluirMulta==='true');
+    var pr=(a.propinas||[]).find(function(p){ return p.m===mesIdx; })||{m:mesIdx,v:(CONFIG.valorPropina||4500),st:'npago'};
+    var est=estadoDe(pr);
+    var mul=(incluirMulta&&est==='divida')?multaDe(pr):0;
+    var base=pr.v||(CONFIG.valorPropina||4500);
+    /* limpar restos do modal estático */
+    try{ var mt=document.querySelector('#m-factura .mt'); if(mt) mt.textContent='Factura / Recibo — '+((a.nome||'').split(' ').slice(0,2).join(' ')); }catch(e){}
+    try{ var ib=document.querySelector('#m-factura .mbod .ib-box'); if(ib) ib.style.display='none'; }catch(e){}
+    var opts=(a.propinas||[]).map(function(p){
+      var e2=estadoDe(p); var tag=e2==='pago'?' (paga)':e2==='isento'?' (isenta)':e2==='divida'?' (em dívida)':' (por vencer)';
+      return '<option value="'+p.m+'"'+(p.m===mesIdx?' selected':'')+'>'+(MZ[p.m-1]||p.m)+' '+anoL()+tag+'</option>';
+    }).join('');
+    var numFE=document.getElementById('fact-num'), codE=document.getElementById('fact-cod');
+    var Q=String.fromCharCode(39);
+    var h='<div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">'
+      +'<div style="flex:1;min-width:150px"><div style="font-size:10px;color:var(--t2);margin-bottom:4px">MÊS</div>'
+      +'<select class="ffi" onchange="gerarFactura(this.value, (document.getElementById('+Q+'fact-multa-chk'+Q+')||{checked:true}).checked)">'+opts+'</select></div>'
+      +(est==='divida'?('<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding-bottom:8px"><input type="checkbox" id="fact-multa-chk"'+(incluirMulta?' checked':'')+' onchange="gerarFactura('+mesIdx+', this.checked)"> Incluir multa</label>'):'')
+      +'</div>';
+    if(est==='pago'){
+      var pag=null; try{ pag=(typeof PAGAMENTOS!=='undefined')?PAGAMENTOS.find(function(x){ return x.id===pr.pagamentoId; }):null; }catch(e){}
+      var recN=''; try{ recN=pag?((typeof window.__reciboDe==='function'?window.__reciboDe(pag):'')||pag.reciboNum||''):''; }catch(e){}
+      if(numFE) numFE.textContent='Propina PAGA'+(recN?(' — Recibo '+recN):'');
+      if(codE) codE.textContent=recN||'—';
+      h+='<div class="ib-box ib-g" style="margin-bottom:10px"><i class="ti ti-circle-check"></i> Propina de '+(MZ[mesIdx-1]||'')+' está paga'+(pag?(' ('+esc(pag.data||'')+' · ref '+esc(pag.ref||'—')+')'):'')+'.</div>'
+      +'<button class="btn btn-p" style="width:100%" onclick="window.__factRecibo('+a.id+','+mesIdx+')"><i class="ti ti-printer"></i> Emitir Recibo oficial (PDF)</button>';
+    } else if(est==='isento'){
+      if(numFE) numFE.textContent='Isento / Bolsa'; if(codE) codE.textContent='—';
+      h+='<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Propina de '+(MZ[mesIdx-1]||'')+' está isenta (bolsa) — não há factura nem recibo.</div>';
+    } else {
+      var num='FT-'+anoL()+'-'+(a.num||'')+'-'+String(mesIdx).padStart(2,'0');
+      if(numFE) numFE.textContent='Factura '+num; if(codE) codE.textContent=num;
+      h+='<div class="rcrow"><span style="color:var(--t2)">Aluno</span><span style="font-weight:700">'+esc(a.nome)+'</span></div>'
+        +'<div class="rcrow"><span style="color:var(--t2)">Nº / Turma</span><span style="font-family:var(--fm)">'+esc(a.num||'')+' · '+esc(a.turma||'')+'</span></div>'
+        +'<div class="rcrow"><span style="color:var(--t2)">Encarregado</span><span>'+esc(encNome(a))+'</span></div>'
+        +'<div class="rcrow"><span style="color:var(--t2)">Propina '+(MZ[mesIdx-1]||'')+'</span><span>'+fmt(base)+' MZM</span></div>'
+        +(mul?('<div class="rcrow"><span style="color:var(--t2)">Multa de atraso</span><span style="color:var(--am)">+'+fmt(mul)+' MZM</span></div>'):'')
+        +'<div class="rcrow"><span style="color:var(--t2)">TOTAL A PAGAR</span><span style="font-weight:800;color:var(--g)">'+fmt(base+mul)+' MZM</span></div>'
+        +(est==='vencer'?'<div style="margin-top:8px;font-size:11px;color:var(--am)"><i class="ti ti-clock"></i> Mês ainda por vencer — a factura sai como pró-forma.</div>':'')
+        +'<button class="btn btn-p" style="width:100%;margin-top:12px" onclick="window.__factPDF('+a.id+','+mesIdx+','+(incluirMulta?'true':'false')+')"><i class="ti ti-file-type-pdf"></i> Gerar Factura (PDF)</button>';
+    }
+    var body=document.getElementById('fact-body'); if(body) body.innerHTML=h;
+    /* footer real (o antigo tinha botões falsos) */
+    try{ var ft=document.querySelector('#m-factura .mft'); if(ft) ft.innerHTML='<button class="btn btn-g" onclick="closeM(\'m-factura\')">Fechar</button>'; }catch(e){}
+    openM('m-factura');
   };
 })();
 </script>
