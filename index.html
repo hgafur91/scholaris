@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.150</span>
+    <span class="logo-ver">v6.151</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -42234,6 +42234,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){return x.num===a.enc;}):null; if(e&&e.nome) return e.nome; }catch(er){}
     return a.enome||a.erel||'—';
   }
+  function nuitEsc(){ try{ return (typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nuit)||(typeof CONFIG!=='undefined'&&CONFIG.nuit)||''; }catch(e){ return ''; } }
   function estadoPr(pr){
     if(!pr) return {t:'—',multa:0};
     if(pr.st==='pago') return {t:'pago',multa:0};
@@ -42288,7 +42289,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var recibos=pagsArr().filter(function(p){ return p.alunoNum===a.num && p.estado!=='estornado'; }).sort(function(x,y){ return recNum(x).localeCompare(recNum(y)); });
     var recRows=recibos.map(function(p){ return '<tr><td>'+esc(recNum(p))+'</td><td>'+esc(p.data)+'</td><td>'+esc((p.meses&&p.meses.length)?p.meses.map(function(mi){return MZ[mi]||mi;}).join(', '):(p.categoriaNome||p.tipo||''))+'</td><td>'+esc(p.canal||'')+'</td><td>'+esc(p.ref||'')+'</td><td class="r">'+fmt(p.valorTotal)+'</td></tr>'; }).join('');
     return '<h1>Extracto do Aluno — '+esc(a.nome)+'</h1>'
-      +'<div class="sub">Nº '+esc(a.num||'')+' · Turma '+esc(a.turma||'')+' · Encarregado: '+esc(encNome(a))+' · Ano lectivo '+anoL()+' · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
+      +'<div class="sub">Nº '+esc(a.num||'')+' · Turma '+esc(a.turma||'')+' · Encarregado: '+esc(encNome(a))+' · Ano lectivo '+anoL()+(nuitEsc()?(' · NUIT da Escola: '+esc(nuitEsc())):'')+' · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
       +'<h2>Propinas — mês a mês</h2>'
       +'<table><thead><tr><th>Mês</th><th class="r">Propina</th><th>Estado</th><th class="r">Multa</th><th class="r">Total em dívida</th><th>Recibo</th><th>Data pag.</th></tr></thead><tbody>'+rows+'</tbody>'
       +'<tfoot><tr><td>TOTAIS</td><td class="r ok">'+fmt(R.tPago)+' pago</td><td></td><td class="r bad">'+fmt(R.tMul)+'</td><td class="r bad">'+fmt(R.tDiv+R.tMul)+' em dívida</td><td colspan="2"></td></tr></tfoot></table>'
@@ -42308,6 +42309,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function facturaHTML(a, mi, pr, multa){
     var mm=String(mi+1).padStart(2,'0');
     return '<div class="fat"><div class="fat-h"><span class="fat-t">FACTURA — Propina de '+(MZ[mi]||mi)+' '+anoL()+'</span><span class="fat-n">FT-'+anoL()+'-'+esc(a.num||'')+'-'+mm+'</span></div>'
+      +'<div style="font-size:10px;color:#64748b;margin:-4px 0 8px">NUIT da Escola: <b style="color:#12315f;font-family:monospace">'+esc(nuitEsc()||'—')+'</b></div>'
       +'<table><tbody>'
       +'<tr><td style="width:30%;color:#64748b">Aluno</td><td style="font-weight:700">'+esc(a.nome)+'</td></tr>'
       +'<tr><td style="color:#64748b">Nº / Turma</td><td>'+esc(a.num||'')+' · '+esc(a.turma||'')+'</td></tr>'
@@ -42335,6 +42337,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   };
   function reciboHTML(a,p){
     return '<div class="fat"><div class="fat-h"><span class="fat-t">RECIBO</span><span class="fat-n">'+esc(recNum(p))+'</span></div>'
+      +'<div style="font-size:10px;color:#64748b;margin:-4px 0 8px">NUIT da Escola: <b style="color:#12315f;font-family:monospace">'+esc(nuitEsc()||'—')+'</b></div>'
       +'<table><tbody>'
       +'<tr><td style="width:30%;color:#64748b">Aluno</td><td style="font-weight:700">'+esc(a?a.nome:p.alunoNome||'')+' ('+esc(p.alunoNum||'')+' · '+esc(p.turmaId||'')+')</td></tr>'
       +'<tr><td style="color:#64748b">Descrição</td><td>'+esc((p.meses&&p.meses.length)?('Propina '+p.meses.map(function(mi){return MZ[mi]||mi;}).join(', ')):(p.categoriaNome||p.tipo||'Pagamento'))+'</td></tr>'
@@ -42366,7 +42369,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return '<tr><td>'+esc(a.nome)+'<br><span style="font-size:9px;color:#94a3b8">'+esc(a.num||'')+'</span></td>'+cells+'<td class="r ok">'+fmt(R.tPago)+'</td><td class="r bad">'+fmt(R.tDiv+R.tMul)+'</td></tr>';
     }).join('');
     abrirDoc('Extracto Turma '+t,
-      '<h1>Extracto da Turma '+esc(t)+'</h1><div class="sub">'+als.length+' aluno(s) · Ano lectivo '+anoL()+' · P=pago · D=em dívida · I=isento · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
+      '<h1>Extracto da Turma '+esc(t)+'</h1><div class="sub">'+als.length+' aluno(s) · Ano lectivo '+anoL()+(nuitEsc()?(' · NUIT da Escola: '+esc(nuitEsc())):'')+' · P=pago · D=em dívida · I=isento · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
       +'<table><thead><tr><th>Aluno</th>'+head+'<th class="r">Pago</th><th class="r">Dívida (c/ multa)</th></tr></thead><tbody>'+rows+'</tbody>'
       +'<tfoot><tr><td>TOTAIS DA TURMA</td><td colspan="'+nM+'"></td><td class="r ok">'+fmt(tTP)+'</td><td class="r bad">'+fmt(tTD)+'</td></tr></tfoot></table>', true);
   };
