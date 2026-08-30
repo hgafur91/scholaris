@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.157</span>
+    <span class="logo-ver">v6.158</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5817,9 +5817,9 @@ function rDespesas(){
   document.getElementById('desp-total').textContent=saidasAno.toLocaleString();
   var _entEl=document.getElementById('desp-entradas'); if(_entEl)_entEl.textContent=entradasAno.toLocaleString();
   document.getElementById('desp-saldo').textContent=(entradasAno-saidasAno).toLocaleString();
-  var _dtab = window.__despTab||'despesas';
-  var _bar = '<div style="display:flex;gap:8px;margin-bottom:14px"><button class="btn '+(_dtab==='despesas'?'btn-p':'btn-g')+' btn-sm" onclick="window.__setDespTab(\'despesas\')"><i class="ti ti-cash"></i> Despesas Gerais</button><button class="btn '+(_dtab==='salarios'?'btn-p':'btn-g')+' btn-sm" onclick="window.__setDespTab(\'salarios\')"><i class="ti ti-users"></i> Salários</button></div>';
-  if(_dtab==='salarios'){ document.getElementById('despesas-c').innerHTML=_bar+'<div id="desp-folha-c"></div>'; if(window.__folhaEdit) window.__folhaEdit(); return; }
+  /* v6.158: Salários saíram daqui — geridos por inteiro na aba "Folha de Salários" */
+  var _dtab='despesas';
+  var _bar='';
   document.getElementById('despesas-c').innerHTML=_bar+DESP_CAT.map((cat,ci)=>`
     <div class="desp-acc">
       <div class="desp-head" onclick="toggleDesp('db-${ci}','da-${ci}')">
@@ -28130,8 +28130,8 @@ function exportarFolhaSalarios(mes) {
       <th style="text-align:right">Base</th><th style="text-align:right">Subsídios</th>
       <th style="text-align:right">Multas serv.</th>
       <th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th>
-      <th style="text-align:right">Descontos</th>
       <th style="text-align:right">Líquido</th>
+      <th style="text-align:right">Descontos</th>
     </tr></thead><tbody>
       ${inteiroRows.length?inteiroRows.map((r,i)=>`<tr>
         <td style="text-align:center;font-size:10px">${i+1}</td>
@@ -28141,8 +28141,8 @@ function exportarFolhaSalarios(mes) {
         <td style="text-align:right;font-family:monospace">${r.mul?'-'+fmt(r.mul):'—'}</td>
         <td style="text-align:right;font-family:monospace">-${fmt(r.inss)}</td>
         <td style="text-align:right;font-family:monospace">-${fmt(r.irps)}</td>
-        <td style="text-align:right;font-family:monospace">${r.dm?'-'+fmt(r.dm):'—'}</td>
         <td style="text-align:right;font-family:monospace;font-weight:800">${fmt(r.liquido)}</td>
+        <td style="text-align:right;font-family:monospace">${r.dm?'-'+fmt(r.dm):'—'}</td>
       </tr>`).join(''):`<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:8px">Sem colaboradores a tempo inteiro.</td></tr>`}
       <tr style="font-weight:800;border-top:2px solid #e2e8f0">
         <td colspan="3">SUBTOTAL — INTEIRO</td>
@@ -28151,8 +28151,8 @@ function exportarFolhaSalarios(mes) {
         <td style="text-align:right">${(()=>{const tm=inteiroRows.reduce((s,r)=>s+(r.mul||0),0);return tm?'-'+fmt(tm):'—';})()}</td>
         <td style="text-align:right">-${fmt(tiI)}</td>
         <td style="text-align:right">-${fmt(tiR)}</td>
-        <td style="text-align:right">${(()=>{const td=inteiroRows.reduce((s,r)=>s+(r.dm||0),0);return td?'-'+fmt(td):'—';})()}</td>
         <td style="text-align:right;color:#166534">${fmt(tiL)}</td>
+        <td style="text-align:right">${(()=>{const td=inteiroRows.reduce((s,r)=>s+(r.dm||0),0);return td?'-'+fmt(td):'—';})()}</td>
       </tr>
     </tbody></table>
 
@@ -32353,6 +32353,7 @@ window.renderBalanceteRange=function(mIni,mFim){
   /* v6.131 — 5 grupos definitivos (Visão Geral=Dashboard · Receitas · Despesas · Cobrança · Relatórios) */
   var GRUPOS=[
     {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
+      {id:'fg-dash-ent', lbl:'Dashboard de Entradas', ic:'ti-trending-up', go:'dash-entradas'},
       {id:'fg-propinas', lbl:'Propinas', ic:'ti-coin', go:'propinas'},
       {id:'fg-pagamentos', lbl:'Pagamentos & Recibos', ic:'ti-credit-card', go:'pagamentos'},
       {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'},
@@ -32360,6 +32361,7 @@ window.renderBalanceteRange=function(mIni,mFim){
       {id:'fg-bolsas', lbl:'Bolsas / Bolseiros', ic:'ti-discount-2', go:'bolsas'}
     ]},
     {id:'fg-despesas', lbl:'Despesas', ic:'ti-logout-2', itens:[
+      {id:'fg-dash-sai', lbl:'Dashboard de Saídas', ic:'ti-chart-donut', go:'dash-saidas'},
       {id:'fg-desp', lbl:'Despesas', ic:'ti-cash', go:'despesas'},
       {id:'fg-folha', lbl:'Folha de Salários', ic:'ti-users', go:'folha-salarios'}
     ]},
@@ -34173,7 +34175,7 @@ window.__finV30=true;})();
     var f=getFolha(a,m);
     var canEdit = !soFechadas && f && f.status==='rascunho' && podeEditar();
     var Q=String.fromCharCode(39);
-    var rer = soFechadas ? 'rFolhaSalarios()' : 'window.__folhaEdit()';
+    var rer = 'window.__folhaRerender()';
     var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
     h+='<select class="ffi" style="width:140px" onchange="window.__folhaMes=+this.value;'+rer+'">'+MESES.map(function(nm,i){return i===0?'':'<option value="'+i+'" '+(i===m?'selected':'')+'>'+nm+'</option>';}).join('')+'</select>';
     if(soFechadas){
@@ -34236,7 +34238,7 @@ window.__finV30=true;})();
     var custoParcial = (typeof window.__totalParciais==='function') ? (window.__totalParciais(a,m)||0) : 0;
     var custoTotalFolha = Math.round(tBruto*1.04) - tDM + custoParcial;   // v6.92/6.109: despesa no balancete (inteiros c/ 4% INSS empresa − descontos + parciais por aula)
     h+='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px">'+kpi('Total Ilíquido (inteiro)',tBruto,'var(--a)')+kpi('Total INSS (3%)',tINSS,'var(--am)')+kpi('Total IRPS',tIRPS,'var(--am)')+kpi('Líquido (inteiro)',tLiq,'var(--g)')+kpi('Parciais (por aula)',custoParcial,'var(--a2)')+kpi('Custo Total (Int.+Parc.)',custoTotalFolha,'var(--r)')+'</div>';
-    h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Multas de serviço</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th>Descontos</th><th style="text-align:right">Líquido</th><th style="text-align:right">INSS Empresa (4%)</th><th style="text-align:right">Custo Total</th></tr></thead><tbody>';
+    h+='<div class="card"><div class="ch"><span class="ct">Folha — '+nomeMes(m)+' '+a+'</span><span style="font-size:11px;color:var(--t2)">'+rows.length+' funcionários</span></div><div class="tw"><table><thead><tr><th>Funcionário</th><th style="text-align:right">Base</th><th>Subsídios</th><th>Multas de serviço</th><th style="text-align:right">INSS</th><th style="text-align:right">IRPS</th><th style="text-align:right">Líquido</th><th style="text-align:right">INSS Empresa (4%)</th><th style="text-align:right">Custo Total</th><th>Descontos</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var subC=(r.L.subsidios||[]).map(function(s,si){return '<div style="color:var(--g);font-size:10px">+'+fmtN(s.valor)+' '+s.nome+(canEdit?' <a onclick="window.__rmSubsidio('+m+','+Q+r.pid+Q+','+si+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addSubsidio('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ subsídio</a> · <a onclick="window.__fixosModal('+Q+r.pid+Q+')" style="cursor:pointer;color:var(--tl);font-size:10px" title="Subsídios/descontos fixos (todos os meses)">fixos</a>':'');
       var desC=(r.L.descontos||[]).map(function(d,di){return '<div style="color:var(--r);font-size:10px">-'+fmtN(d.valor)+' '+d.nome+(canEdit?' <a onclick="window.__rmDesconto('+m+','+Q+r.pid+Q+','+di+')" style="cursor:pointer;color:var(--r)">×</a>':'')+'</div>';}).join('')+(canEdit?'<a onclick="window.__addDesconto('+m+','+Q+r.pid+Q+')" style="cursor:pointer;color:var(--a);font-size:10px">+ desconto</a>':'');
@@ -34246,19 +34248,20 @@ window.__finV30=true;})();
         +'<td>'+(subC||'—')+'</td><td>'+(mulC||'—')+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">-'+fmtN(r.inss)+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">-'+fmtN(r.irps)+'</td>'
-        +'<td>'+(desC||'—')+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);font-weight:800;color:var(--g)">'+fmtN(r.liquido)+'</td>'
         +'<td style="text-align:right;font-family:var(--fm);color:var(--am)">'+fmtN(r.empresa)+'</td>'
-        +'<td style="text-align:right;font-family:var(--fm);font-weight:700;color:var(--r)">'+fmtN(r.custo)+'</td></tr>';
+        +'<td style="text-align:right;font-family:var(--fm);font-weight:700;color:var(--r)">'+fmtN(r.custo)+'</td>'
+        +'<td>'+(desC||'—')+'</td></tr>';
     });
     var tMul=rows.reduce(function(s,r){return s+(r.mul||0);},0);
-    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td>TOTAIS</td><td style="text-align:right">'+fmtN(tBase)+'</td><td></td><td style="text-align:right;color:var(--am)">-'+fmtN(tMul)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tINSS)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tIRPS)+'</td><td style="text-align:right;color:var(--r)">-'+fmtN(tDM)+'</td><td style="text-align:right;color:var(--g)">'+fmtN(tLiq)+'</td><td style="text-align:right;color:var(--am)">'+fmtN(tEmpresa)+'</td><td style="text-align:right;color:var(--r)">'+fmtN(tCusto)+'</td></tr>';
+    h+='<tr style="border-top:2px solid var(--b);font-weight:800;background:var(--bg3)"><td>TOTAIS</td><td style="text-align:right">'+fmtN(tBase)+'</td><td></td><td style="text-align:right;color:var(--am)">-'+fmtN(tMul)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tINSS)+'</td><td style="text-align:right;color:var(--am)">-'+fmtN(tIRPS)+'</td><td style="text-align:right;color:var(--g)">'+fmtN(tLiq)+'</td><td style="text-align:right;color:var(--am)">'+fmtN(tEmpresa)+'</td><td style="text-align:right;color:var(--r)">'+fmtN(tCusto)+'</td><td style="text-align:right;color:var(--r)">-'+fmtN(tDM)+'</td></tr>';
     h+='</tbody></table></div></div>';
     el.innerHTML=h;
   };
-  window.__folhaV43=function(){ return window.__folhaRender('folha-sal-c', true); };
+  /* v6.158: a aba "Folha de Salários" é o local ÚNICO de gestão (gerar, multas, subsídios, descontos, aprovar) */
+  window.__folhaV43=function(){ return window.__folhaRender('folha-sal-c', false); };
   window.__folhaEdit=function(){ return window.__folhaRender('desp-folha-c', false); };
-  window.__folhaRerender=function(){ if(document.getElementById('desp-folha-c')) window.__folhaRender('desp-folha-c',false); else if(document.getElementById('folha-sal-c')) window.__folhaRender('folha-sal-c', true); };
+  window.__folhaRerender=function(){ if(document.getElementById('desp-folha-c')) window.__folhaRender('desp-folha-c',false); else if(document.getElementById('folha-sal-c')) window.__folhaRender('folha-sal-c', false); };
   // Guardar a linha de salários da folha (apaga a antiga e insere — evita duplicados)
   window.__salvarDespesaFolha=async function(rec){
     try{ if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){
@@ -42758,6 +42761,109 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'<table><thead><tr><th>Funcionário</th><th class="r">Base tributável</th><th class="r">INSS trab. (3%)</th><th class="r">INSS empresa (4%)</th><th class="r">INSS a entregar</th><th class="r">IRPS retido</th></tr></thead><tbody>'+rows+'</tbody>'
       +'<tfoot><tr><td>TOTAIS</td><td class="r">'+fmt(tB)+'</td><td class="r">'+fmt(tI)+'</td><td class="r">'+fmt(tE)+'</td><td class="r">'+fmt(tI+tE)+'</td><td class="r">'+fmt(tR)+'</td></tr></tfoot></table>';
     abrirDoc('Impostos — '+MESES[m], corpo, false);
+  };
+})();
+</script>
+
+<script>
+/* ═══ v6.158 — Dashboards de Entradas e de Saídas (de volta, em vistas próprias) ═══ */
+(function(){
+  if(window.__dash158) return; window.__dash158=true;
+  var MZ=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function podeVer(){ return ['gestor','director','gestor-financeiro'].includes(typeof curRole!=='undefined'?curRole:''); }
+  function kpi(l,v,c,sub){ return '<div style="flex:1;min-width:160px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:'+c+'">'+v+'</div><div style="font-size:10px;color:var(--t2)">'+l+'</div>'+(sub?('<div style="font-size:9px;color:var(--t3);margin-top:2px">'+sub+'</div>'):'')+'</div>'; }
+  function grafico(dados, cor){
+    try{ if(typeof window.__finV7_svgLinha==='function') return window.__finV7_svgLinha(dados, cor); }catch(e){}
+    var max=Math.max.apply(null,dados.concat([1]));
+    return '<div style="display:flex;align-items:flex-end;gap:4px;height:120px">'+dados.map(function(v,i){ return '<div style="flex:1;text-align:center"><div style="background:'+cor+';border-radius:4px 4px 0 0;height:'+Math.round(v/max*100)+'px"></div><div style="font-size:8px;color:var(--t3)">'+MZ[i].slice(0,3)+'</div></div>'; }).join('')+'</div>';
+  }
+  function ensure(id, titulo, sub){
+    if(document.getElementById('v-'+id)) return;
+    var main=document.getElementById('main'); if(!main) return;
+    var v=document.createElement('div'); v.className='view'; v.id='v-'+id;
+    v.innerHTML='<div class="ph"><div><div class="ph-title">'+titulo+'</div><div class="ph-sub">'+sub+'</div></div></div><div id="'+id+'-c"></div>';
+    main.appendChild(v);
+  }
+  ensure('dash-entradas','Dashboard de Entradas','Receitas — visão mensal e anual');
+  ensure('dash-saidas','Dashboard de Saídas','Despesas — visão mensal e anual');
+  window.__dashEntMes=window.__dashEntMes||(new Date().getMonth()+1);
+  window.__dashSaiMes=window.__dashSaiMes||(new Date().getMonth()+1);
+  function selMes(atual, fn){
+    return '<select class="ffi" style="width:150px" onchange="'+fn+'(+this.value)">'+MZ.map(function(n,i){ return '<option value="'+(i+1)+'"'+((i+1)===atual?' selected':'')+'>'+n+'</option>'; }).join('')+'</select>';
+  }
+
+  window.__renderDashEntradas=function(){
+    ensure('dash-entradas','Dashboard de Entradas','Receitas — visão mensal e anual');
+    var el=document.getElementById('dash-entradas-c'); if(!el) return;
+    if(!podeVer()){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
+    var m=window.__dashEntMes;
+    var pags=(typeof PAGAMENTOS!=='undefined'?PAGAMENTOS:[]).filter(function(p){ return p&&p.data&&p.estado!=='estornado'; });
+    var porMes=[]; for(var i=1;i<=12;i++){ porMes.push(pags.filter(function(p){ return parseInt(String(p.data).slice(5,7),10)===i; }).reduce(function(s,p){ return s+(p.valorTotal||0); },0)); }
+    var doMes=pags.filter(function(p){ return parseInt(String(p.data).slice(5,7),10)===m; });
+    var totMes=doMes.reduce(function(s,p){ return s+(p.valorTotal||0); },0);
+    var totAno=porMes.reduce(function(s,v){ return s+v; },0);
+    var canais={}; doMes.forEach(function(p){ var c={transferencia:'Transferência',deposito:'Depósito',pos:'POS',numerario:'Numerário'}[p.canal]||p.canal||'—'; canais[c]=(canais[c]||0)+(p.valorTotal||0); });
+    var porConf=doMes.filter(function(p){ return p.estado==='por_confirmar'; }).reduce(function(s,p){ return s+(p.valorTotal||0); },0);
+    var h='<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">'+selMes(m,'window.__setDashEntMes')+'</div>';
+    h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
+      +kpi('Entradas de '+MZ[m-1], fmt(totMes)+' MZM','var(--g)', doMes.length+' recibo(s)')
+      +kpi('Total do Ano', fmt(totAno)+' MZM','var(--a)','média mensal '+fmt(Math.round(totAno/12)))
+      +kpi('Por confirmar (mês)', fmt(porConf)+' MZM','var(--am)','depósitos/transferências')
+      +'</div>';
+    h+='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-trending-up"></i> Entradas por mês (ano)</span></div><div class="cb">'+grafico(porMes,'#16a34a')+'</div></div>';
+    h+='<div class="card"><div class="ch"><span class="ct">Por canal — '+MZ[m-1]+'</span></div><div class="cb">';
+    var ks=Object.keys(canais).sort(function(a,b){ return canais[b]-canais[a]; });
+    if(!ks.length) h+='<div style="color:var(--t2);font-size:13px">Sem entradas neste mês.</div>';
+    ks.forEach(function(k){ var pct=totMes?Math.round(canais[k]/totMes*100):0; h+='<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--b)"><span>'+esc(k)+'</span><span style="font-weight:700;color:var(--g)">'+fmt(canais[k])+' <span style="color:var(--t3);font-weight:400">('+pct+'%)</span></span></div>'; });
+    h+='</div></div>';
+    el.innerHTML=h;
+  };
+  window.__setDashEntMes=function(m){ window.__dashEntMes=m; window.__renderDashEntradas(); };
+
+  window.__renderDashSaidas=function(){
+    ensure('dash-saidas','Dashboard de Saídas','Despesas — visão mensal e anual');
+    var el=document.getElementById('dash-saidas-c'); if(!el) return;
+    if(!podeVer()){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
+    var m=window.__dashSaiMes;
+    var desp=(typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG:[];
+    function mesDe(d){ return (d.mes!=null)?Number(d.mes):(d.data?parseInt(String(d.data).slice(5,7),10):0); }
+    var porMes=[]; for(var i=1;i<=12;i++){ porMes.push(desp.filter(function(d){ return mesDe(d)===i; }).reduce(function(s,d){ return s+(Number(d.valor)||0); },0)); }
+    var doMes=desp.filter(function(d){ return mesDe(d)===m; });
+    var totMes=doMes.reduce(function(s,d){ return s+(Number(d.valor)||0); },0);
+    var totAno=porMes.reduce(function(s,v){ return s+v; },0);
+    var cats={}; doMes.forEach(function(d){ var n=d.categoria||'outros'; try{ if(typeof window.__finV7_nomeCat==='function') n=window.__finV7_nomeCat(d.categoria); }catch(e){} cats[n]=(cats[n]||0)+(Number(d.valor)||0); });
+    var h='<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">'+selMes(m,'window.__setDashSaiMes')+'</div>';
+    h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
+      +kpi('Saídas de '+MZ[m-1], fmt(totMes)+' MZM','var(--r)', doMes.length+' registo(s)')
+      +kpi('Total do Ano', fmt(totAno)+' MZM','var(--a)','média mensal '+fmt(Math.round(totAno/12)))
+      +'</div>';
+    h+='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-trending-up"></i> Saídas por mês (ano)</span></div><div class="cb">'+grafico(porMes,'#ef4444')+'</div></div>';
+    h+='<div class="card"><div class="ch"><span class="ct">Por categoria — '+MZ[m-1]+'</span></div><div class="cb">';
+    var ks=Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; });
+    if(!ks.length) h+='<div style="color:var(--t2);font-size:13px">Sem despesas neste mês.</div>';
+    ks.forEach(function(k){ var pct=totMes?Math.round(cats[k]/totMes*100):0; h+='<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--b)"><span>'+esc(k)+'</span><span style="font-weight:700;color:var(--r)">'+fmt(cats[k])+' <span style="color:var(--t3);font-weight:400">('+pct+'%)</span></span></div>'; });
+    h+='</div></div>';
+    el.innerHTML=h;
+  };
+  window.__setDashSaiMes=function(m){ window.__dashSaiMes=m; window.__renderDashSaidas(); };
+
+  /* navegação (padrão wrapper — o dispatch por RENDER_MAP não dispara para ids novos) */
+  var _goDash=window.go;
+  window.go=function(id){
+    if(id==='dash-entradas'||id==='dash-saidas'){
+      try{
+        document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on');});
+        document.querySelectorAll('.si,.ssi').forEach(function(s){s.classList.remove('on');});
+        var ve=document.getElementById('v-'+id); if(!ve){ (id==='dash-entradas'?window.__renderDashEntradas:window.__renderDashSaidas)(); ve=document.getElementById('v-'+id); }
+        if(ve) ve.classList.add('on');
+        var se=document.getElementById(id==='dash-entradas'?'fg-dash-ent':'fg-dash-sai'); if(se) se.classList.add('on');
+        (id==='dash-entradas'?window.__renderDashEntradas:window.__renderDashSaidas)();
+      }catch(e){}
+      return;
+    }
+    return _goDash.apply(this, arguments);
   };
 })();
 </script>
