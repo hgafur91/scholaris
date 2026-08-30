@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.153</span>
+    <span class="logo-ver">v6.154</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -42562,9 +42562,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     /* filtros */
     h+='<div class="card" style="margin-bottom:14px"><div class="cb"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
       +'<div style="min-width:150px"><label class="fl">Turma</label><select class="ffi" onchange="window.__extrSet(\'turma\',this.value)"><option value="">Todas</option>'+turmas.map(function(t){ return '<option value="'+esc(t.id)+'"'+(F.turma===String(t.id)?' selected':'')+'>'+esc(t.nome||t.id)+'</option>'; }).join('')+'</select></div>'
-      +'<div style="min-width:150px"><label class="fl">Mês (data do pagamento)</label><select class="ffi" onchange="window.__extrSet(\'mes\',this.value)"><option value="">Ano completo</option>'+MZ.map(function(n,i){ var mm=String(i+1).padStart(2,'0'); return '<option value="'+mm+'"'+(F.mes===mm?' selected':'')+'>'+n+'</option>'; }).join('')+'</select></div>'
       +'<div style="flex:1;min-width:200px"><label class="fl">Pesquisar aluno (nome ou nº)</label><input class="ffi" value="'+esc(F.aluno)+'" placeholder="ex: ALU000123 ou nome" onchange="window.__extrSet(\'aluno\',this.value.trim())"></div>'
-      +'<div style="min-width:150px"><label class="fl">Estado</label><select class="ffi" onchange="window.__extrSet(\'estado\',this.value)"><option value="">Todos</option><option value="confirmado"'+(F.estado==='confirmado'?' selected':'')+'>Confirmados</option><option value="por_confirmar"'+(F.estado==='por_confirmar'?' selected':'')+'>Por confirmar</option><option value="estornado"'+(F.estado==='estornado'?' selected':'')+'>Estornados</option></select></div>'
       +'</div></div></div>';
     /* barra de exportação — SEMPRE disponível */
     h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">';
@@ -42579,11 +42577,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         +'<button class="btn btn-g btn-sm" onclick="window.__extrGeralXls()"><i class="ti ti-file-spreadsheet"></i> Excel</button>';
     }
     h+='</div>';
-    /* pesquisa de aluno → lista de ALUNOS com ícones */
-    if(F.aluno){
-      var q=F.aluno.toLowerCase();
-      var hits=als().filter(function(a){ return String(a.nome||'').toLowerCase().indexOf(q)>=0 || String(a.num||'').toLowerCase().indexOf(q)>=0; }).slice(0,20);
-      h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-users"></i> Alunos encontrados</span><span style="font-size:12px;color:var(--t2)">'+hits.length+'</span></div><div class="tw"><table>'
+    /* v6.154: TODOS os alunos por defeito; turma/pesquisa estreitam */
+    {
+      var hits=als().slice();
+      if(F.turma) hits=hits.filter(function(a){ return String(a.turma)===F.turma; });
+      if(F.aluno){ var q=F.aluno.toLowerCase(); hits=hits.filter(function(a){ return String(a.nome||'').toLowerCase().indexOf(q)>=0 || String(a.num||'').toLowerCase().indexOf(q)>=0; }); }
+      hits.sort(function(x,y){ return String(x.turma||'').localeCompare(String(y.turma||''))||String(x.nome||'').localeCompare(String(y.nome||'')); });
+      h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-users"></i> Alunos</span><span style="font-size:12px;color:var(--t2)">'+hits.length+'</span></div><div class="tw"><table>'
         +'<thead><tr><th>Aluno</th><th>Turma</th><th style="text-align:right">Pago</th><th style="text-align:right">Dívida</th><th style="text-align:right">Multa</th><th>Meses em dívida</th><th style="text-align:center">Acções</th></tr></thead><tbody>';
       if(!hits.length) h+='<tr><td colspan="7" style="text-align:center;color:var(--t2);padding:22px">Nenhum aluno encontrado.</td></tr>';
       hits.forEach(function(a){
@@ -42601,11 +42601,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
           +'</td></tr>';
       });
       h+='</tbody></table></div></div>';
-      el.innerHTML=h; return;
+      el.innerHTML=h;
     }
-    /* v6.153: página limpa — sem listagem de recibos (essa vive no Relatório de Actividades → Entradas) */
-    h+='<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Pesquise um aluno para emitir o <b>extracto</b> e as <b>facturas</b> dele, ou use os botões acima para o extracto <b>geral</b> ou da <b>turma</b>. A listagem de recibos está no Relatório de Actividades → Entradas.</div>';
-    el.innerHTML=h;
   }
   window.__extrSet=function(k,v){ window.__extrF[k]=v; render(); };
   window.__extrRender2=render;
