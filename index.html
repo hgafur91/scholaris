@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.154</span>
+    <span class="logo-ver">v6.155</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3401,7 +3401,7 @@ const ROLES={
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Relatório de Actividades',id:'relatorio-actividades'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
       {sl:'Gestão RH',sub:[
         {i:'ti-briefcase',l:'Staff / Dep.',id:'staff'},
         {i:'ti-star',l:'Avaliações',id:'aval'},
@@ -3488,7 +3488,7 @@ const ROLES={
       ]},
       {sl:'Gestão Financeira',sub:[
         {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
-        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Relatório de Actividades',id:'relatorio-actividades'},
+        {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},
         {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
@@ -13429,7 +13429,7 @@ ROLES['gestor-financeiro'] = {
       {i:'ti-users',l:'Folha de Salários',id:'folha-salarios'},
       {i:'ti-alert-circle',l:'Dívidas',id:'dividas'},
       {i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},
-      {i:'ti-clipboard-text',l:'Relatório de Actividades',id:'relatorio-actividades'},
+      {i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},
       {i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},
       {i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},
       {i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},
@@ -32361,7 +32361,7 @@ window.renderBalanceteRange=function(mIni,mFim){
       {id:'fg-multas', lbl:'Multas de Atraso', ic:'ti-cash-off', go:'multas'}
     ]},
     {id:'fg-relatorios', lbl:'Relatórios', ic:'ti-chart-histogram', itens:[
-      {id:'fg-ativ', lbl:'Relatório de Actividades', ic:'ti-clipboard-text', go:'relatorio-actividades'},
+      {id:'fg-ativ', lbl:'Registo de Pagamentos', ic:'ti-clipboard-text', go:'relatorio-actividades'},
       {id:'fg-extracto', lbl:'Extracto da Escola', ic:'ti-receipt', go:'extracto-escola'},
       {id:'fg-balancete', lbl:'Balancete', ic:'ti-file-invoice', go:'pagamentos', tab:'balancete'},
       {id:'fg-fluxo', lbl:'Fluxo de Caixa', ic:'ti-trending-up', go:'fluxo-caixa'},
@@ -41255,7 +41255,7 @@ window.trimestreActual = function(d){
     if(document.getElementById('v-relatorio-actividades')) return;
     var v=document.createElement('div'); v.className='view'; v.id='v-relatorio-actividades';
     var tabs=RA_TABS.map(function(t){ return '<button class="tab" id="ra-tab-'+t[0]+'" onclick="window.__raGo(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('');
-    v.innerHTML='<div class="ph"><div><div class="ph-title">Relatório de Actividades</div><div class="ph-sub">Entradas, saídas e dívidas — por mês e categoria</div></div></div>'
+    v.innerHTML='<div class="ph"><div><div class="ph-title">Registo de Pagamentos</div><div class="ph-sub">Entradas, saídas e dívidas — por mês e categoria</div></div></div>'
       +'<div class="tabs" id="ra-tabs">'+tabs+'</div>'
       +'<div id="entradas-c"></div><div id="saidas-c" style="display:none"></div><div id="dividas-mes-c" style="display:none"></div>';
     ref.parentNode.insertBefore(v, ref.nextSibling);
@@ -42586,8 +42586,9 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-users"></i> Alunos</span><span style="font-size:12px;color:var(--t2)">'+hits.length+'</span></div><div class="tw"><table>'
         +'<thead><tr><th>Aluno</th><th>Turma</th><th style="text-align:right">Pago</th><th style="text-align:right">Dívida</th><th style="text-align:right">Multa</th><th>Meses em dívida</th><th style="text-align:center">Acções</th></tr></thead><tbody>';
       if(!hits.length) h+='<tr><td colspan="7" style="text-align:center;color:var(--t2);padding:22px">Nenhum aluno encontrado.</td></tr>';
+      var sp=0,sd=0,sm=0;
       hits.forEach(function(a){
-        var R=resumoAluno(a);
+        var R=resumoAluno(a); sp+=R.pago; sd+=R.divida; sm+=R.multa;
         h+='<tr><td style="font-weight:700">'+esc(a.nome)+'<br><span style="font-size:10px;color:var(--t3);font-family:var(--fm)">'+esc(a.num||'')+'</span></td>'
           +'<td><span class="badge bin">'+esc(a.turma||'—')+'</span></td>'
           +'<td style="text-align:right;color:var(--g);font-weight:700">'+fmt(R.pago)+'</td>'
@@ -42600,7 +42601,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
             +'<button class="btn btn-g btn-sm" title="Facturas em dívida — SEM multa" onclick="window.__extrFatNum(\''+esc(a.num)+'\',false)"><i class="ti ti-file-off"></i></button>'
           +'</td></tr>';
       });
-      h+='</tbody></table></div></div>';
+      h+='</tbody><tfoot><tr style="font-weight:800;border-top:2px solid var(--b2)"><td colspan="2">TOTAIS · '+hits.length+' aluno(s)</td><td style="text-align:right;color:var(--g)">'+fmt(sp)+'</td><td style="text-align:right;color:var(--r)">'+fmt(sd)+'</td><td style="text-align:right;color:var(--am)">'+fmt(sm)+'</td><td colspan="2"></td></tr></tfoot></table></div></div>';
       el.innerHTML=h;
     }
   }
