@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.158</span>
+    <span class="logo-ver">v6.159</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32363,6 +32363,7 @@ window.renderBalanceteRange=function(mIni,mFim){
     {id:'fg-despesas', lbl:'Despesas', ic:'ti-logout-2', itens:[
       {id:'fg-dash-sai', lbl:'Dashboard de Saídas', ic:'ti-chart-donut', go:'dash-saidas'},
       {id:'fg-desp', lbl:'Despesas', ic:'ti-cash', go:'despesas'},
+      {id:'fg-caixa', lbl:'Caixa Semanal', ic:'ti-coin', go:'caixa-semanal'},
       {id:'fg-folha', lbl:'Folha de Salários', ic:'ti-users', go:'folha-salarios'}
     ]},
     {id:'fg-cobranca', lbl:'Cobrança', ic:'ti-alert-circle', itens:[
@@ -42864,6 +42865,125 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return;
     }
     return _goDash.apply(this, arguments);
+  };
+})();
+</script>
+
+<script>
+/* ═══ v6.159 — Caixa Semanal: meio de pagamento, FORA do balancete + aba de registo ═══ */
+(function(){
+  if(window.__caixa159) return; window.__caixa159=true;
+  var MZ=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function podeRegistar(){ return ['secretario','gestor','director','gestor-financeiro'].includes(typeof curRole!=='undefined'?curRole:''); }
+  function podeApagar(){ return ['gestor','director','gestor-financeiro'].includes(typeof curRole!=='undefined'?curRole:''); }
+
+  window.CAIXA_REG = window.CAIXA_REG || [];
+  /* separar: registos de caixa saem de DESPESAS_REG (deixam de contar no balancete e afins) */
+  function split(){
+    try{
+      if(typeof DESPESAS_REG==='undefined'||!Array.isArray(DESPESAS_REG)) return;
+      for(var i=DESPESAS_REG.length-1;i>=0;i--){
+        var d=DESPESAS_REG[i];
+        if(d && d.categoria==='caixa'){
+          if(!window.CAIXA_REG.some(function(c){ return c.id===d.id; })) window.CAIXA_REG.push(d);
+          DESPESAS_REG.splice(i,1);
+        }
+      }
+    }catch(e){}
+  }
+  window.__caixaSplit=split;
+  split(); setTimeout(split,1500); setTimeout(split,4000); setTimeout(split,9000);
+  /* categoria 'caixa' deixa de existir nas Despesas (não é despesa, é meio de pagamento) */
+  function tiraCat(){ try{ if(typeof DESP_CAT!=='undefined'&&Array.isArray(DESP_CAT)){ for(var i=DESP_CAT.length-1;i>=0;i--){ if(DESP_CAT[i]&&DESP_CAT[i].id==='caixa') DESP_CAT.splice(i,1); } } }catch(e){} }
+  tiraCat(); setTimeout(tiraCat,1200);
+
+  function ensure(){
+    if(document.getElementById('v-caixa-semanal')) return;
+    var main=document.getElementById('main'); if(!main) return;
+    var v=document.createElement('div'); v.className='view'; v.id='v-caixa-semanal';
+    v.innerHTML='<div class="ph"><div><div class="ph-title">Caixa Semanal</div><div class="ph-sub">Meio de pagamento — registo dos gastos da caixa (fora do balancete)</div></div></div><div id="caixa-semanal-c"></div>';
+    main.appendChild(v);
+  }
+  ensure();
+  window.__caixaMes=window.__caixaMes||(new Date().getMonth()+1);
+  function mesDe(d){ return (d.mes!=null)?Number(d.mes):(d.data?parseInt(String(d.data).slice(5,7),10):0); }
+
+  window.__renderCaixa=function(){
+    ensure(); split();
+    var el=document.getElementById('caixa-semanal-c'); if(!el) return;
+    if(!podeRegistar()){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito.</div>'; return; }
+    var m=window.__caixaMes;
+    var doMes=window.CAIXA_REG.filter(function(d){ return mesDe(d)===m; }).sort(function(a,b){ return String(b.data||'').localeCompare(String(a.data||'')); });
+    var tot=doMes.reduce(function(s,d){ return s+(Number(d.valor)||0); },0);
+    var totAno=window.CAIXA_REG.reduce(function(s,d){ return s+(Number(d.valor)||0); },0);
+    var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">'
+      +'<select class="ffi" style="width:150px" onchange="window.__caixaMes=+this.value;window.__renderCaixa()">'+MZ.map(function(n,i){ return '<option value="'+(i+1)+'"'+((i+1)===m?' selected':'')+'>'+n+'</option>'; }).join('')+'</select>'
+      +'<div style="flex:1"></div>'
+      +'<div style="font-size:12px;color:var(--t2)">Gasto em '+MZ[m-1]+': <b style="color:var(--am)">'+fmt(tot)+' MZM</b> · Ano: <b>'+fmt(totAno)+' MZM</b></div>'
+      +'</div>';
+    h+='<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-plus"></i> Registar gasto da caixa</span></div><div class="cb">'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+      +'<div style="flex:2;min-width:180px"><label class="fl">Nome / descrição do gasto</label><input class="ffi" id="cx-nome" placeholder="Ex: Água da sede, material de limpeza"></div>'
+      +'<div style="min-width:130px"><label class="fl">Valor (MZM)</label><input class="ffi" id="cx-valor" type="number" min="0" placeholder="0"></div>'
+      +'<div style="min-width:150px"><label class="fl">Nº recibo / VD</label><input class="ffi" id="cx-vd" placeholder="Ex: VD 12345" style="font-family:var(--fm)"></div>'
+      +'<div style="min-width:140px"><label class="fl">Data</label><input class="ffi" id="cx-data" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+      +'<button class="btn btn-p" onclick="window.__caixaAdd()"><i class="ti ti-check"></i> Registar</button>'
+      +'</div></div></div>';
+    h+='<div class="card"><div class="ch"><span class="ct"><i class="ti ti-coin"></i> Gastos de '+MZ[m-1]+'</span><span style="font-size:12px;color:var(--t2)">'+doMes.length+' registo(s)</span></div><div class="tw"><table><thead><tr><th>Data</th><th>Nome / descrição</th><th>Nº recibo / VD</th><th>Registado por</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>';
+    if(!doMes.length) h+='<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:22px">Sem gastos da caixa neste mês.</td></tr>';
+    doMes.forEach(function(d){
+      h+='<tr><td style="font-family:var(--fm);font-size:11px">'+esc(d.data||'')+'</td>'
+        +'<td style="font-weight:600">'+esc(d.descricao||'')+'</td>'
+        +'<td><code style="font-size:11px;background:var(--bg3);padding:2px 6px;border-radius:4px">'+esc(d.ref||'—')+'</code></td>'
+        +'<td style="font-size:11px;color:var(--t2)">'+esc(d.registadoPor||'—')+'</td>'
+        +'<td style="text-align:right;font-weight:700;color:var(--am)">'+fmt(d.valor)+'</td>'
+        +'<td>'+(podeApagar()?'<button class="btn btn-re btn-sm" title="Apagar" onclick="window.__caixaDel(\''+esc(d.id)+'\')"><i class="ti ti-trash"></i></button>':'')+'</td></tr>';
+    });
+    h+='</tbody><tfoot><tr style="font-weight:800;border-top:2px solid var(--b2)"><td colspan="4">TOTAL DO MÊS</td><td style="text-align:right;color:var(--am)">'+fmt(tot)+'</td><td></td></tr></tfoot></table></div></div>';
+    h+='<div class="ib-box ib-blue" style="margin-top:12px;font-size:12px"><i class="ti ti-info-circle"></i> A caixa é um <b>meio de pagamento</b>: estes gastos NÃO entram no balancete (a despesa real — ex.: água — regista-se em Despesas, na categoria própria). Este livro serve de controlo com o nº do recibo/VD de cada gasto.</div>';
+    el.innerHTML=h;
+  };
+  window.__caixaAdd=function(){
+    if(!podeRegistar()) return;
+    var nome=(document.getElementById('cx-nome')||{}).value||''; nome=nome.trim();
+    var valor=Math.round(parseFloat((document.getElementById('cx-valor')||{}).value)||0);
+    var vd=((document.getElementById('cx-vd')||{}).value||'').trim();
+    var data=(document.getElementById('cx-data')||{}).value||new Date().toISOString().slice(0,10);
+    if(!nome){ if(typeof toast==='function') toast('Indique o nome/descrição do gasto'); return; }
+    if(!valor){ if(typeof toast==='function') toast('Indique o valor'); return; }
+    if(!vd){ if(typeof toast==='function') toast('Indique o nº do recibo/VD'); return; }
+    var rec={ id:'CX'+Date.now(), data:data, mes:parseInt(data.slice(5,7),10), categoria:'caixa', descricao:nome, valor:valor, ref:vd, registadoPor:((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||'', registadoEm:new Date().toISOString() };
+    window.CAIXA_REG.push(rec);
+    try{ if(typeof window.saveDespesaFirestore==='function') window.saveDespesaFirestore(rec); }catch(e){}
+    if(typeof toast==='function') toast('Gasto da caixa registado ('+vd+')');
+    window.__caixaMes=rec.mes; window.__renderCaixa();
+  };
+  window.__caixaDel=function(id){
+    if(!podeApagar()) return;
+    var d=window.CAIXA_REG.find(function(x){ return x.id===id; }); if(!d) return;
+    if(!confirm('Apagar o gasto "'+(d.descricao||'')+'" ('+fmt(d.valor)+' MZM)?')) return;
+    window.CAIXA_REG=window.CAIXA_REG.filter(function(x){ return x.id!==id; });
+    try{ if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){ window._supabase.from('despesas').delete().eq('escola_id',window._escolaId).eq('desp_id',id).then(function(){},function(){}); } }catch(e){}
+    window.__renderCaixa();
+  };
+
+  /* navegação (padrão wrapper) */
+  var _goCx=window.go;
+  window.go=function(id){
+    if(id==='caixa-semanal'){
+      try{
+        ensure();
+        document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on');});
+        document.querySelectorAll('.si,.ssi').forEach(function(s){s.classList.remove('on');});
+        var ve=document.getElementById('v-caixa-semanal'); if(ve) ve.classList.add('on');
+        var se=document.getElementById('fg-caixa'); if(se) se.classList.add('on');
+        window.__renderCaixa();
+      }catch(e){}
+      return;
+    }
+    return _goCx.apply(this, arguments);
   };
 })();
 </script>
