@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.166</span>
+    <span class="logo-ver">v6.167</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -32356,8 +32356,7 @@ window.renderBalanceteRange=function(mIni,mFim){
   var GRUPOS=[
     {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
       {id:'fg-dash-ent', lbl:'Dashboard de Entradas', ic:'ti-trending-up', go:'dash-entradas'},
-      {id:'fg-propinas', lbl:'Propinas', ic:'ti-coin', go:'propinas'},
-      {id:'fg-pagamentos', lbl:'Pagamentos & Recibos', ic:'ti-credit-card', go:'pagamentos'},
+      {id:'fg-pagamentos', lbl:'Propinas & Pagamentos', ic:'ti-credit-card', go:'pagamentos'},
       {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'},
       {id:'fg-reconciliacao', lbl:'Reconciliação Bancária', ic:'ti-file-check', go:'reconciliacao'},
       {id:'fg-bolsas', lbl:'Bolsas / Bolseiros', ic:'ti-discount-2', go:'bolsas'}
@@ -43292,6 +43291,52 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   hook(); setTimeout(hook,0); setTimeout(hook,1200);
   var t=null;
   window.addEventListener('resize', function(){ clearTimeout(t); t=setTimeout(aplicar,180); });
+})();
+</script>
+
+<script>
+/* ═══ v6.167 — Propinas e "Pagamentos & Recibos" eram a MESMA coisa ═══
+   O hub de Pagamentos já tem a Propinas como separador (Propinas | Taxas Fixas |
+   Avulsos | Balancete). Fica só o hub: o item "Propinas" sai do menu e a rota
+   'propinas' passa a abrir o hub no separador certo (links internos continuam a
+   funcionar). Também repara o dispatch de 'pagamentos' (referência obsoleta). */
+(function(){
+  if(window.__unif167) return; window.__unif167=true;
+  var _goU=window.go;
+  window.go=function(id){
+    if(id==='propinas' || id==='pagamentos'){
+      if(window.__unifBusy) return _goU.apply(this, arguments);
+      window.__unifBusy=true;
+      try{
+        var fn=null; try{ fn=(typeof RENDER_MAP!=='undefined')?RENDER_MAP['pagamentos']:null; }catch(e){}
+        document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+        document.querySelectorAll('.si,.ssi').forEach(function(s){ s.classList.remove('on'); });
+        var ve=document.getElementById('v-pagamentos'); if(ve) ve.classList.add('on');
+        var se=document.getElementById('fg-pagamentos'); if(se) se.classList.add('on');
+        if(typeof fn==='function') fn('pagamentos');
+        else if(typeof window.rPagamentos==='function') window.rPagamentos();
+        if(id==='propinas'){ setTimeout(function(){ try{ if(typeof window.pagTab==='function') window.pagTab('propinas'); }catch(e){} }, 60); }
+      }catch(e){ console.error('unif167', e); }
+      finally{ window.__unifBusy=false; }
+      return;
+    }
+    return _goU.apply(this, arguments);
+  };
+  /* tirar o item duplicado do menu (o grupo Receitas é reconstruído pelo reorg) */
+  function limpaMenu(){
+    try{
+      var b=document.getElementById('fg-propinas');
+      if(b && b.parentNode) b.parentNode.removeChild(b);
+      var p=document.getElementById('fg-pagamentos');
+      if(p){ var sp=p.querySelector('span'); if(sp && /Pagamentos/.test(sp.textContent) && !/Propinas/.test(sp.textContent)) sp.textContent='Propinas & Pagamentos'; }
+    }catch(e){}
+  }
+  limpaMenu(); setTimeout(limpaMenu,600); setTimeout(limpaMenu,2000);
+  try{
+    var sb=document.getElementById('sb-content');
+    var mo=new MutationObserver(function(){ limpaMenu(); });
+    if(sb) mo.observe(sb,{childList:true,subtree:true});
+  }catch(e){}
 })();
 </script>
 </body>
