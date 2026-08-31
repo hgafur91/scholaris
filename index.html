@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.174</span>
+    <span class="logo-ver">v6.175</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -41639,7 +41639,7 @@ window.trimestreActual = function(d){
     var trim=window.__atTrim;
     var tabs='<div class="tabs" style="margin-bottom:14px">'+['1','2','3'].map(function(t){ return '<button class="tab'+(t===trim?' on':'')+'" onclick="window.__atSetTrim(\''+t+'\')">'+t+'º Trimestre</button>'; }).join('')+'</div>';
     /* v6.174: quem acumula direcção e docência (ex.: DP que lecciona) vê os dois blocos */
-    var souDocente = docente() || (curRole==='dir-pedagogico' && (function(){ try{ return !!(window.NT&&NT._souProfessor&&NT._souProfessor()); }catch(e){ return false; } })());
+    var souDocente = docente() || (typeof window.__leccionaTambem==='function' && window.__leccionaTambem(['dir-pedagogico','director','gestor']));
     if(DPGestor()){
       var h=tabs+renderDP(trim);
       if(souDocente){
@@ -43474,12 +43474,28 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
    dois separadores — "O meu horário" e "Todas as turmas" — sem perder nenhuma das vistas. ═══ */
 (function(){
   if(window.__horDuplo174) return; window.__horDuplo174=true;
-  function acumula(){
+  /* v6.174b — "esta pessoa também lecciona?" de forma síncrona e robusta.
+     NOTA: as verificações de papel dentro do módulo NT usam window.curRole, que nunca é
+     atribuído (curRole é uma variável de topo, não uma propriedade de window) — por isso
+     não se pode depender delas. Aqui olhamos para os factos: ficha de professor + turmas. */
+  window.__leccionaTambem=function(papeis){
     try{
-      if(curRole!=='dir-pedagogico') return false;
-      return !!(window.NT && NT._souProfessor && NT._souProfessor());
+      if(papeis && papeis.indexOf(curRole)<0) return false;
+      var p=null;
+      try{ p=(typeof resolverMeuProf==='function')?resolverMeuProf():null; }catch(e){}
+      if(!p && window._meuStaffId && typeof PROFS!=='undefined'){
+        p=(PROFS||[]).find(function(x){ return String(x._dbId||x.id)===String(window._meuStaffId); })||null;
+      }
+      if(!p) return false;
+      if(Array.isArray(p.turmas) && p.turmas.length) return true;
+      if(typeof ALOCACOES!=='undefined' && Array.isArray(ALOCACOES)){
+        if(ALOCACOES.some(function(a){ return String(a.prof)===String(p.num); })) return true;
+      }
+      try{ if(window.NT && NT.__alocCache && NT.__alocCache.length) return true; }catch(e){}
+      return false;
     }catch(e){ return false; }
-  }
+  };
+  function acumula(){ return window.__leccionaTambem(['dir-pedagogico']); }
   window.__horVista = window.__horVista || 'turmas';
   window.__horSetVista=function(v){ window.__horVista=v; try{ rHorTurmas(); }catch(e){} };
   function barra(){
