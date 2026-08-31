@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.178</span>
+    <span class="logo-ver">v6.179</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -7787,7 +7787,7 @@ function rConfigFaltas() {
   if (!el) return;
   el.innerHTML = `
     <div class="setting-row"><div><div class="setting-label">% Máxima de faltas por semestre</div><div class="setting-desc">Acima deste valor o aluno é assinalado "excluído" (indicador — não bloqueia automaticamente)</div></div><div style="display:flex;align-items:center;gap:8px"><input type="number" class="ffi" style="width:80px" value="${CONFIG.faltasMaxPct}" onchange="CONFIG.faltasMaxPct=+this.value;toast('% actualizada!')"><span style="font-size:13px;color:var(--t2)">%</span></div></div>
-    <div class="setting-row"><div><div class="setting-label">Total de aulas por trimestre</div><div class="setting-desc">T1 · T2 · T3</div></div><div style="display:flex;gap:8px"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT1}" onchange="CONFIG.totalAulasT1=+this.value;toast('T1 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT2}" onchange="CONFIG.totalAulasT2=+this.value;toast('T2 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT3}" onchange="CONFIG.totalAulasT3=+this.value;toast('T3 guardado!')"</div></div>
+    <div class="setting-row"><div><div class="setting-label">Total de aulas por trimestre</div><div class="setting-desc">T1 · T2 · T3</div></div><div style="display:flex;gap:8px"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT1}" onchange="CONFIG.totalAulasT1=+this.value;toast('T1 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT2}" onchange="CONFIG.totalAulasT2=+this.value;toast('T2 guardado!')"><input type="number" class="ffi" style="width:72px" value="${CONFIG.totalAulasT3}" onchange="CONFIG.totalAulasT3=+this.value;toast('T3 guardado!')"></div></div>
     <div class="ib-box ib-re" style="margin-top:12px"><i class="ti ti-info-circle"></i> Só o Gestor Geral pode alterar estes parâmetros.</div>`;
 }
 function rConfigSys() {
@@ -43936,6 +43936,162 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'</body></html>';
     w.document.write(html); w.document.close();
   };
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.179 — Configurações: tirar o que engana, ligar o que faltava
+   Decisões tomadas a partir da auditoria:
+   · Períodos lectivos    → editam-se em Gestão Académica, não aqui (aqui perdiam-se)
+   · Exame obrigatório    → volta ao ecrã (a regra estava presa em "desligado")
+   · Nome da instituição  → sai do separador Sistema (duplicado e não gravava)
+   · Ano lectivo activo   → deixa de ser um campo falso; mostra o ano a sério
+   · Aparência            → botão de guardar também no fim, ao pé dos campos
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__cfg179) return; window.__cfg179=true;
+
+  function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
+  function anoActual(){
+    try{ return (typeof CONFIG!=='undefined' && CONFIG.anoLectivo) || new Date().getFullYear(); }
+    catch(e){ return new Date().getFullYear(); }
+  }
+
+  /* ── Ano Lectivo: períodos só de leitura + botão do orçamento a funcionar ──
+     rConfigCal() devolve HTML (o chamador faz innerHTML=), por isso trata-se
+     o texto devolvido antes de chegar ao ecrã. */
+  var FIM = '</tbody></table></div></div>';
+  var _rcc = window.rConfigCal;
+  if(typeof _rcc === 'function'){
+    window.rConfigCal = function(){
+      var h = _rcc.apply(this, arguments);
+      try{
+        /* 1. Substituir a tabela editável de períodos por um resumo + atalho. */
+        var mid = h.indexOf('Periodos Lectivos');
+        if(mid >= 0){
+          var ini = h.lastIndexOf('<div style="margin-top:14px">', mid);
+          var fim = h.indexOf(FIM, mid);
+          if(ini >= 0 && fim > mid){
+            var P = (typeof PERIODOS !== 'undefined') ? PERIODOS : [];
+            var aulas = P.filter(function(p){ return p.tipo==='aula'; }).length;
+            var inter = P.filter(function(p){ return p.tipo==='intervalo'; }).length;
+            var de  = (P[0] && P[0].inicio) || '\u2014';
+            var ate = (P[P.length-1] && P[P.length-1].fim) || '\u2014';
+            var novo = '<div class="setting-row" style="margin-top:14px">'
+              + '<div><div class="setting-label">Per\u00edodos Lectivos</div>'
+              + '<div class="setting-desc">' + aulas + ' per\u00edodos de aula \u00b7 ' + inter + ' intervalos \u00b7 das ' + de + ' \u00e0s ' + ate + '.<br>'
+              + 'Editam-se em <strong>Gest\u00e3o Acad\u00e9mica \u203a Per\u00edodos Lectivos</strong>, que \u00e9 onde ficam guardados.</div></div>'
+              + '<button class="btn btn-p btn-sm" onclick="go(\'periodos\')"><i class="ti ti-clock"></i> Gerir Per\u00edodos</button>'
+              + '</div>';
+            h = h.slice(0, ini) + novo + h.slice(fim + FIM.length);
+          }
+        }
+        /* 2. O botão de forçar a abertura do orçamento não gravava nem mudava de estado. */
+        h = h.replace("CONFIG.orcForcarAberto=!CONFIG.orcForcarAberto;rConfigCal()", "__cfgOrcToggle()");
+      }catch(e){}
+      return h;
+    };
+  }
+  window.__cfgOrcToggle = function(){
+    try{
+      CONFIG.orcForcarAberto = !CONFIG.orcForcarAberto;
+      persist();
+      var el = document.getElementById('config-cal');
+      if(el && typeof window.rConfigCal==='function') el.innerHTML = window.rConfigCal();
+      if(typeof toast==='function') toast(CONFIG.orcForcarAberto ? 'Or\u00e7amento aberto' : 'Or\u00e7amento fechado');
+    }catch(e){}
+  };
+
+  /* ── Académico: devolver "Exame obrigatório na média" ──
+     A regra é usada em cinco sítios do sistema mas o campo tinha desaparecido
+     quando esta aba foi reescrita — ficou presa em "desligado". */
+  var _rca = window.rConfigAcad;
+  if(typeof _rca === 'function'){
+    window.rConfigAcad = function(){
+      var r = _rca.apply(this, arguments);
+      try{
+        var el = document.getElementById('config-acad');
+        if(el && !document.getElementById('cfg-exame-obrig')){
+          var on = !!(typeof CONFIG!=='undefined' && CONFIG.exameObrigatorio);
+          var d = document.createElement('div');
+          d.id = 'cfg-exame-obrig'; d.className = 'setting-row';
+          d.innerHTML = '<div><div class="setting-label">Exame obrigat\u00f3rio na m\u00e9dia</div>'
+            + '<div class="setting-desc">Ligado: o exame entra na m\u00e9dia de <strong>todas</strong> as disciplinas. '
+            + 'Desligado: s\u00f3 nas disciplinas com exame (lista acima).</div></div>'
+            + '<button class="toggle' + (on?' on':'') + '" onclick="__cfgToggleExame(this)"></button>';
+          el.appendChild(d);
+        }
+      }catch(e){}
+      return r;
+    };
+  }
+  window.__cfgToggleExame = function(btn){
+    try{
+      CONFIG.exameObrigatorio = !CONFIG.exameObrigatorio;
+      if(btn) btn.classList.toggle('on', !!CONFIG.exameObrigatorio);
+      persist();
+      if(typeof toast==='function') toast(CONFIG.exameObrigatorio ? 'Exame obrigat\u00f3rio ligado' : 'Exame obrigat\u00f3rio desligado');
+    }catch(e){}
+  };
+
+  /* ── Sistema: fora o nome duplicado, e o ano lectivo passa a ser verdade ── */
+  var _rcs = window.rConfigSys;
+  if(typeof _rcs === 'function'){
+    window.rConfigSys = function(){
+      var r = _rcs.apply(this, arguments);
+      setTimeout(function(){
+        try{
+          var el = document.getElementById('config-sys'); if(!el) return;
+          Array.prototype.slice.call(el.querySelectorAll('.setting-row')).forEach(function(row){
+            var lbl = row.querySelector('.setting-label');
+            var t = lbl ? lbl.textContent.trim() : '';
+            if(t === 'Nome da institui\u00e7\u00e3o'){
+              row.remove();                      /* o que grava a s\u00e9rio est\u00e1 em Apar\u00eancia */
+              return;
+            }
+            if(t === 'Ano lectivo activo' && !row.getAttribute('data-cfg179')){
+              row.setAttribute('data-cfg179','ano');
+              row.innerHTML = '<div><div class="setting-label">Ano lectivo activo</div>'
+                + '<div class="setting-desc">Define-se no separador <strong>Ano Lectivo</strong>, '
+                + 'junto com as datas dos tr\u00eas trimestres.</div></div>'
+                + '<div style="display:flex;align-items:center;gap:10px">'
+                + '<span style="font-family:var(--fm);font-size:19px;font-weight:800;color:var(--a)">' + anoActual() + '</span>'
+                + '<button class="btn btn-g btn-sm" onclick="__cfgIrAnoLectivo()">Alterar</button></div>';
+            }
+          });
+        }catch(e){}
+      }, 60);
+      return r;
+    };
+  }
+  window.__cfgIrAnoLectivo = function(){
+    try{
+      var b = document.querySelector('#config-tabs .tab');
+      if(typeof swConfigTab === 'function') swConfigTab('calendario', b);
+    }catch(e){}
+  };
+
+  /* ── Aparência: os campos do cabeçalho ficam ABAIXO do botão de guardar,
+       por isso quem os preenchia e saía perdia tudo. Segundo botão no fim. ── */
+  var _rcap = window.rConfigAparencia;
+  if(typeof _rcap === 'function'){
+    window.rConfigAparencia = function(){
+      var r = _rcap.apply(this, arguments);
+      try{
+        var el = document.getElementById('config-aparencia');
+        if(el && !document.getElementById('cfg-guardar-fim')){
+          var d = document.createElement('div');
+          d.id = 'cfg-guardar-fim';
+          d.style.cssText = 'margin-top:18px;padding-top:14px;border-top:1px solid var(--b);display:flex;align-items:center;gap:12px;flex-wrap:wrap';
+          d.innerHTML = '<button class="btn btn-p" onclick="saveEscolaSettings()"><i class="ti ti-device-floppy"></i> Guardar Apar\u00eancia</button>'
+            + '<span style="font-size:12px;color:var(--t2)">Os dados do cabe\u00e7alho e do rodap\u00e9 dos documentos s\u00f3 ficam guardados depois de carregar aqui.</span>';
+          el.appendChild(d);
+        }
+      }catch(e){}
+      return r;
+    };
+  }
 })();
 </script>
 </body>
