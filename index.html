@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.172</span>
+    <span class="logo-ver">v6.173</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -36141,10 +36141,11 @@ window.__finV30=true;})();
       try{ var p=(typeof resolverMeuProf==='function')?resolverMeuProf():null; return (p&&p._dbId)||null; }catch(e){ return null; }
     },
     _souProfessor(){
-      // Robusto: professor OU chefe/dir. de ciclo com ficha de professor (têm turmas alocadas).
-      if(window.curRole==='gestor' || window.curRole==='director' || window.curRole==='dir-pedagogico') return false;
+      // Robusto: professor OU chefe/dir. de ciclo OU dir. pedagógico com ficha de professor.
+      if(window.curRole==='gestor' || window.curRole==='director') return false;
       if(window.curRole==='professor') return true;
       if(window.curRole==='dir-ciclo') return !!this._staffId();     // v6.122: CC lecciona como professor
+      if(window.curRole==='dir-pedagogico') return !!this._staffId(); // v6.173: a DP também lecciona (ex.: Ana Gove)
       if(!this._staffId()) return false;
       return !!(this.__alocCache && this.__alocCache.length);
     },
@@ -37561,7 +37562,7 @@ window.trimestreActual = function(d){
   // ── Item de menu para o professor-DT (GLOBAL + à prova de timing) ──
   window.injectarMenuDT = function(){
     try{
-      if(!['professor','dir-ciclo'].includes(curRole)) return;
+      if(!['professor','dir-ciclo','dir-pedagogico'].includes(curRole)) return;
       var turmas = window.minhasTurmasDT();
       if(!turmas.length) return;
       var sb = document.getElementById('sb-content');
@@ -37596,7 +37597,7 @@ window.trimestreActual = function(d){
   if(!window.__dtGuardInterval){
     window.__dtGuardInterval = setInterval(function(){
       try{
-        if(typeof curRole==='undefined' || !['professor','dir-ciclo'].includes(curRole)) return;
+        if(typeof curRole==='undefined' || !['professor','dir-ciclo','dir-pedagogico'].includes(curRole)) return;
         if(!(window.souDT && window.souDT())) return;
         var sb = document.getElementById('sb-content');
         if(!sb) return;
