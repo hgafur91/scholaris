@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.161</span>
+    <span class="logo-ver">v6.162</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -34170,6 +34170,26 @@ window.__finV30=true;})();
   window.__rmSubsidio=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.subsidios){L.subsidios.splice(i,1);persist();window.__folhaRerender();} };
   window.__rmDesconto=function(m,pid,i){ if(!editavel(m))return; var L=getFolha(ano(),m).linhas[pid]; if(L&&L.descontos){L.descontos.splice(i,1);persist();window.__folhaRerender();} };
 
+  /* v6.162 — números da folha nunca quebram (fim do "20 / 500") */
+  try{
+    if(!document.getElementById('folha-nowrap-css')){
+      var _st=document.createElement('style'); _st.id='folha-nowrap-css';
+      _st.textContent='#folha-sal-c td[style*="text-align:right"],#desp-folha-c td[style*="text-align:right"],'
+        +'#folha-sal-c th[style*="text-align:right"],#desp-folha-c th[style*="text-align:right"]'
+        +'{white-space:nowrap;font-variant-numeric:tabular-nums}'
+        +'#folha-sal-c table td,#desp-folha-c table td{vertical-align:middle}';
+      document.head.appendChild(_st);
+    }
+  }catch(e){}
+  /* v6.162 — menu "Exportar" (abre/fecha, fecha ao clicar fora) */
+  window.__folhaExpFecha=function(){ var mn=document.getElementById('folha-exp-menu'); if(mn) mn.style.display='none'; };
+  window.__folhaExpMenu=function(ev){
+    try{ ev&&ev.stopPropagation(); }catch(e){}
+    var mn=document.getElementById('folha-exp-menu'); if(!mn) return;
+    var abrir = mn.style.display==='none' || !mn.style.display;
+    mn.style.display = abrir ? 'block' : 'none';
+    if(abrir){ setTimeout(function(){ document.addEventListener('click', window.__folhaExpFecha, {once:true}); },0); }
+  };
   window.__folhaRender=function(cid, soFechadas){
     var el=document.getElementById(cid||'folha-sal-c'); if(!el) return;
     if(!['gestor','director','gestor-financeiro'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito &mdash; apenas Gestor Geral, Director e Gestor Financeiro.</div>'; return; }
@@ -34179,23 +34199,37 @@ window.__finV30=true;})();
     var canEdit = !soFechadas && f && f.status==='rascunho' && podeEditar();
     var Q=String.fromCharCode(39);
     var rer = 'window.__folhaRerender()';
+    /* v6.162 — cabeçalho em 3 zonas: [mês+estado] · [editar] · [exportar ▾ | fechar mês] */
+    var _aprov = f && f.status==='aprovada';
     var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
     h+='<select class="ffi" style="width:140px" onchange="window.__folhaMes=+this.value;'+rer+'">'+MESES.map(function(nm,i){return i===0?'':'<option value="'+i+'" '+(i===m?'selected':'')+'>'+nm+'</option>';}).join('')+'</select>';
-    if(soFechadas){
-      if(f && f.status==='aprovada'){ h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span><button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> Completo (interno)</button><button class="btn btn-p btn-sm" onclick="window.__folhaBanco('+m+')"><i class="ti ti-building-bank"></i> Folha Banco</button><button class="btn btn-am btn-sm" onclick="window.__folhaImpostos('+m+')"><i class="ti ti-receipt-tax"></i> Impostos</button><button class="btn btn-g btn-sm" onclick="window.__contasModal()"><i class="ti ti-credit-card"></i> Contas</button>'; }
-    } else {
-      if(!f){ if(podeEditar()) h+='<button class="btn btn-p btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-file-plus"></i> Gerar Folha do Mês</button>'; }
-      else if(f.status==='rascunho'){
-        h+='<span class="badge bwn">Rascunho</span>';
-        if(podeEditar()){ h+='<button class="btn btn-g btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-refresh"></i> Actualizar bases</button>';
-          h+='<button class="btn btn-p btn-sm" onclick="window.__aprovarFolha('+m+')"><i class="ti ti-lock"></i> Aprovar e Trancar (fechar)</button>'; }
-      } else {
-        h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada e trancada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span>';
-        h+='<button class="btn btn-g btn-sm" onclick="window.__reabrirFolha('+m+')"><i class="ti ti-lock-open"></i> Destrancar folha</button>';
-      }
-      if(f) h+='<button class="btn btn-g btn-sm" onclick="exportarFolhaSalarios('+m+')"><i class="ti ti-download"></i> Completo (interno)</button><button class="btn btn-p btn-sm" onclick="window.__folhaBanco('+m+')"><i class="ti ti-building-bank"></i> Folha Banco</button><button class="btn btn-am btn-sm" onclick="window.__folhaImpostos('+m+')"><i class="ti ti-receipt-tax"></i> Impostos</button><button class="btn btn-g btn-sm" onclick="window.__contasModal()"><i class="ti ti-credit-card"></i> Contas</button>';
+    /* estado */
+    if(_aprov) h+='<span class="badge bok"><i class="ti ti-lock"></i> Fechada</span><span style="font-size:11px;color:var(--t2)">por '+(f.aprovadaPor||'—')+'</span>';
+    else if(f) h+='<span class="badge bwn">Rascunho</span>';
+    /* zona de edição */
+    if(!f && podeEditar()) h+='<button class="btn btn-p btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-file-plus"></i> Gerar Folha do Mês</button>';
+    if(f && !_aprov && podeEditar()) h+='<button class="btn btn-g btn-sm" onclick="window.__gerarFolha('+m+')"><i class="ti ti-refresh"></i> Actualizar bases</button>';
+    if(f) h+='<button class="btn btn-g btn-sm" onclick="window.__contasModal()"><i class="ti ti-credit-card"></i> Contas</button>';
+    /* zona direita: exportar + fechar/destrancar (separados por um empurrão) */
+    h+='<div style="flex:1;min-width:10px"></div>';
+    if(f){
+      h+='<div style="position:relative;display:inline-block">'
+        +'<button class="btn btn-g btn-sm" onclick="window.__folhaExpMenu(event)"><i class="ti ti-download"></i> Exportar <i class="ti ti-chevron-down" style="font-size:11px"></i></button>'
+        +'<div id="folha-exp-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border:1px solid var(--b2);border-radius:10px;box-shadow:var(--sh-3,0 12px 30px rgba(0,0,0,.35));z-index:60;min-width:220px;overflow:hidden">'
+          +'<button class="si" style="width:100%;border-radius:0" onclick="window.__folhaExpFecha();exportarFolhaSalarios('+m+')"><i class="ti ti-file-text" style="font-size:15px"></i><span>Completo (interno)</span></button>'
+          +'<button class="si" style="width:100%;border-radius:0" onclick="window.__folhaExpFecha();window.__folhaBanco('+m+')"><i class="ti ti-building-bank" style="font-size:15px"></i><span>Folha para o Banco</span></button>'
+          +'<button class="si" style="width:100%;border-radius:0" onclick="window.__folhaExpFecha();window.__folhaImpostos('+m+')"><i class="ti ti-receipt-tax" style="font-size:15px"></i><span>Extracto de Impostos</span></button>'
+        +'</div></div>';
+      if(!_aprov && podeEditar()) h+='<button class="btn btn-p btn-sm" style="margin-left:6px;border-left:3px solid rgba(255,255,255,.35)" onclick="window.__aprovarFolha('+m+')" title="Acção irreversível — tranca o mês"><i class="ti ti-lock"></i> Aprovar e Trancar</button>';
+      if(_aprov && podeEditar()) h+='<button class="btn btn-am btn-sm" style="margin-left:6px" onclick="window.__reabrirFolha('+m+')"><i class="ti ti-lock-open"></i> Destrancar</button>';
     }
     h+='</div>';
+    /* aviso: contas bancárias em falta (v6.162) */
+    try{
+      var _semC=(PROFS||[]).filter(function(p){ return (p.salario||0)>0 && p.regime!=='parcial'; })
+        .filter(function(p){ var c=(typeof window.__contaDe==='function')?window.__contaDe(p.id):null; return !(c&&c.conta); });
+      if(_semC.length) h+='<div class="ib-box ib-am" style="margin-bottom:12px;cursor:pointer" onclick="window.__contasModal()"><i class="ti ti-alert-triangle"></i> <b>'+_semC.length+' funcionário(s) sem nº de conta</b> — '+_semC.slice(0,3).map(function(p){return p.nome;}).join(', ')+(_semC.length>3?' e mais '+(_semC.length-3):'')+'. A Folha para o Banco fica incompleta. <u>Definir agora</u></div>';
+    }catch(e){}
     if(soFechadas && (!f || f.status!=='aprovada')){
       // Sem folha aprovada: gerar um rascunho dinâmico em memória (não persiste) a partir dos salários actuais
       var linhasAuto={};
