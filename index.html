@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.163</span>
+    <span class="logo-ver">v6.164</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -43187,6 +43187,100 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }
     return _goR.apply(this, arguments);
   };
+})();
+</script>
+
+<style id="folha-cards-css">
+/* v6.164 — Folha de Salários em cartões no telemóvel (tabela de 10 colunas era ilegível: só 40% visível) */
+.fcard{background:var(--card);border:1px solid var(--b);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--sh-1,0 1px 2px rgba(0,0,0,.3))}
+.fcard-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--b)}
+.fcard-nome{font-weight:800;font-size:14px;line-height:1.25}
+.fcard-sub{font-size:10px;color:var(--t3);margin-top:2px}
+.fcard-liq{text-align:right;flex-shrink:0}
+.fcard-liq b{display:block;font-size:19px;font-weight:800;color:var(--g);font-variant-numeric:tabular-nums;white-space:nowrap}
+.fcard-liq span{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.fcard-g{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:10px}
+.fcard-i{min-width:0}
+.fcard-i .l{font-size:9.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:1px}
+.fcard-i .v{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fcard-i.wide{grid-column:1/-1;white-space:normal}
+.fcard-i.wide .v{font-size:11px;font-weight:500;white-space:normal;line-height:1.5}
+.fcard-tot{background:var(--bg3);border:1px solid var(--b2);border-radius:14px;padding:14px;margin-bottom:12px}
+.fcard-tot .fcard-g{margin-top:0}
+.fcard-tot .l{color:var(--t2)}
+@media(max-width:767px){ #folha-sal-c .tw[data-cards="1"],#desp-folha-c .tw[data-cards="1"]{display:none} }
+@media(min-width:768px){ .fcards-wrap{display:none!important} }
+</style>
+<script>
+/* ═══ v6.164 — Folha em cartões no telemóvel ═══ */
+(function(){
+  if(window.__folhaCards164) return; window.__folhaCards164=true;
+  var MOB=768;
+  function idxDe(ths, alvo){ for(var i=0;i<ths.length;i++){ if(ths[i].toLowerCase().indexOf(alvo)>=0) return i; } return -1; }
+  function limpar(el){ var w=el.querySelector('.fcards-wrap'); if(w) w.remove(); var tw=el.querySelector('.tw'); if(tw) tw.removeAttribute('data-cards'); }
+  function construir(el){
+    var tw=el.querySelector('.tw'); if(!tw) return;
+    var tb=tw.querySelector('table'); if(!tb) return;
+    var ths=Array.prototype.map.call(tb.querySelectorAll('thead th'), function(t){ return (t.textContent||'').trim(); });
+    if(ths.length<6) return;
+    var iBase=idxDe(ths,'base'), iSub=idxDe(ths,'subsídio'), iMul=idxDe(ths,'multa'),
+        iInss=idxDe(ths,'inss'), iIrps=idxDe(ths,'irps'), iLiq=idxDe(ths,'líquido'),
+        iEmp=idxDe(ths,'empresa'), iCus=idxDe(ths,'custo'), iDes=idxDe(ths,'desconto');
+    var wrap=document.createElement('div'); wrap.className='fcards-wrap';
+    Array.prototype.forEach.call(tb.querySelectorAll('tbody tr'), function(tr){
+      var c=tr.cells; if(!c||!c.length) return;
+      var ehTotal=/TOTAIS/i.test((c[0].textContent||''));
+      var card=document.createElement('div');
+      card.className=ehTotal?'fcard-tot':'fcard';
+      function item(lbl,i,cls){
+        if(i<0||!c[i]) return '';
+        var html=(c[i].innerHTML||'').trim();
+        var txt=(c[i].textContent||'').trim();
+        if(!txt||txt==='—') return '';
+        return '<div class="fcard-i'+(cls?' '+cls:'')+'"><span class="l">'+lbl+'</span><span class="v">'+html+'</span></div>';
+      }
+      var g='';
+      g+=item('Base',iBase); g+=item('INSS',iInss); g+=item('IRPS',iIrps);
+      g+=item('INSS empresa',iEmp); g+=item('Custo total',iCus);
+      g+=item('Subsídios',iSub,'wide'); g+=item('Multas de serviço',iMul,'wide'); g+=item('Descontos',iDes,'wide');
+      if(ehTotal){
+        card.innerHTML='<div class="fcard-h"><div><div class="fcard-nome">TOTAIS</div></div>'
+          +'<div class="fcard-liq"><b>'+((c[iLiq]&&c[iLiq].textContent.trim())||'—')+'</b><span>líquido</span></div></div>'
+          +'<div class="fcard-g">'+g+'</div>';
+      } else {
+        var nomeEl=c[0];
+        var nome=(nomeEl.querySelector('div')||{}).textContent||nomeEl.textContent||'';
+        var subs=nomeEl.querySelectorAll('div'); var sub=subs.length>1?(subs[1].textContent||''):'';
+        card.innerHTML='<div class="fcard-h"><div style="min-width:0"><div class="fcard-nome">'+nome.trim()+'</div><div class="fcard-sub">'+sub.trim()+'</div></div>'
+          +'<div class="fcard-liq"><b>'+((c[iLiq]&&c[iLiq].textContent.trim())||'—')+'</b><span>líquido</span></div></div>'
+          +'<div class="fcard-g">'+g+'</div>';
+      }
+      wrap.appendChild(card);
+    });
+    tw.setAttribute('data-cards','1');
+    tw.parentNode.insertBefore(wrap, tw);
+  }
+  function aplicar(){
+    ['folha-sal-c','desp-folha-c'].forEach(function(id){
+      var el=document.getElementById(id); if(!el) return;
+      limpar(el);
+      if(window.innerWidth<MOB && el.querySelector('.tw table tbody tr')) construir(el);
+    });
+  }
+  window.__folhaCards=aplicar;
+  function hook(){
+    if(typeof window.__folhaRender!=='function' || window.__folhaRender.__cards) return;
+    var _r=window.__folhaRender;
+    window.__folhaRender=function(){
+      var out=_r.apply(this, arguments);
+      try{ setTimeout(aplicar,0); }catch(e){}
+      return out;
+    };
+    window.__folhaRender.__cards=true;
+  }
+  hook(); setTimeout(hook,0); setTimeout(hook,1200);
+  var t=null;
+  window.addEventListener('resize', function(){ clearTimeout(t); t=setTimeout(aplicar,180); });
 })();
 </script>
 </body>
