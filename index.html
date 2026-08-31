@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.176</span>
+    <span class="logo-ver">v6.177</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5793,9 +5793,9 @@ function gerarFactura(mesIdx, incluirMulta){
     +'<div class="rcrow"><span style="color:var(--t2)">Turma</span><span>'+a.turma+' - '+a.classe+'</span></div>'
     +'<div class="rcrow"><span style="color:var(--t2)">Encarregado</span><span>'+a.enome+'</span></div>'
     +'<div class="rcrow"><span style="color:var(--t2)">Referencia</span><span>Propina '+MF[mesIdx-1]+' 2026</span></div>'
-    +'<div class="rcrow"><span style="color:var(--t2)">Valor base</span><span>'+base.toLocaleString()+'.00 MZM</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Valor base</span><span>'+base.toLocaleString()+',00 MZM</span></div>'
     +(multaSel>0?'<div class="rcrow"><span style="color:var(--t2)">Multa</span><span style="color:var(--am)">+'+multaSel.toLocaleString()+' MZM</span></div>':'')
-    +'<div class="rcrow"><span style="color:var(--t2)">Total</span><span style="font-weight:800;color:var(--g)">'+valorSel.toLocaleString()+'.00 MZM</span></div>'
+    +'<div class="rcrow"><span style="color:var(--t2)">Total</span><span style="font-weight:800;color:var(--g)">'+valorSel.toLocaleString()+',00 MZM</span></div>'
     +(atraso.length>0?'<div style="margin-top:10px;padding:10px;background:rgba(239,68,68,.08);border-radius:var(--rads);font-size:12px;color:var(--r)"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i> '+atraso.length+' mes(es) em atraso . Total em divida'+(incluirMulta?' (c/ multa)':'')+': '+dividaTotal.toLocaleString()+' MZM</div>':'');
   openM('m-factura');
 }
@@ -18750,7 +18750,7 @@ function rFinDashboard() {
   const kpisHtml = [
     {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle', fn:"go('dash-entradas')"},
     {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle', fn:"go('dash-saidas')"},
-    {l:'Salários de '+_mesNome, v:fmt(_folhaMesR.custo)+' MZM', sub:(_folhaMesR.n?(fmt(_folhaMesR.liquido)+' líquido · '+_folhaMesR.n+' colab.'):'sem folha gerada')+(_folhaMesR.aprovada?' · fechada':''), c:'var(--a2)', ic:'ti-users', fn:"go('folha-salarios')"},
+    {l:'Salários de '+_mesNome, v:fmt(_folhaMesR.custo)+' MZM', sub:(_folhaMesR.n?(fmt(_folhaMesR.liquido)+' líquido · '+_folhaMesR.n+' colab.'+(_folhaMesR.aprovada?' · fechada e lançada nas saídas':' · rascunho, ainda não lançado nas saídas')):'sem folha gerada'), c:(_folhaMesR.n&&!_folhaMesR.aprovada?'var(--am)':'var(--a2)'), ic:'ti-users', fn:"go('folha-salarios')"},
     {l:'Dividas', v:fmt(totalDivida)+' MZM', sub:'+'+fmt(porVencer)+' por vencer', c:'var(--am)', ic:'ti-alert-triangle', fn:"go('dividas')"},
     {l:'Saldo Actual', v:fmt(saldoActual)+' MZM', sub:'Entradas - Saidas', c:(saldoActual>=0?'var(--g)':'var(--r)'), ic:'ti-wallet', fn:"go('relatorio-actividades')"},
     {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:'Propinas anuais (com bolsas)', c:'var(--a)', ic:'ti-target', fn:"go('previsao-receita')"}
@@ -43611,6 +43611,176 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return r;
     };
   }
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.177 — Fecho da auditoria financeira
+   (1) Formatação de números uniforme em todo o sistema
+   (2) Emolumentos deixa de ser uma tabela fictícia e passa a ler os dados reais
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── (1) FORMATAÇÃO UNIFORME ──────────────────────────────────────────────
+   Duas causas para o mesmo ecrã mostrar "6410", "70 510" e "4,500.00":
+   a) Dezenas de sítios chamam toLocaleString() SEM locale → usam o idioma do
+      browser (num Chrome em inglês dá "4,500").
+   b) O pt-PT tem minimumGroupingDigits=2, por isso só agrupa a partir de 5
+      algarismos: 6410 sai "6410" mas 70510 sai "70 510" — pela MESMA função.
+   Correcção: sem locale passa a assumir pt-PT, e os inteiros de 4 algarismos
+   passam a ser agrupados como todos os outros.                              */
+(function(){
+  if(window.__fmtUnif177) return; window.__fmtUnif177=true;
+  var _orig = Number.prototype.toLocaleString;
+  var SEP = (function(){
+    try{ var m = _orig.call(10000,'pt-PT').match(/^1(\D)0/); return m?m[1]:'\u00A0'; }
+    catch(e){ return '\u00A0'; }
+  })();
+  Number.prototype.toLocaleString = function(loc, opts){
+    var L = loc || 'pt-PT';
+    var out = _orig.call(this, L, opts);
+    try{
+      if(L==='pt-PT' || L==='pt'){
+        /* Agrupa também os blocos de 4 algarismos (o pt-PT só agrupa a partir de 5),
+           tanto em inteiros como na parte inteira dos decimais. */
+        out = out.replace(/(^|\D)(\d{4})(?!\d)/g, function(m, pre, d){
+          return pre + d.charAt(0) + SEP + d.slice(1);
+        });
+      }
+    }catch(e){}
+    return out;
+  };
+  /* Formatador canónico para código novo. */
+  window.__fmtMZ = function(n){
+    try{ return Math.round(Number(n)||0).toLocaleString('pt-PT'); }
+    catch(e){ return String(Math.round(Number(n)||0)); }
+  };
+})();
+
+/* ── (2) EMOLUMENTOS COM DADOS REAIS ──────────────────────────────────────
+   rEmol() mostrava uma tabela escrita à mão (2,500.00 · 500.00 · 300.00 …)
+   que não tinha relação nenhuma com os preços que o gestor edita em
+   "Serviços". Passa a ler CONFIG (propina, multa) + SERVICOS_AVULSOS, e os
+   preços passam a ser guardados na configuração da escola em vez de se
+   perderem ao recarregar a página.                                          */
+(function(){
+  if(window.__emol177) return; window.__emol177=true;
+
+  function servicos(){ return window.SERVICOS_AVULSOS || []; }
+  function podeEditar(){
+    try{ return ['gestor','director'].indexOf(curRole)>=0; }catch(e){ return false; }
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+  function mz(n){ return (window.__fmtMZ?window.__fmtMZ(n):Math.round(n||0))+' MZM'; }
+
+  /* Hidratar os preços guardados (uma vez, assim que a CONFIG estiver carregada). */
+  var hidratado=false;
+  function hidratar(){
+    if(hidratado) return;
+    try{
+      if(typeof CONFIG==='undefined' || !CONFIG) return;
+      var g = CONFIG.servicos;
+      if(Array.isArray(g) && g.length){
+        var L = servicos();
+        L.length = 0;                      /* mutar: SERVICOS() devolve a referência */
+        g.forEach(function(s){ L.push({id:s.id, nome:s.nome, preco:Number(s.preco)||0, ativo:s.ativo!==false}); });
+      }
+      hidratado=true;
+    }catch(e){}
+  }
+  setTimeout(hidratar, 1500); setTimeout(hidratar, 4000);
+
+  function guardar(){
+    try{
+      if(typeof CONFIG==='undefined' || !CONFIG) return;
+      CONFIG.servicos = servicos().map(function(s){
+        return {id:s.id, nome:s.nome, preco:Number(s.preco)||0, ativo:s.ativo!==false};
+      });
+      if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent();
+    }catch(e){}
+  }
+  /* Cada alteração de preço/estado passa a ser guardada. */
+  ['setPrecoServico','toggleServico','addServico'].forEach(function(fn){
+    var _o = window[fn];
+    if(typeof _o!=='function' || _o.__persist177) return;
+    var w = function(){
+      var r = _o.apply(this, arguments);
+      guardar();
+      try{ if(document.getElementById('v-emolumentos') && document.getElementById('v-emolumentos').classList.contains('on')) window.rEmol(); }catch(e){}
+      return r;
+    };
+    w.__persist177 = true;
+    window[fn] = w;
+  });
+
+  window.rEmol = function(){
+    hidratar();
+    var tb = document.getElementById('tb-emol'); if(!tb) return;
+    var C = (typeof CONFIG!=='undefined' && CONFIG) ? CONFIG : {};
+    var diaLim = C.diaLimitePropina || C.diaVencimento || 10;
+    var edit = podeEditar();
+    var btn = edit
+      ? '<button class="btn btn-g btn-sm" onclick="abrirGestorServicos()">Editar</button>'
+      : '';
+
+    var linhas = [];
+    linhas.push({
+      d:'Propina Mensal', v:mz(C.valorPropina||0), p:'Mensal',
+      a:'Todos os alunos', act: edit?'<button class="btn btn-g btn-sm" onclick="go(\'config\')">Configuração</button>':''
+    });
+    linhas.push({
+      d:'Multa de Atraso', v:(C.multaPropina||0)+'% sobre a propina', p:'Condicional',
+      a:'Pagamento depois do dia '+diaLim+' do mês',
+      act: edit?'<button class="btn btn-g btn-sm" onclick="go(\'config\')">Configuração</button>':''
+    });
+
+    var S = servicos().slice().sort(function(x,y){
+      if((x.ativo!==false)!==(y.ativo!==false)) return (x.ativo!==false)?-1:1;
+      return String(x.nome||'').localeCompare(String(y.nome||''));
+    });
+    S.forEach(function(s){
+      var off = (s.ativo===false);
+      linhas.push({
+        d: esc(s.nome) + (off?' <span class="badge" style="background:var(--bg3);color:var(--t3)">Inactivo</span>':''),
+        v: mz(s.preco), p:'Por pedido', a:'Serviço avulso', act: btn, off: off
+      });
+    });
+
+    tb.innerHTML = linhas.map(function(l){
+      var dim = l.off ? 'opacity:.5;' : '';
+      return '<tr style="'+dim+'">'
+        + '<td style="font-weight:700">'+l.d+'</td>'
+        + '<td style="font-weight:700;color:var(--am)">'+l.v+'</td>'
+        + '<td style="color:var(--t2)">'+l.p+'</td>'
+        + '<td style="color:var(--t2);font-size:12px">'+l.a+'</td>'
+        + '<td style="text-align:right">'+(l.act||'')+'</td>'
+        + '</tr>';
+    }).join('');
+
+    /* Caixa informativa por cima da tabela (uma só vez). */
+    try{
+      var view = document.getElementById('v-emolumentos');
+      if(view && !document.getElementById('emol-nota')){
+        var nota = document.createElement('div');
+        nota.id = 'emol-nota'; nota.className = 'ib-box ib-blue';
+        nota.style.marginBottom = '14px';
+        nota.innerHTML = '<i class="ti ti-info-circle"></i> A propina e a multa vêm da <strong>Configuração</strong>; '
+          + 'os serviços avulsos são editados em <strong>Serviços</strong> e ficam guardados na escola.';
+        var ph = view.querySelector('.ph');
+        if(ph && ph.nextSibling) view.insertBefore(nota, ph.nextSibling); else view.insertBefore(nota, view.firstChild);
+      }
+    }catch(e){}
+  };
+
+  /* O botão "Novo" abria um modal de demonstração que não gravava nada. */
+  try{
+    var b = document.getElementById('btn-novo-emol');
+    if(b){ b.setAttribute('onclick','abrirGestorServicos()'); b.innerHTML='<i class="ti ti-settings"></i> Serviços e preços'; }
+  }catch(e){}
 })();
 </script>
 </body>
