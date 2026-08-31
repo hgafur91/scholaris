@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.169</span>
+    <span class="logo-ver">v6.170</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5820,18 +5820,39 @@ function rDespesas(){
   /* v6.158: Salários saíram daqui — geridos por inteiro na aba "Folha de Salários" */
   var _dtab='despesas';
   var _bar='';
+  /* v6.170: os cartões passam a SOMAR os lançamentos reais por categoria.
+     Antes liam um campo (cat.v) que nunca existiu → mostravam sempre 0 MZM. */
+  const _regs = (typeof DESPESAS_REG!=='undefined'&&Array.isArray(DESPESAS_REG))?DESPESAS_REG:[];
+  const _porCat = {};
+  _regs.forEach(function(d){
+    const k=d.categoria||'outros';
+    if(!_porCat[k]) _porCat[k]={total:0,n:0,ultima:'',itens:[]};
+    _porCat[k].total += (Number(d.valor)||0);
+    _porCat[k].n++;
+    const dt=String(d.data||'');
+    if(dt>_porCat[k].ultima) _porCat[k].ultima=dt;
+    _porCat[k].itens.push(d);
+  });
+  const _catInfo = function(id){ return _porCat[id]||{total:0,n:0,ultima:'',itens:[]}; };
+  const _fmtD = function(n){ return Math.round(n||0).toLocaleString('pt-PT'); };
   document.getElementById('despesas-c').innerHTML=_bar+DESP_CAT.map((cat,ci)=>`
     <div class="desp-acc">
       <div class="desp-head" onclick="toggleDesp('db-${ci}','da-${ci}')">
         <div style="width:42px;height:42px;border-radius:11px;background:${cat.cor}18;color:${cat.cor};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px"><i class="ti ${cat.icon}"></i></div>
-        <div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--t)">${cat.nome}</div><div style="font-size:12px;color:var(--t2)">${cat.fixo?`${PROFS.length} colaboradores · ${totalSal.toLocaleString()} MZM/mês`:cat.v?`${cat.v.toLocaleString()} MZM · ${cat.dt}`:''}</div></div>
-        <div style="display:flex;gap:8px;align-items:center"><span style="font-size:14px;font-weight:800;color:${cat.fixo?'var(--am)':cat.cor}">${cat.fixo?totalSal.toLocaleString():(cat.v||0).toLocaleString()} MZM</span>${!cat.fixo&&['gestor'].includes(curRole)?`<button class="btn btn-g btn-sm" onclick="event.stopPropagation();toast('Editar')"><i class="ti ti-edit"></i></button>`:''}<i class="ti ti-chevron-down" style="color:var(--t3);transition:transform .2s" id="da-${ci}"></i></div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--t)">${cat.nome}</div><div style="font-size:12px;color:var(--t2)">${cat.fixo?`${PROFS.length} colaboradores · ${totalSal.toLocaleString()} MZM/mês`:(_catInfo(cat.id).n?`${_catInfo(cat.id).n} lançamento(s) · último: ${_catInfo(cat.id).ultima||'—'}`:'sem lançamentos este ano')}</div></div>
+        <div style="display:flex;gap:8px;align-items:center"><span style="font-size:14px;font-weight:800;color:${cat.fixo?'var(--am)':(_catInfo(cat.id).total?cat.cor:'var(--t3)')}">${cat.fixo?totalSal.toLocaleString():_fmtD(_catInfo(cat.id).total)} MZM</span><i class="ti ti-chevron-down" style="color:var(--t3);transition:transform .2s" id="da-${ci}"></i></div>
       </div>
       <div class="desp-body" id="db-${ci}">
         ${cat.fixo?`<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Salários do staff — só o Gestor pode editar.</div>
           ${PROFS.map((p,pi)=>`<div class="sal-row">${mkAv(p.nome,28,pi,false)}<div style="flex:1"><div style="font-size:13px;font-weight:700">${p.nome}</div><div style="font-size:11px;color:var(--t2)">${p.num} · ${p.cargo} · <span class="badge ${p.regime==='inteiro'?'bin':'bpu'}" style="font-size:8px">${p.regime==='inteiro'?'Inteiro':'Parcial'}</span></div></div><div style="display:flex;align-items:center;gap:8px"><input type="number" value="${p.salario||0}" style="width:100px;background:var(--bg3);border:1px solid var(--b);border-radius:9px;padding:7px 10px;color:var(--t);font-size:13px;text-align:right;font-family:var(--fm)" ${curRole!=='gestor'?'readonly':''} onchange="if(curRole==='gestor'){PROFS[${pi}].salario=+this.value;rDespesas();toast('Salário actualizado!')}else toast('Só o Gestor pode editar salários.')"><span style="font-size:11px;color:var(--t2)">MZM</span></div></div>`).join('')}
           <div style="padding:10px 0;border-top:1px solid var(--b);margin-top:6px;display:flex;justify-content:space-between;font-size:14px;font-weight:800"><span style="color:var(--t2)">Total Salários</span><span style="color:var(--am)">${totalSal.toLocaleString()} MZM</span></div>`
-        :`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b);font-size:13px"><span style="color:var(--t2)">Valor</span><span style="font-weight:700;color:var(--am)">${cat.v?cat.v.toLocaleString()+' MZM':'—'}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--t2)">Data</span><span>${cat.dt||'—'}</span></div>`}
+        :(function(){ const _i=_catInfo(cat.id);
+            if(!_i.n) return '<div style="font-size:12.5px;color:var(--t3);padding:10px 0">Sem despesas registadas nesta categoria. Use <b>Registar Nova Despesa</b>.</div>';
+            const _ord=_i.itens.slice().sort(function(a,b){ return String(b.data||'').localeCompare(String(a.data||'')); });
+            return '<div class="tw"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="color:var(--t2);font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:6px 4px">Data</th><th style="text-align:left;padding:6px 4px">Descrição</th><th style="text-align:right;padding:6px 4px">Valor (MZM)</th></tr></thead><tbody>'
+              +_ord.map(function(d){ return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:6px 4px;font-family:var(--fm);color:var(--t2)">'+(d.data||'—')+'</td><td style="padding:6px 4px">'+((d.descricao||cat.nome)+(d.ref?(' <span style="color:var(--t3);font-size:11px">· '+d.ref+'</span>'):''))+'</td><td style="padding:6px 4px;text-align:right;font-family:var(--fm);font-weight:700">'+_fmtD(d.valor)+'</td></tr>'; }).join('')
+              +'</tbody><tfoot><tr style="font-weight:800"><td colspan="2" style="padding:8px 4px">TOTAL — '+cat.nome+'</td><td style="padding:8px 4px;text-align:right;color:'+cat.cor+'">'+_fmtD(_i.total)+'</td></tr></tfoot></table></div>';
+          })()}
       </div>
     </div>`).join('')+(['gestor','secretario'].includes(curRole)?`<button class="btn btn-p btn-sm" style="margin-top:8px" onclick="openM('m-nova-desp')"><i class="ti ti-plus"></i> Registar Nova Despesa</button>`:'');
 }
@@ -43260,7 +43281,9 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 (function(){
   if(window.__router163) return; window.__router163=true;
   var IDS=['fin-dashboard','despesas','folha-salarios','dividas','orcamento','fluxo-caixa',
-           'previsao-receita','propinas','emolumentos','relatorio-fin','despesas-cat'];
+           'previsao-receita','propinas','emolumentos','relatorio-fin','despesas-cat',
+           /* v6.170: estas quatro abriam em branco (auditoria) */
+           'reconciliacao','bolsas','aging-report','audit-trail'];
   var _goR=window.go;
   window.go=function(id){
     if(IDS.indexOf(id)>=0){
