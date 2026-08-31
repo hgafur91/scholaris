@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.175</span>
+    <span class="logo-ver">v6.176</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -43531,6 +43531,86 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     window.rHorTurmas.__duplo=true;
   }
   hook(); setTimeout(hook,0); setTimeout(hook,1200);
+})();
+</script>
+
+<script>
+/* ═══ v6.176 — Minha Aula para quem acumula direcção e docência (ex.: Ana Gove, DP da 2A).
+   Problema: setupPresencas() só filtra as turmas quando curRole==='professor'; para a
+   direcção devolve as 13 turmas em bruto, obrigando-a a procurar a sua no meio de todas.
+   Solução: agrupar — "As minhas turmas" primeiro, "Outras turmas (direcção)" a seguir —
+   e seleccionar automaticamente quando só lecciona numa. Ninguém perde acesso. ═══ */
+(function(){
+  if(window.__presDual176) return; window.__presDual176=true;
+
+  function meuNum(){
+    try{
+      var p=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
+      if(!p && window._meuStaffId && typeof PROFS!=='undefined')
+        p=(PROFS||[]).find(function(x){ return String(x._dbId||x.id)===String(window._meuStaffId); });
+      return p?p.num:null;
+    }catch(e){ return null; }
+  }
+  /* Só actua em quem NÃO é professor puro (esse já é filtrado) mas lecciona de facto. */
+  function acumula(){
+    try{
+      if(typeof curRole!=='undefined' && curRole==='professor') return false;
+      return (typeof window.__leccionaTambem==='function') ? !!window.__leccionaTambem() : false;
+    }catch(e){ return false; }
+  }
+  function nomeTurma(t){ return t.nome||((t.cl||'')+(t.t||'')); }
+
+  var _setup = window.setupPresencas;
+  if(typeof _setup==='function'){
+    window.setupPresencas = function(){
+      var r = _setup.apply(this, arguments);
+      try{
+        if(!acumula()) return r;
+        var num=meuNum(); if(!num) return r;
+        var sel=document.getElementById('pres-turma-sel'); if(!sel) return r;
+        var A=(typeof ALOCACOES!=='undefined')?ALOCACOES:[];
+        var meus={}; A.forEach(function(a){ if(String(a.prof)===String(num)) meus[String(a.turma)]=1; });
+        var todas=(typeof TURMAS!=='undefined'?TURMAS:[]);
+        var minhas=todas.filter(function(t){ return meus[String(t.id)]; });
+        if(!minhas.length) return r;
+        var outras=todas.filter(function(t){ return !meus[String(t.id)]; });
+        var opt=function(t){ return '<option value="'+t.id+'">'+nomeTurma(t)+'</option>'; };
+        sel.innerHTML='<option value="">— Seleccionar turma —</option>'
+          +'<optgroup label="As minhas turmas">'+minhas.map(opt).join('')+'</optgroup>'
+          +(outras.length?'<optgroup label="Outras turmas (direcção)">'+outras.map(opt).join('')+'</optgroup>':'');
+        if(minhas.length===1){
+          sel.value=minhas[0].id;
+          if(typeof onPresTurma==='function') onPresTurma(minhas[0].id);
+        }
+      }catch(e){}
+      return r;
+    };
+  }
+
+  var _onT = window.onPresTurma;
+  if(typeof _onT==='function'){
+    window.onPresTurma = function(tid){
+      var r=_onT.apply(this, arguments);
+      try{
+        if(!acumula() || !tid) return r;
+        var num=meuNum(); if(!num) return r;
+        var ds=document.getElementById('pres-disc-sel'); if(!ds) return r;
+        var A=(typeof ALOCACOES!=='undefined')?ALOCACOES:[];
+        var daTurma=A.filter(function(a){ return String(a.turma)===String(tid); });
+        var minhas=daTurma.filter(function(a){ return String(a.prof)===String(num); });
+        if(!minhas.length) return r;
+        var outras=daTurma.filter(function(a){ return String(a.prof)!==String(num); });
+        var vistas={};
+        var dedup=function(l){ return l.filter(function(a){ var k=String(a.disc||''); if(!k||vistas[k]) return false; vistas[k]=1; return true; }); };
+        var opt=function(a){ return '<option value="'+(a._discId||'')+'" data-nome="'+(a.disc||'')+'">'+(a.disc||'')+'</option>'; };
+        var md=dedup(minhas), od=dedup(outras);
+        ds.innerHTML='<option value="">— Seleccionar disciplina —</option>'
+          +'<optgroup label="As minhas disciplinas">'+md.map(opt).join('')+'</optgroup>'
+          +(od.length?'<optgroup label="Outras (direcção)">'+od.map(opt).join('')+'</optgroup>':'');
+      }catch(e){}
+      return r;
+    };
+  }
 })();
 </script>
 </body>
