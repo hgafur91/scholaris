@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.168</span>
+    <span class="logo-ver">v6.169</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -18734,6 +18734,67 @@ function rFinDashboard() {
     {l:'Saldo Actual', v:fmt(saldoActual)+' MZM', sub:'Entradas - Saidas', c:(saldoActual>=0?'var(--g)':'var(--r)'), ic:'ti-wallet', fn:"go('relatorio-actividades')"},
     {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:'Propinas anuais (com bolsas)', c:'var(--a)', ic:'ti-target', fn:"go('previsao-receita')"}
   ].map(k=>`<div ${k.fn?`onclick="${k.fn}"`:''} style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden;cursor:${k.fn?'pointer':'default'}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:17px;font-weight:800;color:${k.c}">${k.v}</div><div style="font-size:10px;color:var(--t2);margin-top:2px">${k.l}${k.fn?' <i class=\"ti ti-external-link\" style=\"font-size:9px;color:var(--t3)\"></i>':''}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
+  /* ═══ v6.169 — Gráfico ENTRADAS vs SAÍDAS (duas linhas + área entre elas) ═══
+     Mostra POR QUE o mês correu bem/mal: entrou pouco ou gastou-se muito. */
+  const _entMes12 = Array.from({length:12},(_,mi)=>{
+    const mm=mi+1;
+    return PAGAMENTOS.filter(p=>p.data && parseInt(p.data.slice(5,7),10)===mm && p.estado!=='estornado').reduce((s,p)=>s+(p.valorTotal||0),0);
+  });
+  const _saiMes12 = Array.from({length:12},(_,mi)=>{
+    const mm=mi+1;
+    return DESP.filter(d=>{ const dm=(d.mes!=null)?Number(d.mes):(d.data?parseInt(String(d.data).slice(5,7),10):0); return dm===mm; }).reduce((s,d)=>s+(Number(d.valor)||0),0);
+  });
+  const _cW=760,_cH=250,_cL=72,_cR=16,_cT=18,_cB=30;
+  const _iW=_cW-_cL-_cR,_iH=_cH-_cT-_cB;
+  const _maxV=Math.max(1, ..._entMes12, ..._saiMes12);
+  const _step=Math.max(50000, Math.ceil(_maxV/4/50000)*50000);
+  const _top=Math.ceil(_maxV/_step)*_step;
+  const _x=i=>_cL+_iW*(i/11);
+  const _y=v=>_cT+_iH-(v/_top)*_iH;
+  const _fmtK=v=>v===0?'0':Math.round(v/1000)+'k';
+  let _grid='',_ylab='';
+  for(let v=0;v<=_top;v+=_step){
+    const yy=_y(v);
+    _grid+='<line x1="'+_cL+'" y1="'+yy.toFixed(1)+'" x2="'+(_cW-_cR)+'" y2="'+yy.toFixed(1)+'" stroke="#e5e9f0" stroke-width="1" opacity=".45"/>';
+    _ylab+='<text x="'+(_cL-8)+'" y="'+(yy+3).toFixed(1)+'" font-size="10" fill="#9aa6bb" text-anchor="end">'+_fmtK(v)+'</text>';
+  }
+  /* área entre as linhas: verde onde entradas>saídas, vermelha onde saídas>entradas */
+  let _bandas='';
+  for(let i=0;i<11;i++){
+    const e1=_entMes12[i],e2=_entMes12[i+1],s1=_saiMes12[i],s2=_saiMes12[i+1];
+    const x1=_x(i),x2=_x(i+1);
+    const d1=e1-s1,d2=e2-s2;
+    if(d1===0&&d2===0) continue;
+    if((d1>=0&&d2>=0)||(d1<=0&&d2<=0)){
+      const cor=(d1+d2)>=0?'#22c55e':'#ef4444';
+      _bandas+='<path d="M'+x1.toFixed(1)+','+_y(e1).toFixed(1)+' L'+x2.toFixed(1)+','+_y(e2).toFixed(1)+' L'+x2.toFixed(1)+','+_y(s2).toFixed(1)+' L'+x1.toFixed(1)+','+_y(s1).toFixed(1)+' Z" fill="'+cor+'" opacity=".13"/>';
+    } else {
+      /* cruzamento: parte o segmento no ponto onde se cruzam */
+      const t=d1/(d1-d2), xc=x1+(x2-x1)*t, yc=_y(e1+(e2-e1)*t);
+      const cA=d1>=0?'#22c55e':'#ef4444', cB=d2>=0?'#22c55e':'#ef4444';
+      _bandas+='<path d="M'+x1.toFixed(1)+','+_y(e1).toFixed(1)+' L'+xc.toFixed(1)+','+yc.toFixed(1)+' L'+x1.toFixed(1)+','+_y(s1).toFixed(1)+' Z" fill="'+cA+'" opacity=".13"/>';
+      _bandas+='<path d="M'+xc.toFixed(1)+','+yc.toFixed(1)+' L'+x2.toFixed(1)+','+_y(e2).toFixed(1)+' L'+x2.toFixed(1)+','+_y(s2).toFixed(1)+' Z" fill="'+cB+'" opacity=".13"/>';
+      _bandas+='<circle cx="'+xc.toFixed(1)+'" cy="'+yc.toFixed(1)+'" r="3.5" fill="#f59e0b" stroke="#fff" stroke-width="1.5"><title>Cruzamento entre '+M[i]+' e '+M[i+1]+'</title></circle>';
+    }
+  }
+  const _ptsE=_entMes12.map((v,i)=>_x(i).toFixed(1)+','+_y(v).toFixed(1)).join(' ');
+  const _ptsS=_saiMes12.map((v,i)=>_x(i).toFixed(1)+','+_y(v).toFixed(1)).join(' ');
+  const _dotsE=_entMes12.map((v,i)=>'<circle cx="'+_x(i).toFixed(1)+'" cy="'+_y(v).toFixed(1)+'" r="3.5" fill="#22c55e" stroke="#fff" stroke-width="1.2"><title>'+M[i]+' — Entradas: '+v.toLocaleString('pt-PT')+' MZM</title></circle>').join('');
+  const _dotsS=_saiMes12.map((v,i)=>'<circle cx="'+_x(i).toFixed(1)+'" cy="'+_y(v).toFixed(1)+'" r="3.5" fill="#ef4444" stroke="#fff" stroke-width="1.2"><title>'+M[i]+' — Saídas: '+v.toLocaleString('pt-PT')+' MZM</title></circle>').join('');
+  const _xlab=M.map((m,i)=>'<text x="'+_x(i).toFixed(1)+'" y="'+(_cH-8)+'" font-size="10" fill="#7a90bb" text-anchor="middle">'+m+'</text>').join('');
+  const duploChart='<svg viewBox="0 0 '+_cW+' '+_cH+'" style="width:100%;height:auto">'+_grid+_ylab+_bandas
+    +'<polyline fill="none" stroke="#22c55e" stroke-width="2.4" points="'+_ptsE+'"/>'
+    +'<polyline fill="none" stroke="#ef4444" stroke-width="2.4" stroke-dasharray="5 3" points="'+_ptsS+'"/>'
+    +_dotsE+_dotsS+_xlab+'</svg>';
+  const _mesesDefice=_entMes12.map((v,i)=>({m:M[i],d:v-_saiMes12[i],tem:(v>0||_saiMes12[i]>0)})).filter(x=>x.tem&&x.d<0);
+  const _legenda='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--t2);margin-bottom:8px">'
+    +'<span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:3px;background:#22c55e;border-radius:2px"></span> Entradas</span>'
+    +'<span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:3px;background:repeating-linear-gradient(90deg,#ef4444 0 5px,transparent 5px 8px)"></span> Saídas</span>'
+    +'<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:10px;background:#22c55e;opacity:.2;border-radius:2px"></span> lucro no mês</span>'
+    +'<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:10px;background:#ef4444;opacity:.2;border-radius:2px"></span> prejuízo no mês</span>'
+    +'<span style="flex:1"></span>'
+    +(_mesesDefice.length?('<span style="color:var(--r);font-weight:700"><i class="ti ti-alert-triangle"></i> '+_mesesDefice.length+' mês(es) em prejuízo: '+_mesesDefice.map(x=>x.m).join(', ')+'</span>'):'<span style="color:var(--g);font-weight:700"><i class="ti ti-circle-check"></i> Nenhum mês em prejuízo</span>')
+    +'</div>';
   // Grafico de linha: saldo mensal (SVG)
   const W=760, H=240, padL=70, padR=16, padT=16, padB=28;
           const innerW=W-padL-padR, innerH=H-padT-padB;
@@ -18757,6 +18818,7 @@ function rFinDashboard() {
           const lineChart='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" preserveAspectRatio="none">'+grid_+ylab_+'<polyline fill="none" stroke="#4f8ef7" stroke-width="2" points="'+linePts+'"/>'+dots+xlabels+'</svg>';
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px">'+kpisHtml+'</div>'
     +mesBlockHtml
+    +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-chart-line" style="margin-right:6px"></i>Entradas vs Saídas — 2026</span><span style="font-size:11px;color:var(--t3)">onde as linhas se cruzam, o mês virou</span></div><div class="cb">'+_legenda+duploChart+'</div></div>'
     +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Saldo Mensal 2026 (Entradas - Saidas)</span></div><div class="cb">'+lineChart+'</div></div>'
     +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Cobranca Mensal de Propinas - 2026</span></div><div class="cb"><div style="display:flex;gap:4px;align-items:flex-end;height:120px;padding:0 8px">'
     +cobrancaMensal.map((m,i)=>{ const pct=m.expected>0?Math.round(m.valor/m.expected*100):0; const cor=pct>=90?'var(--g)':pct>=60?'var(--am)':'var(--r)'; const h=Math.max(4,Math.round(pct/100*100)); return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:9px;font-weight:700;color:${cor}">${pct?pct+'%':''}</div><div style="width:100%;height:${h}px;background:${cor};border-radius:3px 3px 0 0;opacity:.85;min-height:4px"></div><div style="font-size:9px;color:var(--t3)">${m.mes}</div></div>`; }).join('')
