@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.180</span>
+    <span class="logo-ver">v6.181</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44125,6 +44125,151 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       var r = _rcf.apply(this, arguments);
       limpar();                 /* a linha é criada de forma síncrona */
       setTimeout(limpar, 60);   /* rede de segurança para camadas que acrescentam depois */
+      return r;
+    };
+  }
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.181 — Fora a "janela de presenças" falsa, dentro o prazo verdadeiro
+   Os dois campos de Configurações › Sistema ("abrir antes 10 min", "fechar
+   após 30 min") descreviam uma regra que foi abolida de propósito na v6.58
+   ("removida a restrição de janela ±10 min") — e mesmo antes disso nunca
+   funcionaram: valores escritos à mão, não gravavam, ninguém os lia.
+   O controlo que interessa de facto é quantos DIAS o professor tem para
+   registar uma aula já dada. Estava fixo em 5 (JANELA_DIAS e maRebuildDias).
+   Passa a ser configurável e a valer nos dois ecrãs: Minha Aula e Presenças.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__dias181) return; window.__dias181=true;
+
+  var OMISSAO = 5, MIN = 1, MAX = 30;
+
+  function dias(){
+    try{
+      var n = parseInt((typeof CONFIG!=='undefined' && CONFIG) ? CONFIG.diasRegistoAula : NaN, 10);
+      if(isNaN(n)) return OMISSAO;
+      return Math.min(MAX, Math.max(MIN, n));
+    }catch(e){ return OMISSAO; }
+  }
+  function rotulo(n){ return n + (n===1 ? ' dia' : ' dias'); }
+  window.__diasRegisto = dias;
+
+  /* JANELA_DIAS é um `var` de topo, logo uma propriedade de window: mantê-la
+     sincronizada faz o ecrã Presenças respeitar a mesma regra. */
+  function sincronizar(){ try{ window.JANELA_DIAS = dias(); }catch(e){} }
+  setTimeout(sincronizar, 1500); setTimeout(sincronizar, 4000);
+
+  window.__setDiasRegisto = function(v){
+    var n = parseInt(v, 10);
+    if(isNaN(n) || n < MIN) n = MIN;
+    if(n > MAX) n = MAX;
+    try{ if(typeof CONFIG!=='undefined') CONFIG.diasRegistoAula = n; }catch(e){}
+    sincronizar();
+    try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){}
+    try{ if(typeof maRebuildDias==='function') maRebuildDias(); }catch(e){}
+    try{ if(typeof toast==='function') toast('Registo de aulas: at\u00e9 ' + rotulo(n) + ' depois'); }catch(e){}
+  };
+
+  /* ── Minha Aula: lista de dias e textos passam a seguir a configuração ── */
+  window.maRebuildDias = function(){
+    var sel = document.getElementById('ma-dia-sel'); if(!sel) return;
+    var N = dias();
+    var turmaId = (document.getElementById('ma-turma')||{}).value || (document.getElementById('ma-turma-sel')||{}).value || '';
+    var disc = (document.getElementById('ma-disc')||{}).value || '';
+    var prof = (typeof resolverMeuProf==='function') ? resolverMeuProf() : null;
+    var profNum = prof ? prof.num : null;
+    var nomes = ['Domingo','Segunda','Ter\u00e7a','Quarta','Quinta','Sexta','S\u00e1bado'];
+    var validos = (turmaId && disc && profNum && typeof maDiasValidosSemana==='function')
+      ? maDiasValidosSemana(turmaId, disc, profNum) : new Set();
+    var temHorario = validos.size > 0;
+    var prev = sel.value, out = [];
+    for(var i=0; i<N; i++){
+      var d = new Date(); d.setDate(d.getDate()-i);
+      var wd = d.getDay();
+      if(temHorario && !validos.has(wd)) continue;
+      var iso = d.toISOString().slice(0,10);
+      var lbl = (i===0 ? 'Hoje' : (i===1 ? 'Ontem' : nomes[wd])) + ' \u2014 ' + d.toLocaleDateString('pt-PT');
+      out.push('<option value="'+iso+'">'+lbl+'</option>');
+    }
+    if(!out.length){
+      sel.innerHTML = '<option value="">\u2014 ' + (N===1 ? 'Sem aula hoje para esta disciplina' : 'Sem dia de aula nos \u00faltimos '+rotulo(N)) + ' \u2014</option>';
+      try{ maRebuildTempos(); }catch(e){}
+      return;
+    }
+    sel.innerHTML = out.join('');
+    if(prev){ for(var o=0;o<sel.options.length;o++){ if(sel.options[o].value===prev){ sel.selectedIndex=o; break; } } }
+    try{ maRebuildTempos(); }catch(e){}
+  };
+
+  var _rmac = window.rMinhaAulaCompleta;
+  if(typeof _rmac === 'function'){
+    window.rMinhaAulaCompleta = function(){
+      var r = _rmac.apply(this, arguments);
+      setTimeout(function(){
+        try{
+          var N = dias();
+          if(N !== OMISSAO){
+            var host = document.getElementById('minha-aula-c');
+            if(host && typeof document.createTreeWalker==='function'){
+              var w = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, null);
+              var n, alvos = [];
+              while((n = w.nextNode())){ if(/\b5 dias\b/.test(n.nodeValue)) alvos.push(n); }
+              alvos.forEach(function(t){ t.nodeValue = t.nodeValue.replace(/\b5 dias\b/g, rotulo(N)); });
+            }
+          }
+          if(typeof maRebuildDias==='function') maRebuildDias();
+        }catch(e){}
+      }, 80);
+      return r;
+    };
+  }
+
+  /* ── Presenças: o cartão "Janela de Registo" deixa de mentir ── */
+  var _sp = window.setupPresencas;
+  if(typeof _sp === 'function'){
+    window.setupPresencas = function(){
+      var r = _sp.apply(this, arguments);
+      try{
+        var info = document.getElementById('pres-window-info');
+        if(info){ var b = info.querySelector('b'); if(b) b.textContent = rotulo(dias()); }
+      }catch(e){}
+      return r;
+    };
+  }
+
+  /* ── Configurações › Sistema: fora os dois campos falsos, dentro um a sério ── */
+  var _rcs = window.rConfigSys;
+  if(typeof _rcs === 'function'){
+    window.rConfigSys = function(){
+      var r = _rcs.apply(this, arguments);
+      setTimeout(function(){
+        try{
+          var el = document.getElementById('config-sys'); if(!el) return;
+          var alvo = null, remover = [];
+          Array.prototype.slice.call(el.querySelectorAll('.setting-row')).forEach(function(row){
+            var lbl = row.querySelector('.setting-label');
+            var t = lbl ? lbl.textContent.trim() : '';
+            if(t.indexOf('Janela presen') === 0){ if(!alvo) alvo = row; remover.push(row); }
+          });
+          if(!document.getElementById('cfg-dias-registo')){
+            var N = dias();
+            var d = document.createElement('div');
+            d.id = 'cfg-dias-registo'; d.className = 'setting-row';
+            d.innerHTML = '<div><div class="setting-label">Registo de aulas \u2014 at\u00e9 quantos dias depois</div>'
+              + '<div class="setting-desc">Prazo que o professor tem para registar uma aula j\u00e1 dada, contando com o pr\u00f3prio dia. '
+              + 'Com <strong>1</strong>, s\u00f3 no dia da aula. Vale para a <strong>Minha Aula</strong> e para as <strong>Presen\u00e7as</strong>.</div></div>'
+              + '<div style="display:flex;align-items:center;gap:8px">'
+              + '<input type="number" class="ffi" style="width:80px" min="'+MIN+'" max="'+MAX+'" value="'+N+'" onchange="__setDiasRegisto(this.value)">'
+              + '<span style="font-size:12px;color:var(--t2)">dias</span></div>';
+            if(alvo && alvo.parentNode) alvo.parentNode.insertBefore(d, alvo);
+            else el.appendChild(d);
+          }
+          remover.forEach(function(row){ try{ row.remove(); }catch(e){} });
+        }catch(e){}
+      }, 110);
       return r;
     };
   }
