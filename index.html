@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.164</span>
+    <span class="logo-ver">v6.165</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -43208,7 +43208,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 .fcard-tot{background:var(--bg3);border:1px solid var(--b2);border-radius:14px;padding:14px;margin-bottom:12px}
 .fcard-tot .fcard-g{margin-top:0}
 .fcard-tot .l{color:var(--t2)}
-@media(max-width:767px){ #folha-sal-c .tw[data-cards="1"],#desp-folha-c .tw[data-cards="1"]{display:none} }
+@media(max-width:767px){
+  #folha-sal-c .tw[data-cards="1"],#desp-folha-c .tw[data-cards="1"]{display:none}
+  /* KPIs: 6 numa linha transbordavam — passam a 2 colunas */
+  #folha-sal-c div[style*="repeat(6,1fr)"],#desp-folha-c div[style*="repeat(6,1fr)"]{grid-template-columns:repeat(2,1fr)!important}
+  #folha-sal-c div[style*="repeat(6,1fr)"] > div,#desp-folha-c div[style*="repeat(6,1fr)"] > div{padding:10px!important}
+  #folha-sal-c div[style*="repeat(6,1fr)"] div[style*="font-size:18px"],#desp-folha-c div[style*="repeat(6,1fr)"] div[style*="font-size:18px"]{font-size:15px!important;white-space:nowrap}
+}
 @media(min-width:768px){ .fcards-wrap{display:none!important} }
 </style>
 <script>
