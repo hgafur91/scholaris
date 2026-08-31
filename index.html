@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.171</span>
+    <span class="logo-ver">v6.172</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -786,7 +786,7 @@ window.__escA = function (s) {
 
 <!-- ════ PLANOS ANALÍTICOS ════ -->
 <div class="view" id="v-curr-planos">
-  <div class="ph"><div><div class="bc"><span>Gest. Curricular</span><span>›</span><span class="cr">Planos Analíticos</span></div><div class="ph-title">Planos Analíticos e Temáticos</div><div class="ph-sub">Conteúdos organizados por disciplina e trimestre</div></div><div class="ph-right"><button class="btn btn-p btn-sm" id="btn-novo-plano" onclick="abrirNovoPlanoTematico()"><i class="ti ti-plus"></i> Novo Plano</button>
+  <div class="ph"><div><div class="bc"><span>Gest. Curricular</span><span>›</span><span class="cr">Planos Curriculares</span></div><div class="ph-title">Planos Curriculares</div><div class="ph-sub">Conteúdos organizados por disciplina e trimestre</div></div><div class="ph-right"><button class="btn btn-p btn-sm" id="btn-novo-plano" onclick="abrirNovoPlanoTematico()"><i class="ti ti-plus"></i> Novo Plano</button>
       <button class="btn btn-g btn-sm" onclick="abrirUploadPlano('tematico')"><i class="ti ti-upload"></i> Importar Plano</button></div></div>
   <div id="curr-planos-c"></div>
 </div>
@@ -927,7 +927,7 @@ window.__escA = function (s) {
 <!-- ════ ALOCAÇÃO PROFESSORES (Secretário) ════ -->
 <div class="view" id="v-alocacao">
   <div class="ph"><div><div class="ph-title">Alocação de Professores</div><div class="ph-sub">Atribuir professor → disciplina → turma → gerar horário automático</div></div><div class="ph-right"><button class="btn btn-p btn-sm" onclick="abrirModalAlocacao()"><i class="ti ti-plus"></i> Nova Alocação</button><button class="btn btn-tl btn-sm" onclick="gerarHorarioAuto()"><i class="ti ti-calendar-event"></i> Gerar Horários</button></div></div>
-  <div class="ib-box ib-tl"><i class="ti ti-info-circle"></i> Após alocar todos os professores, clique em "Gerar Horários" para criar automaticamente os horários semanais sem conflitos.</div>
+  <div class="ib-box ib-tl"><i class="ti ti-info-circle"></i> <b>Passo 1:</b> alocar professor → disciplina → turma. <b>Passo 2:</b> clicar em <b>Gerar Horários</b> (acima) para criar os horários semanais sem conflitos. <b>Passo 3:</b> ver e ajustar em <a href="#" onclick="go('horario');return false" style="color:var(--a);font-weight:700">Horário</a>. <span style="color:var(--t3)">Precisa de afinar as regras do gerador? <a href="#" onclick="go('gerar-horario');return false" style="color:var(--t2)">Gerador avançado</a>.</span></div>
   <div class="card"><div class="tw"><table><thead><tr><th>Professor</th><th>Regime</th><th>Disciplina</th><th>Turma</th><th>Horas/Sem.</th><th>Dias</th><th>Hora Início</th><th>Estado</th><th></th></tr></thead><tbody id="tb-alocacao"></tbody></table></div></div>
 </div>
 
@@ -3383,8 +3383,8 @@ const ROLES={
       ]},
       {sl:'Gestão Curricular',sub:[
         {i:'ti-circles',l:'Ciclos',id:'ciclos'},
-        {i:'ti-book',l:'Plano Temático',id:'curr-planos'},
-        {i:'ti-notebook',l:'Plano Analítico',id:'plano-analitico'},
+        {i:'ti-book',l:'Planos Curriculares',id:'curr-planos'},
+        {i:'ti-notebook',l:'Registo de Aulas',id:'plano-analitico'},
         {i:'ti-clock',l:'Períodos Lectivos',id:'periodos'},
         {i:'ti-calendar-event',l:'Calendário Escolar',id:'calendario-escolar'},
         {i:'ti-award',l:'Cargos / Atribuições',id:'cargos'},
@@ -3397,7 +3397,7 @@ const ROLES={
         {i:'ti-users-group',l:'Encarregados',id:'encarregados'},
         {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
         {i:'ti-calendar',l:'Horário',id:'horario'},
-        {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
+        {i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
@@ -3444,7 +3444,7 @@ const ROLES={
   professor:{nome:'Professor',cargo:'Professor',avt:'CM',color:'var(--g)',badge:'Professor',
     sidebar:[
       {sl:'Portal Professor',flat:[{i:'ti-layout-dashboard',l:'As Minhas Aulas',id:'portal-prof'},{i:'ti-school',l:'As Minhas Turmas',id:'minhas-turmas'},{i:'ti-id-badge',l:'O Meu Perfil',id:'meu-perfil-prof'},{i:'ti-chalkboard',l:'Minha Aula',id:'minha-aula'},{i:'ti-star',l:'Lançar Notas',id:'notas'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},{i:'ti-calendar',l:'O Meu Horário',id:'horario'}]},
-      {sl:'Consulta',flat:[{i:'ti-shield-exclamation',l:'Disciplina',id:'disciplina'},{i:'ti-school',l:'Planos Analíticos',id:'curr-planos'},{i:'ti-calendar-event',l:'Calendário Escolar',id:'calendario-escolar'},{i:'ti-books',l:'Biblioteca',id:'bib'}]},{sl:'Comunicação',flat:[{i:'ti-speakerphone',l:'Comunicados',id:'comunicados-prof'},{i:'ti-clipboard-list',l:'Trabalhos',id:'trabalhos-prof'}]},
+      {sl:'Consulta',flat:[{i:'ti-shield-exclamation',l:'Disciplina',id:'disciplina'},{i:'ti-school',l:'Planos Curriculares',id:'curr-planos'},{i:'ti-calendar-event',l:'Calendário Escolar',id:'calendario-escolar'},{i:'ti-books',l:'Biblioteca',id:'bib'}]},{sl:'Comunicação',flat:[{i:'ti-speakerphone',l:'Comunicados',id:'comunicados-prof'},{i:'ti-clipboard-list',l:'Trabalhos',id:'trabalhos-prof'}]},
     ]},
   aluno:{nome:'Aaron Chaimite',cargo:'Aluno',avt:'AC',color:'var(--am)',badge:'Aluno',
     sidebar:[
@@ -3468,8 +3468,8 @@ const ROLES={
       ]},
       {sl:'Gestão Curricular',sub:[
         {i:'ti-circles',l:'Ciclos',id:'ciclos'},
-        {i:'ti-book',l:'Plano Temático',id:'curr-planos'},
-        {i:'ti-notebook',l:'Plano Analítico',id:'plano-analitico'},
+        {i:'ti-book',l:'Planos Curriculares',id:'curr-planos'},
+        {i:'ti-notebook',l:'Registo de Aulas',id:'plano-analitico'},
         {i:'ti-clock',l:'Períodos Lectivos',id:'periodos'},
         {i:'ti-calendar-event',l:'Calendário Escolar',id:'calendario-escolar'},
         {i:'ti-award',l:'Cargos / Atribuições',id:'cargos'},
@@ -3482,7 +3482,7 @@ const ROLES={
         {i:'ti-users-group',l:'Encarregados',id:'encarregados'},
         {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
         {i:'ti-calendar',l:'Horário',id:'horario'},
-        {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
+        {i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
@@ -3787,7 +3787,7 @@ function rDash(){
       chips:[
         {l:'Turmas',       ic:'ti-layout-grid', fn:"go('turmas')"},
         {l:'Horário',      ic:'ti-calendar',    fn:"go('horario')"},
-        {l:'Plano Temático',ic:'ti-book',       fn:"go('curr-planos')"},
+        {l:'Planos Curriculares',ic:'ti-book',       fn:"go('curr-planos')"},
       ],
       stats:[
         {v:String(ALUNOS.length),  l:'Alunos Matriculados',    s:'Total na escola',     cl:'bl', ic:'ti-users',          fn:"go('alunos')"},
@@ -3821,7 +3821,7 @@ function rDash(){
       chips: [
         {l:'Visão do Ciclo', ic:'ti-circles',       fn:"go('ciclo-visao')"},
         {l:'Turmas',         ic:'ti-layout-grid',   fn:"go('ciclo-turmas')"},
-        {l:'Plano Analítico',ic:'ti-notebook',      fn:"go('plano-analitico')"},
+        {l:'Registo de Aulas',ic:'ti-notebook',      fn:"go('plano-analitico')"},
         {l:'O Meu Perfil',   ic:'ti-id-badge',      fn:"go('meu-perfil-prof')"},
       ],
       stats: [
@@ -13384,8 +13384,8 @@ ROLES['dir-pedagogico'] = {
     {sl:'Principal', flat:[{i:'ti-layout-dashboard',l:'Dashboard',id:'dash'},{i:'ti-id-badge',l:'O Meu Perfil',id:'meu-perfil-prof'}]},
     {sl:'Gestão Curricular', sub:[
       {i:'ti-circles',l:'Ciclos',id:'ciclos'},
-      {i:'ti-book',l:'Plano Temático',id:'curr-planos'},
-      {i:'ti-notebook',l:'Plano Analítico',id:'plano-analitico'},
+      {i:'ti-book',l:'Planos Curriculares',id:'curr-planos'},
+      {i:'ti-notebook',l:'Registo de Aulas',id:'plano-analitico'},
       {i:'ti-calendar-event',l:'Calendário Escolar',id:'calendario-escolar'},
     ]},
     {sl:'Monitorização', sub:[
@@ -13400,7 +13400,7 @@ ROLES['dir-pedagogico'] = {
       {i:'ti-users',l:'Alunos',id:'alunos'},
       {i:'ti-calendar-event',l:'Alocação',id:'alocacao'},
       {i:'ti-calendar',l:'Horário',id:'horario'},
-      {i:'ti-rocket',l:'Gerar Horário',id:'gerar-horario'},{i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
+      {i:'ti-file-check',l:'Avaliação Trimestral',id:'avaliacao-trim'},
       {i:'ti-star',l:'Notas',id:'notas'},
     ]},
     {sl:'Gestão', flat:[
@@ -13427,8 +13427,8 @@ ROLES['dir-ciclo'] = {
       {i:'ti-calendar',l:'O Meu Horário',id:'horario'},
     ]},
     {sl:'Curricular', sub:[
-      {i:'ti-book',l:'Plano Temático',id:'curr-planos'},
-      {i:'ti-notebook',l:'Plano Analítico',id:'plano-analitico'},
+      {i:'ti-book',l:'Planos Curriculares',id:'curr-planos'},
+      {i:'ti-notebook',l:'Registo de Aulas',id:'plano-analitico'},
       {i:'ti-calendar-event',l:'Calendário',id:'calendario-escolar'},
     ]},
   ]
