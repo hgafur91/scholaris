@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.177</span>
+    <span class="logo-ver">v6.178</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -43781,6 +43781,161 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var b = document.getElementById('btn-novo-emol');
     if(b){ b.setAttribute('onclick','abrirGestorServicos()'); b.innerHTML='<i class="ti ti-settings"></i> Serviços e preços'; }
   }catch(e){}
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.178 — Emolumentos ligados aos valores REAIS por classe
+   A escola define propina, inscrição e matrícula POR CLASSE em
+   Configurações › Financeiro › "Valores por Classe" (CONFIG.valoresPorClasse,
+   espelhado em TURMAS[].propina/inscricao/matricula e lido por
+   getPropinaTurma()). Os Emolumentos mostravam só a propina global de
+   recurso (CONFIG.valorPropina), pelo que uma escola com preços diferentes
+   por classe via um valor que não corresponde a ninguém.
+   Passa a mostrar a tabela real, e a poder ser impressa para os pais.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__emol178) return; window.__emol178=true;
+
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+  function mz(n){ return (window.__fmtMZ?window.__fmtMZ(n):Math.round(Number(n)||0))+' MZM'; }
+  function cfg(){ return (typeof CONFIG!=='undefined'&&CONFIG)?CONFIG:{}; }
+  function diaVenc(){ return parseInt(cfg().diaVencimento,10)||5; }
+  function podeEditar(){ try{ return ['gestor','director'].indexOf(curRole)>=0; }catch(e){ return false; } }
+  function ordinal(c){ var n=parseInt(c,10); return isNaN(n)?String(c):(n+'.ª classe'); }
+
+  /* Lê os valores por classe a partir das turmas (fonte usada por getPropinaTurma). */
+  function valoresPorClasse(){
+    var out=[], vis={};
+    var VC = cfg().valoresPorClasse || {};
+    try{ if(typeof window.__syncValoresClasse==='function') window.__syncValoresClasse(); }catch(e){}
+    var TS = (typeof TURMAS!=='undefined')?TURMAS:[];
+    TS.forEach(function(t){
+      var c = String(t.classe==null?'':t.classe);
+      if(!c || vis[c]) return; vis[c]=1;
+      var v = VC[c] || {};
+      out.push({
+        classe: c,
+        propina: (t.propina!=null?t.propina:(v.propina!=null?v.propina:(cfg().valorPropina||0))),
+        inscricao: (t.inscricao!=null?t.inscricao:(v.inscricao||0)),
+        matricula: (t.matricula!=null?t.matricula:(v.matricula||0)),
+        turmas: TS.filter(function(x){ return String(x.classe)===c; }).map(function(x){ return x.nome||x.id; })
+      });
+    });
+    out.sort(function(a,b){ return (parseFloat(a.classe)||0)-(parseFloat(b.classe)||0); });
+    return out;
+  }
+  function servicosActivos(){
+    return (window.SERVICOS_AVULSOS||[]).filter(function(s){ return s.ativo!==false; })
+      .slice().sort(function(a,b){ return String(a.nome||'').localeCompare(String(b.nome||'')); });
+  }
+  window.__emolDados = function(){
+    return { classes: valoresPorClasse(), servicos: servicosActivos(),
+             multaPct: cfg().multaPropina||0, dia: diaVenc(), ano: cfg().anoLectivo||new Date().getFullYear() };
+  };
+
+  window.rEmol = function(){
+    var tb=document.getElementById('tb-emol'); if(!tb) return;
+    var D=window.__emolDados();
+    var edit=podeEditar();
+    var linkCfg = edit ? '<button class="btn btn-g btn-sm" onclick="go(\'config\')">Configuração</button>' : '';
+    var linkSrv = edit ? '<button class="btn btn-g btn-sm" onclick="abrirGestorServicos()">Editar</button>' : '';
+    var sec=function(t){ return '<tr><td colspan="5" style="padding:12px 10px 6px;font-size:11px;font-weight:800;color:var(--tl);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--b)">'+t+'</td></tr>'; };
+    var row=function(d,v,p,a,act){
+      return '<tr><td style="font-weight:700">'+d+'</td>'
+        + '<td style="font-weight:700;color:var(--am)">'+v+'</td>'
+        + '<td style="color:var(--t2)">'+p+'</td>'
+        + '<td style="color:var(--t2);font-size:12px">'+a+'</td>'
+        + '<td style="text-align:right">'+(act||'')+'</td></tr>';
+    };
+
+    var h='';
+    if(D.classes.length){
+      h+=sec('Propinas e taxas por classe');
+      D.classes.forEach(function(c){
+        var turmas=c.turmas.length?('Turmas '+esc(c.turmas.join(', '))):'—';
+        h+=row('Propina — '+ordinal(c.classe), mz(c.propina), 'Mensal', turmas, linkCfg);
+        if(c.inscricao>0) h+=row('Inscrição — '+ordinal(c.classe), mz(c.inscricao), 'Anual', 'Alunos novos', linkCfg);
+        if(c.matricula>0) h+=row('Matrícula — '+ordinal(c.classe), mz(c.matricula), 'Anual', 'Renovação de matrícula', linkCfg);
+      });
+    } else {
+      h+=sec('Propinas e taxas por classe');
+      h+=row('Propina (valor geral)', mz(cfg().valorPropina||0), 'Mensal', 'Sem turmas criadas — defina os valores por classe', linkCfg);
+    }
+
+    h+=sec('Atraso no pagamento');
+    h+=row('Multa de atraso', D.multaPct+'% sobre a propina', 'Condicional',
+           'A partir do dia '+D.dia+' do mês de vencimento', linkCfg);
+
+    var S=D.servicos;
+    h+=sec('Serviços avulsos');
+    if(!S.length){
+      h+='<tr><td colspan="5" style="color:var(--t3);padding:10px">Nenhum serviço activo.</td></tr>';
+    } else {
+      S.forEach(function(s){ h+=row(esc(s.nome), mz(s.preco), 'Por pedido', 'A pedido do encarregado', linkSrv); });
+    }
+    tb.innerHTML=h;
+
+    /* Nota + botão de impressão, uma só vez. */
+    try{
+      var view=document.getElementById('v-emolumentos');
+      if(view && !document.getElementById('emol-nota2')){
+        var velha=document.getElementById('emol-nota'); if(velha) velha.remove();
+        var nota=document.createElement('div'); nota.id='emol-nota2';
+        nota.className='ib-box ib-blue'; nota.style.marginBottom='14px';
+        nota.innerHTML='<i class="ti ti-info-circle"></i> Os valores vêm de <strong>Configurações › Financeiro › Valores por Classe</strong> '
+          +'(propina, inscrição e matrícula) e de <strong>Serviços</strong> (avulsos). Alterar aqui não é possível — altere na origem para não haver duas verdades.';
+        var ph=view.querySelector('.ph');
+        if(ph && ph.nextSibling) view.insertBefore(nota, ph.nextSibling); else view.insertBefore(nota, view.firstChild);
+      }
+      var b=document.getElementById('btn-novo-emol');
+      if(b){ b.setAttribute('onclick','window.__emolImprimir()'); b.innerHTML='<i class="ti ti-printer"></i> Imprimir para os pais'; }
+    }catch(e){}
+  };
+
+  /* Folha A4 para o secretário entregar aos encarregados. */
+  window.__emolImprimir = function(){
+    var D=window.__emolDados();
+    var w=window.open('','_blank','width=900,height=760');
+    if(!w){ if(typeof toast==='function') toast('Permita popups para imprimir.'); return; }
+    var linhas='';
+    D.classes.forEach(function(c){
+      linhas+='<tr><td>Propina — '+ordinal(c.classe)+'</td><td class="v">'+mz(c.propina)+'</td><td>Mensal</td></tr>';
+      if(c.inscricao>0) linhas+='<tr><td>Inscrição — '+ordinal(c.classe)+'</td><td class="v">'+mz(c.inscricao)+'</td><td>Anual (alunos novos)</td></tr>';
+      if(c.matricula>0) linhas+='<tr><td>Matrícula — '+ordinal(c.classe)+'</td><td class="v">'+mz(c.matricula)+'</td><td>Anual (renovação)</td></tr>';
+    });
+    var srv=D.servicos.map(function(s){
+      return '<tr><td>'+esc(s.nome)+'</td><td class="v">'+mz(s.preco)+'</td><td>Por pedido</td></tr>';
+    }).join('');
+    var hoje=new Date().toLocaleDateString('pt-PT');
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>Tabela de Emolumentos '+D.ano+'</title><style>'
+      +'body{font-family:Arial,Helvetica,sans-serif;color:#12315f;margin:26px;font-size:13px}'
+      +'h1{font-size:18px;margin:0 0 2px}.sub{color:#5b6b86;font-size:11px;margin-bottom:16px}'
+      +'h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#1a8f9e;margin:18px 0 6px;border-bottom:1px solid #d8e0ea;padding-bottom:4px}'
+      +'table{width:100%;border-collapse:collapse}td,th{padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:left}'
+      +'th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#5b6b86}'
+      +'.v{text-align:right;font-weight:700;white-space:nowrap}'
+      +'.aviso{margin-top:16px;padding:10px 12px;background:#fff7e6;border-left:3px solid #f59e0b;font-size:12px}'
+      +'.rod{margin-top:22px;padding-top:8px;border-top:1px solid #d8e0ea;font-size:10px;color:#5b6b86}'
+      +'@media print{.np{display:none}}'
+      +'</style></head><body>'
+      +'<button class="np" onclick="window.print()" style="float:right;padding:8px 14px;cursor:pointer">Imprimir</button>'
+      +'<h1>Tabela de Emolumentos</h1><div class="sub">Ano Lectivo '+D.ano+' &middot; emitida em '+hoje+'</div>'
+      +'<h2>Propinas e taxas por classe</h2>'
+      +'<table><tr><th>Descrição</th><th class="v">Valor</th><th>Periodicidade</th></tr>'+(linhas||'<tr><td colspan="3">—</td></tr>')+'</table>'
+      +'<h2>Serviços avulsos</h2>'
+      +'<table><tr><th>Serviço</th><th class="v">Valor</th><th>Periodicidade</th></tr>'+(srv||'<tr><td colspan="3">—</td></tr>')+'</table>'
+      +'<div class="aviso"><strong>Pagamento da propina:</strong> vence no dia '+D.dia+' de cada mês. '
+      +'Depois dessa data aplica-se uma multa de <strong>'+D.multaPct+'%</strong> sobre o valor da propina.</div>'
+      +'<div class="rod">Documento informativo emitido pela Secretaria. Os valores podem ser actualizados pela Direcção.</div>'
+      +'</body></html>';
+    w.document.write(html); w.document.close();
+  };
 })();
 </script>
 </body>
