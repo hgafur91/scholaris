@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.167</span>
+    <span class="logo-ver">v6.168</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -18708,14 +18708,31 @@ function rFinDashboard() {
   const _entrRows = _entrMes.length
     ? _entrMes.map(r=>`<tr><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${r.data}</td><td style="font-weight:600">${r.nome}</td><td><span class="badge bin">${r.turma}</span></td><td style="font-size:11px;color:var(--t2)">${r.mesesPagos}</td><td style="text-align:right;font-family:var(--fm)">${fmt(r.valor)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t3)">${r.recibo||'—'}</td></tr>`).join('')
     : `<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:14px">Sem pagamentos registados em ${_mesNome}.</td></tr>`;
-  const _detalheHtml = '<div style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Entradas detalhadas — quem pagou e quanto</div><div class="tw" style="max-height:280px;overflow:auto"><table><thead><tr><th>Data</th><th>Aluno</th><th>Turma</th><th>Meses</th><th style="text-align:right">Valor (MZM)</th><th>Recibo</th></tr></thead><tbody>'+_entrRows+'</tbody></table></div></div>';
+  /* v6.168: resumo compacto (últimas 5) + "Ver todas" — a tabela completa vive no
+     Registo de Pagamentos → Entradas e no Dashboard de Entradas */
+  const _entrTotal = _entrMes.reduce(function(s,r){ return s+(r.valor||0); },0);
+  const _ultimas = _entrMes.slice(-5).reverse();
+  const _linhasMini = _ultimas.length
+    ? _ultimas.map(function(r){ return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--b);font-size:12.5px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>'+r.nome+'</b> <span style="color:var(--t3);font-size:11px">· '+r.turma+' · '+r.mesesPagos+'</span></span><span style="white-space:nowrap;font-family:var(--fm);font-weight:700;color:var(--g)">'+fmt(r.valor)+'</span></div>'; }).join('')
+    : '<div style="font-size:12.5px;color:var(--t3);padding:10px 0">Sem pagamentos registados em '+_mesNome+'.</div>';
+  const _detalheHtml = '<div style="margin-top:16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em">Últimas entradas de '+_mesNome+'</div>'
+      +'<div style="font-size:11px;color:var(--t3)">'+_entrMes.length+' recibo(s) · <b style="color:var(--g)">'+fmt(_entrTotal)+' MZM</b></div>'
+    +'</div>'
+    +_linhasMini
+    +(_entrMes.length?('<div style="margin-top:10px;text-align:right"><button class="btn btn-g btn-sm" onclick="go(\'dash-entradas\')"><i class="ti ti-list"></i> Ver todas as entradas</button></div>'):'')
+    +'</div>';
   const mesBlockHtml = '<div class="card" style="margin-bottom:20px"><div class="ch"><span class="ct"><i class="ti ti-calendar-dollar" style="margin-right:6px"></i>Balanço de '+_mesNome+' '+((new Date()).getFullYear())+'</span><button class="btn btn-g btn-sm" onclick="exportarEntradasMes('+mesAtual+')"><i class="ti ti-download"></i> Exportar entradas</button></div><div class="cb"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'+mesCardsHtml+'</div>'+_detalheHtml+'</div></div>';
+  /* v6.168: KPI "Salários do mês" + cada KPI abre o ecrã respectivo */
+  const _folhaMesR = (typeof window.__folhaResumoMes==='function') ? window.__folhaResumoMes(mesAtual) : {custo:0,liquido:0,n:0,aprovada:false};
   const kpisHtml = [
-    {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle', fn:'__verEntradas(1,12)'},
-    {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle', fn:'__verSaidasView(0)'},
-    {l:'Dividas', v:fmt(totalDivida)+' MZM', sub:'+'+fmt(porVencer)+' por vencer', c:'var(--am)', ic:'ti-alert-triangle', fn:'__verDividas()'},
-    {l:'Saldo Actual', v:fmt(saldoActual)+' MZM', sub:'Entradas - Saidas', c:(saldoActual>=0?'var(--g)':'var(--r)'), ic:'ti-wallet'},
-    {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:'Propinas anuais (com bolsas)', c:'var(--a)', ic:'ti-target'}
+    {l:'Total de Entradas', v:fmt(totalEntradas)+' MZM', sub:fmt(entradasConf)+' conf . '+fmt(entradasPorConf)+' p/ confirmar', c:'var(--g)', ic:'ti-arrow-down-circle', fn:"go('dash-entradas')"},
+    {l:'Total de Saidas', v:fmt(totalSaidas)+' MZM', sub:'Despesas registadas', c:'var(--r)', ic:'ti-arrow-up-circle', fn:"go('dash-saidas')"},
+    {l:'Salários de '+_mesNome, v:fmt(_folhaMesR.custo)+' MZM', sub:(_folhaMesR.n?(fmt(_folhaMesR.liquido)+' líquido · '+_folhaMesR.n+' colab.'):'sem folha gerada')+(_folhaMesR.aprovada?' · fechada':''), c:'var(--a2)', ic:'ti-users', fn:"go('folha-salarios')"},
+    {l:'Dividas', v:fmt(totalDivida)+' MZM', sub:'+'+fmt(porVencer)+' por vencer', c:'var(--am)', ic:'ti-alert-triangle', fn:"go('dividas')"},
+    {l:'Saldo Actual', v:fmt(saldoActual)+' MZM', sub:'Entradas - Saidas', c:(saldoActual>=0?'var(--g)':'var(--r)'), ic:'ti-wallet', fn:"go('relatorio-actividades')"},
+    {l:'Receita Prevista', v:fmt(receitaPrev)+' MZM', sub:'Propinas anuais (com bolsas)', c:'var(--a)', ic:'ti-target', fn:"go('previsao-receita')"}
   ].map(k=>`<div ${k.fn?`onclick="${k.fn}"`:''} style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:16px;text-align:center;position:relative;overflow:hidden;cursor:${k.fn?'pointer':'default'}"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:${k.c}"></div><i class="ti ${k.ic}" style="color:${k.c};font-size:20px;display:block;margin-bottom:6px"></i><div style="font-size:17px;font-weight:800;color:${k.c}">${k.v}</div><div style="font-size:10px;color:var(--t2);margin-top:2px">${k.l}${k.fn?' <i class=\"ti ti-external-link\" style=\"font-size:9px;color:var(--t3)\"></i>':''}</div><div style="font-size:9px;color:var(--t3);margin-top:3px">${k.sub}</div></div>`).join('');
   // Grafico de linha: saldo mensal (SVG)
   const W=760, H=240, padL=70, padR=16, padT=16, padB=28;
@@ -18738,7 +18755,7 @@ function rFinDashboard() {
           const dots=saldoMensal.map(function(v,i){var col=(v<0?'#ef4444':'#22c55e');var tip=M[i]+': '+v.toLocaleString('pt-PT')+' MZM';return '<circle cx="'+ptX(i).toFixed(1)+'" cy="'+ptY(v).toFixed(1)+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="1.5" style="cursor:pointer"><title>'+tip+'</title></circle>';}).join('');
           const xlabels=M.map(function(m,i){return '<text x="'+ptX(i).toFixed(1)+'" y="'+(H-8)+'" font-size="10" fill="#7a90bb" text-anchor="middle">'+m+'</text>';}).join('');
           const lineChart='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" preserveAspectRatio="none">'+grid_+ylab_+'<polyline fill="none" stroke="#4f8ef7" stroke-width="2" points="'+linePts+'"/>'+dots+xlabels+'</svg>';
-  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">'+kpisHtml+'</div>'
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px">'+kpisHtml+'</div>'
     +mesBlockHtml
     +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Saldo Mensal 2026 (Entradas - Saidas)</span></div><div class="cb">'+lineChart+'</div></div>'
     +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">Cobranca Mensal de Propinas - 2026</span></div><div class="cb"><div style="display:flex;gap:4px;align-items:flex-end;height:120px;padding:0 8px">'
@@ -42761,6 +42778,16 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }).sort(function(x,y){ return (x.p.nome||'').localeCompare(y.p.nome||''); });
     return { rows:rows, aprovada:aprovada };
   }
+  /* v6.168: exposto para o Dashboard Financeiro (KPI "Salários do mês") */
+  window.__folhaCalcMes=calcFolha;
+  window.__folhaResumoMes=function(m){
+    try{
+      var R=calcFolha(m); var liq=0,custo=0,inssEmp=0;
+      R.rows.forEach(function(r){ liq+=r.liq; custo+=(r.iliq+r.empresa-r.dm); inssEmp+=r.empresa; });
+      var parc=0; try{ parc=(typeof window.__totalParciais==='function')?(window.__totalParciais(anoL(),m)||0):0; }catch(e){}
+      return { n:R.rows.length, liquido:liq, custo:custo+parc, inssEmpresa:inssEmp, parciais:parc, aprovada:R.aprovada };
+    }catch(e){ return { n:0, liquido:0, custo:0, inssEmpresa:0, parciais:0, aprovada:false }; }
+  };
   function abrirDoc(titulo, corpo, paisagem){
     var w=window.open('','_blank','width=940,height=740'); if(!w){ if(typeof toast==='function') toast('Permita popups para gerar o PDF.'); return; }
     w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(titulo)+'</title>'
