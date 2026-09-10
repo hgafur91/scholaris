@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.181</span>
+    <span class="logo-ver">v6.182</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44270,6 +44270,164 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
           remover.forEach(function(row){ try{ row.remove(); }catch(e){} });
         }catch(e){}
       }, 110);
+      return r;
+    };
+  }
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.182 — Criar outro Gestor Geral
+   Nenhum dos dois caminhos existentes permitia criar um Gestor Geral:
+   nem ROLES_STAFF (formulário de colaborador, ~24037) nem ROLES do v35
+   (~33728) incluíam 'gestor'. E o formulário de colaborador pede ficha
+   completa — departamento, salário, regime — que não faz sentido para uma
+   conta administrativa.
+   Caminho próprio, com três campos: nome, email e password.
+   Só o Gestor Geral o vê: um Director não pode promover-se a si próprio.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__gestor182) return; window.__gestor182=true;
+
+  var MIN_PASS = 8;
+  var RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  function supa(){ return window._supabase || window._supa || null; }
+  function souGestor(){ try{ return (typeof curRole!=='undefined') && curRole==='gestor'; }catch(e){ return false; } }
+  function aviso(m){ try{ if(typeof toast==='function') toast(m); }catch(e){} }
+  function val(id){ var e=document.getElementById(id); return e ? String(e.value||'').trim() : ''; }
+
+  function construir(){
+    var m = document.getElementById('m-novo-gestor'); if(m) return m;
+    var w = document.createElement('div');
+    w.id = 'm-novo-gestor';
+    w.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;align-items:center;justify-content:center';
+    var campo = 'width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--bd,#ddd);border-radius:9px';
+    var etiq  = 'font-size:12px;color:#64748b;display:block;margin-bottom:3px';
+    w.innerHTML =
+      '<div style="background:var(--card,#fff);border-radius:16px;max-width:460px;width:92%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+      +   '<h3 style="margin:0;font-size:18px">Novo Gestor Geral</h3>'
+      +   '<button onclick="__gestorNovoFechar()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8">&times;</button>'
+      + '</div>'
+      + '<p style="margin:0 0 14px;font-size:12px;color:#64748b">A conta é criada no servidor e a pessoa entra imediatamente, em qualquer dispositivo.</p>'
+      + '<label style="'+etiq+'">Nome completo</label>'
+      + '<input id="ng-nome" placeholder="Ex: Ibrahim Nurmamade" style="'+campo+';margin-bottom:12px">'
+      + '<label style="'+etiq+'">Email (é com este que entra)</label>'
+      + '<input id="ng-email" type="email" placeholder="Ex: nome@colegioiqra.co.mz" style="'+campo+';margin-bottom:12px">'
+      + '<label style="'+etiq+'">Password &mdash; mínimo '+MIN_PASS+' caracteres</label>'
+      + '<div style="display:flex;gap:8px;margin-bottom:14px">'
+      +   '<input id="ng-pass" type="password" placeholder="Escreva a password" style="'+campo+';flex:1">'
+      +   '<button type="button" id="ng-olho" onclick="__gestorNovoVerPass()" title="Mostrar password" style="padding:0 12px;border:1px solid var(--bd,#ddd);background:var(--card,#fff);border-radius:9px;cursor:pointer;color:#64748b"><i class="ti ti-eye"></i></button>'
+      + '</div>'
+      + '<div style="background:rgba(245,158,11,.12);border-left:3px solid #f59e0b;border-radius:0 9px 9px 0;padding:10px 12px;font-size:12px;color:var(--t2,#475569);margin-bottom:16px">'
+      +   '<strong style="color:var(--t,#0f172a)">Um Gestor Geral vê e altera tudo</strong> &mdash; finanças, salários, notas e as contas dos outros utilizadores, incluindo a sua. Crie apenas para quem tem essa responsabilidade.'
+      + '</div>'
+      + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+      +   '<button onclick="__gestorNovoFechar()" style="padding:9px 16px;border:1px solid var(--bd,#ddd);background:var(--card,#fff);border-radius:9px;cursor:pointer">Cancelar</button>'
+      +   '<button id="ng-criar" onclick="__gestorNovoCriar()" style="padding:9px 18px;border:none;background:#2563eb;color:#fff;border-radius:9px;cursor:pointer;font-weight:600">Criar Gestor Geral</button>'
+      + '</div></div>';
+    document.body.appendChild(w);
+    return w;
+  }
+
+  window.__gestorNovoFechar = function(){
+    var m = document.getElementById('m-novo-gestor'); if(m) m.style.display='none';
+  };
+  window.__gestorNovoVerPass = function(){
+    var i = document.getElementById('ng-pass'), b = document.getElementById('ng-olho');
+    if(!i) return;
+    var mostrar = (i.type === 'password');
+    i.type = mostrar ? 'text' : 'password';
+    if(b){
+      b.innerHTML = '<i class="ti ti-eye' + (mostrar ? '-off' : '') + '"></i>';
+      b.title = mostrar ? 'Esconder password' : 'Mostrar password';
+    }
+  };
+  window.__gestorNovoAbrir = function(){
+    if(!souGestor()){ aviso('Só o Gestor Geral pode criar outro Gestor Geral.'); return; }
+    var m = construir();
+    ['ng-nome','ng-email','ng-pass'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+    var p = document.getElementById('ng-pass'); if(p) p.type='password';
+    var b = document.getElementById('ng-olho'); if(b){ b.innerHTML='<i class="ti ti-eye"></i>'; b.title='Mostrar password'; }
+    m.style.display='flex';
+    setTimeout(function(){ var n=document.getElementById('ng-nome'); if(n) n.focus(); }, 40);
+  };
+
+  window.__gestorNovoCriar = function(){
+    if(!souGestor()){ aviso('Só o Gestor Geral pode criar outro Gestor Geral.'); return; }
+    var nome  = val('ng-nome');
+    var email = val('ng-email').toLowerCase();
+    var pass  = val('ng-pass');
+
+    if(nome.length < 3){ aviso('Indique o nome completo.'); return; }
+    if(!RE_EMAIL.test(email)){ aviso('Email inválido. Exemplo: nome@colegioiqra.co.mz'); return; }
+    if(pass.length < MIN_PASS){ aviso('A password precisa de pelo menos '+MIN_PASS+' caracteres.'); return; }
+
+    var ok = true;
+    try{
+      ok = window.confirm('Criar ' + nome + ' (' + email + ') como Gestor Geral?\n\n'
+        + 'Passa a ver e alterar tudo no sistema, incluindo as finanças e as contas dos outros utilizadores.');
+    }catch(e){}
+    if(!ok) return;
+
+    var sb = supa();
+    if(!sb || !sb.functions){ aviso('Sem ligação ao servidor.'); return; }
+
+    var btn = document.getElementById('ng-criar');
+    if(btn){ btn.disabled=true; btn.textContent='A criar...'; }
+    function repor(){ if(btn){ btn.disabled=false; btn.textContent='Criar Gestor Geral'; } }
+
+    /* Mesmo contrato do v35: o campo `telefone` é a password inicial. */
+    sb.functions.invoke('criar-utilizador', { body:{ nome:nome, role:'gestor', email:email, telefone:pass } })
+      .then(async function(res){
+        repor();
+        var detalhe = '';
+        if(res && res.error){
+          try{ var j = await res.error.context.json(); detalhe = (j && j.error) ? j.error : ''; }catch(e){}
+          detalhe = detalhe || res.error.message || '';
+        } else if(res && res.data && res.data.error){
+          detalhe = res.data.error;
+        }
+        if(detalhe){
+          /* O servidor pode ainda não aceitar o perfil 'gestor' — dizer isso em vez de "erro". */
+          if(/role|perfil|inv[aá]lid|permitid|allow/i.test(detalhe))
+            aviso('O servidor recusou o perfil Gestor Geral: ' + detalhe);
+          else
+            aviso(detalhe);
+          return;
+        }
+        window.__gestorNovoFechar();
+        aviso('Gestor Geral criado: ' + nome);
+        try{ if(typeof rUtilizadores==='function') rUtilizadores(); }catch(e){}
+      })
+      .catch(function(e){ repor(); aviso('Erro: ' + ((e && e.message) ? e.message : e)); });
+  };
+
+  /* Botão na Gestão de Utilizadores, ao lado dos que já lá estão. */
+  function botao(){
+    try{
+      if(!souGestor()) return;
+      var host = document.getElementById('utilizadores-c'); if(!host) return;
+      if(document.getElementById('btn-novo-gestor')) return;
+      var ch = host.querySelector('.ch'); if(!ch) return;
+      var b = document.createElement('button');
+      b.id = 'btn-novo-gestor';
+      b.className = 'btn btn-tl btn-sm';
+      b.style.marginLeft = '8px';
+      b.setAttribute('onclick', '__gestorNovoAbrir()');
+      b.innerHTML = '<i class="ti ti-shield-lock"></i> Criar Gestor Geral';
+      ch.appendChild(b);
+    }catch(e){}
+  }
+
+  var _rU = window.rUtilizadores;
+  if(typeof _rU === 'function'){
+    window.rUtilizadores = function(){
+      var r = _rU.apply(this, arguments);
+      setTimeout(botao, 30);
+      setTimeout(botao, 400);
       return r;
     };
   }
