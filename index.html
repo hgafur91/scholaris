@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.184</span>
+    <span class="logo-ver">v6.185</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44555,6 +44555,170 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return _emitir.apply(this, arguments);
     };
   }
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.185 — UM recibo só, oficial, para todos os pagamentos
+
+   Havia dois recibos diferentes:
+     · emitirReciboPropina (20047) — documento A5 para imprimir, com
+       cabeçalho do colégio, dados fiscais, assinaturas e carimbo. Correcto.
+     · emitirReciboPag (31804) — um cartão dentro da app, usado no ecrã
+       "Registar Pagamentos". Três defeitos: não é imprimível, inventava o
+       número quando não o encontrava (REC-2026-000101), e formatava os meses
+       com MM[m-1] quando pag.meses guarda ÍNDICES 0-based — Janeiro saía "0"
+       e Junho saía "Mai".
+
+   Agora existe um único __reciboOficial(pag), com o layout bom, que serve
+   propinas, taxas (matrícula/inscrição) e serviços avulsos. Os dois nomes
+   antigos passam a apontar para ele, para não haver dois documentos com a
+   mesma finalidade e conteúdos diferentes.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__recUnif185) return; window.__recUnif185=true;
+
+  var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+  function mz(n){ try{ return Math.round(Number(n)||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function avisar(m){ try{ if(typeof toast==='function') toast(m); }catch(e){} }
+
+  /* Número oficial: <ANO><sequência anual de 5 dígitos>. Nunca inventado. */
+  function numeroDe(pag){
+    try{
+      var n = (typeof window.__reciboDe==='function') ? window.__reciboDe(pag) : '';
+      if(!n && typeof window.__reciboSync==='function'){ window.__reciboSync(); n = window.__reciboDe(pag); }
+      return n || '';
+    }catch(e){ return ''; }
+  }
+
+  /* pag.meses guarda índices 0-based (a.propinas[mi]) — ver confirmarPagamento. */
+  function descricaoDe(pag, ano){
+    try{
+      if(Array.isArray(pag.meses) && pag.meses.length){
+        return 'Propina — ' + pag.meses.map(function(mi){
+          var i = (mi && typeof mi === 'object') ? (mi.m - 1) : mi;   /* tolera {m:n} 1-based */
+          return (MESES[i] || ('Mês ' + i)) + '/' + ano;
+        }).join(', ');
+      }
+      if(pag.tipo === 'matricula') return 'Taxa de Matrícula';
+      if(pag.tipo === 'inscricao') return 'Taxa de Inscrição';
+      if(pag.categoriaNome) return String(pag.categoriaNome);
+      if(pag.familia === 'taxa_fixa') return 'Taxa fixa';
+      if(pag.familia === 'avulso') return 'Serviço avulso';
+      return pag.tipo ? String(pag.tipo) : 'Pagamento';
+    }catch(e){ return 'Pagamento'; }
+  }
+
+  window.__reciboOficial = function(pag){
+    if(!pag){ avisar('Pagamento não encontrado.'); return; }
+    if(pag.estado === 'por_confirmar'){ avisar('Depósito/transferência ainda por confirmar. Confirme na Reconciliação antes de emitir o recibo.'); return; }
+    if(pag.estado === 'estornado'){ avisar('Pagamento estornado — não tem recibo.'); return; }
+
+    var cod = numeroDe(pag);
+    if(!cod){ avisar('Ainda a atribuir o número do recibo — tente daqui a um instante.'); return; }
+
+    var d = (typeof docData==='function') ? docData() : {escola:'Colégio iQRA', subNome:'', hoje:'', ano:new Date().getFullYear(), nuit:'', morada:'', telefone:''};
+    var a = null;
+    try{ a = (typeof ALUNOS!=='undefined') ? ALUNOS.find(function(x){ return x.id===pag.alunoId; }) : null; }catch(e){}
+
+    var encNome = '—';
+    try{
+      var enc = (typeof ENCS!=='undefined' && a) ? ENCS.find(function(e){ return e.num===a.enc; }) : null;
+      encNome = (enc && enc.nome) || (a && a.erel) || '—';
+    }catch(e){}
+
+    /* Dívida em aberto do aluno (só propinas vencidas e não pagas). */
+    var divida = 0;
+    try{
+      if(a && a.propinas){
+        divida = a.propinas.filter(function(p){
+          var st = (typeof window.__estadoPropina==='function') ? window.__estadoPropina(p) : (p.st==='npago'?'divida':p.st);
+          return st === 'divida';
+        }).reduce(function(s,p){ return s + (p.v||0); }, 0);
+      }
+    }catch(e){}
+
+    var canais = { transferencia:'Transferência Bancária', pos:'POS / Multibanco',
+                   deposito:'Depósito Bancário', numerario:'Numerário (Caixa)' };
+    var canal = canais[pag.canal] || pag.canal || 'Numerário (Caixa)';
+    var descricao = descricaoDe(pag, d.ano);
+    var quem = pag.registadoPor || (typeof curUser!=='undefined' && curUser && curUser.nome) || '—';
+
+    function campo(rot, val){
+      return '<div class="campo"><div class="lbl">'+rot+'</div><div class="val">'+val+'</div></div>';
+    }
+
+    var css = (typeof CSS_BASE!=='undefined') ? CSS_BASE : '';
+    var barra = (typeof NO_PRINT_BAR!=='undefined') ? NO_PRINT_BAR : '';
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo '+esc(cod)+'</title>'+css
+      + '<style>.page{max-width:148mm}@media print{@page{size:A5;margin:0}}</style></head><body>'
+      + barra
+      + '<div class="page a4" style="max-width:148mm">'
+      +   '<div class="hdr"><div><div class="hdr-nome">'+esc(d.escola)+'</div><div class="hdr-sub">'+esc(d.subNome)+'</div></div>'
+      +     '<div class="hdr-tipo"><div class="tipo">Recibo de Pagamento</div><div class="cod">'+esc(cod)+'</div>'
+      +     '<div style="font-size:9px;color:#94a3b8;margin-top:2px">'+esc(d.hoje)+'</div></div></div>'
+
+      +   '<div style="background:linear-gradient(135deg,#0D1526,#1a2f52);border-radius:10px;padding:20px;text-align:center;margin-bottom:16px;border:1px solid rgba(79,142,247,.3)">'
+      +     '<div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Valor Recebido</div>'
+      +     '<div style="font-size:32px;font-weight:900;color:#4f8ef7">'+mz(pag.valorTotal)+' <span style="font-size:16px">MZM</span></div>'
+      +     '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:6px">'+esc(descricao)+'</div>'
+      +   '</div>'
+
+      +   '<div class="g2" style="margin-bottom:10px">'
+      +     campo('Aluno', esc((a && a.nome) || pag.alunoNome || '—'))
+      +     campo('Encarregado de Educação', esc(encNome))
+      +     campo('Nº Aluno', esc(pag.alunoNum || (a && a.num) || '—'))
+      +     campo('Turma', esc(pag.turmaId || (a && a.turma) || '—'))
+      +     campo('Descrição', esc(descricao))
+      +     campo('Canal de Pagamento', esc(canal))
+      +     campo('Referência', '<span style="font-family:monospace">'+esc(pag.ref || '—')+'</span>')
+      +     campo('Banco', esc((pag.banco||'').toUpperCase() || '—'))
+      +     campo('Data do Pagamento', esc(pag.data || '—'))
+      +     campo('Registado por', esc(quem))
+      +   '</div>'
+
+      + (pag.confirmedBy
+          ? '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;font-size:10px;color:#166534;margin-bottom:10px">'
+            + 'Confirmado por: <strong>'+esc(pag.confirmedBy)+'</strong> em '+esc(pag.confirmedAt||'—')
+            + ' · Ref. extracto: <strong>'+esc(pag.confirmedRef||pag.ref||'—')+'</strong></div>'
+          : '')
+
+      + (a ? '<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid '+(divida>0?'#fecaca':'#bbf7d0')+';background:'+(divida>0?'#fef2f2':'#f0fdf4')+';border-radius:8px;padding:10px 14px;margin:14px 0">'
+            + '<div style="font-size:11px;color:'+(divida>0?'#991b1b':'#166534')+';font-weight:700">'+(divida>0?'Saldo em dívida (propinas em aberto)':'Sem propinas em dívida')+'</div>'
+            + '<div style="font-size:16px;font-weight:900;color:'+(divida>0?'#dc2626':'#16a34a')+'">'+mz(divida)+' MZM</div></div>'
+          : '')
+
+      +   '<div style="font-size:9px;color:#94a3b8;text-align:center;margin:6px 0 12px;line-height:1.5">'
+      +     (d.nuit?('NUIT: '+esc(d.nuit)+' · '):'') + (d.morada?(esc(d.morada)+' · '):'') + (d.telefone?('Tel: '+esc(d.telefone)):'')
+      +     '<br>Documento processado por computador · Recibo válido sem rasuras</div>'
+      +   '<div class="sig sig2"><div><div class="sig-line">Secretário(a) / Tesouraria</div></div>'
+      +     '<div><div class="sig-line">Encarregado de Educação</div></div></div>'
+      +   '<div class="stamp">Carimbo da Escola</div>'
+      +   '<div class="footer"><span>'+esc(d.escola)+' · '+esc(d.hoje)+'</span><span>'+esc(cod)+'</span>'
+      +     '<span>Guardar como comprovativo de pagamento</span></div>'
+      + '</div></body></html>';
+
+    if(typeof abrirJanela === 'function') abrirJanela(html, 'Recibo ' + cod);
+    else { var w = window.open('','_blank','width=960,height=800'); if(w){ w.document.write(html); w.document.close(); } }
+  };
+
+  /* Os dois caminhos antigos passam a dar o mesmo documento. */
+  window.emitirReciboPag = function(pag){ return window.__reciboOficial(pag); };
+  window.emitirReciboPropina = function(pagamentoId){
+    var pag = null;
+    try{ pag = (typeof PAGAMENTOS!=='undefined') ? PAGAMENTOS.find(function(p){ return p.id===pagamentoId; }) : null; }catch(e){}
+    if(!pag && pagamentoId && typeof pagamentoId === 'object') pag = pagamentoId;
+    return window.__reciboOficial(pag);
+  };
 })();
 </script>
 </body>
