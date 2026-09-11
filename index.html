@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.182</span>
+    <span class="logo-ver">v6.183</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -31500,6 +31500,10 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
   window.rPagamentos = rPagamentos;
   function pagTab(id){ _pagTab=id; rPagamentos(); }
   window.pagTab = pagTab;
+  /* v6.183: ler e fixar o separador SEM renderizar — deixa o router escolher o
+     separador certo antes do único render, em vez de renderizar duas vezes. */
+  window.__pagTabActual = function(){ return _pagTab; };
+  window.__pagTabSet = function(id){ if(id) _pagTab = id; };
   function renderPagTab(){
     var body = document.getElementById('pag-tab-body'); if(!body) return;
     if(_pagTab==='propinas') return renderTabPropinas(body);
@@ -32448,8 +32452,17 @@ window.renderBalanceteRange=function(mIni,mFim){
   var SECID='sb-sec-Gest'+String.fromCharCode(227)+'oFinanceira';
   function $(id){return document.getElementById(id);}
   function abrirTab(tab){
+    /* v6.183: anunciar o separador ANTES de navegar. Sem isto, go('pagamentos')
+       repunha o separador por omissão e só 60ms depois é que este voltava. */
+    try{ window.__pagTabAlvo = tab; }catch(e){}
     try{ if(typeof window.go==='function'){ window.go('pagamentos'); } }catch(e){}
-    setTimeout(function(){ try{ if(typeof window.pagTab==='function'){ window.pagTab(tab); } }catch(e){} },60);
+    setTimeout(function(){
+      try{
+        if(typeof window.pagTab!=='function') return;
+        if(window.__pagTabActual && window.__pagTabActual()===tab) return; /* já lá está */
+        window.pagTab(tab);
+      }catch(e){}
+    },60);
   }
   window.__irEntradas=function(tab){ abrirTab(tab||'propinas'); };
   /* v6.131 — 5 grupos definitivos (Visão Geral=Dashboard · Receitas · Despesas · Cobrança · Relatórios) */
@@ -44429,6 +44442,98 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       setTimeout(botao, 30);
       setTimeout(botao, 400);
       return r;
+    };
+  }
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.183 — Três correcções distintas
+   (1) Pagamentos abria no separador errado (o Balancete ficava "colado")
+   (2) Mudar de ecrã mantinha a página a meio — agora volta ao topo
+   (3) Recibos com número inventado (REC-2026-000101) em vez do oficial
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__fix183) return; window.__fix183=true;
+
+  /* ── (1) O separador dos Pagamentos era estado pegajoso ───────────────────
+     `_pagTab` guarda o último separador aberto e nunca voltava ao princípio.
+     Quem entrasse uma vez no Balancete passava a ver o Balancete sempre que
+     abrisse "Propinas & Pagamentos" — que é onde se registam os pagamentos.
+     Agora: quem pede um separador (item Balancete) anuncia-o em __pagTabAlvo;
+     quem não pede nada volta ao separador de trabalho.                      */
+  var SEP_OMISSAO = 'propinas';
+
+  /* ── (2) A página ficava onde estava ao trocar de ecrã ────────────────────
+     Quem descesse numa lista longa e mudasse de ecrã aterrava a meio do novo,
+     muitas vezes sem ver o título nem os botões do topo. Quem rola é #main
+     (flex com overflow-y:auto), não a janela.                                */
+  function aoTopo(){
+    try{
+      var m = document.getElementById('main');
+      if(m && typeof m.scrollTo === 'function') m.scrollTo({ top:0, left:0, behavior:'auto' });
+      else if(m) m.scrollTop = 0;
+    }catch(e){ try{ var m2=document.getElementById('main'); if(m2) m2.scrollTop=0; }catch(_){} }
+  }
+  window.__aoTopo = aoTopo;
+
+  var _go = window.go;
+  if(typeof _go === 'function'){
+    window.go = function(id){
+      if(id === 'pagamentos' || id === 'propinas'){
+        var alvo = window.__pagTabAlvo || SEP_OMISSAO;
+        window.__pagTabAlvo = null;
+        try{ if(typeof window.__pagTabSet === 'function') window.__pagTabSet(alvo); }catch(e){}
+      }
+      var r = _go.apply(this, arguments);
+      aoTopo();
+      return r;
+    };
+  }
+
+  /* ── (3) Número de recibo ─────────────────────────────────────────────────
+     O número oficial é <ANO><sequência de 5 dígitos> (202600001), calculado
+     por __reciboDe a partir da posição cronológica no ano. Mas:
+       · emitirReciboPag preferia `pag.reciboNum`, que podia trazer um número
+         de um esquema antigo (IQ-09-0012) guardado no pagamento;
+       · num pagamento acabado de registar o índice ainda não tinha sido
+         reconstruído, __reciboDe devolvia vazio e caía-se num REC-2026-000101
+         inventado na hora — um número que não existe em lado nenhum.
+     Agora: sincroniza o índice, tenta outra vez, e nunca inventa.            */
+  function numeroOficial(pag){
+    if(!pag) return '';
+    try{
+      var n = (typeof window.__reciboDe === 'function') ? window.__reciboDe(pag) : '';
+      if(!n && typeof window.__reciboSync === 'function'){
+        window.__reciboSync();                      /* pagamento acabado de entrar */
+        n = window.__reciboDe(pag);
+      }
+      return n || '';
+    }catch(e){ return ''; }
+  }
+
+  var _num = window.__numeroRecibo;
+  window.__numeroRecibo = function(pag){
+    var n = numeroOficial(pag);
+    if(n){ try{ pag.reciboNum = n; }catch(e){} return n; }
+    /* sem número oficial: devolver o que o pagamento já tinha, nunca um novo */
+    try{ if(typeof _num === 'function') return _num.apply(this, arguments) || ''; }catch(e){}
+    return (pag && pag.reciboNum) || '';
+  };
+
+  var _emitir = window.emitirReciboPag;
+  if(typeof _emitir === 'function'){
+    window.emitirReciboPag = function(pag){
+      try{
+        var n = numeroOficial(pag);
+        if(n) pag.reciboNum = n;   /* sobrepõe-se a qualquer número antigo guardado */
+        else if(!pag.reciboNum){
+          if(typeof toast === 'function') toast('Ainda a atribuir o número do recibo — tente daqui a um instante.');
+          return;                  /* melhor não emitir do que emitir um número falso */
+        }
+      }catch(e){}
+      return _emitir.apply(this, arguments);
     };
   }
 })();
