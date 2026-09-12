@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.188</span>
+    <span class="logo-ver">v6.189</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44939,7 +44939,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function paginaFactura(a, pr, mes1, comMulta, f){
     var d=(typeof docData==='function')?docData():{escola:'Colégio iQRA',subNome:'',hoje:new Date().toLocaleDateString('pt-PT'),ano:anoLectivo(),nuit:'',morada:'',telefone:''};
     var e=estadoPr(pr), base=baseDe(a,pr), multa=(comMulta&&e.t==='divida')?e.multa:0, total=base+multa;
-    var proforma=(e.t==='vencer'), ano=anoLectivo(), mesNome=MESES[mes1-1]||('Mês '+mes1);
+    /* v6.189: sem pró-forma — o mês por vencer é factura normal, com data de vencimento */
+    var proforma=false, porVencer=(e.t==='vencer'), ano=anoLectivo(), mesNome=MESES[mes1-1]||('Mês '+mes1);
     var numero=proforma?'PRÓ-FORMA':(f&&f.numero)||'';
     var tipo=proforma?'Factura Pró-forma':'Factura';
     var dv=parseInt((typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)||5,10)||5;
@@ -44956,7 +44957,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +  campo('Aluno',esc(a.nome||'—'))+campo('Encarregado de Educação',esc(encNome(a)))
       +  campo('Nº Aluno',esc(a.num||'—'))+campo('Turma',esc(a.turma||'—'))
       +  campo('Mês',esc(mesNome)+' '+ano)+campo('Vencimento',venc)
-      +  campo('Situação','<span style="color:'+(proforma?'#92400e':'#991b1b')+'">'+(proforma?'POR VENCER — pró-forma':'EM DÍVIDA')+'</span>')
+      +  campo('Situação','<span style="color:'+(porVencer?'#92400e':'#991b1b')+'">'+(porVencer?'POR VENCER':'EM DÍVIDA')+'</span>')
       +  campo('Referência para depósito','<span style="font-family:monospace">'+esc(a.num||'')+'</span>')
       +'</div>'
       +'<table style="width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:11px">'
@@ -44986,7 +44987,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       .filter(function(x){ if(!x.pr) return false; if(apenasMes1&&x.mes1!==apenasMes1) return false; var e=estadoPr(x.pr); return e.t==='divida'||(apenasMes1&&e.t==='vencer'); });
     for(var i=0;i<lista.length;i++){
       var pr=lista[i].pr, mes1=lista[i].mes1, e=estadoPr(pr), f=null;
-      if(e.t==='divida'){ f=await obterFactura(a, mes1, comMulta, baseDe(a,pr), comMulta?e.multa:0); }
+      /* v6.189: onde não há recibo há factura — o mês por vencer também recebe nº de série (multa 0) */
+      if(e.t==='divida'||e.t==='vencer'){ f=await obterFactura(a, mes1, comMulta, baseDe(a,pr), (comMulta&&e.t==='divida')?e.multa:0); }
       paginas.push(paginaFactura(a, pr, mes1, comMulta, f));
     }
     return paginas;
@@ -45065,6 +45067,132 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       }catch(e){}
       return r;
     };
+  }
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.189 — Passo 1 do plano "um mês, um documento" (aprovado 13/09/2026)
+   Regra: mês PAGO → só Recibo; mês POR PAGAR (em dívida ou por vencer) →
+   só Factura; mês ISENTO → nada. Nunca os dois. Aplicado em:
+     · Perfil do aluno › Propinas (v-propaluno, via openPA): uma acção por
+       célula de mês; no histórico de pagos o botão de factura passa a Recibo;
+       o botão genérico "Gerar Factura" do topo desaparece.
+     · Perfil do aluno › Financeiro (openAluno): uma acção por linha de mês;
+       o botão genérico "Factura" do cartão desaparece.
+     · Propinas & Pagamentos › grelha (renderPropTabela): ícone por célula.
+   O modal m-factura deixa de ter quem o chame a partir do ecrã.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__docUnico189) return; window.__docUnico189=true;
+
+  function avisar(m){ try{ if(typeof toast==='function') toast(m); }catch(e){} }
+  function podeDocs(){ try{ return ['gestor','director','secretario','gestor-financeiro'].indexOf(curRole)>=0; }catch(e){ return false; } }
+  function alunos(){ return (typeof ALUNOS!=='undefined'&&Array.isArray(ALUNOS))?ALUNOS:[]; }
+  function pags(){ return (typeof PAGAMENTOS!=='undefined'&&Array.isArray(PAGAMENTOS))?PAGAMENTOS:[]; }
+  function estado(p){
+    try{ if(p.st==='pago') return 'pago'; if(p.st==='isento') return 'isento';
+         return (typeof window.__estadoPropina==='function')?window.__estadoPropina(p):(p.st==='multa'?'divida':'futuro'); }
+    catch(e){ return p.st; }
+  }
+  function pagDe(a,p,mi){
+    if(p.pagamentoId){ var x=pags().find(function(q){ return q.id===p.pagamentoId; }); if(x) return x; }
+    return pags().find(function(q){ return q.alunoId===a.id && q.estado!=='estornado' && Array.isArray(q.meses) && q.meses.indexOf(mi)>=0; })||null;
+  }
+  /* A acção única de um mês. */
+  function accao(a,p,mi){
+    var e=estado(p), mes1=p.m?Number(p.m):(mi+1);
+    if(e==='isento') return null;
+    if(e==='pago'){
+      var pg=pagDe(a,p,mi);
+      if(!pg) return {tipo:'recibo', ok:false, fn:function(){ avisar('Sem pagamento associado a este mês — não há recibo a emitir.'); }};
+      return {tipo:'recibo', ok:(pg.estado==='confirmado'), fn:function(){ window.emitirReciboPropina(pg.id); }};
+    }
+    return {tipo:'factura', ok:true, fn:function(){ window.__factPDF(a.id, mes1, true); }};
+  }
+  window.__docMes=accao;
+
+  var REG={}, _k=0;
+  window.__docClick=function(k,ev){ try{ if(ev){ ev.stopPropagation(); ev.preventDefault(); } var f=REG[k]; if(f) f(); }catch(e){} };
+  function botao(ac, compacto){
+    if(_k>4000){ REG={}; _k=0; }
+    var k='d'+(++_k); REG[k]=ac.fn;
+    var ic=ac.tipo==='recibo'?'ti-receipt':'ti-file-invoice', lbl=ac.tipo==='recibo'?'Recibo':'Factura', cls=ac.tipo==='recibo'?'btn-g':'btn-p';
+    var dim=ac.ok?'':';opacity:.45';
+    if(compacto) return '<button type="button" class="btn '+cls+' btn-sm" data-doc="1" title="'+lbl+'" style="padding:2px 7px;font-size:10px;margin-top:4px'+dim+'" onclick="window.__docClick(\''+k+'\',event)"><i class="ti '+ic+'"></i></button>';
+    return '<button type="button" class="btn '+cls+' btn-sm" data-doc="1" style="margin-left:6px'+dim+'" onclick="window.__docClick(\''+k+'\',event)"><i class="ti '+ic+'"></i> '+lbl+'</button>';
+  }
+  function el(html){ var s=document.createElement('span'); s.innerHTML=html; return s.firstChild; }
+
+  /* ── Perfil › Propinas (openPA) ─────────────────────────────────────── */
+  function aposPA(a){
+    if(!a||!a.propinas) return;
+    var v=document.getElementById('v-propaluno'); if(!v) return;
+    v.querySelectorAll('.ph-right button').forEach(function(b){ if(/gerarFactura/.test(b.getAttribute('onclick')||'')) b.remove(); });
+    if(!podeDocs()) return;
+    var cells=document.querySelectorAll('#prop-meses > .pm');
+    a.propinas.forEach(function(p,mi){
+      var c=cells[mi]; if(!c||c.querySelector('[data-doc]')) return;
+      var ac=accao(a,p,mi); if(!ac) return;
+      var d=document.createElement('div'); d.style.marginTop='2px'; d.appendChild(el(botao(ac,true))); c.appendChild(d);
+    });
+    var rows=document.querySelectorAll('#pa-hist > div');
+    var pagos=a.propinas.map(function(p,mi){ return {p:p,mi:mi}; }).filter(function(x){ return x.p.st==='pago'; });
+    pagos.forEach(function(x,i){
+      var row=rows[i]; if(!row||row.querySelector('[data-doc]')) return;
+      var ac=accao(a,x.p,x.mi); if(!ac) return;
+      var old=row.querySelector('button[onclick*="gerarFactura"]');
+      var b=el(botao(ac,false));
+      if(old) old.replaceWith(b); else { var box=row.lastElementChild; (box||row).appendChild(b); }
+    });
+  }
+  var _pa=window.openPA;
+  if(typeof _pa==='function'){
+    window.openPA=function(id){ var r=_pa.apply(this,arguments); setTimeout(function(){ try{ aposPA(alunos().find(function(x){ return x.id===id; })); }catch(e){} },90); return r; };
+  }
+
+  /* ── Perfil › Financeiro (openAluno) ────────────────────────────────── */
+  function aposAluno(a){
+    var host=document.getElementById('ap-fin-c'); if(!host||!a||!a.propinas) return;
+    host.querySelectorAll('button').forEach(function(b){ if(/gerarFactura/.test(b.getAttribute('onclick')||'')) b.remove(); });
+    if(!podeDocs()) return;
+    var card=null; host.querySelectorAll('.card').forEach(function(c){ var h=c.querySelector('.ch'); if(h&&/Pagamentos/.test(h.textContent||'')) card=c; });
+    if(!card) return;
+    var rows=Array.prototype.slice.call(card.children).filter(function(d){ return !d.classList.contains('ch'); });
+    a.propinas.forEach(function(p,mi){
+      var row=rows[mi]; if(!row||row.querySelector('[data-doc]')) return;
+      var ac=accao(a,p,mi); if(!ac) return;
+      row.appendChild(el(botao(ac,false)));
+    });
+  }
+  var _oa=window.openAluno;
+  if(typeof _oa==='function'){
+    window.openAluno=function(id){ var r=_oa.apply(this,arguments); setTimeout(function(){ try{ aposAluno(alunos().find(function(x){ return x.id===id; })); }catch(e){} },140); return r; };
+  }
+
+  /* ── Propinas & Pagamentos › grelha (renderPropTabela / openPropTurma) ── */
+  function aposGrelha(list){
+    if(!podeDocs()) return;
+    var trs=document.querySelectorAll('#tb-prop tr'); var L=Array.isArray(list)?list:[];
+    L.forEach(function(a,i){
+      var tr=trs[i]; if(!tr||!a||!a.propinas) return;
+      var tds=tr.querySelectorAll('td'); /* colunas: avatar, nº, nome, 6 meses, … */
+      a.propinas.slice(0,6).forEach(function(p,mi){
+        var td=tds[3+mi]; if(!td||td.querySelector('[data-doc]')) return;
+        var ac=accao(a,p,mi); if(!ac) return;
+        var d=document.createElement('div'); d.appendChild(el(botao(ac,true))); td.appendChild(d);
+      });
+    });
+  }
+  var _rpt=window.renderPropTabela;
+  if(typeof _rpt==='function'){
+    window.renderPropTabela=function(list){ var r=_rpt.apply(this,arguments); try{ aposGrelha(list); }catch(e){} return r; };
+  } else {
+    var _opt=window.openPropTurma;
+    if(typeof _opt==='function'){
+      window.openPropTurma=function(tid){ var r=_opt.apply(this,arguments); setTimeout(function(){ try{ aposGrelha(alunos().filter(function(a){ return a.turma===tid; })); }catch(e){} },60); return r; };
+    }
   }
 })();
 </script>
