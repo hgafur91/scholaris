@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.185</span>
+    <span class="logo-ver">v6.186</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1851,7 +1851,8 @@ window.__escA = function (s) {
 </div><div class="mft"><button class="btn btn-g" onclick="closeM('m-recibo')">Fechar</button><button class="btn btn-gr" onclick="toast('A imprimir...')"><i class="ti ti-printer"></i> Imprimir</button><button class="btn btn-p" onclick="toast('Enviado por email!')"><i class="ti ti-mail"></i> Email</button></div></div></div>
 
 <div class="modal-ov" id="m-factura"><div class="modal" style="max-width:480px"><div class="mhd"><span class="mt">Factura Gerada</span><button class="mclose" onclick="closeM('m-factura')"><i class="ti ti-x"></i></button></div><div class="mbod"><div class="ib-box ib-gr" style="margin-bottom:16px"><i class="ti ti-check"></i> Factura gerada e associada ao aluno.</div>
-  <div class="recibo-box"><div class="recibo-header"><div style="font-size:18px;font-weight:800" id="fact-escola-nome">Scholaris</div><div style="font-size:12px;color:var(--t2)" id="fact-num">Factura Nº EC2026050000001</div><div style="font-size:11px;color:var(--t3)">Emitida em 25/05/2026</div></div><div id="fact-body"></div><div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--b)"><div style="font-size:20px;letter-spacing:6px;color:var(--a)">█ █ ██ ██ █</div><div style="font-size:10px;color:var(--t3);margin-top:4px" id="fact-cod">EC2026050000001</div></div>
+  <!-- v6.186: sem texto fixo ("Scholaris", nº EC..., data de Maio) nem código de barras falso — gerarFactura() preenche tudo -->
+  <div class="recibo-box"><div class="recibo-header"><div style="font-size:18px;font-weight:800" id="fact-escola-nome"></div><div style="font-size:12px;color:var(--t2)" id="fact-num"></div><div style="font-size:11px;color:var(--t3)" id="fact-data"></div></div><div id="fact-body"></div><div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--b)"><div style="font-size:10px;color:var(--t3);margin-top:4px;font-family:var(--fm)" id="fact-cod"></div></div>
   </div>
 </div><div class="mft"><button class="btn btn-g" onclick="closeM('m-factura')">Fechar</button><button class="btn btn-gr" onclick="toast('A imprimir...')"><i class="ti ti-printer"></i> Imprimir</button><button class="btn btn-p" onclick="toast('Enviada por email!')"><i class="ti ti-mail"></i> Email</button></div></div></div>
 
@@ -43297,8 +43298,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       if(numFE) numFE.textContent='Isento / Bolsa'; if(codE) codE.textContent='—';
       h+='<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Propina de '+(MZ[mesIdx-1]||'')+' está isenta (bolsa) — não há factura nem recibo.</div>';
     } else {
-      var num='FT-'+anoL()+'-'+(a.num||'')+'-'+String(mesIdx).padStart(2,'0');
-      if(numFE) numFE.textContent='Factura '+num; if(codE) codE.textContent=num;
+      /* v6.186: o nº é da série FT ano/sequência, atribuído pelo servidor ao gerar o PDF;
+         aqui mostra-se o já atribuído (se esta factura já foi emitida) ou o aviso. */
+      var num=(typeof window.__ftNumeroExistente==='function')?(window.__ftNumeroExistente(a, mesIdx, incluirMulta)||''):'';
+      if(numFE) numFE.textContent=num?('Factura '+num):(est==='vencer'?'Factura pró-forma (sem nº de série)':'Factura — nº atribuído ao gerar o PDF');
+      if(codE) codE.textContent=num||'—';
       h+='<div class="rcrow"><span style="color:var(--t2)">Aluno</span><span style="font-weight:700">'+esc(a.nome)+'</span></div>'
         +'<div class="rcrow"><span style="color:var(--t2)">Nº / Turma</span><span style="font-family:var(--fm)">'+esc(a.num||'')+' · '+esc(a.turma||'')+'</span></div>'
         +'<div class="rcrow"><span style="color:var(--t2)">Encarregado</span><span>'+esc(encNome(a))+'</span></div>'
@@ -44719,6 +44723,322 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(!pag && pagamentoId && typeof pagamentoId === 'object') pag = pagamentoId;
     return window.__reciboOficial(pag);
   };
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.186 — Numeração fiscal: FT 2026/00001 (facturas) · RC 2026/00001 (recibos)
+   Decisão do gestor (12/09/2026), seguindo o padrão moçambicano: letras a
+   identificar o tipo, série anual, sequência sem saltos, número atribuído
+   no acto e GRAVADO — nunca recalculado.
+
+   Antes: o nº do recibo era a posição cronológica do pagamento, recalculada
+   em memória; registar hoje um pagamento com data de Julho renumerava todos
+   os recibos seguintes. E as facturas eram FT-ano-aluno-mês, inventadas por
+   mim e sem registo.
+
+   Agora (com o SQL numeracao_fiscal.sql aplicado):
+     · proximo_numero(tipo, ano)  — RPC atómico no servidor
+     · pagamentos.recibo_num      — nº de recibo gravado no pagamento
+     · facturas                   — registo de cada factura emitida
+   Sem o SQL aplicado, NÃO se emite documento nenhum com número inventado.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__numFiscal186) return; window.__numFiscal186=true;
+
+  var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var NUM_INDISP='A numeração fiscal ainda não está activa no servidor (falta aplicar o SQL). Documento não emitido para não sair com número inventado.';
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function mz(n){ try{ return Math.round(Number(n)||0).toLocaleString('pt-PT'); }catch(e){ return String(n||0); } }
+  function avisar(m){ try{ if(typeof toast==='function') toast(m); }catch(e){} }
+  function sbc(){ return window._supabase||null; }
+  function escolaId(){ return window._escolaId||null; }
+  function ligado(){ var e=escolaId(); return !!(sbc() && e && e!=='escola_demo'); }
+  function anoDe(data){ var a=parseInt(String(data||'').slice(0,4),10); return isNaN(a)?new Date().getFullYear():a; }
+  function anoLectivo(){ try{ return parseInt((typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear(),10)||new Date().getFullYear(); }catch(e){ return new Date().getFullYear(); } }
+  function pags(){ return (typeof PAGAMENTOS!=='undefined'&&Array.isArray(PAGAMENTOS))?PAGAMENTOS:[]; }
+  function alunos(){ return (typeof ALUNOS!=='undefined'&&Array.isArray(ALUNOS))?ALUNOS:[]; }
+  function semNumeracao(e){ var s=String(e&&e.message)+' '+String(e&&e.code); return /proximo_numero|PGRST202|PGRST205|recibo_num|facturas|does not exist|schema cache/i.test(s); }
+
+  try{ if(sbc()&&sbc().auth) sbc().auth.getUser().then(function(u){ window.__meuUserId=(u&&u.data&&u.data.user)?u.data.user.id:null; },function(){}); }catch(e){}
+
+  /* ── Próximo número (atómico, no servidor) ─────────────────────────── */
+  async function proximo(tipo, ano){
+    if(!ligado()) throw new Error('Sem ligação ao servidor');
+    var r=await sbc().rpc('proximo_numero',{p_tipo:tipo,p_ano:ano});
+    if(r.error){ var e=new Error(r.error.message||'proximo_numero'); e.code=r.error.code; throw e; }
+    if(!r.data) throw new Error('proximo_numero devolveu vazio');
+    return String(r.data);
+  }
+  window.__proximoNumero=proximo;
+
+  /* ═══════════════════════ RECIBOS (RC) ══════════════════════════════ */
+  var _syncOk=false;
+  /* Autoritário: o que está gravado manda; nºs calculados em memória são apagados. */
+  async function sincronizarRecibos(){
+    if(!ligado()) return false;
+    try{
+      var mapa={}, from=0;
+      while(true){
+        var b=await sbc().from('pagamentos').select('pag_id,recibo_num').eq('escola_id',escolaId()).range(from,from+999);
+        if(b.error){ if(semNumeracao(b.error)) return false; throw new Error(b.error.message); }
+        (b.data||[]).forEach(function(r){ mapa[String(r.pag_id)]=r.recibo_num||''; });
+        if(!b.data||b.data.length<1000) break; from+=1000;
+      }
+      pags().forEach(function(p){ var k=String(p.id||p.pag_id||''); if(k in mapa) p.reciboNum=mapa[k]; else if(!/^RC /.test(String(p.reciboNum||''))) p.reciboNum=''; });
+      _syncOk=true; return true;
+    }catch(e){ console.warn('[Scholaris] sincronizarRecibos:', e&&e.message); return false; }
+  }
+  window.__rcSincronizar=sincronizarRecibos;
+
+  async function gravarRecibo(pag, num){
+    var r=await sbc().from('pagamentos').update({recibo_num:num}).eq('pag_id',pag.id).eq('escola_id',escolaId());
+    if(r.error) throw new Error(r.error.message);
+  }
+
+  var _fila=Promise.resolve();
+  function serial(fn){ var p=_fila.then(fn,fn); _fila=p.catch(function(){}); return p; }
+
+  async function atribuirRecibo(pag){
+    if(!pag) return '';
+    if(pag.reciboNum && /^RC /.test(pag.reciboNum)) return pag.reciboNum;
+    if(pag.estado!=='confirmado') return '';           /* recibo só depois de confirmado */
+    if(!ligado()) throw new Error('Sem ligação ao servidor');
+    return serial(async function(){
+      if(pag.reciboNum && /^RC /.test(pag.reciboNum)) return pag.reciboNum;
+      var num=await proximo('RC', anoDe(pag.data));
+      var ok=false, erro=null;
+      for(var t=0;t<3&&!ok;t++){ try{ await gravarRecibo(pag,num); ok=true; }catch(e){ erro=e; } }
+      pag.reciboNum=num;
+      if(!ok) console.warn('[Scholaris] nº '+num+' atribuído mas não gravado:', erro&&erro.message);
+      try{ liquidarFacturasDe(pag); }catch(e){}
+      return num;
+    });
+  }
+  window.__rcAtribuir=atribuirRecibo;
+
+  var _pendBusy=false;
+  async function atribuirPendentes(){
+    if(_pendBusy||!ligado()||!_syncOk) return;
+    _pendBusy=true;
+    try{
+      var lista=pags().filter(function(p){ return p&&p.estado==='confirmado'&&p.data&&!(p.reciboNum&&/^RC /.test(p.reciboNum)); })
+        .sort(function(a,b){ return String(a.data).localeCompare(String(b.data))||String(a.registadoEm||'').localeCompare(String(b.registadoEm||'')); });
+      for(var i=0;i<lista.length;i++){ try{ await atribuirRecibo(lista[i]); }catch(e){ break; } }
+    } finally { _pendBusy=false; }
+  }
+  window.__rcAtribuirPendentes=atribuirPendentes;
+
+  /* O nº do recibo passa a ser SÓ o gravado. */
+  window.__reciboDe=function(pag){ return (pag&&pag.reciboNum&&/^RC /.test(pag.reciboNum))?pag.reciboNum:''; };
+  window.__numeroRecibo=window.__reciboDe;
+  window.__reciboSync=function(){ /* v6.186: nada a recalcular — os números são gravados */ };
+
+  /* Arranque: depois dos timers antigos (1,5s e 5s) que ainda recalculam em memória. */
+  function arranque(){ sincronizarRecibos().then(function(ok){ if(ok) atribuirPendentes(); }); }
+  setTimeout(arranque, 6500); setTimeout(arranque, 15000);
+  setInterval(function(){ if(_syncOk) atribuirPendentes(); }, 30000);
+
+  /* Emissão: garantir nº ANTES de renderizar; nunca inventar. */
+  var _rec=window.__reciboOficial;
+  if(typeof _rec==='function'){
+    window.__reciboOficial=async function(pag){
+      if(pag && pag.estado==='confirmado' && !window.__reciboDe(pag)){
+        try{ if(!_syncOk) await sincronizarRecibos(); await atribuirRecibo(pag); }
+        catch(e){ avisar(semNumeracao(e)?NUM_INDISP:('Não foi possível atribuir o nº do recibo: '+(e&&e.message))); return; }
+        if(!window.__reciboDe(pag)){ avisar(NUM_INDISP); return; }
+      }
+      return _rec(pag);
+    };
+    window.emitirReciboPag=function(pag){ return window.__reciboOficial(pag); };
+    window.emitirReciboPropina=function(id){
+      var pag=null; try{ pag=pags().find(function(p){ return p.id===id; })||null; }catch(e){}
+      if(!pag&&id&&typeof id==='object') pag=id;
+      return window.__reciboOficial(pag);
+    };
+  }
+
+  /* ═══════════════════════ FACTURAS (FT) ═════════════════════════════ */
+  window.FACTURAS = Array.isArray(window.FACTURAS)?window.FACTURAS:[];
+  var _ftLoaded=false;
+  async function carregarFacturas(){
+    if(!ligado()) return false;
+    var r=await sbc().from('facturas').select('*').eq('escola_id',escolaId()).order('emitida_em',{ascending:true});
+    if(r.error) return false;
+    window.FACTURAS.length=0; (r.data||[]).forEach(function(f){ window.FACTURAS.push(f); });
+    _ftLoaded=true; return true;
+  }
+  window.__ftCarregar=carregarFacturas;
+  setTimeout(function(){ carregarFacturas(); }, 7000);
+
+  function ftExistente(a, mes1, comMulta){
+    var ano=anoLectivo();
+    return window.FACTURAS.find(function(f){
+      return f.aluno_num===(a.num||'') && Number(f.ano)===ano && Number(f.mes)===mes1
+          && !!f.com_multa===!!comMulta && (f.estado==='emitida'||f.estado==='liquidada');
+    })||null;
+  }
+  window.__ftNumeroExistente=function(a, mes1, comMulta){ var f=ftExistente(a,mes1,comMulta); return f?f.numero:''; };
+
+  async function obterFactura(a, mes1, comMulta, base, multa){
+    var f=ftExistente(a,mes1,comMulta); if(f) return f;
+    if(!_ftLoaded){ var ok=await carregarFacturas(); if(!ok){ var e0=new Error('facturas indisponível'); e0.code='PGRST205'; throw e0; } f=ftExistente(a,mes1,comMulta); if(f) return f; }
+    var ano=anoLectivo();
+    var numero=await proximo('FT', ano);
+    var row={ escola_id:escolaId(), numero:numero, ano:ano, mes:mes1, aluno_id:a._dbId||null, aluno_num:a.num||'',
+              aluno_nome:a.nome||'', turma_id:a.turma||'', com_multa:!!comMulta,
+              valor_base:Number(base)||0, valor_multa:Number(multa)||0, valor_total:(Number(base)||0)+(Number(multa)||0),
+              estado:'emitida', emitida_por:window.__meuUserId||null };
+    var r=await sbc().from('facturas').insert(row).select('*').single();
+    if(r.error) throw new Error(r.error.message);
+    window.FACTURAS.push(r.data); return r.data;
+  }
+
+  /* Quando um mês é pago, as facturas desse mês ficam liquidadas (melhor esforço). */
+  function liquidarFacturasDe(pag){
+    if(!pag||!Array.isArray(pag.meses)||!pag.meses.length||!ligado()) return;
+    var ano=anoDe(pag.data), num=pag.alunoNum||'';
+    pag.meses.forEach(function(mi){
+      var mes1=(mi&&typeof mi==='object')?Number(mi.m):(Number(mi)+1);
+      window.FACTURAS.forEach(function(f){
+        if(f.aluno_num===num&&Number(f.ano)===ano&&Number(f.mes)===mes1&&f.estado==='emitida'){
+          f.estado='liquidada';
+          sbc().from('facturas').update({estado:'liquidada'}).eq('id',f.id).eq('escola_id',escolaId()).then(function(){},function(){});
+        }
+      });
+    });
+  }
+
+  /* ── estado da propina: igual ao do Extracto (para os valores baterem) ── */
+  function estadoPr(pr){
+    if(!pr) return {t:'—',multa:0};
+    if(pr.st==='pago') return {t:'pago',multa:0};
+    if(pr.st==='isento') return {t:'isento',multa:0};
+    var st='divida';
+    try{ if(typeof window.__estadoPropina==='function') st=window.__estadoPropina(pr); }catch(e){}
+    if(st==='divida'){ var m=0; try{ m=(typeof window.__multaDe==='function')?(window.__multaDe(pr)||0):Math.round((pr.v||0)*(pr.multaPct||0)/100); }catch(e){} return {t:'divida',multa:m}; }
+    return {t:'vencer',multa:0};
+  }
+  function baseDe(a, pr){ return Number(pr&&pr.v)||(typeof getPropinaTurma==='function'?getPropinaTurma(a.turma):0)||(typeof CONFIG!=='undefined'?(CONFIG.valorPropina||0):0); }
+  function encNome(a){
+    try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){ return x.num===a.enc; }):null; if(e&&e.nome) return e.nome; }catch(er){}
+    return a.enome||a.erel||'—';
+  }
+
+  /* ── Documento ─────────────────────────────────────────────────────── */
+  function paginaFactura(a, pr, mes1, comMulta, f){
+    var d=(typeof docData==='function')?docData():{escola:'Colégio iQRA',subNome:'',hoje:new Date().toLocaleDateString('pt-PT'),ano:anoLectivo(),nuit:'',morada:'',telefone:''};
+    var e=estadoPr(pr), base=baseDe(a,pr), multa=(comMulta&&e.t==='divida')?e.multa:0, total=base+multa;
+    var proforma=(e.t==='vencer'), ano=anoLectivo(), mesNome=MESES[mes1-1]||('Mês '+mes1);
+    var numero=proforma?'PRÓ-FORMA':(f&&f.numero)||'';
+    var tipo=proforma?'Factura Pró-forma':'Factura';
+    var dv=parseInt((typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)||5,10)||5;
+    var venc=String(dv).padStart(2,'0')+'/'+String(mes1).padStart(2,'0')+'/'+ano;
+    var pct=(base>0&&multa>0)?Math.round(multa*100/base):0;
+    function campo(r,v){ return '<div class="campo"><div class="lbl">'+r+'</div><div class="val">'+v+'</div></div>'; }
+    return '<div class="page a4" style="max-width:148mm;page-break-after:always">'
+      +'<div class="hdr"><div><div class="hdr-nome">'+esc(d.escola)+'</div><div class="hdr-sub">'+esc(d.subNome)+'</div></div>'
+      +  '<div class="hdr-tipo"><div class="tipo">'+tipo+'</div><div class="cod">'+esc(numero)+'</div>'
+      +  '<div style="font-size:9px;color:#94a3b8;margin-top:2px">'+esc(d.hoje)+'</div></div></div>'
+      +'<div style="background:linear-gradient(135deg,#0D1526,#1a2f52);border-radius:10px;padding:18px;text-align:center;margin-bottom:14px;border:1px solid rgba(79,142,247,.3)">'
+      +  '<div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">'+(proforma?'Valor previsto':'Total a pagar')+'</div>'
+      +  '<div style="font-size:30px;font-weight:900;color:#4f8ef7">'+mz(total)+' <span style="font-size:15px">MZM</span></div>'
+      +  '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:6px">Propina de '+esc(mesNome)+' '+ano+'</div></div>'
+      +'<div class="g2" style="margin-bottom:10px">'
+      +  campo('Aluno',esc(a.nome||'—'))+campo('Encarregado de Educação',esc(encNome(a)))
+      +  campo('Nº Aluno',esc(a.num||'—'))+campo('Turma',esc(a.turma||'—'))
+      +  campo('Mês',esc(mesNome)+' '+ano)+campo('Vencimento',venc)
+      +  campo('Situação','<span style="color:'+(proforma?'#92400e':'#991b1b')+'">'+(proforma?'POR VENCER — pró-forma':'EM DÍVIDA')+'</span>')
+      +  campo('Referência para depósito','<span style="font-family:monospace">'+esc(a.num||'')+'</span>')
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:11px">'
+      +  '<tr style="background:#f1f5f9"><th style="text-align:left;padding:6px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.05em">Descrição</th><th style="text-align:right;padding:6px 8px;font-size:9px;text-transform:uppercase">Valor (MZM)</th></tr>'
+      +  '<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">Propina de '+esc(mesNome)+' '+ano+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(base)+'</td></tr>'
+      +  (multa?('<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">Multa de atraso'+(pct?(' ('+pct+'%)'):'')+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(multa)+'</td></tr>'):'')
+      +  '<tr><td style="padding:7px 8px;font-weight:800">TOTAL</td><td style="text-align:right;padding:7px 8px;font-weight:800">'+mz(total)+' MZM</td></tr>'
+      +'</table>'
+      +'<div style="font-size:9.5px;color:#475569;margin-bottom:8px">IVA: isento — prestação de serviços de ensino.'+(proforma?' Documento pró-forma: não é factura fiscal e não tem número de série.':'')+'</div>'
+      +'<div style="font-size:10px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px">Pagamento na secretaria, por POS, ou por depósito/transferência — indique o <strong>Nº do aluno ('+esc(a.num||'')+')</strong> na referência e guarde o talão. O recibo é emitido após confirmação.</div>'
+      +'<div style="font-size:9px;color:#94a3b8;text-align:center;margin:10px 0 6px;line-height:1.5">'+(d.nuit?('NUIT: '+esc(d.nuit)+' · '):'')+(d.morada?(esc(d.morada)+' · '):'')+(d.telefone?('Tel: '+esc(d.telefone)):'')+'<br>Documento processado por computador</div>'
+      +'<div class="footer"><span>'+esc(d.escola)+' · '+esc(d.hoje)+'</span><span>'+esc(numero)+'</span><span>'+esc(a.num||'')+'</span></div>'
+      +'</div>';
+  }
+  function abrirPaginas(titulo, paginas){
+    var css=(typeof CSS_BASE!=='undefined')?CSS_BASE:'', barra=(typeof NO_PRINT_BAR!=='undefined')?NO_PRINT_BAR:'';
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(titulo)+'</title>'+css
+      +'<style>.page{max-width:148mm}@media print{@page{size:A5;margin:0}.page{page-break-after:always}}</style></head><body>'+barra+paginas.join('')+'</body></html>';
+    if(typeof abrirJanela==='function') abrirJanela(html, titulo);
+    else { var w=window.open('','_blank','width=960,height=800'); if(w){ w.document.write(html); w.document.close(); } }
+  }
+
+  /* Emite (atribuindo nºs) as facturas dos meses pedidos de um aluno. */
+  async function facturasDoAluno(a, comMulta, apenasMes1){
+    var paginas=[];
+    var lista=(a.propinas||[]).map(function(pr,mi){ return {pr:pr, mes1:(pr&&pr.m)?Number(pr.m):(mi+1)}; })
+      .filter(function(x){ if(!x.pr) return false; if(apenasMes1&&x.mes1!==apenasMes1) return false; var e=estadoPr(x.pr); return e.t==='divida'||(apenasMes1&&e.t==='vencer'); });
+    for(var i=0;i<lista.length;i++){
+      var pr=lista[i].pr, mes1=lista[i].mes1, e=estadoPr(pr), f=null;
+      if(e.t==='divida'){ f=await obterFactura(a, mes1, comMulta, baseDe(a,pr), comMulta?e.multa:0); }
+      paginas.push(paginaFactura(a, pr, mes1, comMulta, f));
+    }
+    return paginas;
+  }
+  function erroEmissao(e){ avisar(semNumeracao(e)?NUM_INDISP:('Não foi possível emitir: '+(e&&e.message))); }
+
+  window.__extrFatNum=async function(num, comMulta){
+    var a=alunos().find(function(x){ return x.num===num; }); if(!a) return;
+    try{
+      var pg=await facturasDoAluno(a, !!comMulta, null);
+      if(!pg.length){ avisar((a.nome||'').split(' ')[0]+' não tem meses em dívida. 👏'); return; }
+      abrirPaginas('Facturas — '+a.nome, pg);
+    }catch(e){ erroEmissao(e); }
+  };
+  function alunoDoFiltro(){
+    var q=String((window.__extrF&&window.__extrF.aluno)||'').trim().toLowerCase(); if(!q) return null;
+    var L=alunos(); var ex=L.filter(function(a){ return String(a.num||'').toLowerCase()===q; }); if(ex.length===1) return ex[0];
+    var m=L.filter(function(a){ return String(a.nome||'').toLowerCase().indexOf(q)>=0||String(a.num||'').toLowerCase().indexOf(q)>=0; });
+    return m.length===1?m[0]:null;
+  }
+  window.__extrFacturasAluno=async function(){
+    var a=alunoDoFiltro(); if(!a){ avisar('Filtre um aluno único primeiro.'); return; }
+    try{ var pg=await facturasDoAluno(a, true, null); if(!pg.length){ avisar(a.nome.split(' ')[0]+' não tem meses em dívida. 👏'); return; } abrirPaginas('Facturas — '+a.nome, pg); }
+    catch(e){ erroEmissao(e); }
+  };
+  window.__extrFacturasTurma=async function(){
+    var t=(window.__extrF&&window.__extrF.turma)||''; if(!t){ avisar('Seleccione uma turma no filtro.'); return; }
+    var als=alunos().filter(function(a){ return String(a.turma)===String(t); }).sort(function(x,y){ return String(x.nome).localeCompare(String(y.nome)); });
+    var prev=0; als.forEach(function(a){ (a.propinas||[]).forEach(function(pr){ if(estadoPr(pr).t==='divida') prev++; }); });
+    if(!prev){ avisar('Turma '+t+' sem meses em dívida. 👏'); return; }
+    if(prev>30 && !confirm('Vão ser emitidas '+prev+' facturas, cada uma com o seu número. Continuar?')) return;
+    avisar('A atribuir números a '+prev+' factura(s)…');
+    try{ var pg=[]; for(var i=0;i<als.length;i++){ pg=pg.concat(await facturasDoAluno(als[i], true, null)); }
+      abrirPaginas('Facturas — Turma '+t, pg); }
+    catch(e){ erroEmissao(e); }
+  };
+  window.__factPDF=async function(alunoId, m, comMulta){
+    var a=alunos().find(function(x){ return x.id===alunoId; }); if(!a) return;
+    var pr=(a.propinas||[]).find(function(p){ return Number(p.m)===Number(m); }); if(!pr){ avisar('Mês não encontrado.'); return; }
+    var e=estadoPr(pr);
+    if(e.t==='pago'){ avisar('Este mês está pago — emita o recibo, não a factura.'); return; }
+    if(e.t==='isento'){ avisar('Mês isento (bolsa) — não há factura.'); return; }
+    try{ var pg=await facturasDoAluno(a, !!comMulta, Number(m)); if(!pg.length){ avisar('Nada a facturar.'); return; } abrirPaginas('Factura — '+a.nome, pg); }
+    catch(er){ erroEmissao(er); }
+  };
+
+  /* Modal "Factura" do perfil do aluno: nome da escola e data reais (os antigos eram texto fixo). */
+  var _gf=window.gerarFactura;
+  if(typeof _gf==='function'){
+    window.gerarFactura=function(){
+      var r=_gf.apply(this, arguments);
+      try{
+        var n=document.getElementById('fact-escola-nome'); if(n) n.textContent=(typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nome)||'Colégio iQRA';
+        var dt=document.getElementById('fact-data'); if(dt) dt.textContent='Emitida em '+new Date().toLocaleDateString('pt-PT');
+      }catch(e){}
+      return r;
+    };
+  }
 })();
 </script>
 </body>
