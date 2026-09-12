@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.192</span>
+    <span class="logo-ver">v6.193</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44790,7 +44790,10 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   var _syncOk=false;
   /* Autoritário: o que está gravado manda; nºs calculados em memória são apagados. */
   async function sincronizarRecibos(){
-    if(escolaId()==='escola_demo'){ _syncOk=true; return true; } /* v6.192: nºs já vêm no conjunto de demonstração */
+    if(escolaId()==='escola_demo'){ /* v6.192: repor os nºs do conjunto de demonstração (o timer v6.145 reescreve-os) */
+      pags().forEach(function(p){ if(typeof p._rcDemo!=='undefined') p.reciboNum=p._rcDemo; });
+      _syncOk=true; return true;
+    }
     if(!ligado()) return false;
     try{
       var mapa={}, from=0;
@@ -45603,7 +45606,9 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     });
     /* nºs de recibo — por ordem cronológica, só confirmados (como no backfill real) */
     pagamentos.sort(function(a,b){ return String(a.data).localeCompare(String(b.data))||String(a.registadoEm).localeCompare(String(b.registadoEm)); });
-    var n=0; pagamentos.forEach(function(p){ if(p.estado==='confirmado'){ n++; p.reciboNum='RC '+ANO+'/'+pad(n,5); } });
+    /* _rcDemo guarda o nº definitivo: o temporizador antigo (v6.145, 1,5 s/5 s) ainda reescreve
+       p.reciboNum em memória; __rcSincronizar() repõe-no a partir daqui em modo demo. */
+    var n=0; pagamentos.forEach(function(p){ if(p.estado==='confirmado'){ n++; p.reciboNum='RC '+ANO+'/'+pad(n,5); p._rcDemo=p.reciboNum; } else { p._rcDemo=''; } });
     window.__demoNum={}; window.__demoNum['RC'+ANO]=n;
 
     /* ── Despesas (Jan–Set) ── */
@@ -45681,6 +45686,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     window.__demoRole=role;
     window._escolaId='escola_demo';
     if(!construido){ configurar(); var r=construir(); construido=true; console.log('[Scholaris] Escola Modelo:', r); }
+    /* repor os nºs de recibo depois dos temporizadores antigos (1,5 s e 5 s) os reescreverem */
+    try{ if(typeof window.__rcSincronizar==='function'){ window.__rcSincronizar(); setTimeout(window.__rcSincronizar,6500); setTimeout(window.__rcSincronizar,16000); } }catch(e){}
     try{ curRole=role; }catch(e){ window.curRole=role; }
     try{ doLoginDemo(); }catch(e){ console.warn('doLoginDemo', e&&e.message); }
     try{ if(typeof curUser!=='undefined' && curUser){ if(role==='gestor'){ curUser.nome='Direcção da Escola'; curUser.avt='DE'; } curUser.email='demo@escolamodelo.co.mz'; } if(typeof setupRole==='function') setupRole(); }catch(e){}
