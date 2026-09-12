@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.194</span>
+    <span class="logo-ver">v6.195</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -45707,7 +45707,14 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }
     faixa(role);
     try{ ['rTurmas','rAl','rPr','rDash'].forEach(function(fn){ if(typeof window[fn]==='function') window[fn](); }); }catch(e){}
-    setTimeout(function(){ try{ go(role==='gestor-financeiro'?'fin-dashboard':'dash'); }catch(e){} }, 150);
+    /* ?demo&ecra=<id>&tema=dia — abrir directamente num ecrã / em modo diurno (capturas para o site) */
+    var ecra=null, tema=null; try{ var q2=new URLSearchParams(location.search); ecra=q2.get('ecra'); tema=q2.get('tema'); }catch(e){}
+    setTimeout(function(){
+      try{ if(tema==='dia' && typeof _isDayMode!=='undefined' && !_isDayMode && typeof toggleTheme==='function') toggleTheme(); }catch(e){}
+      try{ go(ecra || (role==='gestor-financeiro'?'fin-dashboard':'dash')); }catch(e){}
+      try{ if(ecra && /^aluno:/.test(ecra)){ var al=ALUNOS.find(function(a){ return a.num===ecra.slice(6); }); if(al && typeof openAluno==='function') openAluno(al.id); } }catch(e){}
+      try{ if(ecra && /^propinas:/.test(ecra)){ var al2=ALUNOS.find(function(a){ return a.num===ecra.slice(9); }); if(al2 && typeof openPA==='function') openPA(al2.id); } }catch(e){}
+    }, 150);
   };
 
   /* localStorage: a Aparência não deve gravar em modo demo (poluía o login real no mesmo browser) */
