@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.186</span>
+    <span class="logo-ver">v6.187</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44671,11 +44671,12 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +     '<div class="hdr-tipo"><div class="tipo">Recibo de Pagamento</div><div class="cod">'+esc(cod)+'</div>'
       +     '<div style="font-size:9px;color:#94a3b8;margin-top:2px">'+esc(d.hoje)+'</div></div></div>'
 
-      +   '<div style="background:linear-gradient(135deg,#0D1526,#1a2f52);border-radius:10px;padding:20px;text-align:center;margin-bottom:16px;border:1px solid rgba(79,142,247,.3)">'
-      +     '<div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Valor Recebido</div>'
-      +     '<div style="font-size:32px;font-weight:900;color:#4f8ef7">'+mz(pag.valorTotal)+' <span style="font-size:16px">MZM</span></div>'
-      +     '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:6px">'+esc(descricao)+'</div>'
-      +   '</div>'
+      /* v6.187: texto clássico — a caixa escura com o valor em grande saía como bloco preto na impressão */
+      +   '<table style="width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:11px">'
+      +     '<tr style="background:#f1f5f9"><th style="text-align:left;padding:6px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.05em">Descrição</th><th style="text-align:right;padding:6px 8px;font-size:9px;text-transform:uppercase">Valor (MZM)</th></tr>'
+      +     '<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">'+esc(descricao)+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(pag.valorTotal)+'</td></tr>'
+      +     '<tr><td style="padding:8px;font-weight:800;border-top:2px solid #0f172a">VALOR RECEBIDO</td><td style="text-align:right;padding:8px;font-weight:800;border-top:2px solid #0f172a;font-size:13px">'+mz(pag.valorTotal)+' MZM</td></tr>'
+      +   '</table>'
 
       +   '<div class="g2" style="margin-bottom:10px">'
       +     campo('Aluno', esc((a && a.nome) || pag.alunoNome || '—'))
@@ -44942,10 +44943,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'<div class="hdr"><div><div class="hdr-nome">'+esc(d.escola)+'</div><div class="hdr-sub">'+esc(d.subNome)+'</div></div>'
       +  '<div class="hdr-tipo"><div class="tipo">'+tipo+'</div><div class="cod">'+esc(numero)+'</div>'
       +  '<div style="font-size:9px;color:#94a3b8;margin-top:2px">'+esc(d.hoje)+'</div></div></div>'
-      +'<div style="background:linear-gradient(135deg,#0D1526,#1a2f52);border-radius:10px;padding:18px;text-align:center;margin-bottom:14px;border:1px solid rgba(79,142,247,.3)">'
-      +  '<div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">'+(proforma?'Valor previsto':'Total a pagar')+'</div>'
-      +  '<div style="font-size:30px;font-weight:900;color:#4f8ef7">'+mz(total)+' <span style="font-size:15px">MZM</span></div>'
-      +  '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:6px">Propina de '+esc(mesNome)+' '+ano+'</div></div>'
+      /* v6.187: texto clássico — sem caixa escura (na impressão saía um bloco preto) */
+      +'<div style="font-size:13px;font-weight:700;color:#0f172a;border-bottom:1px solid #cbd5e1;padding:4px 0 8px;margin-bottom:10px">Propina de '+esc(mesNome)+' '+ano+(proforma?' — pró-forma':'')+'</div>'
       +'<div class="g2" style="margin-bottom:10px">'
       +  campo('Aluno',esc(a.nome||'—'))+campo('Encarregado de Educação',esc(encNome(a)))
       +  campo('Nº Aluno',esc(a.num||'—'))+campo('Turma',esc(a.turma||'—'))
@@ -44957,10 +44956,10 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +  '<tr style="background:#f1f5f9"><th style="text-align:left;padding:6px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.05em">Descrição</th><th style="text-align:right;padding:6px 8px;font-size:9px;text-transform:uppercase">Valor (MZM)</th></tr>'
       +  '<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">Propina de '+esc(mesNome)+' '+ano+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(base)+'</td></tr>'
       +  (multa?('<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">Multa de atraso'+(pct?(' ('+pct+'%)'):'')+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(multa)+'</td></tr>'):'')
-      +  '<tr><td style="padding:7px 8px;font-weight:800">TOTAL</td><td style="text-align:right;padding:7px 8px;font-weight:800">'+mz(total)+' MZM</td></tr>'
+      +  '<tr><td style="padding:8px;font-weight:800;border-top:2px solid #0f172a">'+(proforma?'TOTAL PREVISTO':'TOTAL A PAGAR')+'</td><td style="text-align:right;padding:8px;font-weight:800;border-top:2px solid #0f172a;font-size:13px">'+mz(total)+' MZM</td></tr>'
       +'</table>'
       +'<div style="font-size:9.5px;color:#475569;margin-bottom:8px">IVA: isento — prestação de serviços de ensino.'+(proforma?' Documento pró-forma: não é factura fiscal e não tem número de série.':'')+'</div>'
-      +'<div style="font-size:10px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px">Pagamento na secretaria, por POS, ou por depósito/transferência — indique o <strong>Nº do aluno ('+esc(a.num||'')+')</strong> na referência e guarde o talão. O recibo é emitido após confirmação.</div>'
+      +'<div style="font-size:10px;color:#0f172a;margin:6px 0 4px">Pagamento na secretaria, por POS, ou por depósito/transferência — indique o <strong>Nº do aluno ('+esc(a.num||'')+')</strong> na referência e guarde o talão. O recibo é emitido após confirmação.</div>'
       +'<div style="font-size:9px;color:#94a3b8;text-align:center;margin:10px 0 6px;line-height:1.5">'+(d.nuit?('NUIT: '+esc(d.nuit)+' · '):'')+(d.morada?(esc(d.morada)+' · '):'')+(d.telefone?('Tel: '+esc(d.telefone)):'')+'<br>Documento processado por computador</div>'
       +'<div class="footer"><span>'+esc(d.escola)+' · '+esc(d.hoje)+'</span><span>'+esc(numero)+'</span><span>'+esc(a.num||'')+'</span></div>'
       +'</div>';
@@ -45035,6 +45034,27 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       try{
         var n=document.getElementById('fact-escola-nome'); if(n) n.textContent=(typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nome)||'Colégio iQRA';
         var dt=document.getElementById('fact-data'); if(dt) dt.textContent='Emitida em '+new Date().toLocaleDateString('pt-PT');
+        /* v6.187: o nº tem de aparecer JÁ ao abrir o modal, não só ao gerar o PDF.
+           Abrir a factura de um mês em dívida = emiti-la (registada com o seu nº);
+           reabrir dá o mesmo nº. Pró-forma (por vencer) continua sem nº de série. */
+        var aid=(typeof curAlunoId!=='undefined')?curAlunoId:window.curAlunoId;
+        var a=alunos().find(function(x){ return x.id===aid; });
+        var sel=document.querySelector('#fact-body select'), chk=document.getElementById('fact-multa-chk');
+        var mes1=sel?parseInt(sel.value,10):NaN;
+        var pr=(a&&!isNaN(mes1))?(a.propinas||[]).find(function(p){ return Number(p.m)===mes1; }):null;
+        var numFE=document.getElementById('fact-num'), codE=document.getElementById('fact-cod');
+        if(a&&pr){
+          var e=estadoPr(pr), comMulta=!!(chk?chk.checked:true);
+          if(e.t==='divida' && !ftExistente(a,mes1,comMulta)){
+            if(numFE) numFE.textContent='Factura — a atribuir número…';
+            obterFactura(a, mes1, comMulta, baseDe(a,pr), comMulta?e.multa:0).then(function(f){
+              if(numFE) numFE.textContent='Factura '+f.numero; if(codE) codE.textContent=f.numero;
+            }, function(er){
+              if(numFE) numFE.textContent='Factura — número indisponível'; if(codE) codE.textContent='—';
+              erroEmissao(er);
+            });
+          }
+        }
       }catch(e){}
       return r;
     };
