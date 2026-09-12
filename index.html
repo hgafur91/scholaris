@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.190</span>
+    <span class="logo-ver">v6.191</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -45311,11 +45311,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       var doc=pg?(rcDe(pg)||'—'):(ft?ft.numero:'—');
       return '<tr><td>'+(MESES[mes1-1]||mes1)+'</td><td class="r">'+mz(v)+'</td><td>'+est+'</td><td class="r">'+(m?mz(m):'—')+'</td><td>'+esc(doc)+'</td><td>'+esc(pg?(pg.data||'—'):'—')+'</td></tr>';
     }).join('');
-    var recibos=pags().filter(function(p){ return p.alunoId===a.id && p.estado!=='estornado' && rcDe(p); }).sort(function(x,y){ return rcDe(x).localeCompare(rcDe(y)); });
+    /* v6.191: recibos anulados (estorno) continuam a aparecer — o nº fica na série */
+    var recibos=pags().filter(function(p){ return p.alunoId===a.id && rcDe(p); }).sort(function(x,y){ return rcDe(x).localeCompare(rcDe(y)); });
     var recRows=recibos.map(function(p){ var desc=(p.meses&&p.meses.length)?('Propina '+p.meses.map(function(mi){ var i=(mi&&typeof mi==='object')?(mi.m-1):mi; return MESES[i]||mi; }).join(', ')):(p.categoriaNome||p.tipo||'Pagamento');
-      return '<tr><td>'+esc(rcDe(p))+'</td><td>'+esc(p.data||'')+'</td><td>'+esc(desc)+'</td><td>'+esc(p.canal||'')+'</td><td>'+esc(p.ref||'')+'</td><td class="r">'+mz(p.valorTotal)+'</td></tr>'; }).join('');
+      var anul=(p.estado==='estornado');
+      return '<tr'+(anul?' style="color:#94a3b8;text-decoration:line-through"':'')+'><td>'+esc(rcDe(p))+(anul?' <span class="bad" style="text-decoration:none">ANULADO</span>':'')+'</td><td>'+esc(p.data||'')+'</td><td>'+esc(desc)+'</td><td>'+esc(p.canal||'')+'</td><td>'+esc(p.ref||'')+'</td><td class="r">'+mz(p.valorTotal)+'</td></tr>'; }).join('');
     var fts=facts().filter(function(f){ return f.aluno_num===(a.num||'') && Number(f.ano)===ano; }).sort(function(x,y){ return String(x.numero).localeCompare(String(y.numero)); });
-    var ftRows=fts.map(function(f){ var st=f.estado==='liquidada'?'<span class="ok">Liquidada</span>':f.estado==='emitida'?'<span class="bad">Em aberto</span>':f.estado; return '<tr><td>'+esc(f.numero)+'</td><td>'+(MESES[Number(f.mes)-1]||f.mes)+' '+f.ano+'</td><td class="r">'+mz(f.valor_total)+'</td><td>'+st+'</td></tr>'; }).join('');
+    var ftRows=fts.map(function(f){ var st=f.estado==='liquidada'?'<span class="ok">Liquidada</span>':f.estado==='emitida'?'<span class="bad">Em aberto</span>':f.estado==='substituida'?'Substituída':f.estado==='anulada'?'Anulada':f.estado; return '<tr><td>'+esc(f.numero)+'</td><td>'+(MESES[Number(f.mes)-1]||f.mes)+' '+f.ano+'</td><td class="r">'+mz(f.valor_total)+'</td><td>'+st+'</td></tr>'; }).join('');
     return '<h1>Extracto do Aluno — '+esc(a.nome)+'</h1>'
       +'<div class="sub">Nº '+esc(a.num||'')+' · Turma '+esc(a.turma||'')+' · Encarregado: '+esc(enc)+' · Ano lectivo '+ano+(nuit?(' · NUIT da Escola: '+esc(nuit)):'')+' · emitido a '+new Date().toLocaleDateString('pt-PT')+'</div>'
       +'<h2>Propinas — mês a mês</h2>'
@@ -45364,6 +45366,79 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   }
   var _rpe=window.rPortalEncPropinas;
   if(typeof _rpe==='function'){ window.rPortalEncPropinas=function(){ var r=_rpe.apply(this,arguments); setTimeout(portalEnc,80); return r; }; }
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.191 — Passo 3 do plano "um mês, um documento": estornos e acordos
+     · Estorno de um pagamento: o recibo fica ANULADO mas mantém o nº (a série
+       não pode ter buracos); os meses voltam a "por pagar"; as facturas
+       desses meses que estavam liquidadas voltam a estar EM ABERTO — não se
+       emite uma segunda.
+     · Acordo de multa (guardar ou remover): as facturas em aberto do aluno
+       passam a SUBSTITUÍDAS (mantêm o nº no registo) e a próxima emissão sai
+       com nº novo e a multa que passou a valer.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__docUnico191) return; window.__docUnico191=true;
+
+  function avisar(m){ try{ if(typeof toast==='function') toast(m); }catch(e){} }
+  function sbc(){ return window._supabase||null; }
+  function ligado(){ var e=window._escolaId; return !!(sbc() && e && e!=='escola_demo'); }
+  function facts(){ return Array.isArray(window.FACTURAS)?window.FACTURAS:[]; }
+  function anoDe(data){ var a=parseInt(String(data||'').slice(0,4),10); return isNaN(a)?new Date().getFullYear():a; }
+
+  function mudarEstado(f, novo){
+    f.estado=novo;
+    if(!ligado()||!f.id) return;
+    sbc().from('facturas').update({estado:novo}).eq('id',f.id).eq('escola_id',window._escolaId)
+      .then(function(r){ if(r&&r.error) console.warn('[Scholaris] factura '+f.numero+' → '+novo+': '+r.error.message); }, function(){});
+  }
+
+  /* ── Estorno: recibo anulado (nº fica), facturas voltam a aberto ── */
+  var _est=window.estornarPagamento;
+  if(typeof _est==='function'){
+    window.estornarPagamento=function(pagId){
+      var pag=null; try{ pag=(PAGAMENTOS||[]).find(function(p){ return p.id===pagId; })||null; }catch(e){}
+      var antes=pag?pag.estado:null;
+      var r=_est.apply(this, arguments);
+      try{
+        if(pag && antes!=='estornado' && pag.estado==='estornado'){
+          var ano=anoDe(pag.data), num=pag.alunoNum||'', reabertas=[];
+          (Array.isArray(pag.meses)?pag.meses:[]).forEach(function(mi){
+            var mes1=(mi&&typeof mi==='object')?Number(mi.m):(Number(mi)+1);
+            facts().forEach(function(f){
+              if(f.aluno_num===num && Number(f.ano)===ano && Number(f.mes)===mes1 && f.estado==='liquidada'){ mudarEstado(f,'emitida'); reabertas.push(f.numero); }
+            });
+          });
+          if(pag.reciboNum) avisar('Recibo '+pag.reciboNum+' anulado (o nº mantém-se na série).'+(reabertas.length?(' Factura(s) reaberta(s): '+reabertas.join(', ')):''));
+        }
+      }catch(e){}
+      return r;
+    };
+  }
+
+  /* ── Acordos: facturas em aberto do aluno ficam substituídas ── */
+  function substituirAbertas(aid, motivo){
+    var a=null; try{ a=(ALUNOS||[]).find(function(x){ return x.id===aid; })||null; }catch(e){}
+    if(!a) return;
+    var n=0; facts().forEach(function(f){ if(f.aluno_num===(a.num||'') && f.estado==='emitida'){ mudarEstado(f,'substituida'); n++; } });
+    if(n) avisar(n+' factura(s) em aberto passaram a substituídas ('+motivo+'). A próxima emissão sai com nº novo.');
+  }
+  ['__guardarMultaAcordo','__removerMultaAcordo'].forEach(function(nome){
+    var _o=window[nome]; if(typeof _o!=='function') return;
+    window[nome]=function(aid){
+      var antes=null; try{ var a=(ALUNOS||[]).find(function(x){ return x.id===aid; }); antes=a?JSON.stringify(window.__getMultaAcordo(a)||null):null; }catch(e){}
+      var r=_o.apply(this, arguments);
+      try{
+        var a2=(ALUNOS||[]).find(function(x){ return x.id===aid; });
+        var depois=a2?JSON.stringify(window.__getMultaAcordo(a2)||null):null;
+        if(antes!==depois) substituirAbertas(aid, nome==='__removerMultaAcordo'?'acordo removido':'acordo de multa');
+      }catch(e){}
+      return r;
+    };
+  });
 })();
 </script>
 </body>
