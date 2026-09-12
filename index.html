@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.191</span>
+    <span class="logo-ver">v6.192</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44774,6 +44774,10 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 
   /* ── Próximo número (atómico, no servidor) ─────────────────────────── */
   async function proximo(tipo, ano){
+    if(escolaId()==='escola_demo'){ /* v6.192: demonstração — contador só em memória */
+      window.__demoNum=window.__demoNum||{}; var k=tipo+ano; window.__demoNum[k]=(window.__demoNum[k]||0)+1;
+      return tipo+' '+ano+'/'+String(window.__demoNum[k]).padStart(5,'0');
+    }
     if(!ligado()) throw new Error('Sem ligação ao servidor');
     var r=await sbc().rpc('proximo_numero',{p_tipo:tipo,p_ano:ano});
     if(r.error){ var e=new Error(r.error.message||'proximo_numero'); e.code=r.error.code; throw e; }
@@ -44786,6 +44790,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   var _syncOk=false;
   /* Autoritário: o que está gravado manda; nºs calculados em memória são apagados. */
   async function sincronizarRecibos(){
+    if(escolaId()==='escola_demo'){ _syncOk=true; return true; } /* v6.192: nºs já vêm no conjunto de demonstração */
     if(!ligado()) return false;
     try{
       var mapa={}, from=0;
@@ -44802,6 +44807,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   window.__rcSincronizar=sincronizarRecibos;
 
   async function gravarRecibo(pag, num){
+    if(escolaId()==='escola_demo') return; /* v6.192: demonstração — nada vai ao servidor */
     var r=await sbc().from('pagamentos').update({recibo_num:num}).eq('pag_id',pag.id).eq('escola_id',escolaId());
     if(r.error) throw new Error(r.error.message);
   }
@@ -44813,7 +44819,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(!pag) return '';
     if(pag.reciboNum && /^RC /.test(pag.reciboNum)) return pag.reciboNum;
     if(pag.estado!=='confirmado') return '';           /* recibo só depois de confirmado */
-    if(!ligado()) throw new Error('Sem ligação ao servidor');
+    if(!ligado() && escolaId()!=='escola_demo') throw new Error('Sem ligação ao servidor');
     return serial(async function(){
       if(pag.reciboNum && /^RC /.test(pag.reciboNum)) return pag.reciboNum;
       var num=await proximo('RC', anoDe(pag.data));
@@ -44872,6 +44878,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   window.FACTURAS = Array.isArray(window.FACTURAS)?window.FACTURAS:[];
   var _ftLoaded=false;
   async function carregarFacturas(){
+    if(escolaId()==='escola_demo'){ window.FACTURAS=Array.isArray(window.FACTURAS)?window.FACTURAS:[]; _ftLoaded=true; return true; } /* v6.192 */
     if(!ligado()) return false;
     var r=await sbc().from('facturas').select('*').eq('escola_id',escolaId()).order('emitida_em',{ascending:true});
     if(r.error) return false;
@@ -44901,6 +44908,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
               aluno_nome:a.nome||'', turma_id:a.turma||'', com_multa:!!comMulta,
               valor_base:Number(base)||0, valor_multa:Number(multa)||0, valor_total:(Number(base)||0)+(Number(multa)||0),
               estado:'emitida', emitida_por:window.__meuUserId||null };
+    if(escolaId()==='escola_demo'){ row.id='demo-ft-'+window.FACTURAS.length; row.emitida_em=new Date().toISOString(); window.FACTURAS.push(row); return row; } /* v6.192 */
     var r=await sbc().from('facturas').insert(row).select('*').single();
     if(r.error) throw new Error(r.error.message);
     window.FACTURAS.push(r.data); return r.data;
@@ -44908,14 +44916,14 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 
   /* Quando um mês é pago, as facturas desse mês ficam liquidadas (melhor esforço). */
   function liquidarFacturasDe(pag){
-    if(!pag||!Array.isArray(pag.meses)||!pag.meses.length||!ligado()) return;
+    if(!pag||!Array.isArray(pag.meses)||!pag.meses.length) return;
     var ano=anoDe(pag.data), num=pag.alunoNum||'';
     pag.meses.forEach(function(mi){
       var mes1=(mi&&typeof mi==='object')?Number(mi.m):(Number(mi)+1);
       window.FACTURAS.forEach(function(f){
         if(f.aluno_num===num&&Number(f.ano)===ano&&Number(f.mes)===mes1&&f.estado==='emitida'){
-          f.estado='liquidada';
-          sbc().from('facturas').update({estado:'liquidada'}).eq('id',f.id).eq('escola_id',escolaId()).then(function(){},function(){});
+          f.estado='liquidada';   /* memória sempre; servidor só quando ligado (v6.192: demo fica só em memória) */
+          if(ligado()) sbc().from('facturas').update({estado:'liquidada'}).eq('id',f.id).eq('escola_id',escolaId()).then(function(){},function(){});
         }
       });
     });
@@ -45439,6 +45447,268 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return r;
     };
   });
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v6.192 — ESCOLA MODELO: demonstração pública com dados fictícios
+   Entrada: <url>?demo  (ou ?demo=director | secretario | professor |
+   dir-pedagogico | gestor-financeiro). Sem ?demo o login fica intacto.
+   · Dados gerados em memória, de forma DETERMINÍSTICA (a mesma escola em
+     cada abertura — as capturas de ecrã batem certo). Nada vai ao servidor:
+     todas as gravações da app já verificam _escolaId!=='escola_demo'.
+   · Marca neutra: "Escola Modelo" no topo e nos PDFs (sem emblema iQRA).
+   · Numeração FT/RC em memória (ver ramos escola_demo no bloco v6.186).
+   · Faixa fixa no topo: "Modo demonstração", trocar de perfil, reiniciar.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__demo192) return; window.__demo192=true;
+
+  /* ── PRNG determinístico (mulberry32) ── */
+  function rngFactory(seed){ var t=seed>>>0; return function(){ t+=0x6D2B79F5; var r=Math.imul(t^(t>>>15), 1|t); r^=r+Math.imul(r^(r>>>7), 61|r); return ((r^(r>>>14))>>>0)/4294967296; }; }
+  var R=rngFactory(20260913);
+  function rnd(a,b){ return a+Math.floor(R()*(b-a+1)); }
+  function pick(arr){ return arr[Math.floor(R()*arr.length)]; }
+  function chance(p){ return R()<p; }
+  function pad(n,w){ return String(n).padStart(w,'0'); }
+  function iso(y,m,d){ return y+'-'+pad(m,2)+'-'+pad(d,2); }
+
+  var NOMES_M=['Abdul','Alberto','Amâncio','Benedito','Carlos','Celso','Dário','Domingos','Edson','Elísio','Ernesto','Fábio','Feliciano','Gil','Hélder','Ivan','Jaime','Jorge','Júlio','Kelvin','Leonel','Lourenço','Manuel','Moisés','Nelson','Óscar','Paulo','Rafael','Salomão','Tomás','Válter','Zito'];
+  var NOMES_F=['Adélia','Alice','Amélia','Anabela','Beatriz','Belmira','Carla','Cátia','Célia','Dalila','Delfina','Elsa','Ermelinda','Esperança','Fátima','Filomena','Gilda','Helena','Ilda','Isabel','Joana','Judite','Lúcia','Marta','Neusa','Odete','Palmira','Rosa','Sara','Telma','Vânia','Zaida'];
+  var APELIDOS=['Sitoe','Macamo','Cossa','Nhaca','Mondlane','Tembe','Chissano','Matusse','Bila','Langa','Mucavele','Fumo','Massingue','Cuambe','Machava','Mabunda','Nhantumbo','Chichava','Muianga','Simbine','Uamusse','Nhambirre','Tivane','Cumbane','Guambe','Mahumane','Zunguze','Mutemba','Nuvunga','Chirindza','Mondlane','Nhassengo','Manjate','Mucavele','Djedje','Bié','Nguenha','Chongo','Matola','Sumbana'];
+  var BAIRROS=['Polana Cimento','Malhangalene','Alto Maé','Sommerschield','Maxaquene','Xipamanine','Hulene','Costa do Sol','Zimpeto','Chamanculo','Mafalala','Laulane','Magoanine','Bairro Central','Jardim'];
+  var PROFISSOES=['Comerciante','Enfermeira','Professor','Motorista','Funcionário público','Contabilista','Mecânico','Empresária','Advogada','Agricultor','Engenheiro','Costureira','Polícia','Bancário','Vendedora'];
+  var BANCOS=['BCI','BIM','Standard Bank','Absa','Moza Banco'];
+
+  var TURMAS_DEF=[
+    {c:1,l:'A',n:24},{c:2,l:'A',n:25},{c:3,l:'A',n:26},{c:4,l:'A',n:24},
+    {c:5,l:'A',n:25},{c:6,l:'A',n:24},{c:7,l:'A',n:26},{c:8,l:'A',n:24}
+  ];
+  function ciclo(c){ return c<=3?1:(c<=6?2:3); }
+  function discs(c){
+    if(c<=3) return ['Português','Matemática','Ciências Naturais','Educação Física','Educação Visual'];
+    if(c<=6) return ['Português','Matemática','Ciências Naturais','Inglês','História','Geografia','Educação Física'];
+    return ['Português','Matemática','Inglês','Física','Química','Biologia','História','Geografia'];
+  }
+  function propinaDe(c){ return c<=3?3000:(c<=6?3500:4000); }
+  var ANO=2026, HOJE={a:2026,m:9,d:13};
+
+  function construir(){
+    var todasDisc={}; TURMAS_DEF.forEach(function(t){ discs(t.c).forEach(function(d){ todasDisc[d]=1; }); });
+
+    /* ── Professores (16) + direcção/secretaria ── */
+    PROFS.length=0; ALOCACOES.length=0; TURMAS.length=0; ALUNOS.length=0; ENCS.length=0;
+    for(var k in HORARIO) delete HORARIO[k];
+    var profs=[]; var discList=Object.keys(todasDisc); var pi=0;
+    var PROF_DEFS=[['Português',2],['Matemática',2],['Ciências Naturais',1],['Inglês',2],['História',1],['Geografia',1],['Física',1],['Química',1],['Biologia',1],['Educação Física',1],['Educação Visual',1]];
+    var usados={};
+    PROF_DEFS.forEach(function(pd){
+      for(var q=0;q<pd[1];q++){
+        pi++; var g=chance(.5)?'M':'F'; var nome; do{ nome=pick(g==='M'?NOMES_M:NOMES_F)+' '+pick(APELIDOS); }while(usados[nome]); usados[nome]=1;
+        var parcial=(pi%6===0);
+        var p={id:PROFS.length+1,num:'PRF'+pad(pi,6),_dbId:'demo-prof-'+pi,nome:nome,form:pick(['Licenciatura','Bacharelato','Mestrado']),area:pd[0],disc:[pd[0]],turmas:[],
+          tel:'8'+pick(['4','5','6','7'])+pad(rnd(1000000,9999999),7),email:'prof'+pi+'@escolamodelo.co.mz',bi:'11'+pad(rnd(1000000,9999999),7)+'A',nasc:iso(rnd(1975,1996),rnd(1,12),rnd(1,28)),genero:g,nat:'Maputo',
+          adesao:iso(rnd(2018,2025),1,15),dep:'academico',cargo:'Professor',nota:0,salario:parcial?0:rnd(22,44)*1000,regime:parcial?'parcial':'inteiro',horasSem:parcial?10:22,horasMaxSem:parcial?12:22,valorHora:parcial?400:0,valorHoraExtra:500,contaBanco:'0000'+pad(rnd(10000000,99999999),8)};
+        PROFS.push(p); profs.push(p);
+      }
+    });
+    /* pessoal de gestão */
+    [['Director','Director Escolar',65000,'M'],['Directora Pedagógica','Director Pedagógico',48000,'F'],['Secretária','Secretário',18000,'F'],['Guarda','Guarda',9000,'M']].forEach(function(s){
+      pi++; var nome=pick(s[3]==='M'?NOMES_M:NOMES_F)+' '+pick(APELIDOS);
+      PROFS.push({id:PROFS.length+1,num:'GST'+pad(pi,6),_dbId:'demo-staff-'+pi,nome:nome,form:'Licenciatura',area:s[0],disc:[],turmas:[],tel:'84'+pad(rnd(1000000,9999999),7),email:'gestao'+pi+'@escolamodelo.co.mz',bi:'11'+pad(rnd(1000000,9999999),7)+'B',nasc:iso(rnd(1970,1992),rnd(1,12),rnd(1,28)),genero:s[3],nat:'Maputo',adesao:iso(rnd(2015,2024),2,1),dep:'gestao',cargo:s[1],nota:0,salario:s[2],regime:'inteiro',horasSem:40,horasMaxSem:40,valorHora:0,valorHoraExtra:0,systemRole:s[1]==='Director Escolar'?'director':(s[1]==='Director Pedagógico'?'dir-pedagogico':(s[1]==='Secretário'?'secretario':undefined))});
+    });
+    var porDisc={}; profs.forEach(function(p){ (porDisc[p.area]=porDisc[p.area]||[]).push(p); });
+    var rr={};
+
+    /* ── Turmas, alocações, horário ── */
+    var HORAS=(typeof PERIODOS!=='undefined'?PERIODOS:[]).filter(function(p){ return p.tipo==='aula'; }).map(function(p){ return p.inicio; });
+    TURMAS_DEF.forEach(function(t){
+      var id=t.c+t.l;
+      var turma={id:id,nome:id,classe:t.c,letra:t.l,cicloId:ciclo(t.c),curso:t.c<=6?'Ensino Básico':'Ensino Secundário',regime:'Manhã',dirTurma:null,max:30,_dbId:'demo-turma-'+id,propina:propinaDe(t.c),inscricao:2500,matricula:1500};
+      var ds=discs(t.c), cel=[];
+      ds.forEach(function(d){
+        var lista=porDisc[d]||profs; rr[d]=(rr[d]||0); var p=lista[rr[d]%lista.length]; rr[d]++;
+        if(p.turmas.indexOf(id)<0) p.turmas.push(id);
+        ALOCACOES.push({turma:id,disc:d,prof:p.num,horas:d==='Português'||d==='Matemática'?5:3});
+        var n=(d==='Português'||d==='Matemática')?5:3; for(var i=0;i<n;i++) cel.push({d:d,p:p.num});
+        if(!turma.dirTurma) turma.dirTurma=p.num;
+      });
+      var dias=['seg','ter','qua','qui','sex'], ci=0;
+      HORARIO[id]=HORAS.map(function(h){ var row={h:h,seg:null,ter:null,qua:null,qui:null,sex:null}; dias.forEach(function(dd){ var c=cel[ci%cel.length]; ci++; row[dd]={d:c.d,p:c.p}; }); return row; });
+      if(typeof fixTurmaCompat==='function') fixTurmaCompat(turma);
+      TURMAS.push(turma);
+    });
+
+    /* ── Alunos, encarregados, propinas, pagamentos, notas, faltas ── */
+    PAGAMENTOS.length=0;
+    var aid=0, encSeq=0, pagSeq=0, pagamentos=[];
+    TURMAS_DEF.forEach(function(t){
+      var id=t.c+t.l, ds=discs(t.c), prop=propinaDe(t.c);
+      for(var i=0;i<t.n;i++){
+        aid++;
+        var g=chance(.5)?'M':'F', ap=pick(APELIDOS), ap2=chance(.35)?' '+pick(APELIDOS):'';
+        var nome=pick(g==='M'?NOMES_M:NOMES_F)+ap2+' '+ap;
+        var bairro=pick(BAIRROS), idade=5+t.c;
+        var bolsa=chance(.03)?100:(chance(.04)?50:0);
+        var v=Math.round(prop*(1-bolsa/100));
+        /* perfil de pagamento: 0 em dia · 1 deve Set · 2 deve Ago+Set · 3 deve 3-4 meses */
+        var perfil=bolsa===100?0:(chance(.68)?0:(chance(.4)?1:(chance(.6)?2:3)));
+        var pagosAte=perfil===0?9:(perfil===1?8:(perfil===2?7:(9-rnd(3,4))));
+        var propinas=[]; for(var m=1;m<=12;m++){
+          var st='npago';
+          if(bolsa===100) st='isento';
+          else if(m<=pagosAte) st='pago';
+          else if(m<HOJE.m) st='multa';
+          propinas.push({m:m,st:st,v:v,pagamentoId:null,ref:null,dataConfirm:null,estadoBanco:'pendente',multaPct:st==='multa'?10:undefined,multaAuto:st==='multa'?true:undefined});
+        }
+        /* encarregado (irmãos partilham) */
+        var enc; if(chance(.06) && ENCS.length){ enc=ENCS[ENCS.length-1]; } else {
+          encSeq++; var eg=chance(.55)?'F':'M';
+          enc={id:ENCS.length+1,num:'ENC'+pad(encSeq,6),nome:pick(eg==='M'?NOMES_M:NOMES_F)+' '+ap,tel:'8'+pick(['2','3','4','5','6','7'])+pad(rnd(1000000,9999999),7),email:'enc'+encSeq+'@gmail.com',prof:pick(PROFISSOES),rel:eg==='M'?'Pai':'Mãe',bi:'12'+pad(rnd(1000000,9999999),7)+'C',nasc:iso(rnd(1968,1992),rnd(1,12),rnd(1,28)),genero:eg,morada:bairro+', Maputo',filhos:[],adesao:rnd(2019,2026),_dbId:'demo-enc-'+encSeq};
+          ENCS.push(enc);
+        }
+        var hab=R()*0.6+0.4; /* aptidão do aluno */
+        function nota(){ var n=Math.round((hab*12+rnd(0,8))*10)/10; return Math.max(3,Math.min(20,n)); }
+        function trim(parcial){ return ds.map(function(d){ var a1=nota(),a2=parcial?null:nota(),at=parcial?null:nota(); var n=parcial?a1:Math.round((a1+a2+at)/3*10)/10; return {d:d,n:n,as1:a1,as2:a2,at:at}; }); }
+        function faltas(tr){ var out=[]; var n=chance(.3)?rnd(1,6):0; for(var f=0;f<n;f++) out.push({tipo:'F',justif:chance(.25),data:iso(ANO,tr===1?rnd(2,4):rnd(5,7),rnd(1,28)),disc:pick(ds)}); return out; }
+        var aluno={id:aid,num:'ALU'+pad(aid,6),nome:nome,genero:g,nasc:iso(ANO-idade,rnd(1,12),rnd(1,28)),bi:'10'+pad(aid,7)+'A',nat:pick(['Maputo','Maputo','Matola','Xai-Xai','Inhambane','Beira']),morada:bairro+', Maputo',tel:'8'+pick(['4','5','6','7'])+pad(rnd(1000000,9999999),7),email:'N/A',
+          turma:id,classe:t.c+'ª Classe',ingresso:String(rnd(2020,2026)),verif:true,foto:null,bolseiro:bolsa?'sim':'nao',bolsaPct:bolsa,bolsaMotivo:bolsa===100?'Bolsa de mérito':(bolsa?'Apoio social':''),
+          isencoes:{matricula:false,inscricao:false},enc:enc.num,encTel:enc.tel,encEmail:enc.email,_encDbId:enc._dbId,erel:enc.rel,ebi:enc.bi,eprof:enc.prof,eender:enc.morada,etel:enc.tel,
+          faltas:{t1:faltas(1),t2:faltas(2),t3:[]},notas:{t1:trim(false),t2:trim(false),t3:trim(true),exame:[]},propinas:propinas,hist:[{data:iso(ANO,1,rnd(6,30)),tipo:'Matrícula',desc:'Matrícula efectuada no ano lectivo '+ANO}],transferencias:[],
+          dataInscricao:iso(ANO,1,rnd(6,30))+'T08:00:00.000Z',inscritoPor:'Secretaria',_dbId:'demo-aluno-'+aid,_turmaDbId:'demo-turma-'+id};
+        ALUNOS.push(aluno);
+        enc.filhos.push({id:aluno.id,nome:aluno.nome,num:aluno.num,turma:id,saldo:0});
+
+        /* pagamentos: matrícula (60%) + propinas pagas, algumas em bloco */
+        function novoPag(meses0, valor, data, familia, tipo, cat, porConf){
+          pagSeq++; var canal=pick(['numerario','numerario','numerario','pos','pos','deposito','deposito','transferencia']);
+          var banco=(canal==='deposito'||canal==='transferencia')?pick(BANCOS):'';
+          var ref=canal==='numerario'?'':(canal==='pos'?('POS'+pad(rnd(100000,999999),6)):((canal==='deposito'?'DEP':'TRF')+'-'+pad(rnd(10000,99999),5)));
+          var pg={id:'DEMO-P'+pad(pagSeq,5),alunoId:aluno.id,alunoNome:aluno.nome,alunoNum:aluno.num,turmaId:id,meses:meses0,valorTotal:valor,valorBase:valor,valorPropina:v,data:data,canal:canal,banco:banco,ref:ref,obs:'',
+            estado:porConf?'por_confirmar':'confirmado',confirmedBy:porConf?null:'Secretaria',confirmedAt:porConf?null:data,confirmedRef:porConf?null:ref,registadoPor:'Secretaria',registadoEm:data+'T'+pad(rnd(7,16),2)+':'+pad(rnd(0,59),2)+':00',familia:familia,tipo:tipo,categoriaNome:cat||null};
+          PAGAMENTOS.push(pg); pagamentos.push(pg); return pg;
+        }
+        if(bolsa<100 && chance(.6)) novoPag([], 1500, iso(ANO,1,rnd(6,31)), 'taxa_fixa', 'matricula', 'Matrícula', false);
+        var m=1;
+        while(m<=pagosAte){
+          var bloco=chance(.2)?Math.min(2,pagosAte-m+1):1; var meses0=[]; for(var b=0;b<bloco;b++) meses0.push(m-1+b);
+          var dia=chance(.8)?rnd(1,5):rnd(6,20); var data=iso(ANO,m,dia);
+          var porConf=(m===9 && chance(.15));
+          var pg=novoPag(meses0, v*bloco, data, 'propina', null, null, porConf);
+          meses0.forEach(function(mi){ var pr=propinas[mi]; pr.st='pago'; pr.pagamentoId=pg.id; pr.ref=pg.ref||null; pr.estadoBanco=porConf?'por_confirmar':'confirmado'; pr.dataConfirm=porConf?null:data; pr.dt=pad(dia,2)+'/'+pad(m,2); if(porConf){ pr.st='npago'; pr.estadoBanco='por_confirmar'; } });
+          m+=bloco;
+        }
+      }
+    });
+    /* nºs de recibo — por ordem cronológica, só confirmados (como no backfill real) */
+    pagamentos.sort(function(a,b){ return String(a.data).localeCompare(String(b.data))||String(a.registadoEm).localeCompare(String(b.registadoEm)); });
+    var n=0; pagamentos.forEach(function(p){ if(p.estado==='confirmado'){ n++; p.reciboNum='RC '+ANO+'/'+pad(n,5); } });
+    window.__demoNum={}; window.__demoNum['RC'+ANO]=n;
+
+    /* ── Despesas (Jan–Set) ── */
+    if(typeof DESPESAS_REG!=='undefined'){
+      DESPESAS_REG.length=0; var ds=0;
+      for(var mm=1;mm<=9;mm++){
+        [['agua','Água — FIPAG',rnd(3800,5200)],['luz','Electricidade — EDM',rnd(8500,12500)],['manutencao','Manutenção e reparações',rnd(4000,16000)],['outros','Internet e comunicações',3500],['outros','Segurança',12000],['outros','Material de limpeza',rnd(2000,4500)],['outros','Material didáctico',rnd(3000,9000)]].forEach(function(d){
+          ds++; DESPESAS_REG.push({id:'DEMO-D'+pad(ds,4),data:iso(ANO,mm,rnd(2,26)),mes:mm,categoria:d[0],descricao:d[1],valor:d[2],ref:'FT-'+pad(rnd(1000,9999),4)});
+        });
+      }
+    }
+    window.FACTURAS=[];
+    return {turmas:TURMAS.length, alunos:ALUNOS.length, profs:PROFS.length, pagamentos:PAGAMENTOS.length};
+  }
+
+  /* ── Configuração e identidade da Escola Modelo ── */
+  function configurar(){
+    try{
+      var C=CONFIG;
+      C.anoLectivo=ANO; C.valorPropina=3500; C.multaPropina=10; C.diaVencimento=5; C.siglaRecibo='EM';
+      C.valoresPorClasse={}; TURMAS_DEF.forEach(function(t){ C.valoresPorClasse[String(t.c)]={propina:propinaDe(t.c),inscricao:2500,matricula:1500}; });
+      C.anoInicio=ANO+'-02-02'; C.anoFim=ANO+'-11-27';
+      C.t1Inicio=ANO+'-02-02'; C.t1Fim=ANO+'-04-30'; C.t2Inicio=ANO+'-05-04'; C.t2Fim=ANO+'-07-31'; C.t3Inicio=ANO+'-08-24'; C.t3Fim=ANO+'-11-27';
+      C.totalAulasT1=40; C.totalAulasT2=40; C.totalAulasT3=40; C.faltasMaxPct=25; C.mediaAprovacao=10; C.diasRegistoAula=5;
+      C.multaAcordos={}; C.servicos=null;
+    }catch(e){}
+    try{
+      var S=ESCOLA_SETTINGS;
+      S.nome='Escola Modelo'; S.subNome='Maputo · Ano Lectivo '+ANO; S.nuit='400123456'; S.morada='Av. Eduardo Mondlane, 1500 — Maputo'; S.telefone='+258 84 000 0000'; S.email='geral@escolamodelo.co.mz'; S.slogan='Educar com rigor e alegria'; S.licenca='Nº 123/MINEDH/2019'; S.logo=null;
+    }catch(e){}
+  }
+
+  var ICONE='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#12315f"/><path d="M32 14 8 26l24 12 24-12z" fill="#fff"/><path d="M16 31v10c0 4 7 8 16 8s16-4 16-8V31l-16 8z" fill="#4fc0d0"/></svg>');
+  function marcar(){
+    try{ document.querySelectorAll('.logo-name,#sb-school,#login-escola-nome').forEach(function(e){ e.textContent='Escola Modelo'; }); }catch(e){}
+    try{ var img=document.querySelector('.logo-ico img'); if(img){ img.src=ICONE; img.alt='Escola Modelo'; } }catch(e){}
+    try{ document.querySelectorAll('img[alt="Colégio iQRA"]').forEach(function(im){ im.src=ICONE; im.alt='Escola Modelo'; }); }catch(e){}
+    try{ document.title='Scholaris — Escola Modelo (demonstração)'; }catch(e){}
+  }
+  /* PDFs: cabeçalho neutro em vez do emblema iQRA (contorna o write injectado pelo v6.141) */
+  var _open=window.open;
+  window.open=function(u,n,f){
+    var w=_open.apply(this, arguments);
+    try{
+      if(w && window._escolaId==='escola_demo' && (u===''||u==null||u==='about:blank')){
+        var doc=w.document, feito=false;
+        var cab='<div style="display:flex;align-items:center;gap:12px;padding:0 0 10px;margin:0 0 14px;border-bottom:3px solid #1a8f9e;font-family:Arial,Helvetica,sans-serif"><img src="'+ICONE+'" alt="Escola Modelo" style="height:52px;width:52px"><div><div style="font-size:16px;font-weight:800;color:#12315f;line-height:1.1">Escola Modelo</div><div style="font-size:10px;color:#1a8f9e;letter-spacing:.06em;text-transform:uppercase">Demonstração · dados fictícios</div></div></div>';
+        doc.write=function(html){ if(!feito && typeof html==='string' && /<body[^>]*>/i.test(html)){ feito=true; html=html.replace(/(<body[^>]*>)/i,'$1'+cab); } return Document.prototype.write.call(doc, html); };
+        doc.writeln=function(html){ return doc.write(String(html)+'\n'); };
+      }
+    }catch(e){}
+    return w;
+  };
+
+  /* ── Faixa de demonstração ── */
+  var PERFIS=[['gestor','Gestor Geral'],['director','Director'],['gestor-financeiro','Gestor Financeiro'],['dir-pedagogico','Dir. Pedagógico'],['secretario','Secretário'],['professor','Professor']];
+  function faixa(role){
+    var f=document.getElementById('demo-faixa'); if(f) f.remove();
+    f=document.createElement('div'); f.id='demo-faixa';
+    f.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99998;background:#12315f;color:#fff;font:600 12px/1.2 system-ui,sans-serif;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(0,0,0,.25)';
+    var opts=PERFIS.map(function(p){ return '<option value="'+p[0]+'"'+(p[0]===role?' selected':'')+'>'+p[1]+'</option>'; }).join('');
+    f.innerHTML='<span style="background:#4fc0d0;color:#0b1f3a;border-radius:4px;padding:2px 8px;letter-spacing:.06em">MODO DEMONSTRAÇÃO</span>'
+      +'<span>Escola Modelo — dados fictícios, nada é guardado.</span>'
+      +'<label style="margin-left:auto;display:flex;align-items:center;gap:6px">Ver como <select onchange="window.__demoEntrar(this.value)" style="border-radius:6px;padding:4px 8px;border:none">'+opts+'</select></label>'
+      +'<button onclick="window.__demoReiniciar()" style="border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">Reiniciar</button>'
+      +'<a href="https://wa.me/258840000000?text='+encodeURIComponent('Olá! Vi a demonstração da Scholaris e gostava de saber mais.')+'" target="_blank" style="background:#25D366;color:#fff;border-radius:6px;padding:5px 10px;text-decoration:none">Pedir demonstração</a>';
+    document.body.appendChild(f);
+    try{ document.body.style.paddingBottom='44px'; }catch(e){}
+  }
+  window.__demoReiniciar=function(){ var r=(window.__demoRole||'gestor'); location.href=location.pathname+'?demo='+r; };
+
+  var construido=false;
+  window.__demoEntrar=function(role){
+    role=(PERFIS.some(function(p){ return p[0]===role; }))?role:'gestor';
+    window.__demoRole=role;
+    window._escolaId='escola_demo';
+    if(!construido){ configurar(); var r=construir(); construido=true; console.log('[Scholaris] Escola Modelo:', r); }
+    try{ curRole=role; }catch(e){ window.curRole=role; }
+    try{ doLoginDemo(); }catch(e){ console.warn('doLoginDemo', e&&e.message); }
+    try{ if(typeof curUser!=='undefined' && curUser){ if(role==='gestor'){ curUser.nome='Direcção da Escola'; curUser.avt='DE'; } curUser.email='demo@escolamodelo.co.mz'; } if(typeof setupRole==='function') setupRole(); }catch(e){}
+    try{ if(window._currentUser){ window._currentUser.escolaId='escola_demo'; } }catch(e){}
+    marcar(); setTimeout(marcar,600); setTimeout(marcar,2500);
+    faixa(role);
+    try{ ['rTurmas','rAl','rPr','rDash'].forEach(function(fn){ if(typeof window[fn]==='function') window[fn](); }); }catch(e){}
+    setTimeout(function(){ try{ go(role==='gestor-financeiro'?'fin-dashboard':'dash'); }catch(e){} }, 150);
+  };
+
+  /* localStorage: a Aparência não deve gravar em modo demo (poluía o login real no mesmo browser) */
+  var _save=window.saveEscolaSettings;
+  if(typeof _save==='function'){ window.saveEscolaSettings=function(){ if(window._escolaId==='escola_demo'){ marcar(); try{ toast('Modo demonstração — as alterações não são guardadas.'); }catch(e){} return; } return _save.apply(this, arguments); }; }
+
+  /* entrada automática por URL */
+  function pedido(){ try{ var q=new URLSearchParams(location.search); if(q.has('demo')) return q.get('demo')||'gestor'; if(/^#demo/.test(location.hash)) return (location.hash.split('=')[1])||'gestor'; }catch(e){} return null; }
+  var r0=pedido();
+  if(r0){
+    var tent=0; (function esperar(){
+      tent++;
+      var app=document.getElementById('app'), login=document.getElementById('login-screen');
+      var visivel=app && app.classList.contains('visible');
+      if(visivel && window._escolaId && window._escolaId!=='escola_demo'){ try{ toast('Já existe uma sessão real aberta — a demonstração não foi iniciada.'); }catch(e){} return; }
+      var pronto=(typeof doLoginDemo==='function') && (typeof PROFS!=='undefined') && (login && login.style.display!=='none' || tent>8);
+      if(pronto){ window.__demoEntrar(r0); return; }
+      if(tent<40) setTimeout(esperar, 250);
+    })();
+  }
 })();
 </script>
 </body>
