@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.195</span>
+    <span class="logo-ver">v6.196</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -45722,7 +45722,16 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   if(typeof _save==='function'){ window.saveEscolaSettings=function(){ if(window._escolaId==='escola_demo'){ marcar(); try{ toast('Modo demonstração — as alterações não são guardadas.'); }catch(e){} return; } return _save.apply(this, arguments); }; }
 
   /* entrada automática por URL */
-  function pedido(){ try{ var q=new URLSearchParams(location.search); if(q.has('demo')) return q.get('demo')||'gestor'; if(/^#demo/.test(location.hash)) return (location.hash.split('=')[1])||'gestor'; }catch(e){} return null; }
+  function pedido(){
+    try{
+      /* v6.196: cópia servida em scholaris-site.vercel.app/demo entra SEMPRE em demonstração
+         (window.__forcarDemo é injectado por tools/demo.mjs do site) */
+      if(window.__forcarDemo){ var q0=new URLSearchParams(location.search); return q0.get('demo')||q0.get('perfil')||'gestor'; }
+      var q=new URLSearchParams(location.search); if(q.has('demo')) return q.get('demo')||'gestor';
+      if(/^#demo/.test(location.hash)) return (location.hash.split('=')[1])||'gestor';
+    }catch(e){}
+    return null;
+  }
   var r0=pedido();
   if(r0){
     var tent=0; (function esperar(){
