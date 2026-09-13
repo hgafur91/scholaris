@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.199</span>
+    <span class="logo-ver">v6.200</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -45680,13 +45680,17 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var opts=PERFIS.map(function(p){ return '<option value="'+p[0]+'"'+(p[0]===role?' selected':'')+'>'+p[1]+'</option>'; }).join('');
     f.innerHTML='<span style="background:#4fc0d0;color:#0b1f3a;border-radius:4px;padding:2px 8px;letter-spacing:.06em">MODO DEMONSTRAÇÃO</span>'
       +'<span>Escola Modelo — dados fictícios, nada é guardado.</span>'
-      +'<label style="margin-left:auto;display:flex;align-items:center;gap:6px">Ver como <select onchange="window.__demoEntrar(this.value)" style="border-radius:6px;padding:4px 8px;border:none">'+opts+'</select></label>'
+      +'<label style="margin-left:auto;display:flex;align-items:center;gap:6px">Ver como <select onchange="window.__demoTrocar(this.value)" style="border-radius:6px;padding:4px 8px;border:none">'+opts+'</select></label>'
       +'<button onclick="window.__demoReiniciar()" style="border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">Reiniciar</button>'
       +'<a href="https://wa.me/258840000000?text='+encodeURIComponent('Olá! Vi a demonstração da Scholaris e gostava de saber mais.')+'" target="_blank" style="background:#25D366;color:#fff;border-radius:6px;padding:5px 10px;text-decoration:none">Pedir demonstração</a>';
     document.body.appendChild(f);
     try{ document.body.style.paddingBottom='44px'; }catch(e){}
   }
   window.__demoReiniciar=function(){ var r=(window.__demoRole||'gestor'); location.href=location.pathname+'?demo='+r; };
+  /* v6.200: trocar de perfil recarrega com ?demo=<perfil> — estado limpo, sem o ecra= da entrada anterior */
+  window.__demoTrocar=function(r){ location.href=location.pathname+'?demo='+encodeURIComponent(r||'gestor'); };
+  /* ecrã inicial de cada perfil (o mesmo que doLoginDemo usa) */
+  var INICIO={aluno:'portal',professor:'portal-prof',encarregado:'dash-enc','gestor-financeiro':'fin-dashboard','dir-ciclo':'ciclo-visao'};
 
   var construido=false;
   window.__demoEntrar=function(role){
@@ -45703,8 +45707,12 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     try{ if(typeof curUser!=='undefined' && curUser){
       if(role==='gestor'){ curUser.nome='Direcção da Escola'; curUser.avt='DE'; }
       else if(role==='aluno' && fam && fam.aluno){ curUser.nome=fam.aluno.nome; curUser.avt=fam.aluno.nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); }
-      else if(role==='encarregado' && fam && fam.enc){ curUser.nome=fam.enc.nome; curUser.avt=fam.enc.nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); }
+      else if(role==='encarregado' && fam && fam.enc){ curUser.nome=fam.enc.nome; curUser.avt=fam.enc.nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); curUser.cargo='Encarregado de Educação'; }
       else if(role==='professor' && PROFS[0]){ curUser.nome=PROFS[0].nome; curUser.avt=PROFS[0].nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); }
+      else { /* v6.200: director, dir. pedagógico, secretário, gestor financeiro → a pessoa da Escola Modelo com esse cargo */
+        var pr=(PROFS||[]).find(function(p){ return p.systemRole===role; });
+        if(pr){ curUser.nome=pr.nome; curUser.avt=pr.nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); curUser.cargo=pr.cargo||curUser.cargo; }
+      }
       curUser.email='demo@escolamodelo.co.mz'; } if(typeof setupRole==='function') setupRole(); }catch(e){}
     try{ if(window._currentUser){ window._currentUser.escolaId='escola_demo'; } }catch(e){}
     marcar(); setTimeout(marcar,600); setTimeout(marcar,2500);
@@ -45730,7 +45738,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var ecra=null, tema=null; try{ var q2=new URLSearchParams(location.search); ecra=q2.get('ecra'); tema=q2.get('tema'); }catch(e){}
     setTimeout(function(){
       try{ if(tema==='dia' && typeof _isDayMode!=='undefined' && !_isDayMode && typeof toggleTheme==='function') toggleTheme(); }catch(e){}
-      try{ go(ecra || (role==='gestor-financeiro'?'fin-dashboard':'dash')); }catch(e){}
+      try{ var alvo=ecra || INICIO[role] || 'dash'; if(!/:/.test(alvo) && typeof VM!=='undefined' && !VM[alvo]) alvo='dash'; go(alvo); }catch(e){}   /* v6.200: cada perfil abre no seu próprio ecrã */
       try{ if(ecra && /^aluno:/.test(ecra)){ var al=ALUNOS.find(function(a){ return a.num===ecra.slice(6); }); if(al && typeof openAluno==='function') openAluno(al.id); } }catch(e){}
       try{ if(ecra && /^propinas:/.test(ecra)){ var al2=ALUNOS.find(function(a){ return a.num===ecra.slice(9); }); if(al2 && typeof openPA==='function') openPA(al2.id); } }catch(e){}
     }, 150);
@@ -45970,6 +45978,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     window.__demoEntrar=function(role){
       var r=_entrar.apply(this, arguments);
       if(!window.__demo198Feito){ window.__demo198Feito=true; try{ enriquecer(); }catch(e){ console.warn('[demo198]', e&&e.message); } }
+      /* v6.200: o gestor financeiro só existe depois de enriquecer() → dar-lhe nome e cargo agora */
+      try{
+        if(typeof curUser!=='undefined' && curUser && (!curUser.nome || curUser.nome===role)){
+          var pr=(PROFS||[]).find(function(p){ return p.systemRole===role; });
+          if(pr){ curUser.nome=pr.nome; curUser.avt=pr.nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); curUser.cargo=pr.cargo||curUser.cargo; if(typeof setupRole==='function') setupRole(); }
+        }
+      }catch(e){}
       return r;
     };
   }
