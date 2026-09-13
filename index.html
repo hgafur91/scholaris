@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.203</span>
+    <span class="logo-ver">v6.204</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3612,7 +3612,8 @@ function buildSidebar(){
   for(const sec of u.sidebar){
     if(sec.flat){
       html+=`<div class="sl">${sec.sl}</div>`;
-      for(const it of sec.flat)html+=`<button class="si" id="si-${it.id}" onclick="go('${it.id}')"><i class="ti ${it.i}" style="font-size:16px"></i><span>${it.l}</span>${it.badge?`<span class="si-badge">${it.badge}</span>`:''}</button>`;
+      /* v6.204: itens com `tab` (portal do aluno) abrem o separador certo — antes todos abriam a página inicial */
+      for(const it of sec.flat)html+=`<button class="si" id="si-${it.id}${it.tab?('-'+it.tab):''}" onclick="go('${it.id}')${it.tab?`;setTimeout(function(){if(typeof swPortalTab==='function')swPortalTab('${it.tab}',document.querySelector('#portal-tabs .tab[onclick*=&quot;${it.tab}&quot;]'))},80)`:''}"><i class="ti ${it.i}" style="font-size:16px"></i><span>${it.l}</span>${it.badge?`<span class="si-badge">${it.badge}</span>`:''}</button>`;
     } else {
       const sid='sb-sec-'+sec.sl.replace(/\s/g,'');
       html+=`<div class="sl">${sec.sl}</div><div id="${sid}" class="ssub op">`;
@@ -12355,6 +12356,10 @@ swPortalTab = function(tab, btn) {
     case 'trabalhos':  rPortalTrabalhos(a);      break;
     case 'comunicados':renderPortalComunicados(a);break;
     case 'materiais':  renderPortalMateriais(a); break;
+    /* v6.204: estes separadores caíam no default e mostravam a página inicial */
+    case 'desempenho': if(typeof renderPortalDesempenho==='function') renderPortalDesempenho(a); else renderPortalInicio(a); break;
+    case 'calendario': if(typeof renderPortalCalendario==='function') renderPortalCalendario(); else renderPortalInicio(a); break;
+    case 'jornada':    if(typeof renderPortalJornada==='function') renderPortalJornada(a); else renderPortalInicio(a); break;
     default:           renderPortalInicio(a);    break;
   }
 };
