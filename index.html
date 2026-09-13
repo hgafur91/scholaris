@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.198</span>
+    <span class="logo-ver">v6.199</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -10086,8 +10086,8 @@ function renderPortalInicio(a) {
     <div style="background:linear-gradient(135deg,#0d1526,#1a2f52);border-radius:var(--rad);padding:20px 24px;margin-bottom:20px;border:1px solid rgba(79,142,247,.2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
       <div>
         <div style="font-size:11px;font-weight:700;color:rgba(79,142,247,.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Bem-vindo de volta</div>
-        <div style="font-size:22px;font-weight:800;color:var(--t);letter-spacing:-.02em">${a.nome}</div>
-        <div style="font-size:12px;color:var(--t2);margin-top:3px">${a.classe} · Turma ${a.turma} · Encarregado: ${a.enome}</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em">${a.nome}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.72);margin-top:3px">${a.classe} · Turma ${a.turma} · Encarregado: ${a.enome||'—'}</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         ${pendTrabs > 0 ? `<div style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--am)">${pendTrabs}</div><div style="font-size:10px;color:var(--t2)">Trabalhos pendentes</div></div>` : ''}
@@ -11480,8 +11480,8 @@ renderPortalInicio = function(a) {
     <div style="background:linear-gradient(135deg,#0d1526,#1a2f52);border-radius:var(--rad);padding:20px 24px;margin-bottom:20px;border:1px solid rgba(79,142,247,.2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
       <div>
         <div style="font-size:11px;font-weight:700;color:rgba(79,142,247,.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Bem-vindo de volta</div>
-        <div style="font-size:22px;font-weight:800;color:var(--t);letter-spacing:-.02em">${a.nome}</div>
-        <div style="font-size:12px;color:var(--t2);margin-top:3px">${a.classe} · Turma ${a.turma} · Encarregado: ${a.enome}</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em">${a.nome}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.72);margin-top:3px">${a.classe} · Turma ${a.turma} · Encarregado: ${a.enome||'—'}</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         ${pendTrabs>0?`<div style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--am)">${pendTrabs}</div><div style="font-size:10px;color:var(--t2)">Trabalhos pendentes</div></div>`:''}
@@ -12045,8 +12045,8 @@ function rDashEnc() {
     <!-- Welcome -->
     <div style="background:linear-gradient(135deg,#064e3b,#065f46);border-radius:var(--rad);padding:20px 24px;margin-bottom:20px;border:1px solid rgba(34,197,94,.2)">
       <div style="font-size:11px;font-weight:700;color:rgba(34,197,94,.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Bem-vindo</div>
-      <div style="font-size:22px;font-weight:800;color:var(--t)">${enc.nome}</div>
-      <div style="font-size:12px;color:var(--t2);margin-top:3px">Encarregado de ${filhos.length} educando(s) · ${ESCOLA_SETTINGS?.nome||'Scholaris'} ${CONFIG.anoLectivo||2026}</div>
+      <div style="font-size:22px;font-weight:800;color:#fff">${enc.nome}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.72);margin-top:3px">Encarregado de ${filhos.length} educando(s) · ${ESCOLA_SETTINGS?.nome||'Scholaris'} ${CONFIG.anoLectivo||2026}</div>
     </div>
 
     <!-- Filho cards -->
@@ -12285,8 +12285,8 @@ renderPortalInicio = function(a) {
     <div style="background:linear-gradient(135deg,#0d1526,#1a2f52);border-radius:var(--rad);padding:20px 24px;margin-bottom:20px;border:1px solid rgba(79,142,247,.2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
       <div>
         <div style="font-size:11px;font-weight:700;color:rgba(79,142,247,.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Bem-vindo de volta</div>
-        <div style="font-size:22px;font-weight:800;color:var(--t);letter-spacing:-.02em">${a.nome}</div>
-        <div style="font-size:12px;color:var(--t2);margin-top:3px">${a.classe} · Turma ${a.turma} · Encarregado: ${a.enome}</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em">${a.nome}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.72);margin-top:3px">${a.classe} · Turma ${a.turma} · Encarregado: ${a.enome||'—'}</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         ${pendTrabs>0?`<div style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--am)">${pendTrabs}</div><div style="font-size:10px;color:var(--t2)">Trabalhos pendentes</div></div>`:''}
@@ -45578,7 +45578,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         function faltas(tr){ var out=[]; var n=chance(.3)?rnd(1,6):0; for(var f=0;f<n;f++) out.push({tipo:'F',justif:chance(.25),data:iso(ANO,tr===1?rnd(2,4):rnd(5,7),rnd(1,28)),disc:pick(ds)}); return out; }
         var aluno={id:aid,num:'ALU'+pad(aid,6),nome:nome,genero:g,nasc:iso(ANO-idade,rnd(1,12),rnd(1,28)),bi:'10'+pad(aid,7)+'A',nat:pick(['Maputo','Maputo','Matola','Xai-Xai','Inhambane','Beira']),morada:bairro+', Maputo',tel:'8'+pick(['4','5','6','7'])+pad(rnd(1000000,9999999),7),email:'N/A',
           turma:id,classe:t.c+'ª Classe',ingresso:String(rnd(2020,2026)),verif:true,foto:null,bolseiro:bolsa?'sim':'nao',bolsaPct:bolsa,bolsaMotivo:bolsa===100?'Bolsa de mérito':(bolsa?'Apoio social':''),
-          isencoes:{matricula:false,inscricao:false},enc:enc.num,encTel:enc.tel,encEmail:enc.email,_encDbId:enc._dbId,erel:enc.rel,ebi:enc.bi,eprof:enc.prof,eender:enc.morada,etel:enc.tel,
+          isencoes:{matricula:false,inscricao:false},enc:enc.num,enome:enc.nome,encTel:enc.tel,encEmail:enc.email,_encDbId:enc._dbId,erel:enc.rel,ebi:enc.bi,eprof:enc.prof,eender:enc.morada,etel:enc.tel,
           faltas:{t1:faltas(1),t2:faltas(2),t3:[]},notas:{t1:trim(false),t2:trim(false),t3:trim(true),exame:[]},propinas:propinas,hist:[{data:iso(ANO,1,rnd(6,30)),tipo:'Matrícula',desc:'Matrícula efectuada no ano lectivo '+ANO}],transferencias:[],
           dataInscricao:iso(ANO,1,rnd(6,30))+'T08:00:00.000Z',inscritoPor:'Secretaria',_dbId:'demo-aluno-'+aid,_turmaDbId:'demo-turma-'+id};
         ALUNOS.push(aluno);
@@ -45665,7 +45665,14 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   };
 
   /* ── Faixa de demonstração ── */
-  var PERFIS=[['gestor','Gestor Geral'],['director','Director'],['gestor-financeiro','Gestor Financeiro'],['dir-pedagogico','Dir. Pedagógico'],['secretario','Secretário'],['professor','Professor']];
+  /* v6.199: também os portais do professor, do aluno e do encarregado */
+  var PERFIS=[['gestor','Gestor Geral'],['director','Director'],['gestor-financeiro','Gestor Financeiro'],['dir-pedagogico','Dir. Pedagógico'],['secretario','Secretário'],['professor','Professor'],['encarregado','Encarregado'],['aluno','Aluno']];
+  /* família de demonstração: um encarregado com dois educandos, e o primeiro deles como aluno */
+  function familiaDemo(){
+    var enc=(ENCS||[]).find(function(e){ return e.filhos && e.filhos.length>=2; })||ENCS[0];
+    var al=enc && enc.filhos && enc.filhos.length ? ALUNOS.find(function(a){ return a.id===enc.filhos[0].id; }) : ALUNOS[0];
+    return {enc:enc, aluno:al};
+  }
   function faixa(role){
     var f=document.getElementById('demo-faixa'); if(f) f.remove();
     f=document.createElement('div'); f.id='demo-faixa';
@@ -45690,8 +45697,15 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     /* repor os nºs de recibo depois dos temporizadores antigos (1,5 s e 5 s) os reescreverem */
     try{ if(typeof window.__rcSincronizar==='function'){ window.__rcSincronizar(); setTimeout(window.__rcSincronizar,6500); setTimeout(window.__rcSincronizar,16000); } }catch(e){}
     try{ curRole=role; }catch(e){ window.curRole=role; }
+    /* v6.199: ligar a conta de aluno/encarregado a uma família da Escola Modelo (antes do primeiro render) */
+    var fam=null; try{ fam=familiaDemo(); window._meuAlunoId=(role==='aluno'&&fam.aluno)?fam.aluno._dbId:null; window._meuEncId=(role==='encarregado'&&fam.enc)?fam.enc._dbId:null; }catch(e){}
     try{ doLoginDemo(); }catch(e){ console.warn('doLoginDemo', e&&e.message); }
-    try{ if(typeof curUser!=='undefined' && curUser){ if(role==='gestor'){ curUser.nome='Direcção da Escola'; curUser.avt='DE'; } curUser.email='demo@escolamodelo.co.mz'; } if(typeof setupRole==='function') setupRole(); }catch(e){}
+    try{ if(typeof curUser!=='undefined' && curUser){
+      if(role==='gestor'){ curUser.nome='Direcção da Escola'; curUser.avt='DE'; }
+      else if(role==='aluno' && fam && fam.aluno){ curUser.nome=fam.aluno.nome; curUser.avt=fam.aluno.nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); }
+      else if(role==='encarregado' && fam && fam.enc){ curUser.nome=fam.enc.nome; curUser.avt=fam.enc.nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); }
+      else if(role==='professor' && PROFS[0]){ curUser.nome=PROFS[0].nome; curUser.avt=PROFS[0].nome.split(' ').map(function(n){return n[0];}).slice(0,2).join(''); }
+      curUser.email='demo@escolamodelo.co.mz'; } if(typeof setupRole==='function') setupRole(); }catch(e){}
     try{ if(window._currentUser){ window._currentUser.escolaId='escola_demo'; } }catch(e){}
     marcar(); setTimeout(marcar,600); setTimeout(marcar,2500);
     /* Outras camadas reaplicam ESCOLA_SETTINGS a partir do localStorage (as definições
@@ -45700,7 +45714,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       window.__demoGuarda=setInterval(function(){
         try{
           if(window._escolaId!=='escola_demo'){ clearInterval(window.__demoGuarda); window.__demoGuarda=null; return; }
-          if(typeof ESCOLA_SETTINGS!=='undefined' && ESCOLA_SETTINGS.nome!=='Escola Modelo'){ configurar(); marcar(); try{ if(typeof rDash==='function') rDash(); }catch(e){} }
+          if(typeof ESCOLA_SETTINGS!=='undefined' && ESCOLA_SETTINGS.nome!=='Escola Modelo'){
+            configurar(); marcar(); try{ if(typeof rDash==='function') rDash(); }catch(e){}
+            /* v6.199: voltar a desenhar o ecrã visível (ex.: o portal do encarregado mostra o nome da escola) */
+            try{ var on=document.querySelector('.view.on'); var vid=on&&on.id.replace(/^v-/,''); if(vid && vid!=='dash' && typeof VM!=='undefined' && VM[vid]) go(vid); }catch(e){}
+          }
           var sub=document.getElementById('dash-sub'); if(sub && /iQRA/.test(sub.textContent)) sub.textContent='Escola Modelo · Ano Lectivo '+ANO;
           var ln=document.querySelector('.logo-name'); if(ln && ln.textContent!=='Escola Modelo') marcar();
         }catch(e){}
@@ -45778,6 +45796,9 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 
   /* ── Dados adicionais (uma vez, logo a seguir a construir()) ── */
   function enriquecer(){
+    /* v6.199: os arrays de topo são `let` (não existem em window.*); vários portais lêem window.ALUNOS/TURMAS
+       (resolverMeuAluno, rMinhasTurmas…) e no iQRA o carregador real define-os. Em demo, expor os mesmos objectos. */
+    try{ window.ALUNOS=ALUNOS; window.TURMAS=TURMAS; window.PROFS=PROFS; window.ENCS=ENCS; window.ALOCACOES=ALOCACOES; window.HORARIO=HORARIO; window.PAGAMENTOS=PAGAMENTOS; }catch(e){}
     try{
       /* departamento financeiro */
       var fin=[['Gestor Financeiro','gestor-financeiro',42000,'M','Elísio Chichava'],['Tesoureira',null,21000,'F','Odete Manjate']];
@@ -46056,6 +46077,14 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'</tbody></table></div></div>';
   };
 
+  /* ── Trabalhos (TB): em demo não há base — responder já com a lista em memória ── */
+  try{
+    if(window.TB && typeof TB.sincronizar==='function' && !TB.__demo198){
+      TB.__demo198=true; var _sinc=TB.sincronizar;
+      TB.sincronizar=function(){ if(demo()){ window.TRABALHOS=window.TRABALHOS||[]; return Promise.resolve(window.TRABALHOS); } return _sinc.apply(this, arguments); };
+    }
+  }catch(e){}
+
   /* ── Ecrãs que o router antigo não renderizava (ids errados) ── */
   var _go=window.go;
   if(typeof _go==='function'){
@@ -46075,6 +46104,17 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
             else if(id==='notas' && typeof rNotasTurmas==='function') rNotasTurmas();
             else if(id==='utilizadores' && typeof window.rUtilizadores==='function') window.rUtilizadores();
             else if(id==='gestao-ano' && typeof window.rGestaoAno==='function') window.rGestaoAno();
+            /* v6.199: portais do encarregado e do professor (o router antigo destas rotas ficou para trás na cadeia de go()) */
+            else if(id==='dash-enc' && typeof rDashEnc==='function') rDashEnc();
+            else if(id==='portal-enc-notas' && typeof rPortalEncNotas==='function') rPortalEncNotas();
+            else if(id==='portal-enc-presencas' && typeof rPortalEncPresencas==='function') rPortalEncPresencas();
+            else if(id==='portal-enc-trabalhos' && typeof rPortalEncTrabalhos==='function') rPortalEncTrabalhos();
+            else if(id==='portal-enc-propinas' && typeof rPortalEncPropinas==='function') rPortalEncPropinas();
+            else if(id==='portal-enc-horario' && typeof rPortalEncHorario==='function') rPortalEncHorario();
+            else if(id==='mensagens-enc' && typeof rMensagensEnc==='function') rMensagensEnc();
+            else if(id==='minhas-turmas' && typeof window.rMinhasTurmas==='function') window.rMinhasTurmas();
+            else if(id==='comunicados-prof' && typeof rComunicadosProf==='function') rComunicadosProf();
+            else if(id==='trabalhos-prof' && typeof window.rTrabalhosProfView==='function') window.rTrabalhosProfView();
           }catch(e){ console.warn('[demo198 go]', id, e&&e.message); }
         }, 60);
       }
