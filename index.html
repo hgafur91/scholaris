@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.202</span>
+    <span class="logo-ver">v6.203</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3351,6 +3351,15 @@ const PROFS=[];
 const ENCS=[];
 
 let TURMAS=[];
+/* v6.203: espelhar as colecções de topo em window.* — vários módulos lêem window.ALUNOS / window.TURMAS
+   (resolverMeuAluno, rMinhasTurmas, …) e, como são `const`/`let`, window.X era undefined em produção
+   (o portal do aluno caía no 1.º aluno da lista; "As Minhas Turmas" mostrava o UUID da turma). */
+try{
+  Object.defineProperty(window,'ALUNOS',{get:function(){return ALUNOS;},set:function(){},configurable:true});
+  Object.defineProperty(window,'PROFS', {get:function(){return PROFS;}, set:function(){},configurable:true});
+  Object.defineProperty(window,'ENCS',  {get:function(){return ENCS;},  set:function(){},configurable:true});
+  Object.defineProperty(window,'TURMAS',{get:function(){return TURMAS;},set:function(v){TURMAS=v;},configurable:true});
+}catch(e){}
 
 const CLASSES=[];
 
@@ -9857,6 +9866,7 @@ const TIPO_TRABALHO = {
 };
 
 let TRABALHOS = [];
+try{ Object.defineProperty(window,'TRABALHOS',{get:function(){return TRABALHOS;},set:function(v){TRABALHOS=v;},configurable:true}); }catch(e){}  // v6.203: window.TRABALHOS ⇄ TRABALHOS
 
 let _trabViewingId = null;
 
@@ -17783,6 +17793,7 @@ let AUDIT_LOG = [];
 
 // Payment records — full detail per transaction
 let PAGAMENTOS = [];
+try{ Object.defineProperty(window,'PAGAMENTOS',{get:function(){return PAGAMENTOS;},set:function(v){PAGAMENTOS=v;},configurable:true}); }catch(e){}  // v6.203
 
 // Provisão para dívidas incobráveis
 const PROV_INCOBRAVEL_PCT = {
@@ -40394,8 +40405,10 @@ window.trimestreActual = function(d){
     if(!prof){ el.innerHTML='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Esta área é para professores.</div>'; return; }
     var aloc=[];
     try{ aloc=(window.NT&&NT._minhasAloc)?(await NT._minhasAloc()):[]; }catch(e){ aloc=[]; }
-    var tmap={}; (window.TURMAS||[]).forEach(function(t){ if(t._dbId) tmap[t._dbId]={code:t.id,nome:t.nome||t.id}; });
-    var dtTurmas=(window.TURMAS||[]).filter(function(t){ return t.dirTurma && String(t.dirTurma)===String(prof.num); });
+    /* v6.203: TURMAS é um `let` de topo — window.TURMAS não existia e a turma aparecia como UUID */
+    var _T=(typeof TURMAS!=='undefined'&&Array.isArray(TURMAS))?TURMAS:(window.TURMAS||[]);
+    var tmap={}; _T.forEach(function(t){ if(t._dbId) tmap[t._dbId]={code:t.id,nome:t.nome||t.id}; });
+    var dtTurmas=_T.filter(function(t){ return t.dirTurma && String(t.dirTurma)===String(prof.num); });
 
     var porTurma={};
     aloc.forEach(function(a){
@@ -40705,8 +40718,11 @@ window.trimestreActual = function(d){
           var rows=C[a._dbId]||[];
           var total=rows.filter(function(r){ return (r.tipo==='F'||r.tipo==null) && !r.justif; }).length;
           // v6.77: denominador = aulas realmente dadas na turma (senão o fixo antigo)
-          var AC=window.__AULAS_CACHE;
-          var maxAulas=(AC && a.turma && AC[a.turma]) ? AC[a.turma] : ((CONFIG.totalAulasT1||40)+(CONFIG.totalAulasT2||40)+(CONFIG.totalAulasT3||40));
+          // v6.203: só a partir de um mínimo de aulas registadas (CONFIG.faltasMinAulas, 20 por omissão) —
+          // com 2 aulas no livro de ponto, 1 falta dava 50% e "Excluído". Até lá, usa o total previsto do ano.
+          var AC=window.__AULAS_CACHE, MIN=(CONFIG.faltasMinAulas||20);
+          var previsto=(CONFIG.totalAulasT1||40)+(CONFIG.totalAulasT2||40)+(CONFIG.totalAulasT3||40);
+          var maxAulas=(AC && a.turma && AC[a.turma] && AC[a.turma]>=MIN) ? AC[a.turma] : previsto;
           var pct=maxAulas?Math.round(total/maxAulas*100):0;
           return { total:total, pct:pct, emRisco:pct>=((CONFIG.faltasMaxPct||25)*0.75), excluido:pct>=(CONFIG.faltasMaxPct||25) };
         }
