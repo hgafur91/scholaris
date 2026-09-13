@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.197</span>
+    <span class="logo-ver">v6.198</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -13885,7 +13885,8 @@ async function __carregarAssiduidadeGlobal(){
 window.__paLoaded = window.__paLoaded || {};
 window.carregarPlanoAnaliticoTurma = async function(turmaCode){
   if(window.__paLoaded[turmaCode]) return;
-  if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')) return;
+  // v6.198: em demo (ou sem base) marcar como carregado — senão rPlanoAnalitico volta a chamar isto em ciclo infinito
+  if(!(window._supabase && window._escolaId && window._escolaId!=='escola_demo')){ window.__paLoaded[turmaCode]=true; return; }
   try{
     var r=await window._supabase.from('aulas_dadas').select('disciplina,data,periodo,tema,sumario,professor_id')
       .eq('escola_id',window._escolaId).eq('turma_id',String(turmaCode)).order('data',{ascending:true}).order('periodo',{ascending:true});
@@ -45744,6 +45745,343 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       if(tent<40) setTimeout(esperar, 250);
     })();
   }
+})();
+</script>
+
+
+<script>
+/* ═══ PATCH v6.198 — Escola Modelo completa ═══════════════════════════════
+   Enriquece o demo (bloco __demo192) para que nenhum ecrã fique vazio ou preso:
+   · Folhas de salários Jan–Ago aprovadas (+ lançadas nas despesas), Set em rascunho.
+   · Orçamento anual aprovado. Avaliações do staff. Departamento financeiro.
+   · Comunicados, ocorrências disciplinares, candidaturas, conversas, biblioteca.
+   · Plano analítico / livro de ponto por turma e disciplina.
+   · Notas Finais (NT), Aproveitamento da turma, Utilizadores, Visão Geral e
+     Livro de Ponto passam a ler os dados locais em modo demo (antes: Supabase → vazio).
+   · Encarregados e Staff renderizam ao abrir (o router antigo verificava ids errados).
+   Tudo só corre quando _escolaId==='escola_demo'; o iQRA não é tocado.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__demo198) return; window.__demo198=true;
+  function demo(){ return window._escolaId==='escola_demo'; }
+  var ANO=2026, MES=9;
+  var MESN=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function rngFactory(seed){ var t=seed>>>0; return function(){ t+=0x6D2B79F5; var r=Math.imul(t^(t>>>15), 1|t); r^=r+Math.imul(r^(r>>>7), 61|r); return ((r^(r>>>14))>>>0)/4294967296; }; }
+  var R=rngFactory(20260914);
+  function rnd(a,b){ return a+Math.floor(R()*(b-a+1)); }
+  function pick(arr){ return arr[Math.floor(R()*arr.length)]; }
+  function chance(p){ return R()<p; }
+  function pad(n,w){ return String(n).padStart(w,'0'); }
+  function iso(y,m,d){ return y+'-'+pad(m,2)+'-'+pad(d,2); }
+  function dmy(s){ return s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4); }
+  function diaUtil(m){ var d; do{ d=rnd(1,28); }while([0,6].indexOf(new Date(ANO,m-1,d).getDay())>=0); return d; }
+
+  /* ── Dados adicionais (uma vez, logo a seguir a construir()) ── */
+  function enriquecer(){
+    try{
+      /* departamento financeiro */
+      var fin=[['Gestor Financeiro','gestor-financeiro',42000,'M','Elísio Chichava'],['Tesoureira',null,21000,'F','Odete Manjate']];
+      fin.forEach(function(s,i){
+        var n=PROFS.length+1;
+        PROFS.push({id:n,num:'GST'+pad(80+i,6),_dbId:'demo-fin-'+i,nome:s[4],form:'Licenciatura',area:s[0],disc:[],turmas:[],tel:'84'+pad(rnd(1000000,9999999),7),email:'financeiro'+(i+1)+'@escolamodelo.co.mz',bi:'11'+pad(rnd(1000000,9999999),7)+'C',nasc:iso(rnd(1978,1994),rnd(1,12),rnd(1,28)),genero:s[3],nat:'Maputo',adesao:iso(rnd(2017,2024),3,1),dep:'financeiro',cargo:s[0],nota:0,salario:s[2],regime:'inteiro',horasSem:40,horasMaxSem:40,valorHora:0,valorHoraExtra:0,systemRole:s[1]||undefined});
+      });
+      /* avaliações de desempenho + contas bancárias (folha para o banco) */
+      var BANCOS=['BCI','BIM','Standard Bank','Absa','Moza Banco'];
+      CONFIG.contasBanco={};
+      PROFS.forEach(function(p){ p.nota=rnd(11,19); CONFIG.contasBanco[String(p.id)]={banco:pick(BANCOS),conta:p.contaBanco||('0000'+pad(rnd(10000000,99999999),8))}; });
+    }catch(e){ console.warn('[demo198 staff]', e&&e.message); }
+
+    /* ── Planos curriculares / plano temático (CLASSES) ── */
+    try{
+      var UNID={ 'Português':['Texto narrativo','Texto descritivo','Gramática: classes de palavras','Texto poético','Texto expositivo','Ortografia e pontuação'],
+        'Matemática':['Números naturais','Operações e problemas','Fracções e decimais','Geometria plana','Medidas e grandezas','Estatística elementar'],
+        'Ciências Naturais':['O corpo humano','Os seres vivos','Água e ar','Alimentação e saúde','O ambiente','Energia'],
+        'Inglês':['Greetings and introductions','My family','School life','Daily routines','Food and health','Places in town'],
+        'História':['Povos de Moçambique','Comércio e contactos','Colonização','Luta de libertação','Independência','Moçambique hoje'],
+        'Geografia':['Orientação e mapas','Relevo de Moçambique','Clima e vegetação','Rios e lagos','População','Actividades económicas'],
+        'Física':['Movimento','Forças','Energia e trabalho','Calor e temperatura','Electricidade','Luz e som'],
+        'Química':['Matéria e substâncias','Tabela periódica','Ligações químicas','Reacções químicas','Soluções','Ácidos e bases'],
+        'Biologia':['A célula','Tecidos e órgãos','Sistemas do corpo','Reprodução','Genética elementar','Ecologia'],
+        'Educação Física':['Atletismo','Jogos colectivos','Ginástica','Futebol','Basquetebol','Voleibol'],
+        'Educação Visual':['Cor e forma','Desenho de observação','Pintura','Modelagem','Colagem','Artesanato local'] };
+      var SUB=['Introdução e conceitos','Exercícios de aplicação','Leitura e discussão','Trabalho prático','Síntese e avaliação'];
+      CLASSES.length=0;
+      var vistos={};
+      (TURMAS||[]).forEach(function(t){
+        if(vistos[t.classe]) return; vistos[t.classe]=1;
+        var ds=(ALOCACOES||[]).filter(function(a){ return a.turma===t.id; }).map(function(a){ return a.disc; });
+        CLASSES.push({id:t.classe,classe:t.classe,nome:t.classe+'ª Classe',cicloId:t.cicloId,curso:t.curso,disc:ds.map(function(d){
+          var un=UNID[d]||['Unidade 1','Unidade 2','Unidade 3','Unidade 4','Unidade 5','Unidade 6'];
+          var plano={t1:[],t2:[],t3:[]};
+          un.forEach(function(u,i){ plano['t'+(1+Math.floor(i/2))].push({u:'Unidade '+(i+1)+' — '+u,temas:SUB.slice(0,rnd(3,5)).map(function(s){ return u+': '+s.toLowerCase(); })}); });
+          return {nome:d,carga:(d==='Português'||d==='Matemática')?5:3,plano:plano};
+        })});
+      });
+      CLASSES.sort(function(a,b){ return a.classe-b.classe; });
+    }catch(e){ console.warn('[demo198 classes]', e&&e.message); }
+
+    /* ── Folhas de salários: Jan–Ago aprovadas, Set rascunho ── */
+    try{
+      var F={}; F[ANO]={};
+      function linhas(){
+        var L={};
+        (PROFS||[]).filter(function(p){ return (p.salario||0)>0 && p.regime!=='parcial'; }).forEach(function(p){
+          var subs=[], descs=[];
+          if(p.dep==='gestao' && p.cargo!=='Guarda') subs.push({nome:'Subsídio de transporte',valor:2500,fixo:true});
+          if(p.cargo==='Director Escolar' || p.cargo==='Director Pedagógico') subs.push({nome:'Cargo',valor:6000});
+          if(chance(.15)) descs.push({nome:'Adiantamento',valor:rnd(2,6)*500});
+          L[p.id]={base:p.salario||0,subsidios:subs,descontos:descs,multas:[]};
+        });
+        return L;
+      }
+      for(var m=1;m<=MES;m++){
+        var L=linhas(), aprov=m<MES;
+        F[ANO][m]={status:aprov?'aprovada':'rascunho',linhas:L,geradaEm:iso(ANO,m,1)+'T09:00:00.000Z',aprovadaPor:aprov?'Direcção da Escola':null,aprovadaEm:aprov?iso(ANO,m,5)+'T10:30:00.000Z':null};
+        if(aprov && typeof DESPESAS_REG!=='undefined' && Array.isArray(DESPESAS_REG)){
+          var bruto=0, desc=0;
+          Object.keys(L).forEach(function(pid){ var x=L[pid]; bruto+=(x.base||0)+x.subsidios.reduce(function(s,y){return s+(y.valor||0);},0); desc+=x.descontos.reduce(function(s,y){return s+(y.valor||0);},0); });
+          DESPESAS_REG.push({id:'SAL'+ANO+'-'+m,data:iso(ANO,m,5),mes:m,categoria:'salarios',descricao:'Folha de Salários '+MESN[m]+' (inclui INSS empresa 4%, menos descontos)',valor:Math.round(bruto*1.04)-desc,ref:'FOLHA-'+m,registadoEm:iso(ANO,m,5)+'T10:30:00.000Z'});
+        }
+      }
+      CONFIG.folhas=F;
+      window.__folhaMes=MES;
+    }catch(e){ console.warn('[demo198 folhas]', e&&e.message); }
+
+    /* ── Orçamento anual aprovado ── */
+    try{
+      var classes=[1,2,3,4,5,6,7,8].map(function(c){ return {classe:c,alunos:30,propina:c<=3?3000:(c<=6?3500:4000)}; });
+      var o={ano:ANO,estado:'aprovado',criadoPor:'Elísio Chichava',aprovadoPor:'Direcção da Escola',dataSubmissao:iso(ANO,1,20),dataAprovacao:iso(ANO,1,28),comentario:'Aprovado em reunião de direcção de 28/01/'+ANO+'.',
+        alunosEsperados:240,mesesLetivos:10,valorPropinaMensal:3500,receitaClasses:classes,
+        outrasReceitas:[{id:'erc1',label:'Matrículas e inscrições',valor:240*4000},{id:'erc2',label:'Emolumentos e declarações',valor:120000}],
+        despesas:[{id:'d1',label:'Salários (folha)',modo:'mensal',valor:600000},{id:'d2',label:'Água e Electricidade',modo:'mensal',valor:16000},{id:'d3',label:'Segurança e limpeza',modo:'mensal',valor:15000},{id:'d4',label:'Internet e comunicações',modo:'mensal',valor:3500},{id:'d5',label:'Material didáctico',modo:'anual',valor:80000},{id:'d6',label:'Manutenção e obras',modo:'anual',valor:120000},{id:'d7',label:'Marketing e eventos',modo:'anual',valor:40000},{id:'d8',label:'Outros / Imprevistos',modo:'anual',valor:60000}]};
+      window.ORCAMENTO_ANUAL=o; CONFIG.orcamento=o; window.__orcHydrated=true;
+    }catch(e){ console.warn('[demo198 orcamento]', e&&e.message); }
+
+    /* ── Comunicados ── */
+    try{
+      COMUNICADOS.length=0;
+      [['Reunião geral de encarregados','Convidam-se todos os encarregados de educação para a reunião geral no dia 26 de Setembro, às 8h00, no pátio da escola. Serão apresentados os resultados do 2.º trimestre e o calendário do 3.º.','urgente','todos',iso(ANO,9,10)],
+       ['Início do 3.º trimestre','As aulas do 3.º trimestre iniciaram a 24 de Agosto. Os horários mantêm-se. Lembramos que as propinas vencem no dia 5 de cada mês.','info','todos',iso(ANO,8,21)],
+       ['Feira de Ciências 2026','A Feira de Ciências realiza-se a 17 de Outubro. As turmas do 2.º e 3.º ciclos devem inscrever os projectos junto dos professores de Ciências até 3 de Outubro.','normal','todos',iso(ANO,9,4)],
+       ['Vacinação escolar','Em parceria com o Centro de Saúde, decorrerá uma campanha de vacinação para as classes 1.ª a 4.ª no dia 30 de Setembro. Os encarregados que não autorizem devem informar a secretaria.','info','1A, 2A, 3A, 4A',iso(ANO,9,12)]
+      ].forEach(function(c,i){ COMUNICADOS.push({id:9001+i,titulo:c[0],corpo:c[1],prio:c[2],para:c[3],autor:'Direcção da Escola',data:dmy(c[4]),lido:false}); });
+    }catch(e){}
+
+    /* ── Ocorrências disciplinares ── */
+    try{
+      OCORRENCIAS.length=0;
+      var tipos=[['ocorrencia','Chegou atrasado três vezes na mesma semana.','Advertência verbal e comunicação ao encarregado.'],
+                 ['advertencia','Uso do telemóvel durante a aula de Matemática, após aviso.','Advertência escrita; telemóvel entregue à secretaria.'],
+                 ['ocorrencia','Não trouxe o material de Educação Visual pela segunda vez.','Conversa com o encarregado.'],
+                 ['suspensao','Envolvimento em desacato com colega no intervalo.','Suspensão de 2 dias e reunião com os encarregados.'],
+                 ['ocorrencia','Saiu da sala sem autorização.','Registo e aviso ao director de turma.']];
+      var cand=ALUNOS.filter(function(a){ return a.classe && parseInt(a.classe)>=4; });
+      tipos.forEach(function(t,i){
+        var a=cand[Math.floor(R()*cand.length)];
+        OCORRENCIAS.push({id:'OC'+(1001+i),alunoId:a.id,alunoNome:a.nome,alunoNum:a.num,tipo:t[0],data:dmy(iso(ANO,rnd(5,9),diaUtil(6))),desc:t[1],medida:t[2],autor:pick(['Directora Pedagógica','Director de Turma','Secretaria'])});
+      });
+    }catch(e){}
+
+    /* ── Candidaturas (admissões online) ── */
+    try{
+      CANDIDATURAS.length=0;
+      var NM=['Ayanda Mutemba','Kevin Chongo','Lara Sitoe','Ícaro Bila','Naíma Tembe','Tomé Nhaca','Yara Macamo'];
+      var ENM=['Rosa Mutemba','Paulo Chongo','Helena Sitoe','Manuel Bila','Zaida Tembe','Jorge Nhaca','Célia Macamo'];
+      var est=['pendente','pendente','aprovado','pendente','rejeitado','matriculado','aprovado'];
+      NM.forEach(function(n,i){
+        var cl=rnd(1,8);
+        CANDIDATURAS.push({id:'CAND-'+(2026001+i),nome:n,nasc:dmy(iso(ANO-5-cl,rnd(1,12),rnd(1,28))),classeDesejada:cl+'ª Classe',encarregado:ENM[i],tel:'8'+pick(['4','5','6','7'])+pad(rnd(1000000,9999999),7),data:dmy(iso(ANO,rnd(7,9),diaUtil(8))),docs:['BI do encarregado','Cédula','Boletim de notas'].slice(0,rnd(2,3)),estado:est[i]});
+      });
+    }catch(e){}
+
+    /* ── Conversas (comunicação directa) ── */
+    try{
+      CONVERSAS.length=0;
+      var e1=ENCS[3]||ENCS[0], e2=ENCS[10]||ENCS[0], e3=ENCS[25]||ENCS[0];
+      CONVERSAS.push({id:1,assunto:'Justificação de falta — '+(e1.filhos[0]||{}).nome,participantes:['Secretaria',e1.nome],msgs:[
+        {de:e1.nome,texto:'Bom dia. O meu filho faltou ontem por consulta médica. Envio o comprovativo amanhã.',data:dmy(iso(ANO,9,9))+' 08:12',lida:true},
+        {de:'Secretaria',texto:'Bom dia. Recebido, obrigada. A falta fica justificada assim que chegar o comprovativo.',data:dmy(iso(ANO,9,9))+' 09:40',lida:true},
+        {de:e1.nome,texto:'Comprovativo entregue na secretaria hoje de manhã.',data:dmy(iso(ANO,9,10))+' 07:55',lida:false}]});
+      CONVERSAS.push({id:2,assunto:'Propina de Setembro',participantes:['Secretaria',e2.nome],msgs:[
+        {de:'Secretaria',texto:'Boa tarde. Lembramos que a propina de Setembro venceu no dia 5. Pode pagar por transferência ou na secretaria.',data:dmy(iso(ANO,9,8))+' 14:20',lida:true},
+        {de:e2.nome,texto:'Boa tarde. Faço a transferência na sexta-feira. Peço desculpa pelo atraso.',data:dmy(iso(ANO,9,8))+' 18:05',lida:true}]});
+      CONVERSAS.push({id:3,assunto:'Pedido de declaração de frequência',participantes:['Secretaria',e3.nome],msgs:[
+        {de:e3.nome,texto:'Preciso de uma declaração de frequência para o seguro de saúde. É possível?',data:dmy(iso(ANO,9,11))+' 10:30',lida:false}]});
+    }catch(e){}
+
+    /* ── Biblioteca ── */
+    try{
+      LIVROS.length=0; EMPR.length=0;
+      [['Ualalapi','Ungulani Ba Ka Khosa','Literatura',4,2],['Niketche','Paulina Chiziane','Literatura',3,1],['Terra Sonâmbula','Mia Couto','Literatura',5,3],['Matemática 7.ª Classe','Plural Editores','Matemática',12,8],['Ciências Naturais 5.ª Classe','Texto Editores','Ciências',10,7],['Gramática de Português','Longman Moçambique','Português',6,4],['Atlas de Moçambique','Instituto de Cartografia','Geografia',3,3],['História de Moçambique','Alexandre Lobato','História',4,2],['English for Life 8','Oxford','Inglês',8,5],['Física 8.ª Classe','Plural Editores','Física',7,6]
+      ].forEach(function(l){ LIVROS.push({titulo:l[0],autor:l[1],area:l[2],ex:l[3],disp:l[4]}); });
+      [[ 'Ualalapi',iso(ANO,8,26),iso(ANO,9,9),true],['Niketche',iso(ANO,9,1),iso(ANO,9,15),false],['Terra Sonâmbula',iso(ANO,9,3),iso(ANO,9,17),false],['Matemática 7.ª Classe',iso(ANO,8,20),iso(ANO,9,3),true],['English for Life 8',iso(ANO,9,8),iso(ANO,9,22),false]
+      ].forEach(function(e){ var a=ALUNOS[rnd(120,197)]||ALUNOS[0]; EMPR.push({anom:a.nome,aluno:a.num,livro:e[0],data:dmy(e[1]),prazo:dmy(e[2]),atrasado:e[3]}); });
+    }catch(e){}
+
+    /* ── Plano analítico / livro de ponto ── */
+    try{
+      var TEMAS=['Introdução à unidade','Leitura e interpretação','Exercícios de consolidação','Resolução de problemas','Trabalho de grupo','Revisão da unidade','Avaliação formativa','Correcção da avaliação'];
+      var MET=['Expositivo','Interrogativo','Trabalho de grupo','Demonstrativo','Activo'];
+      (TURMAS||[]).forEach(function(t){
+        PLANO_ANALITICO[t.id]={};
+        (ALOCACOES||[]).filter(function(a){ return a.turma===t.id; }).forEach(function(al){
+          var arr=[]; var n=rnd(8,14);
+          for(var k=0;k<n;k++){
+            var mm=2+Math.floor(k*7/n); if(mm>9) mm=9;
+            var d=iso(ANO,mm,diaUtil(mm));
+            arr.push({semana:k+1,data:d,periodo:1+(k%4),hora:'',conteudo:'Unidade '+(1+Math.floor(k/3))+' — '+TEMAS[k%TEMAS.length],metodo:pick(MET),avaliacao:chance(.3)?'Oral':'',obs:'',prof:al.prof,_daBd:true});
+          }
+          arr.sort(function(a,b){ return a.data.localeCompare(b.data); });
+          PLANO_ANALITICO[t.id][al.disc]=arr;
+        });
+        window.__paLoaded[t.id]=true;
+      });
+    }catch(e){ console.warn('[demo198 plano]', e&&e.message); }
+
+    /* ── Fechos de trimestre (Notas Finais): 1.º e 2.º fechados ── */
+    window.__demoFechos={};
+    (TURMAS||[]).forEach(function(t){ (ALOCACOES||[]).filter(function(a){ return a.turma===t.id; }).forEach(function(al){ [1,2].forEach(function(tr){ window.__demoFechos[t._dbId+'|demo-disc-'+al.disc+'|'+tr]={id:'demo-fecho',fechado_em:iso(ANO,tr===1?5:8,tr===1?8:7)+'T16:00:00.000Z'}; }); }); });
+  }
+
+  /* ── Ligar ao __demoEntrar (uma vez, logo depois de construir) ── */
+  var _entrar=window.__demoEntrar;
+  if(typeof _entrar==='function'){
+    window.__demoEntrar=function(role){
+      var r=_entrar.apply(this, arguments);
+      if(!window.__demo198Feito){ window.__demo198Feito=true; try{ enriquecer(); }catch(e){ console.warn('[demo198]', e&&e.message); } }
+      return r;
+    };
+  }
+
+  /* ── Notas Finais (NT): dados locais em demo ── */
+  function alunoPorDb(id){ return (ALUNOS||[]).find(function(a){ return a._dbId===id; }); }
+  function turmaPorDb(id){ return (TURMAS||[]).find(function(t){ return t._dbId===id; }); }
+  function ntDemo(){
+    var NT=window.NT; if(!NT || NT.__demo198) return; NT.__demo198=true;
+    function wrap(nome, impl){ var orig=NT[nome]; NT[nome]=function(){ if(demo()) return Promise.resolve(impl.apply(this, arguments)); return orig.apply(this, arguments); }; }
+    wrap('_minhasAloc', function(){
+      var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null; var base=[];
+      if(prof){ (ALOCACOES||[]).filter(function(a){ return a.prof===prof.num; }).forEach(function(a){ var t=(TURMAS||[]).find(function(x){ return x.id===a.turma; }); if(t) base.push({turma_id:t._dbId,disciplina_id:'demo-disc-'+a.disc,disciplinas:{nome:a.disc}}); }); }
+      this.__alocCache=base; return base;
+    });
+    wrap('turmas', function(){
+      var lista=(TURMAS||[]).map(function(t){ return {id:t._dbId,nome:t.nome||t.id}; });
+      if(this._souProfessor()){ var ids={}; (this.__alocCache||[]).forEach(function(a){ ids[a.turma_id]=1; }); lista=lista.filter(function(t){ return ids[t.id]; }); }
+      return lista;
+    });
+    wrap('disciplinas', function(turmaId){
+      var t=turmaPorDb(turmaId); var ds=(ALOCACOES||[]).filter(function(a){ return t && a.turma===t.id; }).map(function(a){ return a.disc; });
+      if(this._souProfessor()){ var mine={}; (this.__alocCache||[]).forEach(function(a){ if(a.turma_id===turmaId) mine[a.disciplinas.nome]=1; }); ds=ds.filter(function(d){ return mine[d]; }); }
+      return ds.sort();
+    });
+    wrap('discIdAloc', function(turmaId, disc){ return 'demo-disc-'+disc; });
+    wrap('discId', function(turmaId, disc){ return 'demo-disc-'+disc; });
+    wrap('alunos', function(turmaId){ return (ALUNOS||[]).filter(function(a){ return a._turmaDbId===turmaId; }).map(function(a){ return {id:a._dbId,nome_completo:a.nome,numero_aluno:a.num}; }).sort(function(a,b){ return a.nome_completo.localeCompare(b.nome_completo); }); });
+    wrap('notas', function(turmaId, disc, tri){
+      var map={}; (ALUNOS||[]).filter(function(a){ return a._turmaDbId===turmaId; }).forEach(function(a){ var n=((a.notas||{})['t'+tri]||[]).find(function(x){ return x.d===disc; }); if(n) map[a._dbId]={aluno_id:a._dbId,disciplina:disc,trimestre:tri,as1:n.as1,as2:n.as2,ap:n.at}; });
+      return map;
+    });
+    wrap('notasTurmaTrim', function(turmaId, tri){
+      var out=[]; (ALUNOS||[]).filter(function(a){ return a._turmaDbId===turmaId; }).forEach(function(a){ ((a.notas||{})['t'+tri]||[]).forEach(function(n){ out.push({aluno_id:a._dbId,disciplina:n.d,as1:n.as1,as2:n.as2,ap:n.at}); }); });
+      return out;
+    });
+    wrap('guardar', function(o){
+      var a=alunoPorDb(o.alunoId); if(!a) return null;
+      var arr=(a.notas['t'+o.trimestre]=a.notas['t'+o.trimestre]||[]); var n=arr.find(function(x){ return x.d===o.disciplina; });
+      if(!n){ n={d:o.disciplina,n:null,as1:null,as2:null,at:null}; arr.push(n); }
+      n.as1=(o.as1===''||o.as1==null)?null:+o.as1; n.as2=(o.as2===''||o.as2==null)?null:+o.as2; n.at=(o.ap===''||o.ap==null)?null:+o.ap;
+      var vals=[n.as1,n.as2,n.at].filter(function(v){ return v!=null; }); n.n=vals.length?Math.round(vals.reduce(function(s,v){return s+v;},0)/vals.length*10)/10:null;
+      return {aluno_id:o.alunoId,disciplina:o.disciplina,trimestre:o.trimestre,as1:n.as1,as2:n.as2,ap:n.at};
+    });
+    wrap('estaFechado', function(turmaId, discId, tri){ return (window.__demoFechos||{})[turmaId+'|'+discId+'|'+tri]||false; });
+    wrap('fechar', function(turmaId, discId, tri){ var k=turmaId+'|'+discId+'|'+tri; window.__demoFechos[k]={id:'demo-fecho',fechado_em:new Date().toISOString()}; return window.__demoFechos[k]; });
+    wrap('reabrir', function(turmaId, discId, tri){ delete window.__demoFechos[turmaId+'|'+discId+'|'+tri]; return true; });
+  }
+  ntDemo();
+
+  /* ── Aproveitamento da turma: em demo, usa as notas locais ── */
+  var _aprov=window.renderAproveitamentoReal;
+  window.renderAproveitamentoReal=function(turmaId){
+    if(!demo()) return typeof _aprov==='function' ? _aprov.apply(this, arguments) : undefined;
+    var el=document.getElementById('aprov-real-c'); if(!el) return;
+    try{ el.innerHTML=renderTurmaTabAproveitamento(turmaId, (ALUNOS||[]).filter(function(a){ return a.turma===turmaId; })); }
+    catch(e){ el.innerHTML='<div class="ib-box ib-am">'+(e&&e.message)+'</div>'; }
+  };
+
+  /* ── Livro de ponto da turma: em demo, a partir do plano analítico ── */
+  var _lp=window.renderLivroPontoTurma;
+  window.renderLivroPontoTurma=function(turmaId){
+    if(!demo()) return typeof _lp==='function' ? _lp.apply(this, arguments) : undefined;
+    var el=document.getElementById('turma-livroponto-c'); if(!el) return;
+    var P=(PLANO_ANALITICO||{})[turmaId]||{}; var rows=[];
+    Object.keys(P).forEach(function(d){ (P[d]||[]).forEach(function(e){ var p=(PROFS||[]).find(function(x){ return x.num===e.prof; }); rows.push({data:e.data,periodo:e.periodo||1,disc:d,prof:p?p.nome:'—',sumario:e.conteudo||''}); }); });
+    rows.sort(function(a,b){ return b.data.localeCompare(a.data)||a.periodo-b.periodo; });
+    if(!rows.length){ el.innerHTML='<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Sem aulas registadas.</div>'; return; }
+    el.innerHTML='<div class="card"><div class="ch"><span class="ct">Livro de Ponto — '+rows.length+' aulas registadas</span></div><div class="tw"><table><thead><tr><th>Data</th><th>Tempo</th><th>Disciplina</th><th>Professor</th><th>Sumário</th></tr></thead><tbody>'
+      +rows.slice(0,60).map(function(r){ return '<tr><td style="font-family:var(--fm);font-size:11px;white-space:nowrap">'+dmy(r.data)+'</td><td style="text-align:center">'+r.periodo+'º</td><td style="font-weight:700">'+r.disc+'</td><td style="color:var(--t2)">'+r.prof+'</td><td>'+r.sumario+'</td></tr>'; }).join('')
+      +'</tbody></table></div>'+(rows.length>60?'<div style="padding:8px 14px;font-size:11px;color:var(--t3)">A mostrar as 60 aulas mais recentes.</div>':'')+'</div>';
+  };
+
+  /* ── Assiduidade global (Visão Geral): em demo, a partir das faltas locais ── */
+  var _assid=window.__carregarAssiduidadeGlobal;
+  window.__carregarAssiduidadeGlobal=function(){
+    if(!demo()) return typeof _assid==='function' ? _assid.apply(this, arguments) : undefined;
+    var box=document.getElementById('vg-assiduidade'); if(!box) return;
+    try{
+      var total=0, justif=0, porT={};
+      (ALUNOS||[]).forEach(function(a){ ['t1','t2','t3'].forEach(function(k){ ((a.faltas||{})[k]||[]).forEach(function(f){ total++; if(f.justif) justif++; porT[a.turma]=(porT[a.turma]||0)+1; }); }); });
+      var nA=(ALUNOS||[]).length||1;
+      var arr=(TURMAS||[]).map(function(t){ var nAl=(ALUNOS||[]).filter(function(a){return a.turma===t.id;}).length||1; return {nome:t.nome||t.id, mediaT:(porT[t.id]||0)/nAl}; }).sort(function(a,b){ return a.mediaT-b.mediaT; });
+      var mais=arr[0], menos=arr[arr.length-1];
+      box.innerHTML='<div style="font-weight:700;font-size:14px;margin-bottom:12px"><i class="ti ti-calendar-off" style="color:#ef4444"></i> Assiduidade Global</div>'
+        +'<div style="display:flex;gap:24px;flex-wrap:wrap"><div><div style="font-size:28px;font-weight:800;color:var(--t)">'+(total/nA).toFixed(1)+'</div><div style="font-size:12px;color:var(--t2)">faltas / aluno (média)</div></div>'
+        +'<div style="font-size:12px;color:var(--t2);line-height:2">Total de faltas: <b>'+total+'</b><br>Justificadas: <b style="color:#22c55e">'+justif+'</b> · Injustificadas: <b style="color:#ef4444">'+(total-justif)+'</b></div>'
+        +(mais?'<div style="font-size:12px;color:var(--t2);line-height:2">Mais assídua: <b style="color:#22c55e">'+mais.nome+'</b><br>Menos assídua: <b style="color:#ef4444">'+menos.nome+'</b></div>':'')+'</div>';
+    }catch(e){}
+  };
+
+  /* ── Utilizadores: em demo, contas fictícias a partir do staff ── */
+  var _ru=window.rUtilizadores;
+  window.rUtilizadores=function(){
+    if(!demo()) return typeof _ru==='function' ? _ru.apply(this, arguments) : undefined;
+    var el=document.getElementById('utilizadores-c'); if(!el) return;
+    var LBL={gestor:'Gestor Geral',director:'Director',"dir-pedagogico":'Dir. Pedagógico',"gestor-financeiro":'Gestor Financeiro',secretario:'Secretário',professor:'Professor'};
+    var rows=[{num:'GST000001',nome:'Direcção da Escola',perfil:'gestor',email:'demo@escolamodelo.co.mz',ativo:true}];
+    (PROFS||[]).forEach(function(p){ var pf=p.systemRole||(p.dep==='academico'?'professor':null); if(!pf) return; rows.push({num:p.num,nome:p.nome,perfil:pf,email:p.email,ativo:!(p.regime==='parcial' && p.num.slice(-1)==='2')}); });
+    el.innerHTML='<div class="ib-box ib-blue" style="margin-bottom:16px"><i class="ti ti-info-circle"></i><div><strong>Contas com acesso ao sistema.</strong> Cada conta entra em qualquer dispositivo com o email e a password definidos. Em modo demonstração as contas são fictícias e nada é guardado.</div></div>'
+      +'<div class="card"><div class="ch"><span class="ct">Utilizadores com Acesso</span><button class="btn btn-p btn-sm" onclick="toast(\'Modo demonstração — as contas não são criadas.\')"><i class="ti ti-plus"></i> Criar Utilizador</button></div>'
+      +'<div class="tw"><table><thead><tr><th>Nº / ID</th><th>Nome</th><th>Perfil</th><th>Email (login)</th><th>Estado</th><th></th></tr></thead><tbody>'
+      +rows.map(function(u){ return '<tr'+(u.ativo?'':' style="opacity:.55"')+'><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">'+u.num+'</td><td style="font-weight:700">'+u.nome+'</td><td><span class="badge bin">'+(LBL[u.perfil]||u.perfil)+'</span></td><td style="font-family:var(--fm);font-size:11px">'+u.email+'</td><td>'+(u.ativo?'<span class="badge bok" style="font-size:10px">Activo</span>':'<span class="badge ber" style="font-size:10px">Suspenso</span>')+'</td>'
+        +'<td style="white-space:nowrap"><button class="btn btn-g btn-sm" style="margin-right:5px" onclick="toast(\'Modo demonstração.\')"><i class="ti ti-key"></i> Password</button><button class="btn '+(u.ativo?'btn-am':'btn-p')+' btn-sm" onclick="toast(\'Modo demonstração.\')">'+(u.ativo?'<i class="ti ti-ban"></i> Suspender':'<i class="ti ti-check"></i> Reactivar')+'</button></td></tr>'; }).join('')
+      +'</tbody></table></div></div>';
+  };
+
+  /* ── Ecrãs que o router antigo não renderizava (ids errados) ── */
+  var _go=window.go;
+  if(typeof _go==='function'){
+    window.go=go=function(id){
+      var r=_go.apply(this, arguments);
+      if(demo()){
+        setTimeout(function(){
+          try{
+            if(id==='encarregados' && typeof rEncs==='function') rEncs();
+            else if(id==='staff' && typeof rStaff==='function') rStaff('todos');
+            else if(id==='aval-dep' && typeof rAvalDep==='function') rAvalDep();
+            else if(id==='bib' && typeof rBib==='function') rBib();
+            else if(id==='comunicados' && typeof rComunicados==='function') rComunicados();
+            else if(id==='disciplina' && typeof rDisciplina==='function') rDisciplina();
+            else if(id==='admissoes' && typeof rAdmissoes==='function') rAdmissoes();
+            else if(id==='comunicacao' && typeof rComunicacaoBidirec==='function') rComunicacaoBidirec();
+            else if(id==='notas' && typeof rNotasTurmas==='function') rNotasTurmas();
+            else if(id==='utilizadores' && typeof window.rUtilizadores==='function') window.rUtilizadores();
+            else if(id==='gestao-ano' && typeof window.rGestaoAno==='function') window.rGestaoAno();
+          }catch(e){ console.warn('[demo198 go]', id, e&&e.message); }
+        }, 60);
+      }
+      return r;
+    };
+  }
+  console.log('[Scholaris] v6.198 — Escola Modelo completa');
 })();
 </script>
 </body>
