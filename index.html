@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.201</span>
+    <span class="logo-ver">v6.202</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -10174,7 +10174,9 @@ function renderPortalPropinas(a) {
 
 function renderPortalComunicados(a) {
   const meus = COMUNICADOS.filter(c =>
-    c.para === 'todos' || c.para === a.turma || c.para === 'aluno'
+    c.para === 'todos' || c.para === a.turma || c.para === 'aluno' ||
+    (c.para === 'turma' && String(c.turmaId) === String(a.turma)) ||          // v6.202: recados do professor à turma
+    (Array.isArray(c.turmas) && c.turmas.map(String).includes(String(a.turma)))
   );
   const prioColor = {urgente:'var(--r)',info:'var(--tl)',normal:'var(--t2)'};
   const prioIcon  = {urgente:'<i class="ti ti-circle-filled" style="color:#ef4444"></i>',info:'ℹ',normal:'<i class="ti ti-speakerphone"></i>'};
@@ -26222,7 +26224,8 @@ function renderPortalJornada(a) {
   const apvAtual = mediaAtual != null && mediaAtual >= (CONFIG.mediaAprovacao || 10);
 
   // Build full academic history (hist + current year)
-  const historico = [...(a.hist || [])];
+  // v6.202: a.hist também guarda eventos ({data,tipo,desc}) — só entram aqui os anos lectivos ({ano,...})
+  const historico = (a.hist || []).filter(h => h && h.ano);
   // Add current year
   const turmaAtual = TURMAS.find(t => t.id === a.turma);
   const discsAtual = a.notas.t1?.map(n => n.d) || [];
@@ -35957,8 +35960,11 @@ window.__finV30=true;})();
     if(!trabs.length){ c.innerHTML=head+'<div class="card"><div class="cb" style="text-align:center;padding:44px;color:var(--t2)"><i class="ti ti-clipboard-list" style="font-size:42px;display:block;margin-bottom:12px;color:var(--t3)"></i>Ainda nao ha trabalhos. Clique em "Novo Trabalho".</div></div>'; return; }
     try{
       var cards=trabs.map(function(t){
-        var ents=t.entregas||{}; var _ks=Object.keys(ents).filter(function(k){return k.charAt(0)!=='L';}); var total=_ks.length;
-        var entregues=_ks.filter(function(k){var e=ents[k];return e&&(e.estado==='entregue'||e.estado==='corrigido');}).length;
+        // v6.202: cada entrega está indexada por 3 chaves (uuid, id local, 'L'+id) — contar objectos únicos, sobre os alunos da turma
+        var ents=t.entregas||{}; var _un=[]; Object.keys(ents).forEach(function(k){ var e=ents[k]; if(e && typeof e==='object' && _un.indexOf(e)<0) _un.push(e); });
+        var _alT=(typeof ALUNOS!=='undefined'?ALUNOS:[]).filter(function(a){ return t.turma==='todas' || String(a.turma)===String(t.turma); });
+        var total=_alT.length||_un.length;
+        var entregues=_un.filter(function(e){ return e.estado==='entregue'||e.estado==='corrigido'; }).length;
         var anexo=t.anexo_url?'<a href="#" onclick="TB.link(\''+t.anexo_url+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px"><i class="ti ti-paperclip"></i> Material</a>':'';
         var prazo=t.prazo?new Date(t.prazo).toLocaleDateString('pt-PT'):'-';
         return '<div class="card" style="margin-bottom:10px"><div class="cb" style="padding:14px 16px">'
@@ -45676,8 +45682,9 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     try{ document.body.style.paddingBottom='44px'; }catch(e){}
   }
   window.__demoReiniciar=function(){ var r=(window.__demoRole||'gestor'); location.href=location.pathname+'?demo='+r; };
-  /* v6.200: trocar de perfil recarrega com ?demo=<perfil> — estado limpo, sem o ecra= da entrada anterior */
-  window.__demoTrocar=function(r){ location.href=location.pathname+'?demo='+encodeURIComponent(r||'gestor'); };
+  /* v6.202: trocar de perfil SEM recarregar — o que o professor registou continua visível no aluno e no encarregado.
+     O `ecra=` do URL só conta na primeira entrada (window.__demoEcraUsado). "Reiniciar" continua a recarregar. */
+  window.__demoTrocar=function(r){ window.__demoEcraUsado=true; try{ history.replaceState(null,'',location.pathname+'?demo='+encodeURIComponent(r||'gestor')); }catch(e){} window.__demoEntrar(r); };
   /* ecrã inicial de cada perfil (o mesmo que doLoginDemo usa) */
   var INICIO={aluno:'portal',professor:'portal-prof',encarregado:'dash-enc','gestor-financeiro':'fin-dashboard','dir-ciclo':'ciclo-visao'};
 
@@ -45724,7 +45731,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     faixa(role);
     try{ ['rTurmas','rAl','rPr','rDash'].forEach(function(fn){ if(typeof window[fn]==='function') window[fn](); }); }catch(e){}
     /* ?demo&ecra=<id>&tema=dia — abrir directamente num ecrã / em modo diurno (capturas para o site) */
-    var ecra=null, tema=null; try{ var q2=new URLSearchParams(location.search); ecra=q2.get('ecra'); tema=q2.get('tema'); }catch(e){}
+    var ecra=null, tema=null; try{ var q2=new URLSearchParams(location.search); ecra=window.__demoEcraUsado?null:q2.get('ecra'); tema=q2.get('tema'); }catch(e){}
+    window.__demoEcraUsado=true;
     setTimeout(function(){
       try{ if(tema==='dia' && typeof _isDayMode!=='undefined' && !_isDayMode && typeof toggleTheme==='function') toggleTheme(); }catch(e){}
       try{ var alvo=ecra || INICIO[role] || 'dash'; if(!/:/.test(alvo) && typeof VM!=='undefined' && !VM[alvo]) alvo='dash'; go(alvo); }catch(e){}   /* v6.200: cada perfil abre no seu próprio ecrã */
@@ -46081,13 +46089,113 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'</tbody></table></div></div>';
   };
 
-  /* ── Trabalhos (TB): em demo não há base — responder já com a lista em memória ── */
+  /* ── Minha Aula (professor): em demo, registar a aula e as faltas em memória (a função real grava no Supabase) ── */
+  var _maReg=window.maRegistar;
+  window.maRegistar=async function(){
+    if(!demo()) return typeof _maReg==='function' ? _maReg.apply(this, arguments) : undefined;
+    var g=function(id){ var e=document.getElementById(id); return e?e.value:''; };
+    var turmaId=g('ma-turma-sel')||g('ma-turma'), disc=g('ma-disc-sel')||g('ma-disc'), dataAula=g('ma-dia-sel'), periodo=parseInt(g('ma-periodo-sel'),10)||1;
+    var temaTxt=(g('ma-tema')||'').trim(), obs=(g('ma-conteudo')||'').trim(), metodo=g('ma-metodo'), aval=g('ma-aval'), obsTurma=(g('ma-obs-turma')||'').trim();
+    if(!turmaId){ toast('Seleccione a turma'); return; }
+    if(!disc){ toast('Seleccione a disciplina'); return; }
+    if(!dataAula){ toast('Seleccione o dia da aula (só dias em que tem esta aula no horário).'); return; }
+    var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null;
+    var pres=window._maPres||{}; var mes=new Date(dataAula).getMonth()+1; var trim=mes<=4?1:(mes<=8?2:3); var k='t'+trim;
+    var alunosT=(ALUNOS||[]).filter(function(a){ return String(a.turma)===String(turmaId); });
+    var nF=0, nA=0;
+    alunosT.forEach(function(a){
+      a.faltas=a.faltas||{t1:[],t2:[],t3:[]}; a.faltas[k]=(a.faltas[k]||[]).filter(function(f){ return !(f.data===dataAula && f.disc===disc && (f.periodo||1)===periodo); });
+      var st=pres[a.id]; if(st==='F'||st==='A'){ a.faltas[k].push({tipo:st,justif:false,data:dataAula,disc:disc,periodo:periodo}); if(st==='F') nF++; else nA++; }
+    });
+    try{
+      PLANO_ANALITICO[turmaId]=PLANO_ANALITICO[turmaId]||{}; var arr=(PLANO_ANALITICO[turmaId][disc]=PLANO_ANALITICO[turmaId][disc]||[]);
+      for(var i=arr.length-1;i>=0;i--){ if(arr[i].data===dataAula && (arr[i].periodo||1)===periodo) arr.splice(i,1); }
+      arr.push({data:dataAula,periodo:periodo,hora:'',conteudo:temaTxt||obs,obs:obs,metodo:metodo,avaliacao:aval,prof:(prof&&prof.num)||'',obsTurma:obsTurma});
+      arr.sort(function(a,b){ return String(a.data).localeCompare(String(b.data)); });
+    }catch(e){}
+    try{ toast('<i class="ti ti-check"></i> Aula de '+new Date(dataAula).toLocaleDateString('pt-PT')+' registada · '+(alunosT.length-nF)+' presentes, '+nF+' falta(s)'+(nA?(', '+nA+' atraso(s)'):'')); }catch(e){}
+    ['ma-tema','ma-conteudo','ma-obs-turma'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+    window._maPres={};
+    try{ if(typeof maCarregarAlunos==='function') maCarregarAlunos(); }catch(e){}
+    try{ if(typeof maCarregarHistorico==='function') maCarregarHistorico(); }catch(e){}
+  };
+
+  /* ── Trabalhos e materiais (TB): em demo tudo vive em memória (a camada real grava no Supabase) ── */
   try{
     if(window.TB && typeof TB.sincronizar==='function' && !TB.__demo198){
-      TB.__demo198=true; var _sinc=TB.sincronizar;
-      TB.sincronizar=function(){ if(demo()){ window.TRABALHOS=window.TRABALHOS||[]; return Promise.resolve(window.TRABALHOS); } return _sinc.apply(this, arguments); };
+      TB.__demo198=true;
+      var _sinc=TB.sincronizar, _cr=TB.criarTrabalho, _en=TB.entregar, _co=TB.corrigir, _ma=TB.materiais, _cm=TB.criarMaterial;
+      function ligar(){ window.TRABALHOS=window.TRABALHOS||[]; try{ TRABALHOS=window.TRABALHOS; }catch(e){} return window.TRABALHOS; }
+      function chaves(t, alunoUuid, obj){ t.entregas[alunoUuid]=obj; var a=(ALUNOS||[]).find(function(x){ return x._dbId===alunoUuid; }); if(a){ t.entregas['L'+a.id]=obj; t.entregas[a.id]=obj; } }
+      TB.sincronizar=function(){ if(demo()) return Promise.resolve(ligar()); return _sinc.apply(this, arguments); };
+      TB.criarTrabalho=async function(o){
+        if(!demo()) return _cr.apply(this, arguments);
+        var prof=(typeof resolverMeuProf==='function')?resolverMeuProf():null; var id='demo-trab-'+Date.now();
+        var t={id:id,_dbId:id,titulo:o.titulo,tipo:o.tipo||'outro',disc:o.disciplina||null,disciplina:o.disciplina||null,turma:o.turma,prazo:o.prazo||null,desc:o.descricao||'',descricao:o.descricao||'',valor:o.cotacao||20,cotacao:o.cotacao||20,anexo_url:null,anexo:o.anexoFile?(o.anexoFile.name||'anexo'):null,prof:prof?prof._dbId:null,profNum:prof?prof.num:'',profNome:prof?prof.nome:'',entregas:{},dataLancamento:new Date().toISOString().slice(0,10)};
+        ligar().unshift(t);
+        setTimeout(function(){ try{ var v=document.getElementById('v-trabalhos-prof'); if(v && v.classList.contains('on') && typeof window.rTrabalhosProfView==='function') window.rTrabalhosProfView(); }catch(e){} }, 80);
+        return t;
+      };
+      TB.entregar=async function(o){
+        if(!demo()) return _en.apply(this, arguments);
+        var t=ligar().find(function(x){ return x.id===o.trabalhoId; }); if(!t) throw new Error('Trabalho não encontrado');
+        var obj={estado:'entregue',nota:null,feedback:null,ficheiro:o.file?(o.file.name||'ficheiro'):null,texto:o.texto||null,_entregaId:'demo-ent-'+Date.now(),_alunoUuid:o.alunoUuid,entregue_em:new Date().toISOString()};
+        chaves(t, o.alunoUuid, obj); return obj;
+      };
+      TB.corrigir=async function(o){
+        if(!demo()) return _co.apply(this, arguments);
+        var t=ligar().find(function(x){ return x.id===o.trabalhoId; }); if(!t) throw new Error('Trabalho não encontrado');
+        var obj=t.entregas[o.alunoUuid]||{_alunoUuid:o.alunoUuid}; obj.estado='corrigido'; obj.nota=o.nota; obj.feedback=o.feedback||null; obj.corrigido_em=new Date().toISOString();
+        chaves(t, o.alunoUuid, obj); return obj;
+      };
+      TB.materiais=async function(){ if(!demo()) return _ma.apply(this, arguments); return window.__demoMateriais||[]; };
+      TB.criarMaterial=async function(o){
+        if(!demo()) return _cm.apply(this, arguments);
+        var m={id:'demo-mat-'+Date.now(),turma_id:null,_turmaNome:o.turma||'Todas',disciplina:o.disciplina||null,titulo:o.titulo,descricao:o.descricao||null,ficheiro_url:null,criado_em:new Date().toISOString()};
+        (window.__demoMateriais=window.__demoMateriais||[]).unshift(m); return m;
+      };
     }
   }catch(e){}
+
+  /* ── Professor › Ver entregas / corrigir: em demo, a partir das entregas em memória ── */
+  var _edt=window.__entregasDoTrabalho, _gne=window.guardarNotaEntrega;
+  window.__entregasDoTrabalho=async function(trabId){
+    if(!demo()) return typeof _edt==='function' ? _edt.apply(this, arguments) : [];
+    var t=(window.TRABALHOS||[]).find(function(x){ return x._dbId===trabId||x.id===trabId; }); if(!t) return [];
+    var un=[]; Object.keys(t.entregas||{}).forEach(function(k){ var e=t.entregas[k]; if(e && typeof e==='object' && un.indexOf(e)<0) un.push(e); });
+    return un.map(function(e){ var a=(ALUNOS||[]).find(function(x){ return x._dbId===e._alunoUuid; })||{}; return {id:e._entregaId||('demo-ent-'+(a.id||0)),estado:e.estado,nota:e.nota,feedback:e.feedback,texto:e.texto,ficheiro_url:null,aluno_id:e._alunoUuid,alunos:{nome_completo:a.nome||'Aluno',numero_aluno:a.num||''},_trabId:t.id}; });
+  };
+  window.guardarNotaEntrega=async function(entregaId, ev){
+    if(!demo()) return typeof _gne==='function' ? _gne.apply(this, arguments) : undefined;
+    var nota=parseFloat((document.getElementById('nota-'+entregaId)||{}).value); var fb=(document.getElementById('fb-'+entregaId)||{}).value||'';
+    if(isNaN(nota)){ toast('Escreve uma nota'); return; } if(nota<0||nota>20){ toast('Nota entre 0 e 20'); return; }
+    var alvo=null, trab=null;
+    (window.TRABALHOS||[]).forEach(function(t){ Object.keys(t.entregas||{}).forEach(function(k){ var e=t.entregas[k]; if(e && e._entregaId===entregaId){ alvo=e; trab=t; } }); });
+    if(!alvo){ toast('Entrega não encontrada'); return; }
+    await TB.corrigir({trabalhoId:trab.id, alunoUuid:alvo._alunoUuid, nota:nota, feedback:fb});
+    toast('Nota guardada!'); var btn=(ev&&ev.target)?ev.target.closest('button'):null; if(btn) btn.textContent='Guardado';
+  };
+
+  /* ── Portal do aluno › Notas: em demo, a partir das notas locais (a versão real lê a tabela `notas`) ── */
+  var _rpn=window.renderPortalNotas;
+  window.renderPortalNotas=async function(a){
+    if(!demo()) return typeof _rpn==='function' ? _rpn.apply(this, arguments) : undefined;
+    var c=document.getElementById('portal-c'); if(!c) return;
+    if(!a && typeof resolverMeuAluno==='function') a=resolverMeuAluno(); if(!a){ c.innerHTML='<div class="card"><div class="cb" style="padding:24px;color:var(--t2)">Aluno não identificado.</div></div>'; return; }
+    var N=a.notas||{}; var trims=[1,2,3].filter(function(t){ return (N['t'+t]||[]).some(function(n){ return n.as1!=null||n.as2!=null||n.at!=null; }); });
+    if(!trims.length){ c.innerHTML='<div style="margin-bottom:14px"><div style="font-size:20px;font-weight:800;color:var(--t)">As Minhas Notas</div></div><div class="card"><div class="cb" style="text-align:center;padding:44px;color:var(--t2)">Ainda não há notas lançadas.</div></div>'; return; }
+    if(!window._notasTrimAluno || trims.indexOf(window._notasTrimAluno)<0) window._notasTrimAluno=trims[trims.length-1];
+    var tr=window._notasTrimAluno; var f2=function(x){ return x==null?'—':(Math.round(x*100)/100).toFixed(2); }; var cor=function(v){ return v==null?'var(--t3)':(v>=10?'#22c55e':'#ef4444'); };
+    var rows=(N['t'+tr]||[]).map(function(n){ var M=(n.as1!=null&&n.as2!=null)?(n.as1+n.as2)/2:null; var MT=(M!=null&&n.at!=null)?(n.as1+n.as2+n.at)/3:null;
+      return '<tr><td style="padding:8px 10px;font-weight:600">'+n.d+'</td><td style="padding:8px 10px;text-align:center">'+f2(n.as1)+'</td><td style="padding:8px 10px;text-align:center">'+f2(n.as2)+'</td><td style="padding:8px 10px;text-align:center;color:var(--a);font-weight:700">'+f2(M)+'</td><td style="padding:8px 10px;text-align:center">'+f2(n.at)+'</td><td style="padding:8px 10px;text-align:center;font-weight:800;color:'+cor(MT)+'">'+f2(MT)+'</td></tr>'; }).join('');
+    var mts=(N['t'+tr]||[]).map(function(n){ return (n.as1!=null&&n.as2!=null&&n.at!=null)?(n.as1+n.as2+n.at)/3:null; }).filter(function(v){ return v!=null; });
+    var media=mts.length?mts.reduce(function(s,v){return s+v;},0)/mts.length:null;
+    c.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px"><div style="font-size:20px;font-weight:800;color:var(--t)">As Minhas Notas</div><div style="display:flex;gap:6px">'
+      +trims.map(function(t){ return '<button class="btn btn-sm '+(t===tr?'btn-p':'btn-g')+'" onclick="window._notasTrimAluno='+t+';renderPortalNotas()">'+t+'º Trimestre</button>'; }).join('')+'</div></div>'
+      +'<div class="card"><div class="cb" style="padding:0;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:1px solid var(--b);color:var(--t2);font-size:11px;text-align:left"><th style="padding:8px 10px">Disciplina</th><th style="padding:8px 10px;text-align:center">AS1</th><th style="padding:8px 10px;text-align:center">AS2</th><th style="padding:8px 10px;text-align:center">M</th><th style="padding:8px 10px;text-align:center">AP</th><th style="padding:8px 10px;text-align:center">MT</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'
+      +'<div class="card" style="margin-top:12px"><div class="cb" style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--t2)">Média do '+tr+'º trimestre</span><span style="font-size:22px;font-weight:800;color:'+cor(media)+'">'+f2(media)+'</span></div></div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-top:8px">M = média das avaliações sistemáticas · MT = média trimestral (AS1, AS2 e AP)</div>';
+  };
 
   /* ── Ecrãs que o router antigo não renderizava (ids errados) ── */
   var _go=window.go;
@@ -46119,6 +46227,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
             else if(id==='minhas-turmas' && typeof window.rMinhasTurmas==='function') window.rMinhasTurmas();
             else if(id==='comunicados-prof' && typeof rComunicadosProf==='function') rComunicadosProf();
             else if(id==='trabalhos-prof' && typeof window.rTrabalhosProfView==='function') window.rTrabalhosProfView();
+            else if(id==='meu-perfil-prof' && typeof rMeuPerfilProf==='function') rMeuPerfilProf();
           }catch(e){ console.warn('[demo198 go]', id, e&&e.message); }
         }, 60);
       }
