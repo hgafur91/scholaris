@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.206</span>
+    <span class="logo-ver">v6.207</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -46280,6 +46280,175 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     else alert('Criadas: '+ok.length+' - Erros: '+erros.length);
     if(typeof rUtilizadores==='function') rUtilizadores();
   };
+})();
+</script>
+
+
+<script>
+/* ═══ PATCH v6.207 — Encarregado na ficha do aluno ════════════════════════
+   Perfil do aluno › separador Família › secção "Encarregado":
+   · mostra o encarregado ligado (alunos.encarregado_id → ficha em `encarregados`)
+   · Gestor / Secretário / Director / DP podem LIGAR um encarregado existente
+     (pesquisa por nome, nº ou telefone), CRIAR um novo na hora, ALTERAR ou DESLIGAR.
+   Grava em `alunos` (encarregado_id + nome/tel/email desnormalizados) e, se for novo,
+   em `encarregados`. Em demo fica só em memória. Actualiza ENCS[].filhos e a ficha.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__encFicha207) return; window.__encFicha207=true;
+  var PODE=['gestor','secretario','director','dir-pedagogico'];
+  function esc(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function pode(){ try{ return PODE.indexOf(curRole)>=0; }catch(e){ return false; } }
+  function demo(){ return window._escolaId==='escola_demo'; }
+  function sb(){ return window._supabase; }
+  function aluno(id){ return (ALUNOS||[]).find(function(x){ return x.id===id; }); }
+  function encDe(a){
+    if(!a) return null;
+    var E=ENCS||[];
+    return (a._encDbId && E.find(function(e){ return e._dbId===a._encDbId; }))
+        || (a.enc && E.find(function(e){ return e.num===a.enc; }))
+        || null;
+  }
+  function proxNum(){
+    var n=0; (ENCS||[]).forEach(function(e){ var k=parseInt(String(e.num||'').replace(/\D/g,''),10)||0; if(k>n) n=k; });
+    return 'ENC'+String(n+1).padStart(6,'0');
+  }
+
+  /* ── render da secção ── */
+  window.__encFichaRender=function(id){
+    var a=aluno(id); var box=document.getElementById('ap-enc-r'); if(!a||!box) return;
+    var e=encDe(a);
+    var linhas=function(rows){ return rows.map(function(r){ return '<div class="ir"><span class="il">'+esc(r[0])+'</span><span class="iv">'+esc(r[1]||'—')+'</span></div>'; }).join(''); };
+    var acc='';
+    if(pode()){
+      acc='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'
+        +'<button class="btn btn-p btn-sm" onclick="window.__encFichaAbrir('+id+')"><i class="ti ti-link"></i> '+(e?'Alterar encarregado':'Ligar encarregado')+'</button>'
+        +(e?'<button class="btn btn-g btn-sm" onclick="window.__encFichaDesligar('+id+')"><i class="ti ti-unlink"></i> Desligar</button>':'')
+        +'</div>';
+    }
+    if(e){
+      box.innerHTML=linhas([['Nome',e.nome],['Nº',e.num],['Relação',e.rel||a.erel||'—'],['Telefone',e.tel],['Email',e.email&&e.email!=='N/A'?e.email:'—'],['Profissão',e.prof||'—'],['Educandos',String((e.filhos||[]).length)]])
+        +(pode()?'<div class="ir"><span class="il">Ficha</span><span class="iv"><a style="color:var(--a);cursor:pointer" onclick="openEnc('+e.id+')">Abrir ficha do encarregado</a></span></div>':'')+acc;
+    } else {
+      var dados=(a.enome||a.encTel)?linhas([['Nome (registo antigo)',a.enome||a.enc||'—'],['Telefone',a.encTel||a.etel||'—']]):'';
+      box.innerHTML='<div class="ib-box ib-am" style="margin-bottom:8px"><i class="ti ti-user-question"></i> Sem encarregado ligado. '+(pode()?'Ligue uma ficha existente ou crie uma nova — só assim o encarregado pode ter conta de acesso.':'')+'</div>'+dados+acc;
+    }
+    try{ var fa=document.getElementById('ap-fa-r'); if(fa && e){ fa.innerHTML=linhas([['Encarregado',e.nome],['Relação',e.rel||'—'],['Telefone',e.tel],['Nº Enc.',e.num]]); } }catch(_){}
+    try{ var n=document.getElementById('ap-num'); if(n) n.textContent=a.num+(e?' · '+e.nome:''); }catch(_){}
+  };
+
+  /* ── modal ligar / criar ── */
+  window.__encFichaAbrir=function(id){
+    var a=aluno(id); if(!a) return;
+    if(!pode()){ toast('Sem permissão.'); return; }
+    var ex=document.getElementById('m-enc-ligar'); if(ex) ex.remove();
+    var Q=String.fromCharCode(39);
+    var html='<div id="m-enc-ligar" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:22px;width:560px;max-width:96vw;max-height:90vh;overflow:auto">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="font-weight:800;font-size:17px;color:var(--t)">Encarregado de '+esc(a.nome)+'</div><button onclick="document.getElementById('+Q+'m-enc-ligar'+Q+').remove()" style="background:none;border:none;color:var(--t2);cursor:pointer;font-size:22px;line-height:1">&times;</button></div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">'+esc(a.num)+' · Turma '+esc(a.turma||'—')+'</div>'
+      +'<div class="tabs" style="margin-bottom:12px"><button class="tab on" id="encl-tab-ex" onclick="window.__encFichaModo('+Q+'ex'+Q+')"><i class="ti ti-search"></i> Ficha existente</button><button class="tab" id="encl-tab-novo" onclick="window.__encFichaModo('+Q+'novo'+Q+')"><i class="ti ti-user-plus"></i> Novo encarregado</button></div>'
+      +'<div id="encl-ex">'
+      +'<input id="encl-busca" class="ffi" placeholder="Pesquisar por nome, nº ou telefone…" style="width:100%;margin-bottom:8px" oninput="window.__encFichaLista()">'
+      +'<div id="encl-lista" style="max-height:260px;overflow:auto;border:1px solid var(--b);border-radius:10px"></div>'
+      +'</div>'
+      +'<div id="encl-novo" style="display:none">'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div style="grid-column:1/-1"><label class="fl">Nome completo *</label><input id="encl-nome" class="ffi" style="width:100%"></div>'
+      +'<div><label class="fl">Telefone *</label><input id="encl-tel" class="ffi" style="width:100%" placeholder="84 000 0000"></div>'
+      +'<div><label class="fl">Relação</label><select id="encl-rel" class="ffi" style="width:100%"><option>Pai</option><option>Mãe</option><option>Avô/Avó</option><option>Tio/Tia</option><option>Outro</option></select></div>'
+      +'<div><label class="fl">Email</label><input id="encl-email" class="ffi" style="width:100%"></div>'
+      +'<div><label class="fl">BI</label><input id="encl-bi" class="ffi" style="width:100%"></div>'
+      +'<div style="grid-column:1/-1"><label class="fl">Profissão</label><input id="encl-prof" class="ffi" style="width:100%"></div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-top:8px">O telefone é a password inicial da conta de acesso do encarregado (Utilizadores › Criar contas (encarregados)).</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">'
+      +'<button class="btn btn-g btn-sm" onclick="document.getElementById('+Q+'m-enc-ligar'+Q+').remove()">Cancelar</button>'
+      +'<button id="encl-go" class="btn btn-p btn-sm" onclick="window.__encFichaGuardar('+id+')"><i class="ti ti-check"></i> Guardar</button>'
+      +'</div></div></div>';
+    var w=document.createElement('div'); w.innerHTML=html; document.body.appendChild(w.firstChild);
+    window.__enclSel=null; window.__enclModo='ex';
+    var actual=encDe(a); if(actual) window.__enclSel=actual.id;
+    window.__encFichaLista();
+    setTimeout(function(){ var b=document.getElementById('encl-busca'); if(b) b.focus(); },50);
+  };
+  window.__encFichaModo=function(m){
+    window.__enclModo=m;
+    document.getElementById('encl-ex').style.display=m==='ex'?'':'none';
+    document.getElementById('encl-novo').style.display=m==='novo'?'':'none';
+    document.getElementById('encl-tab-ex').classList.toggle('on',m==='ex');
+    document.getElementById('encl-tab-novo').classList.toggle('on',m==='novo');
+    if(m==='novo') setTimeout(function(){ var n=document.getElementById('encl-nome'); if(n) n.focus(); },30);
+  };
+  window.__encFichaLista=function(){
+    var q=((document.getElementById('encl-busca')||{}).value||'').trim().toLowerCase();
+    var L=(ENCS||[]).filter(function(e){ if(!q) return true; return [e.nome,e.num,e.tel].some(function(v){ return String(v||'').toLowerCase().indexOf(q)>=0; }); }).slice(0,60);
+    var box=document.getElementById('encl-lista'); if(!box) return;
+    if(!(ENCS||[]).length){ box.innerHTML='<div style="padding:16px;color:var(--t2);font-size:13px">Ainda não há fichas de encarregados. Use "Novo encarregado".</div>'; return; }
+    if(!L.length){ box.innerHTML='<div style="padding:16px;color:var(--t2);font-size:13px">Nenhum encarregado corresponde à pesquisa.</div>'; return; }
+    box.innerHTML=L.map(function(e){
+      var on=(window.__enclSel===e.id);
+      return '<div onclick="window.__enclSel='+e.id+';window.__encFichaLista()" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--b);cursor:pointer;background:'+(on?'rgba(79,142,247,.12)':'transparent')+'">'
+        +'<i class="ti '+(on?'ti-circle-check':'ti-circle')+'" style="color:'+(on?'var(--a)':'var(--t3)')+';font-size:16px"></i>'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+esc(e.nome)+'</div><div style="font-size:11px;color:var(--t2)">'+esc(e.num)+' · '+esc(e.tel||'sem telefone')+' · '+((e.filhos||[]).length)+' educando(s)</div></div></div>';
+    }).join('');
+  };
+
+  /* ── gravar ── */
+  async function gravarLigacao(a, e){
+    // memória: retirar do encarregado anterior, juntar ao novo
+    (ENCS||[]).forEach(function(x){ if(Array.isArray(x.filhos)) x.filhos=x.filhos.filter(function(f){ return f.id!==a.id; }); });
+    if(e){ e.filhos=e.filhos||[]; e.filhos.push({id:a.id,nome:a.nome,num:a.num,turma:a.turma||'',saldo:0}); }
+    a._encDbId=e?(e._dbId||null):null; a.enc=e?e.num:''; a.enome=e?e.nome:''; a.encTel=e?(e.tel||''):''; a.etel=a.encTel; a.encEmail=e?(e.email&&e.email!=='N/A'?e.email:''):''; a.erel=e?(e.rel||''):'';
+    if(demo() || !a._dbId || !sb()) return {ok:true, local:true};
+    var patch={ encarregado_id: e?(e._dbId||null):null, encarregado_nome: e?e.nome:null, encarregado_tel: e?(e.tel||null):null, encarregado_email: e?(e.email&&e.email!=='N/A'?e.email:null):null };
+    var r=await sb().from('alunos').update(patch).eq('id', a._dbId).select('id').single();
+    if(r.error) throw new Error(r.error.message);
+    return {ok:true};
+  }
+  window.__encFichaGuardar=async function(id){
+    var a=aluno(id); if(!a) return;
+    var btn=document.getElementById('encl-go'); if(btn){ btn.disabled=true; btn.style.opacity=.6; }
+    try{
+      var e=null;
+      if(window.__enclModo==='novo'){
+        var g=function(i){ return ((document.getElementById(i)||{}).value||'').trim(); };
+        var nome=g('encl-nome'), tel=g('encl-tel').replace(/\s+/g,''), rel=g('encl-rel'), email=g('encl-email'), bi=g('encl-bi'), prof=g('encl-prof');
+        if(nome.length<3){ toast('Indique o nome do encarregado.'); return; }
+        if(tel.replace(/\D/g,'').length<6){ toast('Indique um telefone válido (é a password inicial da conta).'); return; }
+        var num=proxNum(); var dbId=null;
+        if(!demo() && sb() && window._escolaId){
+          var ins=await sb().from('encarregados').insert({ escola_id:window._escolaId, num:num, nome:nome, tel:tel, email:email||null, prof:prof||null, rel:rel||'Familiar', bi:bi||null, ativo:true, data_registo:new Date().toISOString() }).select().single();
+          if(ins.error) throw new Error('Erro ao criar a ficha: '+ins.error.message);
+          dbId=ins.data.id; num=ins.data.num||num;
+        } else { dbId='demo-enc-'+Date.now(); }
+        e={ id:(ENCS.length?Math.max.apply(null,ENCS.map(function(x){return x.id||0;}))+1:1), num:num, nome:nome, tel:tel, email:email||'N/A', prof:prof||'', rel:rel||'Familiar', bi:bi||'', nasc:'', genero:'M', morada:'', filhos:[], adesao:new Date().getFullYear(), _dbId:dbId };
+        ENCS.push(e);
+      } else {
+        if(!window.__enclSel){ toast('Escolha um encarregado da lista ou crie um novo.'); return; }
+        e=(ENCS||[]).find(function(x){ return x.id===window.__enclSel; }); if(!e){ toast('Encarregado não encontrado.'); return; }
+      }
+      await gravarLigacao(a, e);
+      var m=document.getElementById('m-enc-ligar'); if(m) m.remove();
+      toast('<i class="ti ti-check"></i> '+esc(e.nome)+' ligado(a) a '+esc(a.nome)+(demo()?' (demo)':''));
+      window.__encFichaRender(id);
+      try{ if(typeof rEncs==='function' && document.getElementById('tb-enc')) rEncs(); }catch(_){}
+    }catch(err){ toast('Erro: '+((err&&err.message)||err)); }
+    finally{ if(btn){ btn.disabled=false; btn.style.opacity=1; } }
+  };
+  window.__encFichaDesligar=async function(id){
+    var a=aluno(id); if(!a) return; var e=encDe(a);
+    if(!pode()){ toast('Sem permissão.'); return; }
+    if(!confirm('Desligar '+(e?e.nome:'o encarregado')+' de '+a.nome+'?\n\nA ficha do encarregado mantém-se; só a ligação a este aluno é removida.')) return;
+    try{ await gravarLigacao(a, null); toast('Encarregado desligado.'); window.__encFichaRender(id); }
+    catch(err){ toast('Erro: '+((err&&err.message)||err)); }
+  };
+
+  /* ── ligar ao perfil do aluno ── */
+  var _oa=window.openAluno;
+  if(typeof _oa==='function'){
+    window.openAluno=function(id){ var r=_oa.apply(this, arguments); setTimeout(function(){ try{ window.__encFichaRender(id); }catch(e){} },160); return r; };
+  }
 })();
 </script>
 </body>
