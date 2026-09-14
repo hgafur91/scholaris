@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.205</span>
+    <span class="logo-ver">v6.206</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -17522,35 +17522,9 @@ if (_origRDashExport) {
 // ════════════════════════════════════════════════════════════
 
 // Enhanced disciplinary record structure
-let OCORRENCIAS_DISC = [
-  {
-    id: 1,
-    alunoId: 1,
-    turmaId: '8A',
-    tipo: 'comportamento',
-    descricao: 'Comportamento perturbador durante a aula de Matemática.',
-    data: '2026-03-15',
-    hora: '09:00',
-    local: 'Sala de aula',
-    registadoPor: 'PRF000001',
-    registadoPorNome: '',
-    gravidade: 'leve',
-    // Fluxo pedagógico
-    fase: 'acompanhamento_dt',  // novo → acompanhamento_dt → acompanhamento_dc → avaliacao_dp → sancao → resolvido
-    historico: [
-      {
-        fase: 'novo',
-        data: '2026-03-15',
-        actor: '',
-        role: 'professor',
-        accao: 'Ocorrência registada',
-        notas: 'Aluno ignorou repetidas advertências.',
-      }
-    ],
-    sancao: null,
-    resolucao: null,
-  },
-];
+// v6.206: começa VAZIO. Havia aqui uma ocorrência fictícia ("Turma 8A", 15/03/2026) que só desaparecia
+// quando carregarOcorrenciasDisc() corria — e para o encarregado não corria, por isso via um registo falso.
+let OCORRENCIAS_DISC = [];
 
 const TIPO_OCORRENCIA = {
   comportamento: {label:'Comportamento',    cor:'var(--am)', ic:'ti-mood-angry'},
