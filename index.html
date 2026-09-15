@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.208</span>
+    <span class="logo-ver">v6.209</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -6219,8 +6219,13 @@ async function loadDadosEscola() {
     const eid = window._escolaId;
 
     // 1. Carregar settings da escola
-    const { data: escola } = await window._supabase
-      .from('escolas').select('*').eq('id', eid).single();
+    // v6.209: alunos e encarregados já não lêem a tabela `escolas` (a config tem salários, orçamento, acordos);
+    // recebem a versão pública pela função escola_publica(), com as chaves sensíveis retiradas.
+    let { data: escola } = await window._supabase
+      .from('escolas').select('*').eq('id', eid).maybeSingle();
+    if (!escola) {
+      try { const _pub = await window._supabase.rpc('escola_publica'); if (_pub && _pub.data) escola = _pub.data; } catch(_){}
+    }
     if (escola) {
       // A escola existe no servidor => está activada/configurada. Nunca mais pedir o código neste nem noutro dispositivo.
       ESCOLA_SETTINGS.setupDone = true;
@@ -6651,11 +6656,12 @@ window.onFirebaseLogin = function(userData) {
 async function loadEscolaConfig() {
   if (!window._supabase || !window._escolaId || window._escolaId === 'escola_demo') return;
   try {
-    const { data } = await window._supabase
+    let { data } = await window._supabase
       .from('escolas')
       .select('nome, endereco, telefone, email, director_nome')
       .eq('id', window._escolaId)
-      .single();
+      .maybeSingle();
+    if (!data) { try { const _pub = await window._supabase.rpc('escola_publica'); if (_pub && _pub.data) data = _pub.data; } catch(_){} }  // v6.209
     if (data) {
       if (data.nome) ESCOLA_SETTINGS.nome = data.nome;
       if (data.endereco) ESCOLA_SETTINGS.morada = data.endereco;
@@ -35821,8 +35827,10 @@ window.__finV30=true;})();
   var BUCKET='escola-ficheiros';
   function sb(){ return window._supabase || window._supa; }
   function escola(){ return window._escolaId; }
-  function turmaUuid(nome){ var t=(window.TURMAS||[]).find(function(x){return x.nome===nome;}); return t?t._dbId:null; }
-  function turmaNome(uuid){ var t=(window.TURMAS||[]).find(function(x){return x._dbId===uuid;}); return t?t.nome:''; }
+  /* v6.209: as turmas carregadas da base só têm `id` ("3A"), sem `nome` — turmaNome devolvia '' e os
+     trabalhos ficavam sem turma (não apareciam ao aluno nem ao encarregado). Aceitar id ou nome. */
+  function turmaUuid(nome){ var t=(window.TURMAS||[]).find(function(x){return x.nome===nome || x.id===nome;}); return t?t._dbId:null; }
+  function turmaNome(uuid){ var t=(window.TURMAS||[]).find(function(x){return x._dbId===uuid;}); return t?(t.nome||t.id||''):''; }
   function alunoLocalId(uuid){ var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x._dbId===uuid;}); return a?a.id:null; }
   function alunoUuid(localId){ var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){return x.id===localId;}); return a?a._dbId:null; }
 
