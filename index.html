@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.212</span>
+    <span class="logo-ver">v6.213</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1191,6 +1191,10 @@ window.__escA = function (s) {
 </div>
 
 <!-- ════ GESTÃO DE MULTAS DE ATRASO ════ -->
+<div class="view" id="v-renovacoes">
+  <div class="ph"><div><div class="ph-title">Renovações e Inscrições</div><div class="ph-sub">Renovar os alunos actuais e inscrever novos alunos para o próximo ano lectivo</div></div></div>
+  <div id="renovacoes-c"></div>
+</div>
 <div class="view" id="v-multas">
   <div class="ph">
     <div><div class="ph-title">Multas de Atraso</div><div class="ph-sub">Perdoar total ou acordar um valor parcial — o valor acordado passa a aparecer no registo de pagamento</div></div>
@@ -3411,7 +3415,7 @@ const ROLES={
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-user-check',l:'Renovações e Inscrições',id:'renovacoes'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
       {sl:'Gestão RH',sub:[
         {i:'ti-briefcase',l:'Staff / Dep.',id:'staff'},
         {i:'ti-star',l:'Avaliações',id:'aval'},
@@ -3432,7 +3436,7 @@ const ROLES={
     sidebar:[
       {sl:'Principal',flat:[{i:'ti-layout-dashboard',l:'Dashboard',id:'dash'}]},
       {sl:'Académico',sub:[{i:'ti-layout-grid',l:'Turmas',id:'turmas'},{i:'ti-users',l:'Alunos',id:'alunos'},{i:'ti-heart',l:'Encarregados',id:'encarregados'},{i:'ti-calendar',l:'Horário',id:'horario'},{i:'ti-star',l:'Notas Finais',id:'notas'},{i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'}]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},{i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},{i:'ti-user-check',l:'Renovações e Inscrições',id:'renovacoes'},{i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'}]},
       {sl:'Gestão Curricular',sub:[
         {i:'ti-circles',l:'Ciclos',id:'ciclos'},
         {i:'ti-clock',l:'Períodos Lectivos',id:'periodos'},
@@ -3500,6 +3504,7 @@ const ROLES={
         {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
         {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},
         {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
+        {i:'ti-user-check',l:'Renovações e Inscrições',id:'renovacoes'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
         {i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},
@@ -6466,10 +6471,12 @@ async function loadDadosEscola() {
       let pagsDB = [];
       { let _from = 0; const _step = 1000;
         while (true) {
+          const _anoAct = (typeof window.__anoActivo==='function') ? window.__anoActivo() : (parseInt(CONFIG&&CONFIG.anoLectivo,10)||new Date().getFullYear());
           const { data: _batch } = await window._supabase
             .from('pagamentos')
             .select('*')
             .eq('escola_id', eid)
+            .or('ano.eq.' + _anoAct + ',ano.is.null')
             .range(_from, _from + _step - 1);
           if (!_batch || !_batch.length) break;
           pagsDB = pagsDB.concat(_batch);
@@ -32480,6 +32487,7 @@ window.renderBalanceteRange=function(mIni,mFim){
     {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
       {id:'fg-dash-ent', lbl:'Dashboard de Entradas', ic:'ti-trending-up', go:'dash-entradas'},
       {id:'fg-pagamentos', lbl:'Propinas & Pagamentos', ic:'ti-credit-card', go:'pagamentos'},
+      {id:'fg-renovacoes', lbl:'Renovações e Inscrições', ic:'ti-user-check', go:'renovacoes'},
       {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'},
       {id:'fg-reconciliacao', lbl:'Reconciliação Bancária', ic:'ti-file-check', go:'reconciliacao'},
       {id:'fg-bolsas', lbl:'Bolsas / Bolseiros', ic:'ti-discount-2', go:'bolsas'}
@@ -32510,6 +32518,7 @@ window.renderBalanceteRange=function(mIni,mFim){
   var GRUPOS_SECRETARIO=[
     {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
       {id:'fg-pagamentos', lbl:'Propinas & Pagamentos', ic:'ti-credit-card', go:'pagamentos'},
+      {id:'fg-renovacoes', lbl:'Renovações e Inscrições', ic:'ti-user-check', go:'renovacoes'},
       {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'}
     ]},
     {id:'fg-despesas', lbl:'Despesas', ic:'ti-logout-2', itens:[
@@ -32523,7 +32532,7 @@ window.renderBalanceteRange=function(mIni,mFim){
   ];
   function papelActual(){ try{ return curRole; }catch(e){ return ''; } }
   function gruposDoPapel(){ return papelActual()==='secretario' ? GRUPOS_SECRETARIO : GRUPOS; }
-  var ESCONDER=['si-pagamentos','si-propinas','si-emolumentos','si-despesas','si-despesas-cat','si-folha-salarios','si-dividas','si-multas','si-fluxo-caixa','si-orcamento','si-previsao-receita','si-relatorio-fin','si-relatorio-actividades','si-balancete','si-bolsas-v39','si-relat-faltas-prof','v26-mae-despesas'];
+  var ESCONDER=['si-pagamentos','si-renovacoes','si-propinas','si-emolumentos','si-despesas','si-despesas-cat','si-folha-salarios','si-dividas','si-multas','si-fluxo-caixa','si-orcamento','si-previsao-receita','si-relatorio-fin','si-relatorio-actividades','si-balancete','si-bolsas-v39','si-relat-faltas-prof','v26-mae-despesas'];
   var LEGADO=['v11-mae-entradas','si-mae-entradas','si-mae-despesas','si-mae-receitas','si-mae-cobranca','si-mae-relatorios'];
   function irGo(id){ return function(){ try{ if(typeof window.go==='function') window.go(id); }catch(e){} }; }
   function buildGrupo(g){
@@ -46495,8 +46504,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   var FIN=['gestor','director','gestor-financeiro','secretario'];
   var ECRAS_FIN=['fin-dashboard','dash-entradas','dash-saidas','pagamentos','propinas','propaluno','emolumentos','despesas','despesas-cat',
     'caixa-semanal','folha-salarios','dividas','multas','reconciliacao','bolsas','relatorio-fin','relatorio-actividades','extracto-escola',
-    'balancete','fluxo-caixa','orcamento','previsao-receita','aging-report'];
-  var FIN_SECRETARIO=['pagamentos','propinas','propaluno','emolumentos','despesas','dividas','multas','extracto-escola'];
+    'balancete','fluxo-caixa','orcamento','previsao-receita','aging-report','renovacoes'];
+  var FIN_SECRETARIO=['pagamentos','propinas','propaluno','emolumentos','despesas','dividas','multas','extracto-escola','renovacoes'];
   var VEDADO_SECRETARIO=['gestao-ano','audit-trail'];
   function papel(){ try{ return curRole; }catch(e){ return ''; } }
   function podeFin(){ return FIN.indexOf(papel())>=0; }
@@ -46675,6 +46684,753 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   [1200, 3000, 6000, 10000].forEach(function(ms){ setTimeout(garantirInicio, ms); });
   window.__garantirEcraInicial=garantirInicio;
 })();
+</script>
+<script>
+/* ═══ v6.213 — ANO LECTIVO (base para as renovações) ══════════════════════
+   O iQRA trabalha num ano de cada vez. Aqui ficam os atalhos que o ecrã das
+   Renovações usa: ano activo, id do ano e id de um ano qualquer. ═════════ */
+(function(){
+  if(window.__anos213) return; window.__anos213=true;
+  window.__ANOS = window.__ANOS || [];
+  window.__anoActivo = window.__anoActivo || function(){
+    try{ var a=parseInt(CONFIG && CONFIG.anoLectivo, 10); if(a) return a; }catch(e){}
+    return new Date().getFullYear();
+  };
+  window.__anoIdDe = window.__anoIdDe || function(ano){
+    var r=(window.__ANOS||[]).find(function(x){ return parseInt(String(x.ano).replace(/[^0-9]/g,''),10)===parseInt(ano,10); });
+    return r?r.id:null;
+  };
+  window.__anoId = window.__anoId || function(){ return window.__anoIdDe(window.__anoActivo()); };
+  window.__anoVista = window.__anoVista || function(){ return window.__anoActivo(); };
+  window.__anoVistaId = window.__anoVistaId || function(){ return window.__anoId(); };
+  window.__emConsulta = window.__emConsulta || function(){ return false; };
+  var tentativas=0;
+  var iv=setInterval(async function(){
+    tentativas++;
+    try{
+      if(!window._supabase || !window._escolaId || window._escolaId==='escola_demo'){ if(tentativas>40) clearInterval(iv); return; }
+      var r=await window._supabase.from('anos_lectivos').select('id, ano, ativo, data_inicio, data_fim').eq('escola_id', window._escolaId).order('ano');
+      if(r && r.data && r.data.length){ window.__ANOS=r.data; clearInterval(iv); }
+      else if(tentativas>40) clearInterval(iv);
+    }catch(e){ if(tentativas>40) clearInterval(iv); }
+  }, 2500);
+})();
+</script>
+<script>
+/* v6.223 — RENOVAÇÕES E INSCRIÇÕES (parte 1: ecrã e listas)
+   Gestão Financeira › Receitas › Renovações e Inscrições. Trabalha sempre para o ANO SEGUINTE ao activo.
+   Aberto por omissão; gestor e director podem fechar/abrir (CONFIG.renovacoes.fechado).
+   Separadores: Renovar · Inscrever novos · Não renovados.
+   v6.227: inscrever novos (aluno + matrícula por classe + inscrição/matrícula), «não volta» (CONFIG.renovacoes.naoVoltam)
+   e autorização do director/gestor para renovar alunos com dívida (CONFIG.renovacoes.autorizados), ambos por ano seguinte. */
+(function(){
+  if(window.__renov223) return; window.__renov223=true;
+  var PAPEIS=['gestor','director','secretario','gestor-financeiro'];
+  function sb(){ return window._supabase; }
+  function escId(){ return window._escolaId; }
+  function papel(){ try{ return curRole; }catch(e){ return ''; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function mz(n){ try{ return Math.round(n||0).toLocaleString('pt-PT'); }catch(e){ return String(Math.round(n||0)); } }
+  function t(m){ try{ if(typeof toast==='function') toast(m); }catch(e){} }
+  function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
+  var MES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  window.__renovTab=window.__renovTab||'renovar';
+
+  function proximoAno(){ return window.__anoActivo()+1; }
+  function fechado(){ try{ return !!(CONFIG.renovacoes && CONFIG.renovacoes.fechado); }catch(e){ return false; } }
+  function classeDe(a){ try{ var tu=(typeof TURMAS!=='undefined'?TURMAS:[]).find(function(x){ return x.id===a.turma; }); return tu?parseInt(tu.classe,10):(parseInt(a._classeMat,10)||null); }catch(e){ return null; } }
+  function precoProx(classe, campo){
+    try{ var P=(CONFIG.precarios||{})[String(proximoAno())]||(CONFIG.precarios||{})[String(window.__anoActivo())]||CONFIG.valoresPorClasse||{};
+      var v=P[classe]||P[String(classe)]; return v&&v[campo]!=null?Number(v[campo]):0; }catch(e){ return 0; }
+  }
+  function dividaActual(a){
+    var tot=0, meses=[];
+    (a.propinas||[]).forEach(function(p,i){ var e=(typeof window.__estadoPropina==='function')?window.__estadoPropina(p):p.st;
+      if(e==='divida'){ tot+=(typeof window.__totalProp==='function')?window.__totalProp(p):(p.v||0); meses.push(MES[p.m?p.m-1:i]); } });
+    var mat=0; if(!(a.isencoes&&a.isencoes.matricula) && !(a.matricula&&a.matricula.st==='pago')){ try{ mat=Number((typeof getMatriculaTurma==='function')?getMatriculaTurma(a.turma):0)||0; }catch(e){} }
+    return { total:tot+mat, meses:meses };
+  }
+
+  async function dados(){
+    var prox=proximoAno(), idProx=window.__anoIdDe(prox);
+    var r={ prox:prox, idProx:idProx, mats:[], cands:[], pags:[], repetem:{} };
+    if(!idProx || !sb() || !escId() || escId()==='escola_demo') return r;
+    var q=await Promise.all([
+      sb().from('matriculas').select('id,aluno_id,classe,estado,data_matricula,registado_por,aprovado_por,alunos(numero_aluno,nome_completo,encarregado_nome,encarregado_tel,encarregado_id)').eq('escola_id',escId()).eq('ano_lectivo_id',idProx),
+      sb().from('candidaturas').select('id,nome,nasc,genero,classe_desejada,encarregado,tel,email,estado,ano,data_candidatura').eq('escola_id',escId()).in('estado',['aprovado','aprovada']).order('nome'),
+      sb().from('pagamentos').select('pag_id,aluno_num,tipo,estado').eq('escola_id',escId()).eq('ano',prox).in('tipo',['inscricao','matricula']).neq('estado','estornado'),
+      sb().from('escolas').select('config').eq('id',escId()).single(),
+      sb().from('fechos_aluno').select('aluno_id,estado_final').eq('escola_id',escId()).eq('ano_lectivo_id',window.__anoId())
+    ]);
+    if(q[0].error) throw q[0].error;
+    r.mats=q[0].data||[]; r.cands=(q[1].data||[]).filter(function(c){ return !c.ano || Number(c.ano)===prox; });
+    r.pags=q[2].data||[];
+    (q[4].data||[]).forEach(function(f){ if(f.estado_final==='reprovado'||f.estado_final==='recorrencia') r.repetem[f.aluno_id]=true; });
+    window.__renovRepetem=r.repetem;
+    try{ var fr=q[3].data&&q[3].data.config&&q[3].data.config.renovacoes; if(fr&&typeof fr==='object') CONFIG.renovacoes=fr; }catch(e){}
+    return r;
+  }
+
+  /* ── Estado partilhado das renovações (CONFIG.renovacoes), gravado sem pisar alterações de outros utilizadores ── */
+  function R(){ if(!CONFIG.renovacoes||typeof CONFIG.renovacoes!=='object') CONFIG.renovacoes={}; return CONFIG.renovacoes; }
+  function quem(){ return (typeof curUser!=='undefined'&&curUser&&curUser.nome)||''; }
+  function podeAutorizar(){ return ['gestor','director'].indexOf(papel())>=0; }
+  function autorizacao(a){ var x=(R().autorizados||{})[a._dbId]; return (x&&Number(x.ano)===proximoAno())?x:null; }
+  function naoVolta(a){ var x=(R().naoVoltam||{})[a._dbId]; return (x&&Number(x.ano)===proximoAno())?x:null; }
+  function alunoLocal(localId){ return (typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(x){ return String(x.id)===String(localId); }); }
+  async function gravarRenov(fn){
+    var r=await sb().from('escolas').select('config').eq('id',escId()).single();
+    if(r.error) throw r.error;
+    var cfg=(r.data&&r.data.config)||{};
+    var rv=(cfg.renovacoes&&typeof cfg.renovacoes==='object')?cfg.renovacoes:{};
+    fn(rv);
+    CONFIG.renovacoes=rv;
+    var u=await sb().from('escolas').update({config:CONFIG}).eq('id',escId());
+    if(u.error) throw u.error;
+  }
+  var MOTIVOS={ transferencia:'Transferência', desistencia:'Desistência', outro:'Outro' };
+
+  function kpi(l,v,cor,tab){ return '<div data-t="'+tab+'" onclick="window.__renovIr(this.dataset.t)" style="cursor:pointer;background:var(--card);border:1px solid var(--b);border-radius:12px;padding:12px 14px"><div style="font-size:22px;font-weight:800;color:'+cor+'">'+v+'</div><div style="font-size:11px;color:var(--t2)">'+l+'</div></div>'; }
+  window.__renovIr=function(tab){ window.__renovTab=tab; window.rRenovacoes(); };
+  window.__renovIrSub=function(sub){ window.__renovSub=sub; window.rRenovacoes(); };
+  window.__renovFiltrar=function(campo, valor){ window.__renovFiltro=window.__renovFiltro||{}; window.__renovFiltro[campo]=valor; window.rRenovacoes(); };
+
+  function celulaDivida(a, semAutorizacao){
+    var d=dividaActual(a), aut=autorizacao(a);
+    if(d.total<=0) return '<td style="text-align:right;font-weight:700;color:var(--g)">Sem dívida</td>';
+    return '<td style="text-align:right"><div style="font-weight:700;color:var(--r)">'+mz(d.total)+' MZM</div>'
+      +(semAutorizacao?'':aut?'<div style="font-size:10px;color:var(--g)"><i class="ti ti-shield-check"></i> Autorizado por '+esc(aut.por||'—')+'</div>'
+           :'<div style="font-size:10px;color:var(--am)"><i class="ti ti-lock"></i> Precisa de autorização</div>')+'</td>';
+  }
+  function botoesRenovar(a, fech){
+    if(fech) return '<button class="btn btn-p btn-sm" disabled title="Renovações e inscrições fechadas"><i class="ti ti-refresh"></i> Renovar</button>';
+    var d=dividaActual(a), aut=autorizacao(a), h='';
+    if(d.total>0 && !aut){
+      if(!podeAutorizar()) return '<button class="btn btn-p btn-sm" disabled title="Aguarda autorização do director ou do gestor"><i class="ti ti-lock"></i> Aguarda autorização</button>';
+      h+='<button class="btn btn-g btn-sm" onclick="window.__renovAutorizar('+Number(a.id)+')"><i class="ti ti-shield-check"></i> Autorizar</button> ';
+    }
+    return h+'<button class="btn btn-p btn-sm" onclick="window.__renovAbrir('+Number(a.id)+')"><i class="ti ti-refresh"></i> Renovar</button>';
+  }
+  function estadoPag(PG, num, tipo){
+    var e=(PG[num]||{})[tipo];
+    return e==='confirmado'?'<span class="badge bok">Paga</span>':e==='por_confirmar'?'<span class="badge bwn">Por confirmar</span>':'<span class="badge ber">Por pagar</span>';
+  }
+
+  window.rRenovacoes=async function(){
+    var host=document.getElementById('renovacoes-c'); if(!host) return;
+    if(PAPEIS.indexOf(papel())<0){ host.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito à secretaria, gestão financeira e direcção.</div>'; return; }
+    host.innerHTML='<div style="padding:16px;color:var(--t2)">A carregar…</div>';
+    var D; try{ D=await dados(); }catch(e){ host.innerHTML='<div class="ib-box ib-am">Não foi possível carregar: '+esc(e&&e.message||e)+'</div>'; return; }
+    var prox=D.prox, activo=window.__anoActivo();
+    if(!D.idProx){ host.innerHTML='<div class="ib-box ib-am">O ano lectivo '+prox+' ainda não está criado.</div>'; return; }
+    window.__renovCands=D.cands;
+    var alunos=(typeof ALUNOS!=='undefined'?ALUNOS:[]);
+    var idsActuais={}; alunos.forEach(function(a){ if(a._dbId) idsActuais[a._dbId]=true; });
+    var renovadosIds={}, pendentes=[];
+    window.__renovPend={};
+    D.mats.forEach(function(m){
+      if(m.estado==='rejeitada') return;                 /* rejeitado volta à lista de quem falta renovar */
+      renovadosIds[m.aluno_id]=true;
+      if(m.estado==='pendente'){ pendentes.push(m); window.__renovPend[m.id]=m; }
+    });
+    var aRenovar=[], concluem=[], renovados=[], naoVoltam=[];
+    alunos.forEach(function(a){
+      var c=classeDe(a);
+      if(renovadosIds[a._dbId]) renovados.push(a);
+      else if(naoVolta(a)) naoVoltam.push(a);
+      else if(c>=12 && !D.repetem[a._dbId]) concluem.push(a);
+      else aRenovar.push(a);
+    });
+    var novos=D.mats.filter(function(m){ return !idsActuais[m.aluno_id] && m.estado!=='rejeitada'; });
+    D.mats.forEach(function(m){ m._novo=!idsActuais[m.aluno_id]; });
+    var PG={}; D.pags.forEach(function(p){ var k=p.aluno_num; PG[k]=PG[k]||{}; if(PG[k][p.tipo]!=='confirmado') PG[k][p.tipo]=p.estado; });
+    window.__renovPagos=PG;
+    var ordenar=function(x,y){ return (classeDe(x)||0)-(classeDe(y)||0) || String(x.turma).localeCompare(String(y.turma),'pt',{numeric:true}) || x.nome.localeCompare(y.nome,'pt'); };
+    aRenovar.sort(ordenar); concluem.sort(ordenar); naoVoltam.sort(ordenar);
+    var podeFechar=podeAutorizar(), fech=fechado(), tab=window.__renovTab;
+
+    var h='';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px 18px;margin-bottom:14px">'
+      +'<div><div style="font-size:16px;font-weight:800">Renovações e Inscrições '+prox+'</div>'
+      +'<div style="font-size:12px;margin-top:2px">'+(fech?'<span style="color:var(--r);font-weight:700">● Fechado</span> · não é possível renovar nem inscrever':'<span style="color:var(--g);font-weight:700">● Aberto</span> · ano em curso: '+activo)+'</div></div>'
+      +(podeFechar?('<button class="btn '+(fech?'btn-p':'btn-g')+' btn-sm" onclick="window.__renovAbrirFechar()"><i class="ti ti-'+(fech?'lock-open':'lock')+'"></i> '+(fech?'Abrir':'Fechar')+' renovações e inscrições</button>'):'')
+      +'</div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px">'
+      +kpi('A renovar',aRenovar.length,'var(--a)','renovar')+kpi('Renovados',renovados.length,'var(--g)','renovar')
+      +kpi('Novos inscritos',novos.length,'var(--tl, #06b6d4)','novos')+kpi('Por aprovar',pendentes.length,'var(--am)','aprovar')+kpi('Não renovados',naoVoltam.length,'var(--r)','nao')
+      +'</div>';
+    var tabs=[['renovar','Renovar'],['novos','Inscrever novos'],['aprovar','Por aprovar'+(pendentes.length?(' ('+pendentes.length+')'):'')],['nao','Não renovados']];
+    h+='<div class="tabs">'+tabs.map(function(x){ return '<button class="tab '+(tab===x[0]?'on':'')+'" data-t="'+x[0]+'" onclick="window.__renovIr(this.dataset.t)">'+x[1]+'</button>'; }).join('')+'</div>';
+
+    if(tab==='renovar'){
+      h+='<div class="card"><div class="tw"><table><thead><tr><th>Aluno</th><th>'+activo+'</th><th>'+prox+'</th><th style="text-align:right">Dívida '+activo+' até hoje</th><th style="text-align:right">Matrícula '+prox+'</th><th></th></tr></thead><tbody>'
+        +(aRenovar.length?aRenovar.map(function(a){
+            var c=classeDe(a), repete=!!D.repetem[a._dbId], cp=repete?c:Math.min(c+1,12), mat=precoProx(cp,'matricula');
+            return '<tr><td><div style="font-weight:600">'+esc(a.nome)+'</div><div style="font-size:11px;color:var(--t3)">'+esc(a.num)+'</div></td>'
+              +'<td>'+esc(a.turma||'—')+'</td><td>'+(c?(cp+'ª classe'+(repete?' <span class="badge bwn" style="font-size:10px">repete</span>':'')):'—')+'</td>'
+              +celulaDivida(a)
+              +'<td style="text-align:right">'+(a.isencoes&&a.isencoes.matricula?'Isento':mz(mat)+' MZM')+'</td>'
+              +'<td style="text-align:right;white-space:nowrap">'+botoesRenovar(a,fech)+'</td></tr>';
+          }).join(''):'<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--t3)">Não há alunos por renovar.</td></tr>')
+        +'</tbody></table></div></div>';
+      if(renovados.length) h+='<div style="font-size:12px;color:var(--t2);margin:10px 2px">Já renovados: '+renovados.length+' aluno(s)'+(pendentes.length?(' · '+pendentes.length+' à espera de aprovação'):'')+'.</div>';
+      if(concluem.length) h+='<div class="card" style="margin-top:12px"><div class="ch"><span class="ct"><i class="ti ti-school"></i> Concluem em '+activo+' (12ª classe)</span><span style="font-size:11px;color:var(--t3)">sem renovação</span></div>'
+        +'<div class="cb" style="font-size:12px;color:var(--t2)">'+concluem.map(function(a){ return esc(a.nome)+' ('+esc(a.turma)+')'; }).join(' · ')+'</div></div>';
+    } else if(tab==='novos'){
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">'
+        +'<div style="font-size:13px;color:var(--t2)">Candidaturas aprovadas e alunos inscritos para '+prox+'.</div>'
+        +'<button class="btn btn-p btn-sm"'+(fech?' disabled title="Renovações e inscrições fechadas"':' onclick="window.__renovNovo()"')+'><i class="ti ti-user-plus"></i> Novo aluno</button></div>';
+      h+='<div class="card"><div class="ch"><span class="ct">Candidaturas aprovadas</span><span style="font-size:11px;color:var(--t3)">'+D.cands.length+'</span></div><div class="tw"><table><thead><tr><th>Candidato</th><th>Classe pretendida</th><th>Encarregado</th><th>Contacto</th><th></th></tr></thead><tbody>'
+        +(D.cands.length?D.cands.map(function(c){
+            return '<tr><td style="font-weight:600">'+esc(c.nome)+'</td><td>'+esc(c.classe_desejada||'—')+'</td><td>'+esc(c.encarregado||'—')+'</td><td>'+esc(c.tel||'—')+'</td>'
+              +'<td style="text-align:right"><button class="btn btn-p btn-sm"'+(fech?' disabled title="Renovações e inscrições fechadas"':(' data-c="'+esc(c.id)+'" onclick="window.__renovNovo(this.dataset.c)"'))+'><i class="ti ti-check"></i> Inscrever</button></td></tr>';
+          }).join(''):'<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--t3)">Sem candidaturas aprovadas.</td></tr>')
+        +'</tbody></table></div></div>';
+      h+='<div class="card" style="margin-top:12px"><div class="ch"><span class="ct">Novos inscritos para '+prox+'</span><span style="font-size:11px;color:var(--t3)">'+novos.length+'</span></div><div class="tw"><table><thead><tr><th>Aluno</th><th>Nº</th><th>Classe '+prox+'</th><th>Estado</th><th>Inscrição</th><th>Matrícula</th><th></th></tr></thead><tbody>'
+        +(novos.length?novos.slice().sort(function(x,y){ return String((x.alunos||{}).nome_completo).localeCompare(String((y.alunos||{}).nome_completo),'pt'); }).map(function(m){
+            var al=m.alunos||{};
+            var faltam=['inscricao','matricula'].filter(function(tp){ return !(PG[al.numero_aluno]||{})[tp]; });
+            window.__renovPagarCtx=window.__renovPagarCtx||{};
+            window.__renovPagarCtx[al.numero_aluno]={ num:al.numero_aluno, nome:al.nome_completo, classe:m.classe, tipos:faltam, alunoId:null, origem:'renovacoes' };
+            return '<tr><td style="font-weight:600">'+esc(al.nome_completo||'—')+'</td><td>'+esc(al.numero_aluno||'—')+'</td><td>'+(m.classe?m.classe+'ª classe':'—')+'</td>'
+              +'<td>'+(m.estado==='pendente'?'<span class="badge bwn">Por aprovar</span>':'<span class="badge bok">Aprovado</span>')+'</td>'
+              +'<td>'+estadoPag(PG,al.numero_aluno,'inscricao')+'</td><td>'+estadoPag(PG,al.numero_aluno,'matricula')+'</td>'
+              +'<td style="text-align:right">'+((faltam.length&&!fech)?('<button class="btn btn-p btn-sm" data-n="'+esc(al.numero_aluno)+'" onclick="window.__renovPagarAbrir(this.dataset.n)"><i class="ti ti-cash"></i> Registar pagamento</button>'):'')+'</td></tr>'; }).join('')
+          :'<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--t3)">Ainda não há novos inscritos.</td></tr>')
+        +'</tbody></table></div></div>';
+    } else if(tab==='aprovar'){
+      var podeAprovar=podeAutorizar();
+      h+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">'+(podeAprovar
+        ? 'Inscrições e renovações à espera da sua aprovação. Só depois de aprovadas é que contam e que as contas são criadas.'
+        : 'Inscrições e renovações registadas, à espera da aprovação do gestor ou do director.')+'</div>';
+      h+='<div class="card"><div class="tw"><table><thead><tr><th>Aluno</th><th>Tipo</th><th>Classe '+prox+'</th><th>Pago</th><th>Registado</th><th></th></tr></thead><tbody>'
+        +(pendentes.length?pendentes.map(function(m){
+            var al=m.alunos||{}, pg=PG[al.numero_aluno]||{};
+            var pagos=['inscricao','matricula'].filter(function(tp){ return pg[tp]; }).map(function(tp){ return (tp==='inscricao'?'Inscrição':'Matrícula')+(pg[tp]==='confirmado'?'':' (por confirmar)'); });
+            return '<tr><td><div style="font-weight:600">'+esc(al.nome_completo||'—')+'</div><div style="font-size:11px;color:var(--t3)">'+esc(al.numero_aluno||'')+'</div></td>'
+              +'<td>'+(m._novo?'<span class="badge bin">Novo</span>':'<span class="badge bne">Renovação</span>')+'</td>'
+              +'<td>'+(m.classe?(m.classe+'ª classe'):'—')+'</td>'
+              +'<td style="font-size:12px">'+(pagos.length?esc(pagos.join(' · ')):'—')+'</td>'
+              +'<td style="font-size:12px;color:var(--t2)">'+esc(m.registado_por||'—')+'<div style="font-size:11px;color:var(--t3)">'+esc(m.data_matricula||'')+'</div></td>'
+              +'<td style="text-align:right;white-space:nowrap">'+(podeAprovar
+                ?('<button class="btn btn-p btn-sm" data-m="'+esc(m.id)+'" onclick="window.__aprovarMat(this.dataset.m)"><i class="ti ti-check"></i> Aprovar</button> '
+                 +'<button class="btn btn-re btn-sm" data-m="'+esc(m.id)+'" onclick="window.__rejeitarMat(this.dataset.m)"><i class="ti ti-x"></i> Rejeitar</button>')
+                :'<span class="badge bwn">Aguarda aprovação</span>')+'</td></tr>';
+          }).join(''):'<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--t3)">Não há inscrições nem renovações por aprovar.</td></tr>')
+        +'</tbody></table></div></div>';
+    } else {
+      var sub=window.__renovSub==='naovoltam'?'naovoltam':'decidir', Fl=window.__renovFiltro||{};
+      var base=(sub==='decidir'?aRenovar:naoVoltam);
+      var turmasL=[]; base.forEach(function(a){ if(a.turma && turmasL.indexOf(a.turma)<0) turmasL.push(a.turma); });
+      turmasL.sort(function(x,y){ return String(x).localeCompare(String(y),'pt',{numeric:true}); });
+      var lista=base.filter(function(a){ return (!Fl.turma || a.turma===Fl.turma) && (!Fl.divida || dividaActual(a).total>0); });
+      window.__renovListaImp={ titulo:(sub==='decidir'?'Alunos por decidir':'Alunos que não voltam')+' — '+prox, linhas:lista.map(function(a){ var nv=naoVolta(a); return { nome:a.nome, num:a.num, turma:a.turma||'—', divida:dividaActual(a).total, enc:a.enc||'', tel:a.encTel||'', motivo:nv?(MOTIVOS[nv.motivo]||nv.motivo):'' }; }) };
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+        +'<div style="display:flex;gap:6px">'
+        +'<button class="btn btn-sm '+(sub==='decidir'?'btn-p':'btn-g')+'" data-s="decidir" onclick="window.__renovIrSub(this.dataset.s)">Por decidir ('+aRenovar.length+')</button>'
+        +'<button class="btn btn-sm '+(sub==='naovoltam'?'btn-p':'btn-g')+'" data-s="naovoltam" onclick="window.__renovIrSub(this.dataset.s)">Não voltam ('+naoVoltam.length+')</button></div>'
+        +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+        +'<select class="ffi" style="width:auto;padding:5px 8px" onchange="window.__renovFiltrar(this.name,this.value)" name="turma"><option value="">Todas as turmas</option>'+turmasL.map(function(x){ return '<option'+(Fl.turma===x?' selected':'')+'>'+esc(x)+'</option>'; }).join('')+'</select>'
+        +'<label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" name="divida"'+(Fl.divida?' checked':'')+' onchange="window.__renovFiltrar(this.name,this.checked)"> Com dívida</label>'
+        +'<button class="btn btn-g btn-sm" onclick="window.__renovImprimir()"><i class="ti ti-printer"></i> Imprimir lista</button></div></div>';
+      h+='<div class="card"><div class="tw"><table><thead><tr><th>Aluno</th><th>Turma '+activo+'</th><th style="text-align:right">Dívida '+activo+' até hoje</th><th>Encarregado</th><th></th></tr></thead><tbody>'
+        +(lista.length?lista.map(function(a){
+            var acc;
+            if(sub==='decidir'){
+              acc=botoesRenovar(a,fech)+(fech?'':' <button class="btn btn-g btn-sm" onclick="window.__renovNaoVolta('+Number(a.id)+')"><i class="ti ti-door-exit"></i> Não volta</button>');
+            } else {
+              var nv=naoVolta(a);
+              acc='<span style="font-size:12px;color:var(--t2)">'+esc(MOTIVOS[nv.motivo]||nv.motivo||'—')+(nv.obs?(' · '+esc(nv.obs)):'')+' · por '+esc(nv.por||'—')+'</span> '
+                +'<button class="btn btn-g btn-sm" onclick="window.__renovDesfazer('+Number(a.id)+')"><i class="ti ti-arrow-back-up"></i> Desfazer</button>';
+            }
+            return '<tr><td><div style="font-weight:600">'+esc(a.nome)+'</div><div style="font-size:11px;color:var(--t3)">'+esc(a.num)+'</div></td><td>'+esc(a.turma||'—')+'</td>'
+              +celulaDivida(a, sub==='naovoltam')
+              +'<td>'+esc(a.enc||'—')+(a.encTel?('<div style="font-size:11px;color:var(--t3)">'+esc(a.encTel)+'</div>'):'')+'</td>'
+              +'<td style="text-align:right;white-space:nowrap">'+acc+'</td></tr>';
+          }).join(''):'<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--t3)">'+(sub==='decidir'?'Não há alunos por decidir.':'Nenhum aluno marcado como «não volta».')+'</td></tr>')
+        +'</tbody></table></div></div>';
+    }
+    host.innerHTML=h;
+  };
+
+  /* ── Autorização (director/gestor) para renovar alunos com dívida ── */
+  async function registarAutorizacao(a, d){
+    var prox=proximoAno();
+    await gravarRenov(function(rv){ rv.autorizados=rv.autorizados||{}; rv.autorizados[a._dbId]={ ano:prox, por:quem(), papel:papel(), em:new Date().toISOString(), divida:d.total, num:a.num }; });
+    try{ if(typeof logAudit==='function') logAudit('AUTORIZACAO_RENOVACAO', a.nome+' ('+a.num+')', 'Renovação para '+prox+' autorizada com dívida de '+mz(d.total)+' MZM'); }catch(e){}
+  }
+  window.__renovAutorizar=async function(localId){
+    if(!podeAutorizar()){ t('Só o director ou o gestor podem autorizar'); return; }
+    var a=alunoLocal(localId); if(!a) return; var d=dividaActual(a);
+    if(!confirm('Autorizar a renovação de '+a.nome+' para '+proximoAno()+' com dívida de '+mz(d.total)+' MZM?')) return;
+    try{ await registarAutorizacao(a,d); }catch(e){ t('Erro ao autorizar: '+(e&&e.message||e)); return; }
+    t('Renovação autorizada — já pode ser renovado');
+    window.rRenovacoes();
+  };
+
+  /* ── Não renovados: marcar «não volta» e desfazer ── */
+  window.__renovNaoVolta=function(localId){
+    var a=alunoLocal(localId); if(!a) return;
+    var old=document.getElementById('m-naovolta'); if(old) old.remove();
+    window.__renovCtx={ id:a.id };
+    var html='<div id="m-naovolta" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99995;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:440px;max-width:100%">'
+      +'<h3 style="margin:0 0 4px;font-size:17px">Não volta em '+proximoAno()+'</h3>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">'+esc(a.nome)+' · '+esc(a.num)+' · Turma '+esc(a.turma||'—')+'</div>'
+      +'<div class="fl">Motivo</div><select id="nv-motivo" class="ffi" style="margin-bottom:10px">'+Object.keys(MOTIVOS).map(function(k){ return '<option value="'+k+'">'+MOTIVOS[k]+'</option>'; }).join('')+'</select>'
+      +'<div class="fl">Observação (opcional)</div><input id="nv-obs" class="ffi" placeholder="Ex.: vai para outra escola" style="margin-bottom:14px">'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-g btn-sm" onclick="document.getElementById(this.dataset.m).remove()" data-m="m-naovolta">Cancelar</button>'
+      +'<button id="nv-go" class="btn btn-p btn-sm" onclick="window.__renovNaoVoltaConfirmar()"><i class="ti ti-check"></i> Confirmar</button></div>'
+      +'</div></div>';
+    var w=document.createElement('div'); w.innerHTML=html; document.body.appendChild(w.firstChild);
+  };
+  window.__renovNaoVoltaConfirmar=async function(){
+    var a=alunoLocal((window.__renovCtx||{}).id); if(!a) return;
+    if(PAPEIS.indexOf(papel())<0){ t('Sem permissão'); return; }
+    var motivo=document.getElementById('nv-motivo').value, obs=(document.getElementById('nv-obs').value||'').trim(), prox=proximoAno();
+    var go=document.getElementById('nv-go'); if(go){ go.disabled=true; go.style.opacity=.5; }
+    try{ await gravarRenov(function(rv){ rv.naoVoltam=rv.naoVoltam||{}; rv.naoVoltam[a._dbId]={ ano:prox, motivo:motivo, obs:obs, por:quem(), em:new Date().toISOString(), num:a.num, nome:a.nome }; }); }
+    catch(e){ t('Erro ao gravar: '+(e&&e.message||e)); if(go){ go.disabled=false; go.style.opacity=1; } return; }
+    try{ if(typeof logAudit==='function') logAudit('NAO_RENOVA', a.nome+' ('+a.num+')', 'Não volta em '+prox+' — '+MOTIVOS[motivo]+(obs?(': '+obs):'')); }catch(e){}
+    var m=document.getElementById('m-naovolta'); if(m) m.remove();
+    t(a.nome+' marcado como «não volta»');
+    window.rRenovacoes();
+  };
+  window.__renovDesfazer=async function(localId){
+    var a=alunoLocal(localId); if(!a) return;
+    if(!confirm('Desfazer «não volta» de '+a.nome+'? O aluno volta à lista por decidir.')) return;
+    try{ await gravarRenov(function(rv){ if(rv.naoVoltam) delete rv.naoVoltam[a._dbId]; }); }catch(e){ t('Erro ao gravar: '+(e&&e.message||e)); return; }
+    try{ if(typeof logAudit==='function') logAudit('NAO_RENOVA_DESFEITO', a.nome+' ('+a.num+')', 'Marcação «não volta» desfeita'); }catch(e){}
+    t('Desfeito'); window.rRenovacoes();
+  };
+  window.__renovImprimir=function(){
+    var L=window.__renovListaImp; if(!L){ return; }
+    var escola=(typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nome)||'';
+    var comMotivo=L.linhas.some(function(x){ return x.motivo; });
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(L.titulo)+'</title><style>body{font-family:Arial,sans-serif;padding:20px;font-size:12px}h1{font-size:16px;margin:0}h2{font-size:12px;color:#555;font-weight:normal;margin:4px 0 14px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left}th{background:#f1f5f9}td.n{text-align:right}@media print{button{display:none}}</style></head><body>'
+      +'<button onclick="window.print()">Imprimir</button><h1>'+esc(escola)+'</h1><h2>'+esc(L.titulo)+' · '+L.linhas.length+' aluno(s)</h2>'
+      +'<table><thead><tr><th>#</th><th>Aluno</th><th>Nº</th><th>Turma</th><th>Dívida (MZM)</th><th>Encarregado</th><th>Contacto</th>'+(comMotivo?'<th>Motivo</th>':'')+'</tr></thead><tbody>'
+      +L.linhas.map(function(x,i){ return '<tr><td>'+(i+1)+'</td><td>'+esc(x.nome)+'</td><td>'+esc(x.num)+'</td><td>'+esc(x.turma)+'</td><td class="n">'+(x.divida>0?mz(x.divida):'—')+'</td><td>'+esc(x.enc||'—')+'</td><td>'+esc(x.tel||'—')+'</td>'+(comMotivo?'<td>'+esc(x.motivo||'—')+'</td>':'')+'</tr>'; }).join('')
+      +'</tbody></table></body></html>';
+    var w=window.open('','_blank','width=980,height=900,scrollbars=yes,resizable=yes'); if(!w){ t('Permita janelas pop-up para imprimir'); return; }
+    w.document.write(html); w.document.close();
+  };
+
+  /* ── Parte 2: renovar um aluno para o ano seguinte ── */
+  window.__renovAbrir=function(localId){
+    if(fechado()){ t('Renovações e inscrições fechadas'); return; }
+    var a=alunoLocal(localId); if(!a) return;
+    var prox=proximoAno(), activo=window.__anoActivo(), c=classeDe(a)||0, d=dividaActual(a), aut=autorizacao(a);
+    var precisa=d.total>0 && !aut;
+    if(precisa && !podeAutorizar()){ t('Este aluno tem dívida: a renovação precisa de autorização do director ou do gestor'); return; }
+    var isento=!!(a.isencoes&&a.isencoes.matricula);
+    var old=document.getElementById('m-renovar'); if(old) old.remove();
+    window.__renovCtx={ id:a.id };
+    var opts=''; for(var k=7;k<=12;k++){ opts+='<option value="'+k+'"'+(k===((window.__renovRepetem||{})[a._dbId]?c:Math.min(c+1,12))?' selected':'')+'>'+k+'ª classe</option>'; }
+    var hoje=new Date().toISOString().slice(0,10);
+    var html='<div id="m-renovar" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99995;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:560px;max-width:100%;max-height:92vh;overflow:auto">'
+      +'<h3 style="margin:0 0 4px;font-size:17px">Renovar para '+prox+'</h3>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">'+esc(a.nome)+' · '+esc(a.num)+' · Turma '+esc(a.turma||'—')+' em '+activo+'</div>'
+      +(d.total>0?('<div class="ib-box ib-am" style="margin-bottom:12px"><i class="ti ti-alert-triangle"></i><span>Este aluno tem dívida de <strong>'+mz(d.total)+' MZM</strong> em '+activo+(d.meses.length?(' (propinas: '+d.meses.join(', ')+')'):'')+'. '
+          +(aut?('Renovação autorizada por <strong>'+esc(aut.por||'—')+'</strong>.'):'A renovação precisa da autorização do director ou do gestor.')+'</span></div>'):'')
+      +(precisa?'<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;margin-bottom:12px"><input type="checkbox" id="rn-autorizo"> Autorizo a renovação apesar da dívida</label>':'')
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px">'
+      +'<div><div class="fl">Classe em '+prox+'</div><select id="rn-classe" class="ffi" onchange="window.__renovValor()">'+opts+'</select></div>'
+      +'<div><div class="fl">Matrícula '+prox+'</div><div id="rn-valor" class="ffi" style="font-weight:800">—</div></div></div>'
+      +(isento?'<div class="ib-box ib-blue" style="margin-bottom:12px">Aluno isento de matrícula.</div>'
+        :('<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px"><input type="checkbox" id="rn-pagar" checked data-p="rn-pag" onchange="document.getElementById(this.dataset.p).style.display=this.checked?this.dataset.v:this.dataset.n" data-v="grid" data-n="none"> Registar agora o pagamento da matrícula</label>'
+          +'<div id="rn-pag" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px">'
+          +'<div><div class="fl">Canal</div><select id="rn-canal" class="ffi"><option value="numerario">Numerário (Caixa)</option><option value="pos">POS / Multibanco</option><option value="transferencia">Transferência Bancária</option><option value="deposito">Depósito Bancário</option></select></div>'
+          +'<div><div class="fl">Referência</div><input id="rn-ref" class="ffi" placeholder="Nº do talão / transferência"></div>'
+          +'<div><div class="fl">Data</div><input id="rn-data" type="date" class="ffi" value="'+hoje+'"></div></div>'))
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-g btn-sm" data-m="m-renovar" onclick="document.getElementById(this.dataset.m).remove()">Cancelar</button>'
+      +'<button id="rn-go" class="btn btn-p btn-sm" onclick="window.__renovConfirmar()"><i class="ti ti-check"></i> Confirmar renovação</button></div>'
+      +'</div></div>';
+    var w=document.createElement('div'); w.innerHTML=html; document.body.appendChild(w.firstChild);
+    window.__renovValor();
+  };
+  window.__renovValor=function(){
+    var el=document.getElementById('rn-valor'), sel=document.getElementById('rn-classe'); if(!el||!sel) return;
+    var a=alunoLocal((window.__renovCtx||{}).id);
+    el.textContent=(a&&a.isencoes&&a.isencoes.matricula)?'Isento':(mz(precoProx(parseInt(sel.value,10),'matricula'))+' MZM');
+  };
+  window.__renovConfirmar=async function(){
+    var a=alunoLocal((window.__renovCtx||{}).id); if(!a) return;
+    if(fechado()){ t('Renovações e inscrições fechadas'); return; }
+    if(PAPEIS.indexOf(papel())<0){ t('Sem permissão para renovar'); return; }
+    var prox=proximoAno(), idProx=window.__anoIdDe(prox); if(!idProx){ t('O ano '+prox+' não existe'); return; }
+    var d=dividaActual(a), aut=autorizacao(a), autorizarAgora=false;
+    if(d.total>0 && !aut){
+      if(!podeAutorizar()){ t('Este aluno tem dívida: a renovação precisa de autorização do director ou do gestor'); return; }
+      var ck=document.getElementById('rn-autorizo'); if(!ck||!ck.checked){ t('Marque «Autorizo a renovação apesar da dívida» para continuar'); return; }
+      autorizarAgora=true;
+    }
+    var classe=parseInt(document.getElementById('rn-classe').value,10);
+    var isento=!!(a.isencoes&&a.isencoes.matricula);
+    var pagar=!isento && document.getElementById('rn-pagar') && document.getElementById('rn-pagar').checked;
+    var canal=pagar?document.getElementById('rn-canal').value:null, ref=pagar?(document.getElementById('rn-ref').value||'').trim():'', data=pagar?(document.getElementById('rn-data').value||new Date().toISOString().slice(0,10)):null;
+    if(pagar && (canal==='transferencia'||canal==='deposito') && !ref){ t('Indique a referência da transferência ou do depósito'); return; }
+    var valor=precoProx(classe,'matricula');
+    var go=document.getElementById('rn-go'); if(go){ go.disabled=true; go.style.opacity=.5; }
+    var hojeD=new Date().toISOString().slice(0,10);
+    var aprovaJa=podeAutorizar(), agoraISO=new Date().toISOString();
+    var rm=await sb().from('matriculas').insert({ escola_id:escId(), aluno_id:a._dbId, ano_lectivo_id:idProx, classe:classe, turma_id:null,
+      estado:aprovaJa?'activa':'pendente', data_matricula:hojeD, registado_por:quem(),
+      aprovado_por:aprovaJa?quem():null, aprovado_em:aprovaJa?agoraISO:null }).select();
+    if(rm.error){ t(/duplicate|unique/i.test(rm.error.message)?('Este aluno já está renovado para '+prox):('Erro ao renovar: '+rm.error.message)); if(go){ go.disabled=false; go.style.opacity=1; } return; }
+    var msg=(aprovaJa?'Renovado para ':'Renovação registada para ')+prox+' ('+classe+'ª classe)'+(aprovaJa?'':' — aguarda aprovação do gestor ou do director');
+    if(autorizarAgora){ try{ await registarAutorizacao(a,d); msg+=' · com autorização'; }catch(e){ msg+=' — atenção: a autorização não foi gravada'; } }
+    if(pagar && valor>0){
+      var estado=(canal==='transferencia'||canal==='deposito')?'por_confirmar':'confirmado';
+      var row={ escola_id:escId(), pag_id:'MAT'+prox+'-'+a.num+'-'+Date.now().toString(36).toUpperCase(), aluno_num:a.num, aluno_nome:a.nome, turma_id:null,
+        meses:[], valor_total:valor, valor_base:valor, data_pag:data, canal:canal, ref:ref||null, obs:'Matrícula '+prox+' — renovação ('+classe+'ª classe)',
+        estado:estado, tipo:'matricula', categoria_id:'matricula', familia:'taxa_fixa', ano:prox, registado_por:quem(), registado_em:new Date().toISOString() };
+      var rp=await sb().from('pagamentos').insert(row).select();
+      if(rp.error){ msg+=' — atenção: o pagamento da matrícula não foi gravado ('+rp.error.message+')'; }
+      else {
+        msg+=estado==='confirmado'?' · matrícula paga':' · pagamento por confirmar';
+        if(estado==='confirmado' && typeof window.emitirReciboPag==='function'){
+          try{ await window.emitirReciboPag({ id:row.pag_id, alunoId:a.id, alunoNum:a.num, alunoNome:a.nome, turmaId:null, meses:[], valorTotal:valor, valorBase:valor, data:data, canal:canal, ref:ref||null,
+            obs:row.obs, estado:'confirmado', registadoPor:quem(), registadoEm:row.registado_em, familia:'taxa_fixa', tipo:'renovacao', categoriaNome:row.obs }); }catch(e){}
+        }
+      }
+    }
+    try{ if(typeof logAudit==='function') logAudit('RENOVACAO', a.nome+' ('+a.num+')', msg); }catch(e){}
+    var m=document.getElementById('m-renovar'); if(m) m.remove();
+    t(msg);
+    window.rRenovacoes();
+  };
+
+  /* ── Parte 3: inscrever um aluno novo para o ano seguinte (mesmos campos do formulário Novo Aluno) ── */
+  window.__renovNovo=function(candId){
+    if(fechado()){ t('Renovações e inscrições fechadas'); return; }
+    var c=candId?((window.__renovCands||[]).find(function(x){ return String(x.id)===String(candId); })||null):null;
+    var prox=proximoAno(), hoje=new Date().toISOString().slice(0,10);
+    var classeC=c?parseInt(String(c.classe_desejada||'').replace(/[^0-9]/g,''),10):0;
+    var gen=c&&c.genero?String(c.genero).charAt(0).toUpperCase():'';
+    var old=document.getElementById('m-inscrever'); if(old) old.remove();
+    window.__renovNovoCtx={ cand:c?c.id:null };
+    function campo(rot, inner){ return '<div><div class="fl">'+rot+'</div>'+inner+'</div>'; }
+    function inp(id, val, extra){ return '<input id="'+id+'" class="ffi" value="'+esc(val||'')+'"'+(extra||'')+'>'; }
+    var opts=''; for(var k=7;k<=12;k++){ opts+='<option value="'+k+'"'+(k===(classeC||7)?' selected':'')+'>'+k+'ª classe</option>'; }
+    var rels=['Pai','Mãe','Avô/Avó','Tio/Tia','Irmão/Irmã','Outro'];
+    var grid='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px';
+    var sec='font-size:12px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin:4px 0 6px';
+    var html='<div id="m-inscrever" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99995;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:640px;max-width:100%;max-height:92vh;overflow:auto">'
+      +'<h3 style="margin:0 0 4px;font-size:17px">Inscrever para '+prox+'</h3>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">'+(c?('Candidatura aprovada de '+esc(c.nome)):'Aluno novo')+' · a turma é atribuída depois</div>'
+      +'<div style="'+sec+'">Aluno</div><div style="'+grid+'">'
+      +campo('Nome completo *', inp('in-nome', c&&c.nome))
+      +campo('Data de nascimento *', inp('in-nasc', c&&c.nasc, ' type="date"'))
+      +campo('Género', '<select id="in-genero" class="ffi"><option value="M"'+(gen==='M'?' selected':'')+'>Masculino</option><option value="F"'+(gen==='F'?' selected':'')+'>Feminino</option></select>')
+      +campo('Nº do BI *', inp('in-bi', ''))
+      +'</div>'
+      +'<div style="'+sec+'">Encarregado</div><div style="'+grid+'">'
+      +campo('Nome *', inp('in-enome', c&&c.encarregado))
+      +campo('Parentesco', '<select id="in-erel" class="ffi">'+rels.map(function(r){ return '<option>'+r+'</option>'; }).join('')+'</select>')
+      +campo('Telefone *', inp('in-etel', c&&c.tel))
+      +campo('Email', inp('in-eemail', c&&c.email))
+      +'</div>'
+      +'<div style="'+sec+'">'+prox+'</div><div style="'+grid+'">'
+      +campo('Classe em '+prox, '<select id="in-classe" class="ffi" onchange="window.__renovNovoValores()">'+opts+'</select>')
+      +campo('Inscrição', '<div id="in-insc" class="ffi" style="font-weight:800">—</div>')
+      +campo('Matrícula', '<div id="in-mat" class="ffi" style="font-weight:800">—</div>')
+      +'</div>'
+      +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px"><input type="checkbox" id="in-pagar" checked data-p="in-pag" data-v="grid" data-n="none" onchange="document.getElementById(this.dataset.p).style.display=this.checked?this.dataset.v:this.dataset.n"> Registar agora o pagamento <span id="in-total" style="font-weight:800"></span></label>'
+      +'<div id="in-pag" style="'+grid+'">'
+      +campo('Canal', '<select id="in-canal" class="ffi"><option value="numerario">Numerário (Caixa)</option><option value="pos">POS / Multibanco</option><option value="transferencia">Transferência Bancária</option><option value="deposito">Depósito Bancário</option></select>')
+      +campo('Referência', '<input id="in-ref" class="ffi" placeholder="Nº do talão / transferência">')
+      +campo('Data', '<input id="in-data" type="date" class="ffi" value="'+hoje+'">')
+      +'</div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-g btn-sm" data-m="m-inscrever" onclick="document.getElementById(this.dataset.m).remove()">Cancelar</button>'
+      +'<button id="in-go" class="btn btn-p btn-sm" onclick="window.__renovNovoConfirmar()"><i class="ti ti-check"></i> Confirmar inscrição</button></div>'
+      +'</div></div>';
+    var w=document.createElement('div'); w.innerHTML=html; document.body.appendChild(w.firstChild);
+    window.__renovNovoValores();
+  };
+  window.__renovNovoValores=function(){
+    var sel=document.getElementById('in-classe'); if(!sel) return;
+    var k=parseInt(sel.value,10), i=precoProx(k,'inscricao'), m=precoProx(k,'matricula');
+    document.getElementById('in-insc').textContent=mz(i)+' MZM';
+    document.getElementById('in-mat').textContent=mz(m)+' MZM';
+    document.getElementById('in-total').textContent='(inscrição + matrícula = '+mz(i+m)+' MZM)';
+  };
+  window.__renovNovoConfirmar=async function(){
+    if(fechado()){ t('Renovações e inscrições fechadas'); return; }
+    if(PAPEIS.indexOf(papel())<0){ t('Sem permissão para inscrever'); return; }
+    function v(id){ var el=document.getElementById(id); return el?String(el.value||'').trim():''; }
+    var nome=v('in-nome'), nasc=v('in-nasc'), genero=v('in-genero')||'M', bi=v('in-bi'), enome=v('in-enome'), erel=v('in-erel'), etel=v('in-etel'), eemail=v('in-eemail');
+    if(!nome){ t('Nome do aluno obrigatório'); return; }
+    if(!nasc){ t('Data de nascimento obrigatória'); return; }
+    if(!bi){ t('Nº de BI obrigatório'); return; }
+    if(!enome){ t('Nome do encarregado obrigatório'); return; }
+    if(!etel){ t('Telefone do encarregado obrigatório'); return; }
+    var prox=proximoAno(), idProx=window.__anoIdDe(prox); if(!idProx){ t('O ano '+prox+' não existe'); return; }
+    var classe=parseInt(v('in-classe'),10), insc=precoProx(classe,'inscricao'), mat=precoProx(classe,'matricula');
+    var pagar=!!(document.getElementById('in-pagar')&&document.getElementById('in-pagar').checked);
+    var canal=pagar?v('in-canal'):null, ref=pagar?v('in-ref'):'', data=pagar?(v('in-data')||new Date().toISOString().slice(0,10)):null;
+    if(pagar && (canal==='transferencia'||canal==='deposito') && !ref){ t('Indique a referência da transferência ou do depósito'); return; }
+    var go=document.getElementById('in-go'); if(go){ go.disabled=true; go.style.opacity=.5; }
+    function falha(m){ t(m); if(go){ go.disabled=false; go.style.opacity=1; } }
+    try{
+      var dup=await sb().from('alunos').select('numero_aluno,nome_completo').eq('escola_id',escId()).eq('bi_numero',bi).limit(1);
+      if(dup.data&&dup.data.length) return falha('Já existe um aluno com este BI: '+dup.data[0].nome_completo+' ('+dup.data[0].numero_aluno+')');
+      var ult=await sb().from('alunos').select('numero_aluno').eq('escola_id',escId()).like('numero_aluno','ALU%').order('numero_aluno',{ascending:false}).limit(1);
+      if(ult.error) return falha('Não foi possível obter o número do aluno: '+ult.error.message);
+      var nUlt=(ult.data&&ult.data[0])?(parseInt(String(ult.data[0].numero_aluno).replace(/[^0-9]/g,''),10)||0):0;
+      var num='ALU'+String(nUlt+1).padStart(6,'0');
+      var encId=null;
+      try{
+        var ue=await sb().from('encarregados').select('num').eq('escola_id',escId()).like('num','ENC%').order('num',{ascending:false}).limit(1);
+        var eUlt=(ue.data&&ue.data[0])?(parseInt(String(ue.data[0].num).replace(/[^0-9]/g,''),10)||0):0;
+        var ei=await sb().from('encarregados').insert({ escola_id:escId(), num:'ENC'+String(eUlt+1).padStart(6,'0'), nome:enome, tel:etel||null, rel:erel||'Familiar' }).select().single();
+        if(!ei.error&&ei.data) encId=ei.data.id;
+      }catch(e){}
+      var row={ escola_id:escId(), numero_aluno:num, nome_completo:nome, data_nascimento:nasc, genero:genero, bi_numero:bi,
+        encarregado_nome:enome, encarregado_tel:etel||null, encarregado_email:eemail||null, ativo:true };
+      if(encId) row.encarregado_id=encId;
+      var ra=await sb().from('alunos').insert(row).select().single();
+      if(ra.error) return falha('Não foi guardado: '+ra.error.message);
+      var hojeD=new Date().toISOString().slice(0,10);
+      var aprovaJa=podeAutorizar(), agoraISO=new Date().toISOString();
+      var rm=await sb().from('matriculas').insert({ escola_id:escId(), aluno_id:ra.data.id, ano_lectivo_id:idProx, classe:classe, turma_id:null,
+        estado:aprovaJa?'activa':'pendente', data_matricula:hojeD, registado_por:quem(),
+        aprovado_por:aprovaJa?quem():null, aprovado_em:aprovaJa?agoraISO:null });
+      if(rm.error){
+        /* sem matrícula o aluno apareceria no ano em curso: retirar */
+        var del=await sb().from('alunos').delete().eq('id',ra.data.id);
+        if(del.error){ try{ await sb().from('alunos').update({ ativo:false }).eq('id',ra.data.id); }catch(e){} }
+        return falha('Não foi guardado: '+rm.error.message);
+      }
+      var msg=nome+(aprovaJa?' inscrito para ':' registado para ')+prox+' · Nº '+num+(aprovaJa?'':' — aguarda aprovação do gestor ou do director');
+      if(pagar){
+        var estado=(canal==='transferencia'||canal==='deposito')?'por_confirmar':'confirmado', suf=Date.now().toString(36).toUpperCase(), agora=new Date().toISOString(), rows=[];
+        [['inscricao',insc,'INS','Inscrição'],['matricula',mat,'MAT','Matrícula']].forEach(function(x){
+          if(x[1]>0) rows.push({ escola_id:escId(), pag_id:x[2]+prox+'-'+num+'-'+suf, aluno_num:num, aluno_nome:nome, turma_id:null, meses:[], valor_total:x[1], valor_base:x[1],
+            data_pag:data, canal:canal, ref:ref||null, obs:x[3]+' '+prox+' — novo aluno ('+classe+'ª classe)', estado:estado, tipo:x[0], categoria_id:x[0], familia:'taxa_fixa', ano:prox, registado_por:quem(), registado_em:agora });
+        });
+        if(rows.length){
+          var rp=await sb().from('pagamentos').insert(rows).select();
+          if(rp.error) msg+=' — atenção: o pagamento não foi gravado ('+rp.error.message+')';
+          else {
+            msg+=estado==='confirmado'?' · inscrição e matrícula pagas':' · pagamento por confirmar';
+            if(estado==='confirmado' && typeof window.emitirReciboPag==='function'){
+              for(var ri=0; ri<rows.length; ri++){ var r=rows[ri];
+                try{ await window.emitirReciboPag({ id:r.pag_id, alunoId:null, alunoNum:num, alunoNome:nome, turmaId:null, meses:[], valorTotal:r.valor_total, valorBase:r.valor_base, data:data, canal:canal, ref:ref||null,
+                  obs:r.obs, estado:'confirmado', registadoPor:quem(), registadoEm:agora, familia:'taxa_fixa', tipo:r.tipo, categoriaId:r.tipo, categoriaNome:r.obs }); }catch(e){}
+              }
+            }
+          }
+        }
+      }
+      /* contas do aluno e do encarregado: só quando a inscrição é aprovada */
+      var contas=[];
+      if(aprovaJa){ contas=await criarContasDoAluno(ra.data.id, encId); }
+      var candId=(window.__renovNovoCtx||{}).cand;
+      if(candId){
+        try{ await sb().from('candidaturas').update({ estado:'matriculado', ano:prox }).eq('id',candId); }catch(e){}
+        try{ var cm=(typeof CANDIDATURAS!=='undefined'?CANDIDATURAS:[]).find(function(x){ return String(x.id)===String(candId); }); if(cm) cm.estado='matriculado'; }catch(e){}
+      }
+      try{ if(typeof logAudit==='function') logAudit('INSCRICAO', nome+' ('+num+')', msg); }catch(e){}
+      var mm=document.getElementById('m-inscrever'); if(mm) mm.remove();
+      t(msg);
+      if(contas.length) mostrarContas(contas, nome);
+      window.__renovTab='novos';
+      window.rRenovacoes();
+    }catch(e){ falha('Erro ao inscrever: '+(e&&e.message||e)); }
+  };
+
+  /* ── Parte 4a: pagar inscrição/matrícula do ano seguinte (novos inscritos e perfil financeiro) ── */
+  var ROT_TAXA={ inscricao:'Inscrição', matricula:'Matrícula' };
+  window.__renovPagarAbrir=function(num){
+    var c=(window.__renovPagarCtx||{})[num]; if(!c||!c.tipos||!c.tipos.length) return;
+    if(PAPEIS.indexOf(papel())<0){ t('Sem permissão para registar pagamentos'); return; }
+    var prox=proximoAno(), hoje=new Date().toISOString().slice(0,10);
+    var old=document.getElementById('m-renov-pagar'); if(old) old.remove();
+    window.__renovPagarAtual=num;
+    var linhas=c.tipos.map(function(tp){ var v=precoProx(c.classe,tp);
+      return '<label style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--b);font-size:13px"><span><input type="checkbox" class="rp-l" data-t="'+tp+'" data-v="'+v+'" checked onchange="window.__renovPagarTotal()"> '+ROT_TAXA[tp]+' '+prox+'</span><strong>'+mz(v)+' MZM</strong></label>'; }).join('');
+    var html='<div id="m-renov-pagar" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99995;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:520px;max-width:100%;max-height:92vh;overflow:auto">'
+      +'<h3 style="margin:0 0 4px;font-size:17px">Registar pagamento '+prox+'</h3>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">'+esc(c.nome)+' · '+esc(c.num)+' · '+(c.classe?(c.classe+'ª classe em '+prox):'')+'</div>'
+      +linhas
+      +'<div id="rp-total" style="text-align:right;font-weight:800;margin:10px 0 12px"></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">'
+      +'<div><div class="fl">Canal</div><select id="rp-canal" class="ffi"><option value="numerario">Numerário (Caixa)</option><option value="pos">POS / Multibanco</option><option value="transferencia">Transferência Bancária</option><option value="deposito">Depósito Bancário</option></select></div>'
+      +'<div><div class="fl">Referência</div><input id="rp-ref" class="ffi" placeholder="Nº do talão / transferência"></div>'
+      +'<div><div class="fl">Data</div><input id="rp-data" type="date" class="ffi" value="'+hoje+'"></div></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-g btn-sm" data-m="m-renov-pagar" onclick="document.getElementById(this.dataset.m).remove()">Cancelar</button>'
+      +'<button id="rp-go" class="btn btn-p btn-sm" onclick="window.__renovPagarConfirmar()"><i class="ti ti-check"></i> Registar pagamento</button></div>'
+      +'</div></div>';
+    var w=document.createElement('div'); w.innerHTML=html; document.body.appendChild(w.firstChild);
+    window.__renovPagarTotal();
+  };
+  window.__renovPagarTotal=function(){
+    var el=document.getElementById('rp-total'); if(!el) return;
+    var tot=Array.prototype.slice.call(document.querySelectorAll('#m-renov-pagar .rp-l')).filter(function(x){ return x.checked; }).reduce(function(s,x){ return s+(Number(x.dataset.v)||0); },0);
+    el.textContent='Total: '+mz(tot)+' MZM';
+  };
+  window.__renovPagarConfirmar=async function(){
+    var num=window.__renovPagarAtual, c=(window.__renovPagarCtx||{})[num]; if(!c) return;
+    if(PAPEIS.indexOf(papel())<0){ t('Sem permissão para registar pagamentos'); return; }
+    var sel=Array.prototype.slice.call(document.querySelectorAll('#m-renov-pagar .rp-l')).filter(function(x){ return x.checked; });
+    if(!sel.length){ t('Seleccione pelo menos um item'); return; }
+    var canal=document.getElementById('rp-canal').value, ref=(document.getElementById('rp-ref').value||'').trim(), data=document.getElementById('rp-data').value||new Date().toISOString().slice(0,10);
+    if((canal==='transferencia'||canal==='deposito') && !ref){ t('Indique a referência da transferência ou do depósito'); return; }
+    var prox=proximoAno(), estado=(canal==='transferencia'||canal==='deposito')?'por_confirmar':'confirmado';
+    var go=document.getElementById('rp-go'); if(go){ go.disabled=true; go.style.opacity=.5; }
+    function falha(m){ t(m); if(go){ go.disabled=false; go.style.opacity=1; } }
+    var tipos=sel.map(function(x){ return x.dataset.t; });
+    var ja=await sb().from('pagamentos').select('tipo').eq('escola_id',escId()).eq('aluno_num',c.num).eq('ano',prox).in('tipo',tipos).neq('estado','estornado');
+    if(ja.error) return falha('Erro: '+ja.error.message);
+    if((ja.data||[]).length) return falha('Já existe pagamento de '+(ja.data||[]).map(function(x){ return ROT_TAXA[x.tipo]||x.tipo; }).join(' e ')+' '+prox+' para este aluno');
+    var suf=Date.now().toString(36).toUpperCase(), agora=new Date().toISOString(), quem=(typeof curUser!=='undefined'&&curUser&&curUser.nome)||'';
+    var rows=sel.map(function(x){ var tp=x.dataset.t, v=Number(x.dataset.v)||0;
+      return { escola_id:escId(), pag_id:(tp==='inscricao'?'INS':'MAT')+prox+'-'+c.num+'-'+suf, aluno_num:c.num, aluno_nome:c.nome, turma_id:null, meses:[], valor_total:v, valor_base:v,
+        data_pag:data, canal:canal, ref:ref||null, obs:ROT_TAXA[tp]+' '+prox+(c.classe?(' ('+c.classe+'ª classe)'):''), estado:estado, tipo:tp, categoria_id:tp, familia:'taxa_fixa', ano:prox, registado_por:quem, registado_em:agora }; });
+    var ins=await sb().from('pagamentos').insert(rows).select();
+    if(ins.error) return falha('Erro ao registar: '+ins.error.message);
+    var m=document.getElementById('m-renov-pagar'); if(m) m.remove();
+    if(estado==='confirmado' && typeof window.emitirReciboPag==='function'){
+      for(var i=0;i<rows.length;i++){ var r=rows[i];
+        try{ await window.emitirReciboPag({ id:r.pag_id, alunoId:c.alunoId, alunoNum:c.num, alunoNome:c.nome, turmaId:null, meses:[], valorTotal:r.valor_total, valorBase:r.valor_base, data:data, canal:canal, ref:ref||null,
+          obs:r.obs, estado:'confirmado', registadoPor:quem, registadoEm:agora, familia:'taxa_fixa', tipo:r.tipo, categoriaId:r.tipo, categoriaNome:r.obs }); }catch(e){} }
+    }
+    try{ if(typeof logAudit==='function') logAudit('PAGAMENTO_PROXIMO_ANO', c.nome+' ('+c.num+')', rows.map(function(r){ return r.obs+': '+mz(r.valor_total)+' MZM'; }).join(' | ')+(estado==='confirmado'?'':' · por confirmar')); }catch(e){}
+    t(estado==='confirmado'?'Pagamento '+prox+' registado':'Pagamento registado — fica por confirmar na Reconciliação');
+    if(c.origem==='historico' && typeof window.__renderAnosFin==='function') window.__renderAnosFin(c.alunoId);
+    else window.rRenovacoes();
+  };
+
+  /* ── Aprovação da direcção: a inscrição/renovação só conta depois disto ── */
+  async function criarContasDoAluno(alunoDbId, encDbId){
+    var out=[];
+    try{
+      var ra=await sb().functions.invoke('gerir-utilizador',{ body:{ action:'criar-conta-aluno', aluno_id:alunoDbId } });
+      var da=ra&&ra.data; if(da&&da.ok) out.push({ tipo:'Aluno', nome:da.nome, email:da.email, password:da.password });
+    }catch(e){ console.warn('[conta do aluno]', e&&e.message); }
+    if(encDbId){
+      try{
+        var re=await sb().functions.invoke('gerir-utilizador',{ body:{ action:'criar-conta-encarregado', encarregado_id:encDbId } });
+        var de=re&&re.data; if(de&&de.ok) out.push({ tipo:'Encarregado', nome:de.nome, email:de.email, password:de.password });
+      }catch(e){ console.warn('[conta do encarregado]', e&&e.message); }
+    }
+    return out;
+  }
+  window.__aprovarMat=async function(id){
+    if(!podeAutorizar()){ t('Só o gestor ou o director aprovam'); return; }
+    var m=(window.__renovPend||{})[id]; if(!m) return;
+    var al=m.alunos||{}, NL=String.fromCharCode(10);
+    var faltam=[], aviso='';
+    var contasAviso=m._novo?(NL+NL+'Ao aprovar são criadas as contas do aluno e do encarregado.'):'';
+    if(!confirm('Aprovar a '+(m._novo?'inscrição':'renovação')+' de '+(al.nome_completo||'')+' para '+proximoAno()+'?'+aviso+contasAviso)) return;
+    var r=await sb().from('matriculas').update({ estado:'activa', aprovado_por:quem(), aprovado_em:new Date().toISOString() }).eq('id',id).select('id');
+    if(r.error){ t('Erro ao aprovar: '+r.error.message); return; }
+    var contas=m._novo?await criarContasDoAluno(m.aluno_id, al.encarregado_id):[];
+    try{ if(typeof logAudit==='function') logAudit('APROVACAO_MATRICULA', (al.nome_completo||'')+' ('+(al.numero_aluno||'')+')',
+      (m._novo?'Inscrição':'Renovação')+' para '+proximoAno()+' aprovada'+(faltam.length?(' · dossier incompleto ('+faltam.length+' por entregar)'):'')+(contas.length?(' · '+contas.length+' conta(s) criada(s)'):'')); }catch(e){}
+    t('Aprovado'+(contas.length?(' · '+contas.length+' conta(s) criada(s)'):''));
+    if(contas.length) mostrarContas(contas, al.nome_completo||'');
+    window.rRenovacoes();
+  };
+  window.__rejeitarMat=async function(id){
+    if(!podeAutorizar()){ t('Só o gestor ou o director rejeitam'); return; }
+    var m=(window.__renovPend||{})[id]; if(!m) return;
+    var al=m.alunos||{}, NL=String.fromCharCode(10);
+    var pg=(window.__renovPagos||{})[al.numero_aluno]||{};
+    var pagos=['inscricao','matricula'].filter(function(tp){ return pg[tp]; }).map(function(tp){ return tp==='inscricao'?'inscrição':'matrícula'; });
+    var aviso=pagos.length?(NL+NL+'Atenção: já há '+pagos.join(' e ')+' registados. O estorno ou a devolução tem de ser tratado na tesouraria.'):'';
+    var motivo=prompt('Motivo da rejeição de '+(al.nome_completo||'')+':'+aviso, '');
+    if(motivo===null) return;
+    motivo=String(motivo||'').trim()||'Sem motivo indicado';
+    var r=await sb().from('matriculas').update({ estado:'rejeitada', motivo_saida:motivo, data_saida:new Date().toISOString().slice(0,10),
+      aprovado_por:quem(), aprovado_em:new Date().toISOString() }).eq('id',id).select('id');
+    if(r.error){ t('Erro ao rejeitar: '+r.error.message); return; }
+    if(m._novo){ try{ await sb().from('alunos').update({ ativo:false }).eq('id',m.aluno_id); }catch(e){} }
+    try{ if(typeof logAudit==='function') logAudit('REJEICAO_MATRICULA', (al.nome_completo||'')+' ('+(al.numero_aluno||'')+')',
+      (m._novo?'Inscrição':'Renovação')+' para '+proximoAno()+' rejeitada — '+motivo+(pagos.length?(' · atenção: '+pagos.join(' e ')+' por estornar'):'')); }catch(e){}
+    t('Rejeitado'+(pagos.length?(' · há pagamentos por estornar'):''));
+    window.rRenovacoes();
+  };
+
+  function mostrarContas(lista, alunoNome){
+    var old=document.getElementById('m-conta-enc'); if(old) old.remove();
+    var linhas=(lista||[]).map(function(c){
+      return '<div class="ib-box ib-blue" style="margin-bottom:8px"><span><strong>'+esc(c.tipo)+'</strong> · '+esc(c.nome||'')+'<br>Entrada: <strong>'+esc(c.email||'')+'</strong><br>Palavra-passe: <strong>'+esc(c.password||'')+'</strong></span></div>';
+    }).join('');
+    var texto=(lista||[]).map(function(c){ return c.tipo+': '+(c.email||'')+' / '+(c.password||''); }).join(' | ');
+    var html='<div id="m-conta-enc" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99996;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
+      +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:480px;max-width:100%;max-height:92vh;overflow:auto">'
+      +'<h3 style="margin:0 0 4px;font-size:17px">Contas criadas</h3>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Inscrição de '+esc(alunoNome||'')+' aprovada. Entregue estes dados à família.</div>'
+      +linhas
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-g btn-sm" data-t="'+esc(texto)+'" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.dataset.t)"><i class="ti ti-copy"></i> Copiar</button>'
+      +'<button class="btn btn-p btn-sm" data-m="m-conta-enc" onclick="document.getElementById(this.dataset.m).remove()">Fechar</button></div></div></div>';
+    var w=document.createElement('div'); w.innerHTML=html; document.body.appendChild(w.firstChild);
+  }
+  window.__renovAbrirFechar=function(){
+    if(['gestor','director'].indexOf(papel())<0){ t('Só o gestor ou o director podem abrir ou fechar'); return; }
+    var fech=fechado();
+    if(!confirm((fech?'Abrir':'Fechar')+' as renovações e inscrições para '+proximoAno()+'?')) return;
+    if(!CONFIG.renovacoes||typeof CONFIG.renovacoes!=='object') CONFIG.renovacoes={};
+    CONFIG.renovacoes.fechado=!fech;
+    CONFIG.renovacoes.alteradoPor=(typeof curUser!=='undefined'&&curUser&&curUser.nome)||'';
+    CONFIG.renovacoes.alteradoEm=new Date().toISOString();
+    persist();
+    t('Renovações e inscrições '+(fech?'abertas':'fechadas'));
+    window.rRenovacoes();
+  };
+
+  /* ── Navegação ── */
+  try{ if(typeof VM!=='undefined') VM.renovacoes='v-renovacoes'; }catch(e){}
+  try{ if(typeof RENDER_MAP!=='undefined') RENDER_MAP.renovacoes=function(){ window.rRenovacoes(); }; }catch(e){}
+  /* v6.237 — o dinheiro só se vê com autorização: gestor, director e gestor financeiro vêem tudo;
+     o secretário só o que precisa para registar e cobrar; os restantes (direcção pedagógica,
+     coordenação de ciclo, professores, alunos e encarregados) não entram de todo. */
+  var ECRAS_FIN=['fin-dashboard','dash-entradas','dash-saidas','pagamentos','propinas','propaluno','emolumentos','despesas','despesas-cat',
+    'caixa-semanal','folha-salarios','dividas','multas','reconciliacao','bolsas','relatorio-fin','relatorio-actividades','extracto-escola',
+    'balancete','fluxo-caixa','orcamento','previsao-receita','aging-report','renovacoes'];
+  var FIN_SECRETARIO=['pagamentos','propinas','propaluno','emolumentos','despesas','dividas','multas','extracto-escola','renovacoes'];
+  var VEDADO_SECRETARIO=['gestao-ano','audit-trail'];
+  function podeFinanceiro(id){
+    var r=papel();
+    if(['gestor','director','gestor-financeiro'].indexOf(r)>=0) return true;
+    if(r==='secretario') return FIN_SECRETARIO.indexOf(id)>=0;
+    return false;
+  }
+  window.__podeFinanceiro=podeFinanceiro;
+  var _prevGo=window.go;
+  window.go=function(id){
+    if(ECRAS_FIN.indexOf(id)>=0 && !podeFinanceiro(id)){ t('Acesso restrito à direcção e à gestão financeira'); return; }
+    if(papel()==='secretario' && VEDADO_SECRETARIO.indexOf(id)>=0){ t('Acesso restrito à direcção e à gestão financeira'); return; }
+    if(id==='renovacoes'){
+      try{
+        document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+        document.querySelectorAll('.si,.ssi').forEach(function(s){ s.classList.remove('on'); });
+        var ve=document.getElementById('v-renovacoes'); if(ve) ve.classList.add('on');
+        ['si-renovacoes','si-r-renovacoes','fg-renovacoes'].forEach(function(k){ var se=document.getElementById(k); if(se) se.classList.add('on'); });
+        window.__viewActual='renovacoes';
+        window.rRenovacoes();
+      }catch(e){ console.warn('[renovações]', e&&e.message); }
+      return;
+    }
+    var rr=_prevGo.apply(this, arguments);
+    return rr;
+  };
+  /* A ficha financeira do aluno abre-se por chamada directa: guardar também aí. */
+  try{
+    if(typeof window.openPA==='function' && !window.__paGuard237){
+      window.__paGuard237=true;
+      var _openPA=window.openPA;
+      window.openPA=function(){ if(!podeFinanceiro('propaluno')){ t('Acesso restrito à direcção e à gestão financeira'); return; } return _openPA.apply(this, arguments); };
+      try{ openPA=window.openPA; }catch(e){}
+    }
+  }catch(e){}
+})();
+</script>
 </script>
 </body>
 </html>
