@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.210</span>
+    <span class="logo-ver">v6.211</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1033,7 +1033,7 @@ window.__escA = function (s) {
 <!-- ════ PROPINA ALUNO DETALHE ════ -->
 <div class="view" id="v-propaluno">
   <div class="ph"><div><div class="bc"><span style="cursor:pointer;color:var(--t2)" onclick="propBack()">Propinas</span><span>›</span><span class="cr" id="pa-bc">—</span></div><div class="ph-title" id="pa-titulo">—</div></div>
-    <div class="ph-right"><button class="btn btn-g btn-sm" onclick="propBack()"><i class="ti ti-arrow-left"></i> Voltar</button><button class="btn btn-gr btn-sm" onclick="abrirRegistarPagamento(curAlunoId)"><i class="ti ti-check"></i> Registar Pag.</button><button class="btn btn-p btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i> Gerar Factura</button></div>
+    <div class="ph-right"><button class="btn btn-g btn-sm" onclick="propBack()"><i class="ti ti-arrow-left"></i> Voltar</button><button class="btn btn-g btn-sm" onclick="window.__paExtracto()"><i class="ti ti-file-invoice"></i> Extracto anual</button><button class="btn btn-g btn-sm" onclick="window.__paDeclaracao()"><i class="ti ti-file-certificate"></i> Declaração de dívida</button><button class="btn btn-gr btn-sm" onclick="abrirRegistarPagamento(curAlunoId)"><i class="ti ti-check"></i> Registar Pag.</button><button class="btn btn-p btn-sm" onclick="gerarFactura()"><i class="ti ti-file-invoice"></i> Gerar Factura</button></div>
   </div>
   <div class="profile-hero" id="pa-hero"></div>
 <div id="pa-insc-mat"></div>
@@ -5734,7 +5734,7 @@ function openPA(id){
   const pago=a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
   const div=a.propinas.filter(p=>{var e=(window.__estadoPropina?window.__estadoPropina(p):p.st);return e==='divida';}).reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0);
   document.getElementById('pa-hero').innerHTML=`
-    <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><div style="width:56px;height:56px;border-radius:14px;background:${c}18;color:${c};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0">${ini(a.nome)}</div><div><div style="font-size:18px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px">${a.nome}${(window.__propCompleto&&window.__propCompleto(a))?`<span class="badge bok" style="font-size:10px"><i class="ti ti-circle-check"></i> Propina Completa</span>`:''}</div><div style="font-size:11px;color:var(--t2);font-family:var(--fm)">${a.num} · Turma ${a.turma} · Enc: ${a.enome} (${a.enc})</div></div></div>
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><div style="width:56px;height:56px;border-radius:14px;background:${c}18;color:${c};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0">${ini(a.nome)}</div><div><div style="font-size:18px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px">${a.nome}${(window.__propCompleto&&window.__propCompleto(a))?`<span class="badge bok" style="font-size:10px"><i class="ti ti-circle-check"></i> Propina Completa</span>`:''}</div><div style="font-size:11px;color:var(--t2);font-family:var(--fm)">${a.num} · Turma ${a.turma} · Enc: ${a.enome||a.enc||a.encTel||'—'}${(a.enome&&a.enc)?(' ('+a.enc+')'):''}</div></div></div>
     <div class="pkpis"><div class="pkpi"><div class="pkpiv" style="color:var(--a)">${(window.__propAnual?window.__propAnual(a):a.propinas.slice(0,11).reduce((s,p)=>s+(p.v||0),0)).toLocaleString()}</div><div class="pkpil">Total Ano · 11 meses (MZM)</div></div><div class="pkpi"><div class="pkpiv" style="color:var(--g)">${pago.toLocaleString()}</div><div class="pkpil">Total Pago</div></div><div class="pkpi"><div class="pkpiv" style="color:${(window.__propFalta&&window.__propFalta(a)>0)?'var(--r)':'var(--g)'}">${(window.__propFalta?window.__propFalta(a):0).toLocaleString()}</div><div class="pkpil">Falta p/ Completar</div></div><div class="pkpi"><div class="pkpiv" style="color:var(--am)">${a.propinas.filter(p=>p.st==='multa').length}</div><div class="pkpil">Multas</div></div></div>`;
   
   const _ims=document.getElementById('pa-insc-mat');if(_ims)_ims.innerHTML=rInscricaoMatricula(a);
@@ -31475,6 +31475,7 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
       {id:'avulsos',  label:'Avulsos / Servicos', icon:'ti-receipt'},
       {id:'balancete',label:'Balancete', icon:'ti-report-money'}
     ];
+    try{ if(typeof curRole!=='undefined' && curRole==='secretario'){ tabs=tabs.filter(function(tb){ return tb.id!=='balancete'; }); if(_pagTab==='balancete') _pagTab='propinas'; } }catch(e){}
     var tabBtns = tabs.map(function(tb){
       var on = tb.id===_pagTab;
       return '<button onclick="pagTab(\''+tb.id+'\')" style="padding:9px 16px;border:none;border-bottom:2px solid '+(on?'var(--a)':'transparent')+';background:transparent;color:'+(on?'var(--a)':'var(--t2)')+';font-weight:'+(on?'700':'500')+';cursor:pointer;font-size:13px"><i class="ti '+tb.icon+'"></i> '+tb.label+'</button>';
@@ -32503,6 +32504,25 @@ window.renderBalanceteRange=function(mIni,mFim){
       {id:'fg-faltasprof', lbl:'Assiduidade Professores', ic:'ti-clipboard-list', go:'relat-faltas-prof'}
     ]}
   ];
+  /* v6.211 — o secretário regista receitas e despesas e faz cobrança: sem relatórios,
+     sem folha de salários, sem dashboards, caixa, reconciliação e bolsas.
+     O «Extracto da Escola» (historial por aluno) fica na Cobrança como «Extracto de Alunos». */
+  var GRUPOS_SECRETARIO=[
+    {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
+      {id:'fg-pagamentos', lbl:'Propinas & Pagamentos', ic:'ti-credit-card', go:'pagamentos'},
+      {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'}
+    ]},
+    {id:'fg-despesas', lbl:'Despesas', ic:'ti-logout-2', itens:[
+      {id:'fg-desp', lbl:'Despesas', ic:'ti-cash', go:'despesas'}
+    ]},
+    {id:'fg-cobranca', lbl:'Cobrança', ic:'ti-alert-circle', itens:[
+      {id:'fg-dividas', lbl:'Dívidas', ic:'ti-report-money', go:'dividas'},
+      {id:'fg-multas', lbl:'Multas de Atraso', ic:'ti-cash-off', go:'multas'},
+      {id:'fg-extracto', lbl:'Extracto de Alunos', ic:'ti-receipt', go:'extracto-escola'}
+    ]}
+  ];
+  function papelActual(){ try{ return curRole; }catch(e){ return ''; } }
+  function gruposDoPapel(){ return papelActual()==='secretario' ? GRUPOS_SECRETARIO : GRUPOS; }
   var ESCONDER=['si-pagamentos','si-propinas','si-emolumentos','si-despesas','si-despesas-cat','si-folha-salarios','si-dividas','si-multas','si-fluxo-caixa','si-orcamento','si-previsao-receita','si-relatorio-fin','si-relatorio-actividades','si-balancete','si-bolsas-v39','si-relat-faltas-prof','v26-mae-despesas'];
   var LEGADO=['v11-mae-entradas','si-mae-entradas','si-mae-despesas','si-mae-receitas','si-mae-cobranca','si-mae-relatorios'];
   function irGo(id){ return function(){ try{ if(typeof window.go==='function') window.go(id); }catch(e){} }; }
@@ -32530,10 +32550,15 @@ window.renderBalanceteRange=function(mIni,mFim){
     var sec=$(SECID); if(!sec) return;
     LEGADO.forEach(function(id){ var e=$(id); if(e && e.parentNode) e.parentNode.removeChild(e); });
     ESCONDER.forEach(function(id){ var e=$(id); if(e) e.style.display='none'; });
-    if($('fg-receitas')) return;
     var dash=$('si-fin-dashboard');
-    var anchor=(dash && dash.parentNode===sec) ? dash.nextSibling : sec.firstChild;
-    GRUPOS.forEach(function(g){
+    if(dash) dash.style.display=(papelActual()==='secretario')?'none':'';
+    if($('fg-receitas')){
+      if(window.__finGrpPapel===papelActual()) return;
+      ['fg-receitas','fg-despesas','fg-cobranca','fg-relatorios'].forEach(function(id){ var e=$(id); if(e&&e.parentNode) e.parentNode.removeChild(e); });
+    }
+    window.__finGrpPapel=papelActual();
+    var anchor=(dash && dash.parentNode===sec && dash.style.display!=='none') ? dash.nextSibling : sec.firstChild;
+    gruposDoPapel().forEach(function(g){
       var el=buildGrupo(g);
       if(anchor) sec.insertBefore(el, anchor); else sec.appendChild(el);
     });
@@ -46457,6 +46482,198 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   if(typeof _oa==='function'){
     window.openAluno=function(id){ var r=_oa.apply(this, arguments); setTimeout(function(){ try{ window.__encFichaRender(id); }catch(e){} },160); return r; };
   }
+})();
+</script>
+<script>
+/* ═══ v6.211 — TRABALHO DO SECRETÁRIO ════════════════════════════════════
+   · pesquisa do topo com os dois perfis do aluno (académico e financeiro);
+   · perfil financeiro emite extracto anual e declaração de dívida;
+   · ecrãs de dinheiro só para quem é da área;
+   · cada utilizador entra no painel do seu perfil. ══════════════════════ */
+(function(){
+  if(window.__sec211) return; window.__sec211=true;
+  var FIN=['gestor','director','gestor-financeiro','secretario'];
+  var ECRAS_FIN=['fin-dashboard','dash-entradas','dash-saidas','pagamentos','propinas','propaluno','emolumentos','despesas','despesas-cat',
+    'caixa-semanal','folha-salarios','dividas','multas','reconciliacao','bolsas','relatorio-fin','relatorio-actividades','extracto-escola',
+    'balancete','fluxo-caixa','orcamento','previsao-receita','aging-report'];
+  var FIN_SECRETARIO=['pagamentos','propinas','propaluno','emolumentos','despesas','dividas','multas','extracto-escola'];
+  var VEDADO_SECRETARIO=['gestao-ano','audit-trail'];
+  function papel(){ try{ return curRole; }catch(e){ return ''; } }
+  function podeFin(){ return FIN.indexOf(papel())>=0; }
+  function podeEcra(id){
+    var r=papel();
+    if(['gestor','director','gestor-financeiro'].indexOf(r)>=0) return true;
+    if(r==='secretario') return FIN_SECRETARIO.indexOf(id)>=0;
+    return false;
+  }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function mz(v){ try{ return Math.round(v||0).toLocaleString('pt-PT'); }catch(e){ return String(Math.round(v||0)); } }
+  function t(m){ try{ if(typeof toast==='function') toast(m); }catch(e){} }
+
+  /* ── Ecrãs de dinheiro fechados a quem não é da área ── */
+  var _prevGo=window.go;
+  window.go=function(id){
+    if(ECRAS_FIN.indexOf(id)>=0 && !podeEcra(id)){ t('Acesso restrito à direcção e à gestão financeira'); return; }
+    if(papel()==='secretario' && VEDADO_SECRETARIO.indexOf(id)>=0){ t('Acesso restrito à direcção e à gestão financeira'); return; }
+    return _prevGo.apply(this, arguments);
+  };
+  try{
+    if(typeof window.openPA==='function' && !window.__paGuard211){
+      window.__paGuard211=true;
+      var _openPA=window.openPA;
+      window.openPA=function(){ if(!podeEcra('propaluno')){ t('Acesso restrito à direcção e à gestão financeira'); return; } return _openPA.apply(this, arguments); };
+      try{ openPA=window.openPA; }catch(e){}
+    }
+  }catch(e){}
+
+  /* ── Pesquisa: cada aluno com dois caminhos ── */
+  function inic(nome){ return String(nome||'').trim().split(' ').filter(Boolean).slice(0,2).map(function(x){ return x.charAt(0).toUpperCase(); }).join(''); }
+  window.gSearch=function(q){
+    var box=document.getElementById('sr'); if(!box) return;
+    if(!q || q.length<2){ box.classList.remove('open'); return; }
+    var s=String(q).toLowerCase(), res=[];
+    (typeof ALUNOS!=='undefined'?ALUNOS:[]).forEach(function(a){
+      if(String(a.nome).toLowerCase().indexOf(s)>=0 || String(a.num).toLowerCase().indexOf(s)>=0)
+        res.push({tipo:'Aluno', num:a.num, nome:a.nome, sub:'Turma '+(a.turma||'—'), c:'#4f8ef7', id:a.id, aluno:true});
+    });
+    (typeof PROFS!=='undefined'?PROFS:[]).forEach(function(p){
+      if(String(p.nome).toLowerCase().indexOf(s)>=0 || String(p.num).toLowerCase().indexOf(s)>=0)
+        res.push({tipo:'Professor', num:p.num, nome:p.nome, sub:p.cargo||'', c:'#7c6af7', fn:'openProf('+p.id+')'});
+    });
+    (typeof ENCS!=='undefined'?ENCS:[]).forEach(function(e){
+      if(String(e.nome).toLowerCase().indexOf(s)>=0 || String(e.num).toLowerCase().indexOf(s)>=0)
+        res.push({tipo:'Encarregado', num:e.num, nome:e.nome, sub:e.prof||'', c:'#22c55e', fn:'openEnc('+e.id+')'});
+    });
+    if(!res.length){ box.innerHTML='<div style="padding:14px;font-size:13px;color:var(--t2);text-align:center">Sem resultados.</div>'; box.classList.add('open'); return; }
+    var fin=podeFin(), prefFin=(papel()==='secretario'||papel()==='gestor-financeiro');
+    box.innerHTML=res.slice(0,40).map(function(r){
+      var acao=r.aluno ? (prefFin&&fin ? 'window.__abrirFin('+r.id+')' : 'openAluno('+r.id+')') : r.fn;
+      var botoes='';
+      if(r.aluno){
+        botoes='<span style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">'
+          +'<button class="btn btn-g btn-sm" style="padding:4px 8px;font-size:11px" onclick="openAluno('+r.id+');closeSR()"><i class="ti ti-school"></i> Académico</button>'
+          +(fin?('<button class="btn btn-p btn-sm" style="padding:4px 8px;font-size:11px" onclick="window.__abrirFin('+r.id+');closeSR()"><i class="ti ti-cash"></i> Financeiro</button>'):'')
+          +'</span>';
+      }
+      return '<div class="sr-item" onclick="'+acao+';closeSR()">'
+        +'<div style="width:34px;height:34px;border-radius:10px;background:'+r.c+'18;color:'+r.c+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">'+esc(inic(r.nome))+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--t)">'+esc(r.nome)+'</div>'
+        +'<div style="font-size:11px;color:var(--t2);font-family:var(--fm)">'+esc(r.num)+' · '+esc(r.sub)+'</div></div>'
+        +(botoes||('<span class="sr-badge" style="background:'+r.c+'18;color:'+r.c+'">'+r.tipo+'</span>'))
+        +'</div>';
+    }).join('');
+    box.classList.add('open');
+  };
+  window.__abrirFin=function(id){
+    if(!podeFin()){ t('Acesso restrito à direcção e à gestão financeira'); return; }
+    try{ if(typeof openPA==='function'){ openPA(id); return; } }catch(e){}
+    t('Perfil financeiro indisponível');
+  };
+
+  /* ── Situação financeira e documentos ── */
+  function alunoDe(id){ return (typeof ALUNOS!=='undefined'?ALUNOS:[]).find(function(a){ return String(a.id)===String(id); }); }
+  window.__paSituacao=function(a){
+    var meses=[], total=0, multas=0;
+    var MES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    (a.propinas||[]).forEach(function(p,i){
+      var est=(typeof window.__estadoPropina==='function')?window.__estadoPropina(p):p.st;
+      if(est!=='divida') return;
+      var base=p.v||0, tot=(typeof window.__totalProp==='function')?window.__totalProp(p):base;
+      multas+=Math.max(0, tot-base); total+=tot;
+      meses.push({ mes:MES[(p.m?p.m-1:i)], base:base, total:tot });
+    });
+    var mat=0;
+    if(!(a.isencoes&&a.isencoes.matricula) && !(a.matricula&&a.matricula.st==='pago')){
+      try{ mat=Number((typeof getMatriculaTurma==='function')?getMatriculaTurma(a.turma):0)||0; }catch(e){}
+    }
+    return { meses:meses, propinas:total, multas:multas, matricula:mat, total:total+mat };
+  };
+  window.__paExtracto=function(){
+    if(!podeFin()){ t('Acesso restrito'); return; }
+    var id=(typeof curAlunoId!=='undefined')?curAlunoId:null; if(!id){ t('Abra primeiro o aluno'); return; }
+    if(typeof emitirExtractoPropinas!=='function'){ t('Extracto indisponível'); return; }
+    emitirExtractoPropinas(id);
+    try{ var a=alunoDe(id); if(typeof logAudit==='function') logAudit('EXTRACTO_ANUAL', a?(a.nome+' ('+a.num+')'):String(id), 'Extracto anual de propinas emitido'); }catch(e){}
+  };
+  window.__paDeclaracao=function(){
+    if(!podeFin()){ t('Acesso restrito'); return; }
+    var id=(typeof curAlunoId!=='undefined')?curAlunoId:null; if(!id){ t('Abra primeiro o aluno'); return; }
+    var a=alunoDe(id); if(!a){ t('Aluno não encontrado'); return; }
+    var sit=window.__paSituacao(a);
+    window.__declaracaoDivida(a, sit);
+    try{ if(typeof logAudit==='function') logAudit('DECLARACAO_DIVIDA', a.nome+' ('+a.num+')',
+      sit.total>0?('Declaração com dívida de '+mz(sit.total)+' MZM'):'Declaração de não dívida'); }catch(e){}
+  };
+  window.__declaracaoDivida=function(a, sit){
+    var ano=(typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear();
+    var escola='', morada='', tel='', nuit='';
+    try{ escola=(ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nome)||''; morada=(ESCOLA_SETTINGS&&ESCOLA_SETTINGS.morada)||''; tel=(ESCOLA_SETTINGS&&ESCOLA_SETTINGS.telefone)||''; nuit=(ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nuit)||''; }catch(e){}
+    var hoje=new Date().toLocaleDateString('pt-PT',{day:'2-digit',month:'long',year:'numeric'});
+    var cod='DEC-'+a.num+'-'+ano+'-'+Date.now().toString(36).toUpperCase().slice(-5);
+    var comDivida=sit.total>0;
+    var linhas=sit.meses.map(function(m){
+      return '<tr><td>'+esc(m.mes)+'</td><td style="text-align:right">'+mz(m.base)+'</td><td style="text-align:right">'+mz(m.total-m.base)+'</td><td style="text-align:right;font-weight:700">'+mz(m.total)+'</td></tr>';
+    }).join('');
+    if(sit.matricula>0) linhas+='<tr><td>Matrícula '+ano+'</td><td style="text-align:right">'+mz(sit.matricula)+'</td><td style="text-align:right">—</td><td style="text-align:right;font-weight:700">'+mz(sit.matricula)+'</td></tr>';
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Declaração — '+esc(a.nome)+'</title>'
+      +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;background:#f1f5f9;padding:18px;color:#0f172a}'
+      +'.barra{text-align:center;margin-bottom:14px}.barra button{padding:9px 18px;border:0;border-radius:8px;background:#0D1526;color:#fff;font-weight:700;cursor:pointer;margin:0 4px}'
+      +'.pg{width:210mm;min-height:297mm;background:#fff;margin:0 auto;padding:20mm;box-shadow:0 4px 18px rgba(0,0,0,.12)}'
+      +'.cab{display:flex;justify-content:space-between;border-bottom:3px solid #0D1526;padding-bottom:10px;margin-bottom:18px}'
+      +'.nome{font-size:17px;font-weight:900}.sub{font-size:10px;color:#64748b;margin-top:3px}'
+      +'.tipo{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4f8ef7;text-align:right}'
+      +'.cod{font-size:9px;color:#94a3b8;text-align:right;margin-top:3px}'
+      +'h1{font-size:15px;text-align:center;margin:18px 0 14px}'
+      +'table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0}th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}th{background:#f1f5f9}'
+      +'.cx{border:2px solid '+(comDivida?'#fecaca':'#bbf7d0')+';background:'+(comDivida?'#fff1f2':'#f0fdf4')+';border-radius:10px;padding:14px;margin:14px 0}'
+      +'.txt{font-size:12.5px;line-height:1.9;margin:14px 0}'
+      +'.ass{display:flex;justify-content:space-between;margin-top:44px;font-size:11px;text-align:center}.ass div{width:44%}'
+      +'.ln{border-top:1px solid #0f172a;padding-top:5px}'
+      +'.rod{margin-top:26px;border-top:1px solid #e2e8f0;padding-top:8px;font-size:9px;color:#64748b;display:flex;justify-content:space-between}'
+      +'@media print{body{background:#fff;padding:0}.barra{display:none}.pg{box-shadow:none;margin:0}@page{size:A4;margin:0}}</style></head><body>'
+      +'<div class="barra"><button onclick="window.print()">Imprimir</button><button onclick="window.close()">Fechar</button></div>'
+      +'<div class="pg"><div class="cab"><div><div class="nome">'+esc(escola)+'</div><div class="sub">'+esc(morada)+(tel?(' · '+esc(tel)):'')+(nuit?(' · NUIT '+esc(nuit)):'')+'</div></div>'
+      +'<div><div class="tipo">'+(comDivida?'Declaração de Dívida':'Declaração de Não Dívida')+'</div><div class="cod">'+cod+'</div></div></div>'
+      +'<h1>DECLARAÇÃO</h1>'
+      +'<div class="txt">Para os devidos efeitos se declara que o(a) aluno(a) abaixo identificado(a) frequenta esta escola no ano lectivo '+ano+'.</div>'
+      +'<div class="cx"><div style="font-size:15px;font-weight:900;margin-bottom:8px">'+esc(a.nome)+'</div>'
+      +'<div style="font-size:12px;color:#334155">Nº de aluno: <strong>'+esc(a.num)+'</strong> · Turma: <strong>'+esc(a.turma||'—')+'</strong>'+(a.bi?(' · BI: <strong>'+esc(a.bi)+'</strong>'):'')+'</div></div>'
+      +(comDivida
+        ? ('<div class="txt">À data de hoje, o(a) aluno(a) <strong>tem em dívida o valor de '+mz(sit.total)+' MZM</strong>, discriminado do seguinte modo:</div>'
+           +'<table><thead><tr><th>Descrição</th><th style="text-align:right">Valor</th><th style="text-align:right">Multa</th><th style="text-align:right">Total</th></tr></thead>'
+           +'<tbody>'+linhas+'</tbody>'
+           +'<tfoot><tr><th colspan="3" style="text-align:right">TOTAL EM DÍVIDA</th><th style="text-align:right">'+mz(sit.total)+' MZM</th></tr></tfoot></table>'
+           +'<div class="txt">Solicita-se a regularização da situação junto da secretaria da escola.</div>')
+        : ('<div class="txt">À data de hoje, o(a) aluno(a) <strong>não tem qualquer dívida</strong> para com esta escola: '
+           +'não tem propinas em atraso, nem matrícula ou inscrição por liquidar, relativas ao ano lectivo '+ano+'.</div>'))
+      +'<div class="txt">Por ser verdade e a pedido do(a) interessado(a), se passa a presente declaração, que vai por nós assinada e autenticada com o carimbo em uso nesta instituição.</div>'
+      +'<div class="txt">'+esc(morada?String(morada).split(',')[0]:'')+', '+hoje+'.</div>'
+      +'<div class="ass"><div><div class="ln">A Direcção da Escola</div></div><div><div class="ln">Secretaria / Tesouraria</div></div></div>'
+      +'<div class="rod"><span>'+esc(escola)+' · '+hoje+'</span><span>'+cod+'</span><span>Validade: 30 dias</span></div>'
+      +'</div></body></html>';
+    var w=window.open('', '_blank');
+    if(!w){ t('Permita janelas pop-up para emitir o documento'); return; }
+    w.document.write(html); w.document.close();
+  };
+
+  /* ── Cada utilizador entra no painel do seu perfil ── */
+  var INICIO={ aluno:"portal", professor:"portal-prof", encarregado:"dash-enc", "gestor-financeiro":"fin-dashboard", "dir-ciclo":"ciclo-visao" };
+  var interagiu=false;
+  ["click","keydown","touchstart"].forEach(function(ev){ document.addEventListener(ev, function(){ interagiu=true; }, true); });
+  function garantirInicio(){
+    try{
+      if(interagiu || !papel()) return;
+      var app=document.getElementById("app");
+      if(!app || !app.classList.contains("visible")) return;
+      var on=document.querySelector(".view.on");
+      var actual=on?on.id.replace(/^v-/,""):"";
+      var destino=INICIO[papel()]||"dash";
+      var esperado=(typeof VM!=="undefined" && VM[destino]) ? String(VM[destino]).replace(/^v-/,"") : destino;
+      if(actual!==esperado && typeof go==="function"){ go(destino); }
+    }catch(e){}
+  }
+  [1200, 3000, 6000, 10000].forEach(function(ms){ setTimeout(garantirInicio, ms); });
+  window.__garantirEcraInicial=garantirInicio;
 })();
 </script>
 </body>
