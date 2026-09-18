@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.214</span>
+    <span class="logo-ver">v6.215</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -46742,6 +46742,15 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 
   function proximoAno(){ return window.__anoActivo()+1; }
   function fechado(){ try{ return !!(CONFIG.renovacoes && CONFIG.renovacoes.fechado); }catch(e){ return false; } }
+  /* classes que a escola tem (o iQRA vai da Pré à 6ª) */
+  function classes(){
+    var L=[]; try{ (typeof TURMAS!=='undefined'?TURMAS:[]).forEach(function(t){ var c=parseInt(t.classe,10); if(!isNaN(c) && L.indexOf(c)<0) L.push(c); }); }catch(e){}
+    if(!L.length) L=[0,1,2,3,4,5,6];
+    L.sort(function(x,y){ return x-y; });
+    return L;
+  }
+  function classeFinal(){ var L=classes(); return L[L.length-1]; }
+  function nomeClasse(c){ c=parseInt(c,10); return (c===0)?'Pré-escolar':(c+'ª classe'); }
   function classeDe(a){ try{ var tu=(typeof TURMAS!=='undefined'?TURMAS:[]).find(function(x){ return x.id===a.turma; }); return tu?parseInt(tu.classe,10):(parseInt(a._classeMat,10)||null); }catch(e){ return null; } }
   function precoProx(classe, campo){
     try{ var P=(CONFIG.precarios||{})[String(proximoAno())]||(CONFIG.precarios||{})[String(window.__anoActivo())]||CONFIG.valoresPorClasse||{};
@@ -46843,7 +46852,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       var c=classeDe(a);
       if(renovadosIds[a._dbId]) renovados.push(a);
       else if(naoVolta(a)) naoVoltam.push(a);
-      else if(c>=12 && !D.repetem[a._dbId]) concluem.push(a);
+      else if(c!=null && c>=classeFinal() && !D.repetem[a._dbId]) concluem.push(a);
       else aRenovar.push(a);
     });
     var novos=D.mats.filter(function(m){ return !idsActuais[m.aluno_id] && m.estado!=='rejeitada'; });
@@ -46870,9 +46879,9 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(tab==='renovar'){
       h+='<div class="card"><div class="tw"><table><thead><tr><th>Aluno</th><th>'+activo+'</th><th>'+prox+'</th><th style="text-align:right">Dívida '+activo+' até hoje</th><th style="text-align:right">Matrícula '+prox+'</th><th></th></tr></thead><tbody>'
         +(aRenovar.length?aRenovar.map(function(a){
-            var c=classeDe(a), repete=!!D.repetem[a._dbId], cp=repete?c:Math.min(c+1,12), mat=precoProx(cp,'matricula');
+            var c=classeDe(a), repete=!!D.repetem[a._dbId], cp=repete?c:Math.min(c+1,classeFinal()), mat=precoProx(cp,'matricula');
             return '<tr><td><div style="font-weight:600">'+esc(a.nome)+'</div><div style="font-size:11px;color:var(--t3)">'+esc(a.num)+'</div></td>'
-              +'<td>'+esc(a.turma||'—')+'</td><td>'+(c?(cp+'ª classe'+(repete?' <span class="badge bwn" style="font-size:10px">repete</span>':'')):'—')+'</td>'
+              +'<td>'+esc(a.turma||'—')+'</td><td>'+((c!=null)?(nomeClasse(cp)+(repete?' <span class="badge bwn" style="font-size:10px">repete</span>':'')):'—')+'</td>'
               +celulaDivida(a)
               +'<td style="text-align:right">'+(a.isencoes&&a.isencoes.matricula?'Isento':mz(mat)+' MZM')+'</td>'
               +'<td style="text-align:right;white-space:nowrap">'+botoesRenovar(a,fech)+'</td></tr>';
@@ -46897,7 +46906,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
             var faltam=['inscricao','matricula'].filter(function(tp){ return !(PG[al.numero_aluno]||{})[tp]; });
             window.__renovPagarCtx=window.__renovPagarCtx||{};
             window.__renovPagarCtx[al.numero_aluno]={ num:al.numero_aluno, nome:al.nome_completo, classe:m.classe, tipos:faltam, alunoId:null, origem:'renovacoes' };
-            return '<tr><td style="font-weight:600">'+esc(al.nome_completo||'—')+'</td><td>'+esc(al.numero_aluno||'—')+'</td><td>'+(m.classe?m.classe+'ª classe':'—')+'</td>'
+            return '<tr><td style="font-weight:600">'+esc(al.nome_completo||'—')+'</td><td>'+esc(al.numero_aluno||'—')+'</td><td>'+(m.classe!=null?nomeClasse(m.classe):'—')+'</td>'
               +'<td>'+(m.estado==='pendente'?'<span class="badge bwn">Por aprovar</span>':'<span class="badge bok">Aprovado</span>')+'</td>'
               +'<td>'+estadoPag(PG,al.numero_aluno,'inscricao')+'</td><td>'+estadoPag(PG,al.numero_aluno,'matricula')+'</td>'
               +'<td style="text-align:right">'+((faltam.length&&!fech)?('<button class="btn btn-p btn-sm" data-n="'+esc(al.numero_aluno)+'" onclick="window.__renovPagarAbrir(this.dataset.n)"><i class="ti ti-cash"></i> Registar pagamento</button>'):'')+'</td></tr>'; }).join('')
@@ -46914,7 +46923,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
             var pagos=['inscricao','matricula'].filter(function(tp){ return pg[tp]; }).map(function(tp){ return (tp==='inscricao'?'Inscrição':'Matrícula')+(pg[tp]==='confirmado'?'':' (por confirmar)'); });
             return '<tr><td><div style="font-weight:600">'+esc(al.nome_completo||'—')+'</div><div style="font-size:11px;color:var(--t3)">'+esc(al.numero_aluno||'')+'</div></td>'
               +'<td>'+(m._novo?'<span class="badge bin">Novo</span>':'<span class="badge bne">Renovação</span>')+'</td>'
-              +'<td>'+(m.classe?(m.classe+'ª classe'):'—')+'</td>'
+              +'<td>'+(m.classe!=null?nomeClasse(m.classe):'—')+'</td>'
               +'<td style="font-size:12px">'+(pagos.length?esc(pagos.join(' · ')):'—')+'</td>'
               +'<td style="font-size:12px;color:var(--t2)">'+esc(m.registado_por||'—')+'<div style="font-size:11px;color:var(--t3)">'+esc(m.data_matricula||'')+'</div></td>'
               +'<td style="text-align:right;white-space:nowrap">'+(podeAprovar
@@ -47031,7 +47040,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var isento=!!(a.isencoes&&a.isencoes.matricula);
     var old=document.getElementById('m-renovar'); if(old) old.remove();
     window.__renovCtx={ id:a.id };
-    var opts=''; for(var k=7;k<=12;k++){ opts+='<option value="'+k+'"'+(k===((window.__renovRepetem||{})[a._dbId]?c:Math.min(c+1,12))?' selected':'')+'>'+k+'ª classe</option>'; }
+    var alvo=((window.__renovRepetem||{})[a._dbId]?c:Math.min((c||0)+1,classeFinal()));
+    var opts=classes().map(function(k){ return '<option value="'+k+'"'+(k===alvo?' selected':'')+'>'+nomeClasse(k)+'</option>'; }).join('');
     var hoje=new Date().toISOString().slice(0,10);
     var html='<div id="m-renovar" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99995;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
       +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:560px;max-width:100%;max-height:92vh;overflow:auto">'
@@ -47084,12 +47094,12 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       estado:aprovaJa?'activa':'pendente', data_matricula:hojeD, registado_por:quem(),
       aprovado_por:aprovaJa?quem():null, aprovado_em:aprovaJa?agoraISO:null }).select();
     if(rm.error){ t(/duplicate|unique/i.test(rm.error.message)?('Este aluno já está renovado para '+prox):('Erro ao renovar: '+rm.error.message)); if(go){ go.disabled=false; go.style.opacity=1; } return; }
-    var msg=(aprovaJa?'Renovado para ':'Renovação registada para ')+prox+' ('+classe+'ª classe)'+(aprovaJa?'':' — aguarda aprovação do gestor ou do director');
+    var msg=(aprovaJa?'Renovado para ':'Renovação registada para ')+prox+' ('+nomeClasse(classe)+')'+(aprovaJa?'':' — aguarda aprovação do gestor ou do director');
     if(autorizarAgora){ try{ await registarAutorizacao(a,d); msg+=' · com autorização'; }catch(e){ msg+=' — atenção: a autorização não foi gravada'; } }
     if(pagar && valor>0){
       var estado=(canal==='transferencia'||canal==='deposito')?'por_confirmar':'confirmado';
       var row={ escola_id:escId(), pag_id:'MAT'+prox+'-'+a.num+'-'+Date.now().toString(36).toUpperCase(), aluno_num:a.num, aluno_nome:a.nome, turma_id:null,
-        meses:[], valor_total:valor, valor_base:valor, data_pag:data, canal:canal, ref:ref||null, obs:'Matrícula '+prox+' — renovação ('+classe+'ª classe)',
+        meses:[], valor_total:valor, valor_base:valor, data_pag:data, canal:canal, ref:ref||null, obs:'Matrícula '+prox+' — renovação ('+nomeClasse(classe)+')',
         estado:estado, tipo:'matricula', categoria_id:'matricula', familia:'taxa_fixa', ano:prox, registado_por:quem(), registado_em:new Date().toISOString() };
       var rp=await sb().from('pagamentos').insert(row).select();
       if(rp.error){ msg+=' — atenção: o pagamento da matrícula não foi gravado ('+rp.error.message+')'; }
@@ -47118,7 +47128,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     window.__renovNovoCtx={ cand:c?c.id:null };
     function campo(rot, inner){ return '<div><div class="fl">'+rot+'</div>'+inner+'</div>'; }
     function inp(id, val, extra){ return '<input id="'+id+'" class="ffi" value="'+esc(val||'')+'"'+(extra||'')+'>'; }
-    var opts=''; for(var k=7;k<=12;k++){ opts+='<option value="'+k+'"'+(k===(classeC||7)?' selected':'')+'>'+k+'ª classe</option>'; }
+    var opts=classes().map(function(k){ return '<option value="'+k+'"'+(k===(classeC||classes()[0])?' selected':'')+'>'+nomeClasse(k)+'</option>'; }).join('');
     var rels=['Pai','Mãe','Avô/Avó','Tio/Tia','Irmão/Irmã','Outro'];
     var grid='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px';
     var sec='font-size:12px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin:4px 0 6px';
@@ -47214,7 +47224,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         var estado=(canal==='transferencia'||canal==='deposito')?'por_confirmar':'confirmado', suf=Date.now().toString(36).toUpperCase(), agora=new Date().toISOString(), rows=[];
         [['inscricao',insc,'INS','Inscrição'],['matricula',mat,'MAT','Matrícula']].forEach(function(x){
           if(x[1]>0) rows.push({ escola_id:escId(), pag_id:x[2]+prox+'-'+num+'-'+suf, aluno_num:num, aluno_nome:nome, turma_id:null, meses:[], valor_total:x[1], valor_base:x[1],
-            data_pag:data, canal:canal, ref:ref||null, obs:x[3]+' '+prox+' — novo aluno ('+classe+'ª classe)', estado:estado, tipo:x[0], categoria_id:x[0], familia:'taxa_fixa', ano:prox, registado_por:quem(), registado_em:agora });
+            data_pag:data, canal:canal, ref:ref||null, obs:x[3]+' '+prox+' — novo aluno ('+nomeClasse(classe)+')', estado:estado, tipo:x[0], categoria_id:x[0], familia:'taxa_fixa', ano:prox, registado_por:quem(), registado_em:agora });
         });
         if(rows.length){
           var rp=await sb().from('pagamentos').insert(rows).select();
@@ -47260,7 +47270,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var html='<div id="m-renov-pagar" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99995;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
       +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:520px;max-width:100%;max-height:92vh;overflow:auto">'
       +'<h3 style="margin:0 0 4px;font-size:17px">Registar pagamento '+prox+'</h3>'
-      +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">'+esc(c.nome)+' · '+esc(c.num)+' · '+(c.classe?(c.classe+'ª classe em '+prox):'')+'</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">'+esc(c.nome)+' · '+esc(c.num)+' · '+(c.classe!=null?(nomeClasse(c.classe)+' em '+prox):'')+'</div>'
       +linhas
       +'<div id="rp-total" style="text-align:right;font-weight:800;margin:10px 0 12px"></div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">'
@@ -47295,7 +47305,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var suf=Date.now().toString(36).toUpperCase(), agora=new Date().toISOString(), quem=(typeof curUser!=='undefined'&&curUser&&curUser.nome)||'';
     var rows=sel.map(function(x){ var tp=x.dataset.t, v=Number(x.dataset.v)||0;
       return { escola_id:escId(), pag_id:(tp==='inscricao'?'INS':'MAT')+prox+'-'+c.num+'-'+suf, aluno_num:c.num, aluno_nome:c.nome, turma_id:null, meses:[], valor_total:v, valor_base:v,
-        data_pag:data, canal:canal, ref:ref||null, obs:ROT_TAXA[tp]+' '+prox+(c.classe?(' ('+c.classe+'ª classe)'):''), estado:estado, tipo:tp, categoria_id:tp, familia:'taxa_fixa', ano:prox, registado_por:quem, registado_em:agora }; });
+        data_pag:data, canal:canal, ref:ref||null, obs:ROT_TAXA[tp]+' '+prox+(c.classe!=null?(' ('+nomeClasse(c.classe)+')'):''), estado:estado, tipo:tp, categoria_id:tp, familia:'taxa_fixa', ano:prox, registado_por:quem, registado_em:agora }; });
     var ins=await sb().from('pagamentos').insert(rows).select();
     if(ins.error) return falha('Erro ao registar: '+ins.error.message);
     var m=document.getElementById('m-renov-pagar'); if(m) m.remove();
