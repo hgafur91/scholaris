@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.219</span>
+    <span class="logo-ver">v6.220</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44721,7 +44721,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       + (divida>0 ? '<div>Saldo em dívida nesta data: <span class="pt">'+mz(divida)+' MT</span></div>' : '<div>Sem propinas em dívida nesta data.</div>')
       + '<div style="margin-top:14px">'+esc(cidade)+', <span class="pt">'+esc(dia||'____')+'</span> de <span class="pt">'+esc(mesN||'__________')+'</span> de 20<span class="pt">'+esc(anoN||'__')+'</span>.</div>'
       + '<div class="ass"><div><div class="ln2">A Tesouraria</div></div><div><div class="ln2">Assinatura e carimbo</div></div></div>'
-      + '<div class="rod"><span>Registado por: '+esc(quem)+'</span><span>Documento processado por computador</span></div>';
+      + '<div class="rod"><span>Emitido por: <strong>'+esc(window.__docEmitente())+'</strong> em '+esc(new Date().toLocaleString('pt-PT'))+'</span>'
+      +   '<span>'+((quem && quem!=='—' && quem!==window.__docEmitente())?('Pagamento registado por: '+esc(quem)):'Documento processado por computador')+'</span></div>';
 
     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo '+esc(cod)+'</title>'
       + (window.__cssPapel||'')
@@ -44988,7 +44989,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       + '<div style="font-size:11px">IVA: isento — prestação de serviços de ensino.</div>'
       + '<div style="margin-top:14px">'+esc(cidadeF)+', <span class="pt">'+esc(d.hoje)+'</span>.</div>'
       + '<div class="ass"><div><div class="ln2">A Tesouraria</div></div><div><div class="ln2">Assinatura e carimbo</div></div></div>'
-      + '<div class="rod"><span>Factura '+esc(numero||'—')+'</span><span>Aluno '+esc(a.num||'')+'</span></div>';
+      + '<div class="rod"><span>Emitida por: <strong>'+esc(window.__docEmitente())+'</strong> em '+esc(new Date().toLocaleString('pt-PT'))+'</span><span>'+esc(numero||'—')+' · Aluno '+esc(a.num||'')+'</span></div>';
     return window.__docFolha(corpoF);
   }
   function abrirPaginas(titulo, paginas){
@@ -47483,6 +47484,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'<div class="ln">'+esc(dataStr||'')+'</div></div></div>';
   };
 
+  window.__docEmitente = function(){
+    try{ if(typeof curUser!=='undefined' && curUser && curUser.nome) return curUser.nome; }catch(e){}
+    try{ if(window._currentUser && window._currentUser.nome) return window._currentUser.nome; }catch(e){}
+    return '—';
+  };
   window.__docFolha = function(corpo){
     return '<div class="folha">'+window.__docMarca()+'<div class="corpo">'+corpo+'</div></div>';
   };
