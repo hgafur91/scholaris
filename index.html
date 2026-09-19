@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.216</span>
+    <span class="logo-ver">v6.217</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44670,7 +44670,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var encNome = '—';
     try{
       var enc = (typeof ENCS!=='undefined' && a) ? ENCS.find(function(e){ return e.num===a.enc; }) : null;
-      encNome = (enc && enc.nome) || (a && a.erel) || '—';
+      encNome = (enc && enc.nome) || (a && (a.enome || a.encNome)) || pag.encarregadoNome || (a && a.nome) || pag.alunoNome || '—';
     }catch(e){}
 
     /* Dívida em aberto do aluno (só propinas vencidas e não pagas). */
@@ -44695,6 +44695,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }
 
     /* v6.216 — recibo dactilografado, com marca de água e o essencial a negrito */
+    function dmy(s){ try{ var p=String(s||'').split('-'); return (p.length===3)?(p[2]+'/'+p[1]+'/'+p[0]):String(s||''); }catch(e){ return String(s||''); } }
     var pagoEm = pag.data || d.hoje;
     var dia='', mesN='', anoN='';
     try{ var pd=String(pagoEm).split('-'); if(pd.length===3){ dia=pd[2]; anoN=pd[0].slice(2); mesN=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][parseInt(pd[1],10)-1]||''; } }catch(e){}
@@ -44709,7 +44710,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       + '<div style="margin-top:8px">referente a <span class="pt">'+esc(descricao)+'</span></div>'
       + '<div class="bx">'
       +   '<div>Forma de pagamento: &nbsp;'+marca('numerario')+' Numerário &nbsp;&nbsp;'+marca('transferencia')+' Transferência &nbsp;&nbsp;'+marca('deposito')+' Depósito &nbsp;&nbsp;'+marca('pos')+' POS</div>'
-      +   '<div>Referência: <span class="pt">'+esc(pag.ref || '—')+'</span>'+((pag.banco)?(' &nbsp; Banco: <span class="pt">'+esc(String(pag.banco).toUpperCase())+'</span>'):'')+' &nbsp; Data do pagamento: <span class="pt">'+esc(pagoEm)+'</span></div>'
+      +   '<div>Referência: <span class="pt">'+esc(pag.ref || '—')+'</span>'+((pag.banco)?(' &nbsp; Banco: <span class="pt">'+esc(String(pag.banco).toUpperCase())+'</span>'):'')+' &nbsp; Data do pagamento: <span class="pt">'+esc(dmy(pagoEm))+'</span></div>'
       + '</div>'
       + (function(){ try{
           var anoP=parseInt(String(pag.data||'').slice(0,4),10)||new Date().getFullYear();
@@ -47502,7 +47503,14 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(milhoes) partes.push(ate999(milhoes)+(milhoes===1?' milhão':' milhões'));
     if(milhares) partes.push((milhares===1?'mil':ate999(milhares)+' mil'));
     if(unidades) partes.push(ate999(unidades));
-    var txt=partes.length?partes.join(' e '):'zero';
+    var txt='';
+    if(!partes.length) txt='zero';
+    else if(partes.length===1) txt=partes[0];
+    else {
+      /* «mil e quinhentos», mas «mil quinhentos e quarenta» */
+      var ligar=(unidades>0 && (unidades<100 || unidades%100===0));
+      txt=partes.slice(0,-1).join(' e ')+(ligar?' e ':' ')+partes[partes.length-1];
+    }
     txt+= (inteiro===1?' metical':' meticais');
     if(cent) txt+=' e '+ate999(cent)+(cent===1?' centavo':' centavos');
     return txt;
