@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.217</span>
+    <span class="logo-ver">v6.218</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -42470,7 +42470,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function recNum(p){ try{ return (typeof window.__reciboDe==='function'?window.__reciboDe(p):'')||p.reciboNum||''; }catch(e){ return ''; } }
   function encNome(a){
     try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){return x.num===a.enc;}):null; if(e&&e.nome) return e.nome; }catch(er){}
-    return a.enome||a.erel||'—';
+    return a.enome||a.nome||'—';
   }
   function nuitEsc(){ try{ return (typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nuit)||(typeof CONFIG!=='undefined'&&CONFIG.nuit)||''; }catch(e){ return ''; } }
   function estadoPr(pr){
@@ -42683,7 +42683,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function als(){ return (typeof ALUNOS!=='undefined'&&Array.isArray(ALUNOS))?ALUNOS:[]; }
   function anoL(){ try{ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear(); }catch(e){ return new Date().getFullYear(); } }
   function nuitEsc(){ try{ return (typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nuit)||''; }catch(e){ return ''; } }
-  function encNome(a){ try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){return x.num===a.enc;}):null; if(e&&e.nome) return e.nome; }catch(er){} return a.enome||a.erel||'—'; }
+  function encNome(a){ try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){return x.num===a.enc;}):null; if(e&&e.nome) return e.nome; }catch(er){} return a.enome||a.nome||'—'; }
   function recNum(p){ try{ return (typeof window.__reciboDe==='function'?window.__reciboDe(p):'')||p.reciboNum||''; }catch(e){ return ''; } }
   function estadoPr(pr){
     if(!pr) return {t:'—',multa:0};
@@ -43237,7 +43237,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function nuitEsc(){ try{ return (typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nuit)||''; }catch(e){ return ''; } }
   function encNome(a){
     try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){return x.num===a.enc;}):null; if(e&&e.nome) return e.nome; }catch(er){}
-    return a.enome||a.erel||'—';
+    return a.enome||a.nome||'—';
   }
   function multaDe(pr){ try{ if(typeof window.__multaDe==='function') return window.__multaDe(pr)||0; }catch(e){} try{ if(typeof calcMulta==='function') return calcMulta(pr,(pr.m||1)-1)||0; }catch(e){} return 0; }
   function estadoDe(pr){
@@ -44955,7 +44955,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function baseDe(a, pr){ return Number(pr&&pr.v)||(typeof getPropinaTurma==='function'?getPropinaTurma(a.turma):0)||(typeof CONFIG!=='undefined'?(CONFIG.valorPropina||0):0); }
   function encNome(a){
     try{ var e=(typeof ENCS!=='undefined')?ENCS.find(function(x){ return x.num===a.enc; }):null; if(e&&e.nome) return e.nome; }catch(er){}
-    return a.enome||a.erel||'—';
+    return a.enome||a.nome||'—';
   }
 
   /* ── Documento ─────────────────────────────────────────────────────── */
