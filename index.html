@@ -45315,7 +45315,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   /* ── 2) Extracto do aluno (PDF) ────────────────────────────────────── */
   window.__extrDocAluno=function(a){
     var ano=anoLectivo(), nuit=''; try{ nuit=(typeof ESCOLA_SETTINGS!=='undefined'&&ESCOLA_SETTINGS.nuit)||''; }catch(e){}
-    var enc='—'; try{ var e2=(typeof ENCS!=='undefined')?ENCS.find(function(x){ return x.num===a.enc; }):null; enc=(e2&&e2.nome)||a.enome||a.erel||'—'; }catch(e){}
+    var enc='—'; try{ var e2=(typeof ENCS!=='undefined')?ENCS.find(function(x){ return x.num===a.enc; }):null; enc=(e2&&e2.nome)||a.enome||a.nome||'—'; }catch(e){}
     var tP=0,tD=0,tM=0;
     var rows=(a.propinas||[]).map(function(pr,mi){
       if(!pr) return '';
