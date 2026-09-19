@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.215</span>
+    <span class="logo-ver">v6.216</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -44694,64 +44694,39 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return '<div class="campo"><div class="lbl">'+rot+'</div><div class="val">'+val+'</div></div>';
     }
 
-    var css = (typeof CSS_BASE!=='undefined') ? CSS_BASE : '';
-    var barra = (typeof NO_PRINT_BAR!=='undefined') ? NO_PRINT_BAR : '';
+    /* v6.216 — recibo dactilografado, com marca de água e o essencial a negrito */
+    var pagoEm = pag.data || d.hoje;
+    var dia='', mesN='', anoN='';
+    try{ var pd=String(pagoEm).split('-'); if(pd.length===3){ dia=pd[2]; anoN=pd[0].slice(2); mesN=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][parseInt(pd[1],10)-1]||''; } }catch(e){}
+    var cidade = (typeof CONFIG!=='undefined' && CONFIG.cidade) || 'Maputo';
+    function marca(tipo){ return (pag.canal===tipo)?'[ X ]':'[ &nbsp; ]'; }
+    var extenso = (typeof window.__porExtenso==='function') ? window.__porExtenso(pag.valorTotal) : '';
+    var corpo = window.__docCabecalho('RECIBO', cod, d.hoje)
+      + '<div>Recebemos do(s) Exmo.(s) Sr.(s) <span class="pt">'+esc(encNome!=='—'?encNome:((a&&a.nome)||pag.alunoNome||'—'))+'</span></div>'
+      + '<div>Referente ao(à) aluno(a) <span class="pt">'+esc((a && a.nome) || pag.alunoNome || '—')+'</span> · Nº <span class="pt">'+esc(pag.alunoNum || (a && a.num) || '—')+'</span> · Turma <span class="pt">'+esc(pag.turmaId || (a && a.turma) || '—')+'</span></div>'
+      + '<div style="margin-top:8px">a quantia de <span class="pt">'+mz(pag.valorTotal)+',00 MT</span></div>'
+      + (extenso?('<div>(<span class="pt">'+esc(extenso)+'</span>)</div>'):'')
+      + '<div style="margin-top:8px">referente a <span class="pt">'+esc(descricao)+'</span></div>'
+      + '<div class="bx">'
+      +   '<div>Forma de pagamento: &nbsp;'+marca('numerario')+' Numerário &nbsp;&nbsp;'+marca('transferencia')+' Transferência &nbsp;&nbsp;'+marca('deposito')+' Depósito &nbsp;&nbsp;'+marca('pos')+' POS</div>'
+      +   '<div>Referência: <span class="pt">'+esc(pag.ref || '—')+'</span>'+((pag.banco)?(' &nbsp; Banco: <span class="pt">'+esc(String(pag.banco).toUpperCase())+'</span>'):'')+' &nbsp; Data do pagamento: <span class="pt">'+esc(pagoEm)+'</span></div>'
+      + '</div>'
+      + (function(){ try{
+          var anoP=parseInt(String(pag.data||'').slice(0,4),10)||new Date().getFullYear();
+          var meses=(Array.isArray(pag.meses)?pag.meses:[]).map(function(mi){ return (mi&&typeof mi==='object')?Number(mi.m):(Number(mi)+1); });
+          var liq=(window.FACTURAS||[]).filter(function(f){ return f.aluno_num===(pag.alunoNum||'') && Number(f.ano)===anoP && meses.indexOf(Number(f.mes))>=0 && (f.estado==='liquidada'||f.estado==='emitida'); }).map(function(f){ return f.numero; });
+          return liq.length ? '<div>Liquida a(s) factura(s): <span class="pt">'+esc(liq.join(', '))+'</span></div>' : '';
+        }catch(e){ return ''; } })()
+      + (divida>0 ? '<div>Saldo em dívida nesta data: <span class="pt">'+mz(divida)+' MT</span></div>' : '<div>Sem propinas em dívida nesta data.</div>')
+      + '<div style="margin-top:14px">'+esc(cidade)+', <span class="pt">'+esc(dia||'____')+'</span> de <span class="pt">'+esc(mesN||'__________')+'</span> de 20<span class="pt">'+esc(anoN||'__')+'</span>.</div>'
+      + '<div class="ass"><div><div class="ln2">A Tesouraria</div></div><div><div class="ln2">Assinatura e carimbo</div></div></div>'
+      + '<div class="rod"><span>Registado por: '+esc(quem)+'</span><span>Documento processado por computador</span></div>';
 
-    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo '+esc(cod)+'</title>'+css
-      + '<style>.page{max-width:148mm}@media print{@page{size:A5;margin:0}}</style></head><body>'
-      + barra
-      + '<div class="page a4" style="max-width:148mm">'
-      +   '<div class="hdr"><div><div class="hdr-nome">'+esc(d.escola)+'</div><div class="hdr-sub">'+esc(d.subNome)+'</div></div>'
-      +     '<div class="hdr-tipo"><div class="tipo">Recibo de Pagamento</div><div class="cod">'+esc(cod)+'</div>'
-      +     '<div style="font-size:9px;color:#94a3b8;margin-top:2px">'+esc(d.hoje)+'</div></div></div>'
-
-      /* v6.187: texto clássico — a caixa escura com o valor em grande saía como bloco preto na impressão */
-      +   '<table style="width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:11px">'
-      +     '<tr style="background:#f1f5f9"><th style="text-align:left;padding:6px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.05em">Descrição</th><th style="text-align:right;padding:6px 8px;font-size:9px;text-transform:uppercase">Valor (MZM)</th></tr>'
-      +     '<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">'+esc(descricao)+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(pag.valorTotal)+'</td></tr>'
-      +     '<tr><td style="padding:8px;font-weight:800;border-top:2px solid #0f172a">VALOR RECEBIDO</td><td style="text-align:right;padding:8px;font-weight:800;border-top:2px solid #0f172a;font-size:13px">'+mz(pag.valorTotal)+' MZM</td></tr>'
-      +   '</table>'
-
-      +   '<div class="g2" style="margin-bottom:10px">'
-      +     campo('Aluno', esc((a && a.nome) || pag.alunoNome || '—'))
-      +     campo('Encarregado de Educação', esc(encNome))
-      +     campo('Nº Aluno', esc(pag.alunoNum || (a && a.num) || '—'))
-      +     campo('Turma', esc(pag.turmaId || (a && a.turma) || '—'))
-      +     campo('Descrição', esc(descricao))
-      /* v6.188: o recibo liquida a factura — diz qual. Facturas registadas para os meses pagos. */
-      +     (function(){ try{
-              var anoP=parseInt(String(pag.data||'').slice(0,4),10)||new Date().getFullYear();
-              var meses=(Array.isArray(pag.meses)?pag.meses:[]).map(function(mi){ return (mi&&typeof mi==='object')?Number(mi.m):(Number(mi)+1); });
-              var liq=(window.FACTURAS||[]).filter(function(f){ return f.aluno_num===(pag.alunoNum||'') && Number(f.ano)===anoP && meses.indexOf(Number(f.mes))>=0 && (f.estado==='liquidada'||f.estado==='emitida'); }).map(function(f){ return f.numero; });
-              return liq.length ? campo('Liquida a(s) factura(s)', '<span style="font-family:monospace">'+esc(liq.join(', '))+'</span>') : '';
-            }catch(e){ return ''; } })()
-      +     campo('Canal de Pagamento', esc(canal))
-      +     campo('Referência', '<span style="font-family:monospace">'+esc(pag.ref || '—')+'</span>')
-      +     campo('Banco', esc((pag.banco||'').toUpperCase() || '—'))
-      +     campo('Data do Pagamento', esc(pag.data || '—'))
-      +     campo('Registado por', esc(quem))
-      +   '</div>'
-
-      + (pag.confirmedBy
-          ? '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;font-size:10px;color:#166534;margin-bottom:10px">'
-            + 'Confirmado por: <strong>'+esc(pag.confirmedBy)+'</strong> em '+esc(pag.confirmedAt||'—')
-            + ' · Ref. extracto: <strong>'+esc(pag.confirmedRef||pag.ref||'—')+'</strong></div>'
-          : '')
-
-      + (a ? '<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid '+(divida>0?'#fecaca':'#bbf7d0')+';background:'+(divida>0?'#fef2f2':'#f0fdf4')+';border-radius:8px;padding:10px 14px;margin:14px 0">'
-            + '<div style="font-size:11px;color:'+(divida>0?'#991b1b':'#166534')+';font-weight:700">'+(divida>0?'Saldo em dívida (propinas em aberto)':'Sem propinas em dívida')+'</div>'
-            + '<div style="font-size:16px;font-weight:900;color:'+(divida>0?'#dc2626':'#16a34a')+'">'+mz(divida)+' MZM</div></div>'
-          : '')
-
-      +   '<div style="font-size:9px;color:#94a3b8;text-align:center;margin:6px 0 12px;line-height:1.5">'
-      +     (d.nuit?('NUIT: '+esc(d.nuit)+' · '):'') + (d.morada?(esc(d.morada)+' · '):'') + (d.telefone?('Tel: '+esc(d.telefone)):'')
-      +     '<br>Documento processado por computador · Recibo válido sem rasuras</div>'
-      +   '<div class="sig sig2"><div><div class="sig-line">Secretário(a) / Tesouraria</div></div>'
-      +     '<div><div class="sig-line">Encarregado de Educação</div></div></div>'
-      +   '<div class="stamp">Carimbo da Escola</div>'
-      +   '<div class="footer"><span>'+esc(d.escola)+' · '+esc(d.hoje)+'</span><span>'+esc(cod)+'</span>'
-      +     '<span>Guardar como comprovativo de pagamento</span></div>'
-      + '</div></body></html>';
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo '+esc(cod)+'</title>'
+      + (window.__cssPapel||'')
+      + '</head><body><div class="barra"><button onclick="window.print()">Imprimir</button><button onclick="window.close()">Fechar</button></div>'
+      + window.__docFolha(corpo)
+      + '</body></html>';
 
     if(typeof abrirJanela === 'function') abrirJanela(html, 'Recibo ' + cod);
     else { var w = window.open('','_blank','width=960,height=800'); if(w){ w.document.write(html); w.document.close(); } }
@@ -44994,35 +44969,29 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var dv=parseInt((typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)||5,10)||5;
     var venc=String(dv).padStart(2,'0')+'/'+String(mes1).padStart(2,'0')+'/'+ano;
     var pct=(base>0&&multa>0)?Math.round(multa*100/base):0;
-    function campo(r,v){ return '<div class="campo"><div class="lbl">'+r+'</div><div class="val">'+v+'</div></div>'; }
-    return '<div class="page a4" style="max-width:148mm;page-break-after:always">'
-      +'<div class="hdr"><div><div class="hdr-nome">'+esc(d.escola)+'</div><div class="hdr-sub">'+esc(d.subNome)+'</div></div>'
-      +  '<div class="hdr-tipo"><div class="tipo">'+tipo+'</div><div class="cod">'+esc(numero)+'</div>'
-      +  '<div style="font-size:9px;color:#94a3b8;margin-top:2px">'+esc(d.hoje)+'</div></div></div>'
-      /* v6.187: texto clássico — sem caixa escura (na impressão saía um bloco preto) */
-      +'<div style="font-size:13px;font-weight:700;color:#0f172a;border-bottom:1px solid #cbd5e1;padding:4px 0 8px;margin-bottom:10px">Propina de '+esc(mesNome)+' '+ano+(proforma?' — pró-forma':'')+'</div>'
-      +'<div class="g2" style="margin-bottom:10px">'
-      +  campo('Aluno',esc(a.nome||'—'))+campo('Encarregado de Educação',esc(encNome(a)))
-      +  campo('Nº Aluno',esc(a.num||'—'))+campo('Turma',esc(a.turma||'—'))
-      +  campo('Mês',esc(mesNome)+' '+ano)+campo('Vencimento',venc)
-      +  campo('Situação','<span style="color:'+(porVencer?'#92400e':'#991b1b')+'">'+(porVencer?'POR VENCER':'EM DÍVIDA')+'</span>')
-      +  campo('Referência para depósito','<span style="font-family:monospace">'+esc(a.num||'')+'</span>')
-      +'</div>'
-      +'<table style="width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:11px">'
-      +  '<tr style="background:#f1f5f9"><th style="text-align:left;padding:6px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.05em">Descrição</th><th style="text-align:right;padding:6px 8px;font-size:9px;text-transform:uppercase">Valor (MZM)</th></tr>'
-      +  '<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">Propina de '+esc(mesNome)+' '+ano+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(base)+'</td></tr>'
-      +  (multa?('<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">Multa de atraso'+(pct?(' ('+pct+'%)'):'')+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(multa)+'</td></tr>'):'')
-      +  (extraV?('<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">'+esc(extra.rotulo||'Multa acordada')+'</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #e5e7eb">'+mz(extraV)+'</td></tr>'):'')
-      +  '<tr><td style="padding:8px;font-weight:800;border-top:2px solid #0f172a">'+(proforma?'TOTAL PREVISTO':'TOTAL A PAGAR')+'</td><td style="text-align:right;padding:8px;font-weight:800;border-top:2px solid #0f172a;font-size:13px">'+mz(total)+' MZM</td></tr>'
-      +'</table>'
-      +'<div style="font-size:9.5px;color:#475569;margin-bottom:8px">IVA: isento — prestação de serviços de ensino.'+(proforma?' Documento pró-forma: não é factura fiscal e não tem número de série.':'')+'</div>'
-      +'<div style="font-size:10px;color:#0f172a;margin:6px 0 4px">Pagamento na secretaria, por POS, ou por depósito/transferência — indique o <strong>Nº do aluno ('+esc(a.num||'')+')</strong> na referência e guarde o talão. O recibo é emitido após confirmação.</div>'
-      +'<div style="font-size:9px;color:#94a3b8;text-align:center;margin:10px 0 6px;line-height:1.5">'+(d.nuit?('NUIT: '+esc(d.nuit)+' · '):'')+(d.morada?(esc(d.morada)+' · '):'')+(d.telefone?('Tel: '+esc(d.telefone)):'')+'<br>Documento processado por computador</div>'
-      +'<div class="footer"><span>'+esc(d.escola)+' · '+esc(d.hoje)+'</span><span>'+esc(numero)+'</span><span>'+esc(a.num||'')+'</span></div>'
-      +'</div>';
+    var extensoF = (typeof window.__porExtenso==='function') ? window.__porExtenso(total) : '';
+    var cidadeF = (typeof CONFIG!=='undefined' && CONFIG.cidade) || 'Maputo';
+    var corpoF = window.__docCabecalho('FACTURA', numero||'—', d.hoje)
+      + '<div>Exmo.(s) Sr.(s) <span class="pt">'+esc(encNome(a))+'</span></div>'
+      + '<div>Aluno(a) <span class="pt">'+esc(a.nome||'—')+'</span> · Nº <span class="pt">'+esc(a.num||'—')+'</span> · Turma <span class="pt">'+esc(a.turma||'—')+'</span></div>'
+      + '<div style="margin-top:8px">Referente a <span class="pt">propina de '+esc(mesNome)+' de '+ano+'</span> · Vencimento <span class="pt">'+esc(venc)+'</span> · Situação <span class="pt">'+(porVencer?'POR VENCER':'EM DÍVIDA')+'</span></div>'
+      + '<table class="l"><thead><tr><th>Descrição</th><th class="v">Valor (MT)</th></tr></thead><tbody>'
+      +   '<tr><td>Propina de '+esc(mesNome)+' '+ano+'</td><td class="v">'+mz(base)+'</td></tr>'
+      +   (multa?('<tr><td>Multa de atraso'+(pct?(' ('+pct+'%)'):'')+'</td><td class="v">'+mz(multa)+'</td></tr>'):'')
+      +   (extraV?('<tr><td>'+esc((extra&&extra.rotulo)||'Multa acordada')+'</td><td class="v">'+mz(extraV)+'</td></tr>'):'')
+      +   '<tr class="tot"><td>TOTAL A PAGAR</td><td class="v">'+mz(total)+'</td></tr>'
+      + '</tbody></table>'
+      + (extensoF?('<div>(<span class="pt">'+esc(extensoF)+'</span>)</div>'):'')
+      + '<div class="bx"><div>Pagamento na secretaria, por POS, ou por depósito ou transferência.</div>'
+      +   '<div>Indique sempre o número do aluno: <span class="pt">'+esc(a.num||'')+'</span></div></div>'
+      + '<div style="font-size:11px">IVA: isento — prestação de serviços de ensino.</div>'
+      + '<div style="margin-top:14px">'+esc(cidadeF)+', <span class="pt">'+esc(d.hoje)+'</span>.</div>'
+      + '<div class="ass"><div><div class="ln2">A Tesouraria</div></div><div><div class="ln2">Assinatura e carimbo</div></div></div>'
+      + '<div class="rod"><span>Factura '+esc(numero||'—')+'</span><span>Aluno '+esc(a.num||'')+'</span></div>';
+    return window.__docFolha(corpoF);
   }
   function abrirPaginas(titulo, paginas){
-    var css=(typeof CSS_BASE!=='undefined')?CSS_BASE:'', barra=(typeof NO_PRINT_BAR!=='undefined')?NO_PRINT_BAR:'';
+    var css=(window.__cssPapel||((typeof CSS_BASE!=='undefined')?CSS_BASE:'')), barra='<div class="barra"><button onclick="window.print()">Imprimir</button><button onclick="window.close()">Fechar</button></div>';
     var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(titulo)+'</title>'+css
       +'<style>.page{max-width:148mm}@media print{@page{size:A5;margin:0}.page{page-break-after:always}}</style></head><body>'+barra+paginas.join('')+'</body></html>';
     if(typeof abrirJanela==='function') abrirJanela(html, titulo);
@@ -47446,6 +47415,99 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   }catch(e){}
 })();
 </script>
+</script>
+<script>
+/* ═══ v6.216 — DOCUMENTOS EM PAPEL (recibo e factura) ═════════════════════
+   Texto dactilografado, sem caixas de cor nem gráficos, com o logótipo da
+   escola grande e esbatido por trás. O que interessa vai a negrito. ═════ */
+(function(){
+  if(window.__docPapel216) return; window.__docPapel216=true;
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function S(k, alt){ try{ return (ESCOLA_SETTINGS && ESCOLA_SETTINGS[k]) || alt || ''; }catch(e){ return alt||''; } }
+  function C(k, alt){ try{ return (typeof CONFIG!=='undefined' && CONFIG[k]!=null && CONFIG[k]!=='') ? CONFIG[k] : (alt||''); }catch(e){ return alt||''; } }
+
+  window.__cssPapel = ''
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{background:#e9ecef;padding:16px;color:#111;font-family:"Courier New",Courier,monospace}'
+    +'.barra{text-align:center;margin-bottom:14px}'
+    +'.barra button{padding:9px 18px;border:0;border-radius:6px;background:#111;color:#fff;font-weight:700;cursor:pointer;margin:0 4px;font-family:inherit}'
+    +'.folha{position:relative;width:210mm;min-height:148mm;background:#fff;margin:0 auto 14px;padding:16mm 18mm;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.14)}'
+    +'.marca{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}'
+    +'.marca img{width:70%;max-height:70%;object-fit:contain;opacity:.10;filter:blur(2px)}'
+    +'.marca span{font-size:78px;font-weight:700;color:#1f3a93;opacity:.08;filter:blur(2px);transform:rotate(-18deg);text-align:center;line-height:1.05}'
+    +'.corpo{position:relative;z-index:1;font-size:12.5px;line-height:1.95}'
+    +'.cab{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid #111;padding-bottom:8px;margin-bottom:14px}'
+    +'.cab .esc{font-size:16px;font-weight:700;letter-spacing:.06em}'
+    +'.cab .ln{font-size:11px;line-height:1.6}'
+    +'.cab .dir{text-align:right}'
+    +'.cab .tp{font-size:12px;font-weight:700;letter-spacing:.06em}'
+    +'.cab .nr{font-size:17px;font-weight:700;color:#b3261e}'
+    +'.pt{border-bottom:1px dotted #111;font-weight:700}'
+    +'.bx{border-top:1px dotted #111;border-bottom:1px dotted #111;padding:7px 0;margin:12px 0}'
+    +'table.l{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}'
+    +'table.l th,table.l td{border-bottom:1px dotted #111;padding:5px 2px;text-align:left}'
+    +'table.l td.v,table.l th.v{text-align:right}'
+    +'table.l tr.tot td{border-top:1.5px solid #111;border-bottom:none;font-weight:700;font-size:13px;padding-top:7px}'
+    +'.ass{display:flex;justify-content:space-between;margin-top:40px;font-size:11px;text-align:center}'
+    +'.ass div{width:46%}.ass .ln2{border-top:1px solid #111;padding-top:4px}'
+    +'.rod{margin-top:18px;border-top:1px solid #111;padding-top:6px;font-size:10px;display:flex;justify-content:space-between;gap:10px}'
+    +'@media print{body{background:#fff;padding:0}.barra{display:none}.folha{box-shadow:none;margin:0;width:auto;min-height:auto;page-break-after:always}@page{size:A4;margin:0}}'
+    +'</style>';
+
+  window.__docMarca = function(){
+    var logo=S('logo','');
+    return '<div class="marca">'+(logo
+      ? '<img src="'+esc(logo)+'" alt="">'
+      : '<span>'+esc(S('nome','Colégio iQRA')).toUpperCase().split(' ').join('<br>')+'</span>')+'</div>';
+  };
+
+  window.__docCabecalho = function(tipo, numero, dataStr){
+    var linhas=[];
+    var sub=C('subNome', S('subNome',''));
+    if(sub) linhas.push(esc(sub));
+    var morada=S('morada', C('morada',''));
+    if(morada) linhas.push(esc(morada));
+    var tel=S('telefone', C('telefone','')), mail=S('email', C('email',''));
+    if(tel||mail) linhas.push((tel?('Cell: '+esc(tel)):'')+(tel&&mail?' · ':'')+(mail?esc(mail):''));
+    var nuit=C('nuit', S('nuit',''));
+    if(nuit) linhas.push('NUIT: '+esc(nuit));
+    return '<div class="cab"><div><div class="esc">'+esc(S('nome','Colégio iQRA')).toUpperCase()+'</div>'
+      +'<div class="ln">'+linhas.join('<br>')+'</div></div>'
+      +'<div class="dir"><div class="tp">'+esc(tipo)+' N.º</div><div class="nr">'+esc(numero||'—')+'</div>'
+      +'<div class="ln">'+esc(dataStr||'')+'</div></div></div>';
+  };
+
+  window.__docFolha = function(corpo){
+    return '<div class="folha">'+window.__docMarca()+'<div class="corpo">'+corpo+'</div></div>';
+  };
+
+  /* Valor por extenso, em meticais */
+  var U=['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezasseis','dezassete','dezoito','dezanove'];
+  var D=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  var Ce=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function ate999(v){
+    if(v<20) return U[v];
+    if(v<100){ var d=Math.floor(v/10), r=v%10; return D[d]+(r?' e '+U[r]:''); }
+    if(v===100) return 'cem';
+    var c=Math.floor(v/100), r2=v%100;
+    return Ce[c]+(r2?' e '+ate999(r2):'');
+  }
+  window.__porExtenso = function(valor){
+    valor=Math.round((Number(valor)||0)*100)/100;
+    var inteiro=Math.floor(valor), cent=Math.round((valor-inteiro)*100);
+    var partes=[];
+    var milhoes=Math.floor(inteiro/1000000), resto=inteiro%1000000;
+    var milhares=Math.floor(resto/1000), unidades=resto%1000;
+    if(milhoes) partes.push(ate999(milhoes)+(milhoes===1?' milhão':' milhões'));
+    if(milhares) partes.push((milhares===1?'mil':ate999(milhares)+' mil'));
+    if(unidades) partes.push(ate999(unidades));
+    var txt=partes.length?partes.join(' e '):'zero';
+    txt+= (inteiro===1?' metical':' meticais');
+    if(cent) txt+=' e '+ate999(cent)+(cent===1?' centavo':' centavos');
+    return txt;
+  };
+})();
 </script>
 </body>
 </html>
