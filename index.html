@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.222</span>
+    <span class="logo-ver">v6.223</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -6359,6 +6359,26 @@ async function loadDadosEscola() {
         });
       });
       console.log('[Scholaris] Staff carregado:', PROFS.length);
+      /* v6.223 — o salário, a conta e os documentos vivem em `staff_confidencial`,
+         que só a direcção lê (e cada pessoa a sua própria ficha). Quem não tem
+         direito recebe zero linhas e estes campos ficam simplesmente vazios. */
+      try {
+        const { data: confDB } = await window._supabase
+          .from('staff_confidencial')
+          .select('staff_id, salario, subsidio_cargo, iban, banco, bi, niss, nuit')
+          .eq('escola_id', eid);
+        (confDB || []).forEach(function(c){
+          const alvo = PROFS.find(function(x){ return x._dbId === c.staff_id; });
+          if (!alvo) return;
+          alvo.salario       = c.salario || 0;
+          alvo.subsidioCargo = c.subsidio_cargo || 0;
+          alvo.iban  = c.iban  || '';
+          alvo.banco = c.banco || '';
+          alvo.bi    = c.bi    || '';
+          alvo.niss  = c.niss  || '';
+          alvo.nuit  = c.nuit  || '';
+        });
+      } catch(e) { console.warn('[Scholaris] dados confidenciais do staff:', e && e.message); }
       // v5.94: reconstruir espelhos DT/Dir-Ciclo a partir dos cargos persistidos
       try {
         TURMAS.forEach(function(t){ t.dirTurma = null; });
@@ -19678,23 +19698,31 @@ function guardarNovoStaff() {
       cargo:       staff.cargo,
       dep:         staff.dep,
       regime:      staff.regime,
-      salario:     staff.salario,
       nota:        0,
       form:        staff.form,
       area:        staff.area,
       disc:        staff.disc,
       nasc:        staff.nasc||null,
       genero:      staff.genero||null,
-      bi:          staff.bi||null,
-      niss:        staff.niss||null,
-      nuit:        staff.nuit||null,
       tel:         staff.tel||null,
       email:       staff.email||null,
       morada:      staff.morada||null,
       contrato:    staff.contrato||'indeterminado',
       ativo:       true,
-    }).then(({error}) => {
-      if (error) toast('Aviso: erro ao guardar no servidor: ' + error.message);
+    }).select('id').single().then(function(res){
+      if (res.error) { toast('Aviso: erro ao guardar no servidor: ' + res.error.message); return; }
+      /* v6.223 — salário, conta e documentos na tabela confidencial */
+      try{
+        staff._dbId = res.data && res.data.id;
+        window.__gravarStaffConf(staff._dbId, {
+          salario: staff.salario,
+          iban:    staff.iban  || null,
+          banco:   staff.banco || null,
+          bi:      staff.bi    || null,
+          niss:    staff.niss  || null,
+          nuit:    staff.nuit  || null
+        }).then(function(r){ if(r && r.erro) toast('Aviso: salário e documentos não ficaram guardados: '+r.erro); });
+      }catch(e){}
     });
   }
 
@@ -39039,6 +39067,25 @@ window.trimestreActual = function(d){
     document.body.appendChild(m);
   };
 
+  /* v6.223 — grava os campos confidenciais na tabela própria. Devolve {erro} se
+     falhar, para quem chama poder avisar em vez de dar a gravação por feita. */
+  window.__gravarStaffConf = async function(staffId, dados){
+    if(!staffId) return { erro:'Funcionário sem ligação à base de dados' };
+    try{
+      var limpo={};
+      ['salario','subsidio_cargo','iban','banco','bi','niss','nuit'].forEach(function(k){
+        if(dados && dados[k]!==undefined) limpo[k]=dados[k];
+      });
+      if(!Object.keys(limpo).length) return {};
+      limpo.staff_id=staffId;
+      limpo.escola_id=window._escolaId;
+      limpo.actualizado_em=new Date().toISOString();
+      try{ limpo.actualizado_por=(typeof curUser!=='undefined'&&curUser&&curUser.nome)||''; }catch(e){}
+      var r=await window._supabase.from('staff_confidencial').upsert(limpo, { onConflict:'staff_id' });
+      return (r && r.error) ? { erro:r.error.message } : {};
+    }catch(e){ return { erro:(e&&e.message)||'erro desconhecido' }; }
+  };
+
   window.__guardarPerfilProf = async function(id){
     if(!(typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'))){
       toast('Apenas Gestor Geral e Director podem editar o perfil.'); return;
@@ -39069,21 +39116,28 @@ window.trimestreActual = function(d){
       cont_fim: gv('edp-cont-fim')||null,
       ferias_dias_ano: parseInt(gv('edp-ferias'))||30
     };
+    /* v6.223 — BI, NUIT, NISS e salário saem do payload da tabela `staff`. */
+    var conf={ bi: upd.bi, nuit: upd.nuit, niss: upd.niss };
+    delete upd.bi; delete upd.nuit; delete upd.niss;
     if(podeSal){
       var sal=parseFloat(gv('edp-salario'));
-      if(!isNaN(sal)) upd.salario=sal;
+      if(!isNaN(sal)) conf.salario=sal;
     }
     if(!upd.nome || !upd.nome.trim()){ toast('O nome não pode ficar vazio'); return; }
     try{
       var res=await sb().from('staff').update(upd).eq('id',p._dbId);
       if(res.error){ toast('Erro ao gravar: '+res.error.message); return; }
-      Object.assign(p,upd); // reflectir em memória → Folha de Salários usa p.salario
-      toast('Perfil actualizado com sucesso'+(podeSal&&upd.salario!==undefined?' — Folha de Salários actualizada':''));
+      var rconf=await window.__gravarStaffConf(p._dbId, conf);
+      if(rconf && rconf.erro){ toast('Erro ao gravar salário/documentos: '+rconf.erro); return; }
+      Object.assign(p,upd); // reflectir em memória
+      Object.assign(p,{ bi:conf.bi, nuit:conf.nuit, niss:conf.niss });
+      if(conf.salario!==undefined) p.salario=conf.salario; // a Folha de Salários usa p.salario
+      toast('Perfil actualizado com sucesso'+(podeSal&&conf.salario!==undefined?' — Folha de Salários actualizada':''));
       // Auditoria: edição de perfil (regista alteração de salário se mudou)
       try{
         if(typeof logAudit==='function'){
-          var _salDepois = (podeSal && upd.salario!==undefined) ? upd.salario : _salAntes;
-          var _mudouSal = (podeSal && upd.salario!==undefined && Number(_salAntes)!==Number(upd.salario));
+          var _salDepois = (podeSal && conf.salario!==undefined) ? conf.salario : _salAntes;
+          var _mudouSal = (podeSal && conf.salario!==undefined && Number(_salAntes)!==Number(conf.salario));
           logAudit('PERFIL_PROF_EDITADO', (upd.nome||p.nome||'?')+' ('+(p.num||'—')+')',
             'Perfil actualizado'+(_mudouSal?(' · Salário alterado'):''),
             _mudouSal?_salAntes:null, _mudouSal?_salDepois:null);
@@ -42882,7 +42936,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   window.__contaDe=function(pid){ var c=contas()[String(pid)]; return c||{banco:'',conta:''}; };
   window.__contaSet=function(pid,campo,v){
     var C=contas(); var k=String(pid); if(!C[k]) C[k]={banco:'',conta:''}; C[k][campo]=String(v||'').trim();
-    try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){}
+    try{ if(typeof window.__gravarFinancas==='function') window.__gravarFinancas();
+         else if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){}
   };
   window.__contasModal=function(){
     if(!podeVer()) return;
@@ -47571,6 +47626,127 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       aplicar(e.nome, (e.settings && e.settings.logo) || null);
     }catch(err){ /* sem sessão ainda: tenta outra vez */ }
   }, 2000);
+})();
+</script>
+<script>
+/* ═══ v6.250 — AS FINANÇAS SAEM DE DENTRO DA CONFIGURAÇÃO ═════════════════
+   Toda a gente com sessão precisa de ler a linha da escola para carregar a
+   configuração (preçário, períodos, trimestres). Enquanto as folhas de salários
+   e as contas bancárias viveram nessa mesma coluna, qualquer professor ou aluno
+   as podia ler pela API. Passaram para a tabela `escola_financas`, que só a
+   direcção lê.
+
+   Aqui faz-se três coisas: trazer essas duas gavetas para o CONFIG em memória
+   de quem tem direito a elas, gravá-las de volta no sítio certo, e garantir que
+   nenhuma gravação da escola as volta a meter dentro do `config`. ══════════ */
+(function(){
+  if(window.__financas250) return; window.__financas250=true;
+
+  function sb(){ return window._supabase; }
+  function esc(){ return window._escolaId; }
+  function ligado(){ return !!(sb() && esc() && esc()!=='escola_demo'); }
+  function temConfig(){ try{ return typeof CONFIG!=='undefined' && CONFIG; }catch(e){ return false; } }
+
+  /* ── Trazer da tabela para a memória ─────────────────────────────────── */
+  window.__carregarFinancas = async function(){
+    if(!ligado() || !temConfig()) return false;
+    try{
+      var r = await sb().from('escola_financas').select('folhas, contas_banco').eq('escola_id', esc()).maybeSingle();
+      /* Sem linha devolvida é porque quem está ligado não tem direito a vê-la
+         (regra da tabela). Nesse caso não se mexe no CONFIG nem se marca como
+         lido — assim ninguém grava por cima com um objecto vazio. */
+      if(r.error || !r.data) return false;
+      CONFIG.folhas      = r.data.folhas || {};
+      CONFIG.contasBanco = r.data.contas_banco || {};
+      window.__financasCarregadas = true;
+      return true;
+    }catch(e){ return false; }
+  };
+
+  /* ── Levar da memória para a tabela ──────────────────────────────────────
+     Só grava se a leitura desta sessão tiver corrido bem. Sem essa garantia,
+     uma falha de rede no arranque seguida de uma edição apagaria as folhas
+     todas por cima de um objecto vazio. ─────────────────────────────────── */
+  var porGravar=false, aGravar=false;
+  window.__gravarFinancas = async function(){
+    if(!ligado() || !temConfig()) return;
+    if(!window.__financasCarregadas){
+      try{ toast('As folhas de salários não chegaram a ser lidas. Recarregue a página antes de gravar.'); }catch(e){}
+      return;
+    }
+    if(aGravar){ porGravar=true; return; }
+    aGravar=true;
+    try{
+      var quem=''; try{ quem=(curUser && curUser.nome)||''; }catch(e){}
+      var r=await sb().from('escola_financas').upsert({
+        escola_id: esc(),
+        folhas: CONFIG.folhas || {},
+        contas_banco: CONFIG.contasBanco || {},
+        actualizado_em: new Date().toISOString(),
+        actualizado_por: quem
+      }, { onConflict:'escola_id' });
+      if(r && r.error){ try{ toast('Não foi possível gravar a folha: '+r.error.message); }catch(e){} }
+    }catch(e){}
+    aGravar=false;
+    if(porGravar){ porGravar=false; window.__gravarFinancas(); }
+  };
+
+  /* ── Nenhuma gravação da escola volta a levar as finanças no config ───── */
+  function semFinancas(cfg){
+    if(!cfg || typeof cfg!=='object') return cfg;
+    var limpo={};
+    for(var k in cfg){ if(k!=='folhas' && k!=='contasBanco') limpo[k]=cfg[k]; }
+    return limpo;
+  }
+  function embrulhar(){
+    var s=sb(); if(!s || s.__financasEmbrulhado) return;
+    var _from = s.from.bind(s);
+    s.from = function(tabela){
+      var b = _from(tabela);
+      if(tabela!=='escolas' || !b || typeof b.update!=='function') return b;
+      var _update = b.update.bind(b);
+      b.update = function(payload, opts){
+        try{
+          if(payload && payload.config && typeof payload.config==='object'){
+            var trazia = ('folhas' in payload.config) || ('contasBanco' in payload.config);
+            var copia={}; for(var k in payload){ copia[k]=payload[k]; }
+            copia.config = semFinancas(payload.config);
+            payload = copia;
+            if(trazia) window.__gravarFinancas();
+          }
+        }catch(e){}
+        return _update(payload, opts);
+      };
+      return b;
+    };
+    s.__financasEmbrulhado = true;
+  }
+
+  /* ── Arranque: embrulhar assim que houver cliente, ler uma vez ────────── */
+  var tentativas=0;
+  var iv=setInterval(function(){
+    tentativas++;
+    try{
+      embrulhar();
+      if(ligado() && temConfig() && !window.__financasCarregadas){
+        window.__carregarFinancas();
+      }
+      if(window.__financasCarregadas || tentativas>60) clearInterval(iv);
+    }catch(e){ if(tentativas>60) clearInterval(iv); }
+  }, 1500);
+
+  /* Antes de abrir a Folha de Salários, trazer a versão mais recente —
+     duas pessoas da direcção podem estar a mexer ao mesmo tempo. */
+  try{
+    var _go = window.go;
+    if(typeof _go==='function' && !window.__financasGo){
+      window.__financasGo = true;
+      window.go = function(id){
+        if(id==='folha-salarios'){ try{ window.__carregarFinancas(); }catch(e){} }
+        return _go.apply(this, arguments);
+      };
+    }
+  }catch(e){}
 })();
 </script>
 
