@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.230</span>
+    <span class="logo-ver">v6.231</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -31398,7 +31398,6 @@ function rInscricaoMatricula(a) {
     <div class="cb" style="padding:0 16px 12px">
       ${mkFeeRow('inscricao','Renovação', vInsc)}
       ${mkFeeRow('matricula','Matrícula', vMat)}
-      <div style="font-size:11px;color:var(--t3);margin-top:8px">A matrícula e a renovação de ${(typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||''} foram pagas antes de a escola usar o sistema e não contam como dívida. As do ano seguinte tratam-se em Renovações e Matrículas.</div>
     </div>
   </div>`;
 }
@@ -31594,7 +31593,7 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
     var optAlunos = alunos.slice().sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');})
       .map(function(a){ return '<option value="'+a.id+'">'+(a.nome||'')+' ('+(a.num||'')+' / '+(a.turma||'')+')</option>'; }).join('');
     var html='';
-    html += '<div class="ib box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Taxas fixas anuais: pagas <strong>uma vez por ano</strong> por aluno (matrícula e renovação). O sistema bloqueia pagamento duplicado no mesmo ano lectivo ('+ANO+'). As de '+ANO+' foram pagas antes de a escola usar o sistema: aparecem «Sem registo» e não contam como dívida — registe só a matrícula de um aluno novo que entre a meio do ano.</div>';
+    html += '<div class="ib box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Taxas fixas anuais: pagas <strong>uma vez por ano</strong> por aluno (matrícula e renovação). O sistema bloqueia pagamento duplicado no mesmo ano lectivo ('+ANO+').</div>';
     html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px">';
     html += '<label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Aluno / Encarregado</label>';
     html += '<select id="tx-aluno" class="btn btn-g" style="width:100%;max-width:420px" onchange="renderTaxasAluno()"><option value="">Seleccionar aluno...</option>'+optAlunos+'</select>';
