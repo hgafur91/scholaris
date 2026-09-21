@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.234</span>
+    <span class="logo-ver">v6.235</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -47990,6 +47990,78 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       };
     }
   }catch(e){}
+})();
+</script>
+<script>
+/* ═══ DOCUMENTOS EXTRAÍDOS: MARCA DE ÁGUA, QUEM EXTRAIU E AUDITORIA ═══════
+   Todos os documentos (declarações, extractos, pautas, boletins, relatórios,
+   cartões, recibos, facturas…) abrem da mesma maneira: uma janela nova em
+   branco onde a aplicação escreve o documento. Apanha-se esse momento, num só
+   sítio, para que qualquer documento — incluindo os que vierem a ser criados —
+   saia com:
+     · a marca de água com o logótipo da escola (se ainda não a tiver);
+     · o rodapé «Documento extraído por <nome> (<papel>) em <data/hora>», em
+       todas as páginas impressas (se ainda não disser quem o emitiu);
+     · uma entrada no Registo de Auditoria: quem extraiu, que documento, quando.
+   ═════════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(window.__docGuarda) return; window.__docGuarda=true;
+
+  var PAPEIS={ gestor:'Gestor', director:'Director', 'dir-pedagogico':'Director Pedagógico', 'dir-ciclo':'Coordenador de Ciclo',
+    secretario:'Secretário', professor:'Professor', 'gestor-financeiro':'Gestor Financeiro', aluno:'Aluno', encarregado:'Encarregado' };
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function quem(){ try{ return (typeof curUser!=='undefined'&&curUser&&curUser.nome)||'—'; }catch(e){ return '—'; } }
+  function papel(){ var r=''; try{ r=(typeof curRole!=='undefined'&&curRole)||''; }catch(e){} return PAPEIS[r]||r; }
+  function escola(){ try{ return (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nome)||'Escola'; }catch(e){ return 'Escola'; } }
+  function logo(){ try{ return (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.logo)||''; }catch(e){ return ''; } }
+  function agora(){ var d=new Date(); return d.toLocaleDateString('pt-PT')+' às '+d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}); }
+
+  function marcar(w){
+    try{
+      var d=w.document; if(!d||!d.body||d.body.getAttribute('data-extraido')) return;
+      d.body.setAttribute('data-extraido','1');
+      var titulo=String(d.title||'Documento').trim()||'Documento';
+      var texto=d.body.innerText||'';
+      var temMarca=!!d.querySelector('.marca');                 /* recibos e facturas já a têm */
+      var temEmissor=/(Emitid[oa]|Extraíd[oa]) por/i.test(texto); /* e já dizem quem os emitiu */
+      if(!temMarca || !temEmissor){
+        var st=d.createElement('style');
+        st.textContent=''
+          +'.__wm{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2147483000}'
+          +'.__wm img{width:52%;max-width:520px;max-height:60vh;object-fit:contain;opacity:.07}'
+          +'.__wm span{font:700 64px Arial,sans-serif;color:#1f3a93;opacity:.06;transform:rotate(-20deg);text-align:center}'
+          +'.__rod{position:fixed;left:0;right:0;bottom:0;z-index:2147483001;background:#fff;border-top:1px solid #999;'
+          +'padding:3px 10mm;font:9px Arial,sans-serif;color:#333;display:flex;justify-content:space-between;gap:12px}'
+          +'body{padding-bottom:28px}';
+        (d.head||d.body).appendChild(st);
+      }
+      if(!temMarca){
+        var wm=d.createElement('div'); wm.className='__wm';
+        var lg=logo(); wm.innerHTML=lg?('<img src="'+esc(lg)+'" alt="">'):('<span>'+esc(escola().toUpperCase())+'</span>');
+        d.body.appendChild(wm);
+      }
+      if(!temEmissor){
+        var rod=d.createElement('div'); rod.className='__rod';
+        rod.innerHTML='<span>Documento extraído por <b>'+esc(quem())+'</b>'+(papel()?(' ('+esc(papel())+')'):'')+' em '+esc(agora())+'</span><span>'+esc(escola())+'</span>';
+        d.body.appendChild(rod);
+      }
+      try{ if(typeof logAudit==='function') logAudit('DOCUMENTO_EXTRAIDO', titulo, 'Extraído por '+quem()+(papel()?(' ('+papel()+')'):'')); }catch(e){}
+    }catch(e){}
+  }
+
+  var _open=window.open;
+  window.open=function(url){
+    var w=_open.apply(window, arguments);
+    var emBranco=(url==null||url===''||url==='about:blank');
+    if(!w||!emBranco) return w;
+    try{
+      var doc=w.document, _close=doc.close.bind(doc);
+      doc.close=function(){ var r=_close(); setTimeout(function(){ marcar(w); }, 60); return r; };
+    }catch(e){}
+    /* se algum documento se esquecer de fechar a escrita, marca-se na mesma */
+    setTimeout(function(){ try{ if(!w.closed) marcar(w); }catch(e){} }, 1500);
+    return w;
+  };
 })();
 </script>
 
