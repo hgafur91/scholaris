@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.227</span>
+    <span class="logo-ver">v6.228</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -47040,7 +47040,37 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
               +'<td style="text-align:right;white-space:nowrap">'+botoesRenovar(a,fech)+'</td></tr>';
           }).join(''):'<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--t3)">Não há alunos por renovar.</td></tr>')
         +'</tbody></table></div></div>';
-      if(renovados.length) h+='<div style="font-size:12px;color:var(--t2);margin:10px 2px">Já renovados: '+renovados.length+' aluno(s)'+(pendentes.length?(' · '+pendentes.length+' à espera de aprovação'):'')+'.</div>';
+      if(renovados.length){
+        /* Renovados para o ano seguinte, com o estado da renovação e o botão para
+           pagar depois (usa o mesmo registo de pagamento dos novos matriculados). */
+        var matDe={}; D.mats.forEach(function(m){ if(m.estado!=='rejeitada' && !m._novo) matDe[m.aluno_id]=m; });
+        var porPagar=0, porAprovar=0;
+        var linhasR=renovados.slice().sort(ordenar).map(function(a){
+          var m=matDe[a._dbId]||{}, pg=(PG[a.num]||{}).inscricao;
+          var isentoC=!!m.isenta_renovacao, isentoB=!isentoC && !!(a.isencoes&&a.isencoes.inscricao);
+          var estadoR, deve=false;
+          if(isentoC) estadoR='<span class="badge bok">Isenta · campanha</span>';
+          else if(isentoB) estadoR='<span class="badge bok">Isento</span>';
+          else if(pg==='confirmado') estadoR='<span class="badge bok">Paga</span>';
+          else if(pg==='por_confirmar') estadoR='<span class="badge bwn">Por confirmar</span>';
+          else { estadoR='<span class="badge ber">Por pagar</span>'; deve=true; porPagar++; }
+          if(m.estado==='pendente') porAprovar++;
+          if(deve && m.classe!=null){
+            window.__renovPagarCtx=window.__renovPagarCtx||{};
+            window.__renovPagarCtx[a.num]={ num:a.num, nome:a.nome, classe:m.classe, tipos:['inscricao'], alunoId:a.id, origem:'renovacoes' };
+          }
+          return '<tr><td><div style="font-weight:600">'+esc(a.nome)+'</div><div style="font-size:11px;color:var(--t3)">'+esc(a.num)+'</div></td>'
+            +'<td>'+esc(a.turma||'—')+'</td><td>'+(m.classe!=null?nomeClasse(m.classe):'—')+'</td>'
+            +'<td>'+(m.estado==='pendente'?'<span class="badge bwn">Por aprovar</span>':'<span class="badge bok">Aprovada</span>')+'</td>'
+            +'<td style="text-align:right">'+((isentoC||isentoB||m.classe==null)?'—':(mz(precoProx(m.classe,'inscricao'))+' MZM'))+'</td>'
+            +'<td>'+estadoR+'</td>'
+            +'<td style="text-align:right">'+((deve&&!fech&&m.classe!=null)?('<button class="btn btn-p btn-sm" data-n="'+esc(a.num)+'" onclick="window.__renovPagarAbrir(this.dataset.n)"><i class="ti ti-cash"></i> Registar pagamento</button>'):'')+'</td></tr>';
+        }).join('');
+        h+='<div class="card" style="margin-top:12px"><div class="ch"><span class="ct"><i class="ti ti-circle-check"></i> Renovados para '+prox+'</span>'
+          +'<span style="font-size:11px;color:var(--t3)">'+renovados.length+' aluno(s)'+(porPagar?(' · <span style="color:var(--r);font-weight:700">'+porPagar+' por pagar</span>'):'')+(porAprovar?(' · '+porAprovar+' à espera de aprovação'):'')+'</span></div>'
+          +'<div class="tw"><table><thead><tr><th>Aluno</th><th>'+activo+'</th><th>'+prox+'</th><th>Estado</th><th style="text-align:right">Renovação</th><th>Pagamento</th><th></th></tr></thead><tbody>'
+          +linhasR+'</tbody></table></div></div>';
+      }
       if(concluem.length) h+='<div class="card" style="margin-top:12px"><div class="ch"><span class="ct"><i class="ti ti-school"></i> Concluem em '+activo+' (12ª classe)</span><span style="font-size:11px;color:var(--t3)">sem renovação</span></div>'
         +'<div class="cb" style="font-size:12px;color:var(--t2)">'+concluem.map(function(a){ return esc(a.nome)+' ('+esc(a.turma)+')'; }).join(' · ')+'</div></div>';
     } else if(tab==='novos'){
