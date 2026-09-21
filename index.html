@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.233</span>
+    <span class="logo-ver">v6.234</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -42654,7 +42654,25 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var a=alunoDoFiltro(); if(!a){ if(typeof toast==='function') toast('Filtre um aluno único primeiro.'); return; }
     var recs=pagsArr().filter(function(p){ return p.alunoNum===a.num && p.estado==='confirmado'; }).sort(function(x,y){ return recNum(x).localeCompare(recNum(y)); });
     if(!recs.length){ if(typeof toast==='function') toast('Sem recibos confirmados para este aluno.'); return; }
-    abrirDoc('Recibos — '+a.nome, '<h1>Recibos — '+esc(a.nome)+'</h1><div class="sub">'+recs.length+' recibo(s) · '+new Date().toLocaleDateString('pt-PT')+'</div>'+recs.map(function(p){ return reciboHTML(a,p); }).join(''), false);
+    window.__recibosLote(a, recs);
+  };
+  /* v6.234 — cada recibo é o recibo oficial em duas vias (uma folha A4 por recibo) */
+  window.__recibosLote = async function(a, recs){
+    if(typeof window.__reciboOficial!=='function' || typeof window.__docDuplicado!=='function'){
+      abrirDoc('Recibos — '+a.nome, recs.map(function(p){ return reciboHTML(a,p); }).join(''), false); return;
+    }
+    if(typeof toast==='function') toast('A preparar '+recs.length+' recibo(s)…');
+    var folhas=[], falhas=0;
+    for(var i=0;i<recs.length;i++){
+      try{ var f=await window.__reciboOficial(recs[i], true); if(f) folhas.push(f); else falhas++; }catch(e){ falhas++; }
+    }
+    if(!folhas.length){ if(typeof toast==='function') toast('Não foi possível gerar os recibos.'); return; }
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibos — '+esc(a.nome)+'</title>'+(window.__cssPapel||'')+'</head><body>'
+      +'<div class="barra"><button onclick="window.print()">Imprimir</button><button onclick="window.close()">Fechar</button></div>'
+      +folhas.join('')+'</body></html>';
+    if(typeof abrirJanela==='function') abrirJanela(html, 'Recibos — '+a.nome);
+    else { var w=window.open('','_blank','width=960,height=800'); if(w){ w.document.write(html); w.document.close(); } }
+    if(falhas && typeof toast==='function') toast(falhas+' recibo(s) sem número ainda — não entraram no lote.');
   };
 
   /* ── C) EXTRACTO DA TURMA + facturas em lote ── */
@@ -44725,7 +44743,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }catch(e){ return 'Pagamento'; }
   }
 
-  window.__reciboOficial = function(pag){
+  window.__reciboOficial = function(pag, soFolha){
     if(!pag){ avisar('Pagamento não encontrado.'); return; }
     if(pag.estado === 'por_confirmar'){ avisar('Depósito/transferência ainda por confirmar. Confirme na Reconciliação antes de emitir o recibo.'); return; }
     if(pag.estado === 'estornado'){ avisar('Pagamento estornado — não tem recibo.'); return; }
@@ -44794,6 +44812,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       + '<div class="rod"><span>Emitido por: <strong>'+esc(window.__docEmitente())+'</strong> em '+esc(new Date().toLocaleString('pt-PT'))+'</span>'
       +   '<span>'+((quem && quem!=='—' && quem!==window.__docEmitente())?('Pagamento registado por: '+esc(quem)):'Documento processado por computador')+'</span></div>';
 
+    if(soFolha) return window.__docDuplicado(corpo);   /* v6.234: para os recibos em lote */
     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo '+esc(cod)+'</title>'
       + (window.__cssPapel||'')
       + '</head><body><div class="barra"><button onclick="window.print()">Imprimir</button><button onclick="window.close()">Fechar</button></div>'
@@ -44942,13 +44961,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   /* Emissão: garantir nº ANTES de renderizar; nunca inventar. */
   var _rec=window.__reciboOficial;
   if(typeof _rec==='function'){
-    window.__reciboOficial=async function(pag){
+    window.__reciboOficial=async function(pag, soFolha){
       if(pag && pag.estado==='confirmado' && !window.__reciboDe(pag)){
         try{ if(!_syncOk) await sincronizarRecibos(); await atribuirRecibo(pag); }
         catch(e){ avisar(semNumeracao(e)?NUM_INDISP:('Não foi possível atribuir o nº do recibo: '+(e&&e.message))); return; }
         if(!window.__reciboDe(pag)){ avisar(NUM_INDISP); return; }
       }
-      return _rec(pag);
+      return _rec(pag, soFolha);
     };
     window.emitirReciboPag=function(pag){ return window.__reciboOficial(pag); };
     window.emitirReciboPropina=function(id){
