@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.231</span>
+    <span class="logo-ver">v6.232</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -5742,7 +5742,8 @@ function openPA(id){
     <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><div style="width:56px;height:56px;border-radius:14px;background:${c}18;color:${c};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0">${ini(a.nome)}</div><div><div style="font-size:18px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px">${a.nome}${(window.__propCompleto&&window.__propCompleto(a))?`<span class="badge bok" style="font-size:10px"><i class="ti ti-circle-check"></i> Propina Completa</span>`:''}</div><div style="font-size:11px;color:var(--t2);font-family:var(--fm)">${a.num} · Turma ${a.turma} · Enc: ${a.enome||a.enc||a.encTel||'—'}${(a.enome&&a.enc)?(' ('+a.enc+')'):''}</div></div></div>
     <div class="pkpis"><div class="pkpi"><div class="pkpiv" style="color:var(--a)">${(window.__propAnual?window.__propAnual(a):a.propinas.slice(0,11).reduce((s,p)=>s+(p.v||0),0)).toLocaleString()}</div><div class="pkpil">Total Ano · 11 meses (MZM)</div></div><div class="pkpi"><div class="pkpiv" style="color:var(--g)">${pago.toLocaleString()}</div><div class="pkpil">Total Pago</div></div><div class="pkpi"><div class="pkpiv" style="color:${(window.__propFalta&&window.__propFalta(a)>0)?'var(--r)':'var(--g)'}">${(window.__propFalta?window.__propFalta(a):0).toLocaleString()}</div><div class="pkpil">Falta p/ Completar</div></div><div class="pkpi"><div class="pkpiv" style="color:var(--am)">${a.propinas.filter(p=>p.st==='multa').length}</div><div class="pkpil">Multas</div></div></div>`;
   
-  const _ims=document.getElementById('pa-insc-mat');if(_ims)_ims.innerHTML=rInscricaoMatricula(a);
+  /* As taxas do ano em curso (matrícula/renovação) não se mostram: não contam no sistema. */
+  const _ims=document.getElementById('pa-insc-mat');if(_ims){ _ims.innerHTML=''; _ims.style.display='none'; }
 document.getElementById('prop-meses').innerHTML=a.propinas.map((p,mi)=>{
     const _e=(window.__estadoPropina?window.__estadoPropina(p):p.st);
     const _multa=(p.st==='multa');
@@ -31508,9 +31509,9 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
        destruía-o de vez. Devolver primeiro, desenhar depois. */
     try{ if(window.__propEmbedActive && typeof window.__devolverPropinasDOM==='function') window.__devolverPropinasDOM(); }catch(e){}
     if(tab) _pagTab = tab;
+    if(_pagTab==='taxas') _pagTab='propinas';   /* Taxas Fixas deixou de existir */
     var tabs = [
       {id:'propinas', label:'Propinas', icon:'ti-calendar-dollar'},
-      {id:'taxas',    label:'Taxas Fixas', icon:'ti-file-certificate'},
       {id:'avulsos',  label:'Avulsos / Servicos', icon:'ti-receipt'},
       {id:'balancete',label:'Balancete', icon:'ti-report-money'}
     ];
