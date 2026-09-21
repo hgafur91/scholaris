@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.229</span>
+    <span class="logo-ver">v6.230</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -31366,16 +31366,16 @@ function rInscricaoMatricula(a) {
     const rec  = a[tipo] || {st:'npago', v:valor, dt:'', ref:''};
     const isIsent = a.isencoes?.[tipo];
     const pago  = rec.st === 'pago' || isIsent;
-    const icon  = isIsent ? 'ti-gift' : (pago ? 'ti-circle-check' : 'ti-clock');
-    const badge = isIsent ? 'badge-isento' : (pago ? 'badge-pago' : 'badge-npago');
-    const badgeTxt = isIsent ? 'Isento' : (pago ? 'Pago' : 'Pendente');
+    const icon  = isIsent ? 'ti-gift' : (pago ? 'ti-circle-check' : 'ti-minus');
+    const badge = isIsent ? 'badge-isento' : (pago ? 'badge-pago' : 'bne');
+    const badgeTxt = isIsent ? 'Isento' : (pago ? 'Pago' : 'Sem registo');
     const canEdit = canSeeSalary() || curRole === 'secretario';
     return `<div class="insc-row">
       <div class="insc-label"><i class="ti ${icon}"></i> ${label}</div>
-      <div class="insc-valor">${isIsent ? '—' : valor.toLocaleString()+' MZM'}</div>
+      <div class="insc-valor">${(isIsent || !pago) ? '—' : valor.toLocaleString()+' MZM'}</div>
       <span class="badge ${badge}">${badgeTxt}</span>
       ${pago ? `<span style="font-size:10px;color:var(--t3)">${rec.dt||''}</span>` : ''}
-      ${canEdit && !pago && !isIsent ? `
+      ${false && canEdit && !pago && !isIsent ? `
         <div style="display:flex;gap:4px">
           <button class="btn btn-g btn-sm" onclick="pagarTaxa('${a.id}','${tipo}',${valor})">
             <i class="ti ti-check" style="font-size:11px"></i> Registar
@@ -31398,6 +31398,7 @@ function rInscricaoMatricula(a) {
     <div class="cb" style="padding:0 16px 12px">
       ${mkFeeRow('inscricao','Renovação', vInsc)}
       ${mkFeeRow('matricula','Matrícula', vMat)}
+      <div style="font-size:11px;color:var(--t3);margin-top:8px">A matrícula e a renovação de ${(typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||''} foram pagas antes de a escola usar o sistema e não contam como dívida. As do ano seguinte tratam-se em Renovações e Matrículas.</div>
     </div>
   </div>`;
 }
@@ -31593,7 +31594,7 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
     var optAlunos = alunos.slice().sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');})
       .map(function(a){ return '<option value="'+a.id+'">'+(a.nome||'')+' ('+(a.num||'')+' / '+(a.turma||'')+')</option>'; }).join('');
     var html='';
-    html += '<div class="ib box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Taxas fixas anuais: pagas <strong>uma vez por ano</strong> por aluno (matrícula e renovação). O sistema bloqueia pagamento duplicado no mesmo ano lectivo ('+ANO+').</div>';
+    html += '<div class="ib box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Taxas fixas anuais: pagas <strong>uma vez por ano</strong> por aluno (matrícula e renovação). O sistema bloqueia pagamento duplicado no mesmo ano lectivo ('+ANO+'). As de '+ANO+' foram pagas antes de a escola usar o sistema: aparecem «Sem registo» e não contam como dívida — registe só a matrícula de um aluno novo que entre a meio do ano.</div>';
     html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px">';
     html += '<label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Aluno / Encarregado</label>';
     html += '<select id="tx-aluno" class="btn btn-g" style="width:100%;max-width:420px" onchange="renderTaxasAluno()"><option value="">Seleccionar aluno...</option>'+optAlunos+'</select>';
@@ -31606,7 +31607,7 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
     if(!sel||!box) return; if(!sel.value){ box.innerHTML=''; return; }
     var a=(typeof ALUNOS!=='undefined'?ALUNOS:[]).filter(function(x){return String(x.id)===String(sel.value);})[0];
     if(!a) return;
-    var tipos=[{id:'matricula',nome:'Matricula'},{id:'inscricao',nome:'Inscricao'}];
+    var tipos=[{id:'matricula',nome:'Matrícula'},{id:'inscricao',nome:'Renovação'}];
     var rows=tipos.map(function(tp){
       var pago=taxaPagaEsteAno(a.id, tp.id);
       var isento = (typeof isIsento==='function' && isIsento(a, tp.id));
@@ -31614,7 +31615,7 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
       var right;
       if(isento){ right='<span class="badge bok">Isento</span>'; }
       else if(pago){ right='<span class="badge bok"><i class="ti ti-check"></i> Pago em '+(pago.data||'-')+'</span>'; }
-      else { right='<button class="btn btn-p btn-sm" onclick="pagarTaxaFixa(\''+a.id+'\',\''+tp.id+'\')">Pagar '+money(preco)+' MZM</button>'; }
+      else { right='<span class="badge bne">Sem registo</span><button class="btn btn-g btn-sm" style="margin-left:6px" onclick="pagarTaxaFixa(\''+a.id+'\',\''+tp.id+'\')">Registar pagamento</button>'; }
       return '<tr style="border-bottom:1px solid var(--b)"><td style="padding:10px"><strong>'+tp.nome+'</strong></td><td style="padding:10px">'+money(preco)+' MZM</td><td style="padding:10px;text-align:right">'+right+'</td></tr>';
     }).join('');
     box.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--t2);text-align:left"><th style="padding:10px">Taxa</th><th style="padding:10px">Valor</th><th style="padding:10px;text-align:right">Estado</th></tr></thead><tbody>'+rows+'</tbody></table>';
