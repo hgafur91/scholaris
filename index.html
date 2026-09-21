@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.226</span>
+    <span class="logo-ver">v6.227</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -1192,7 +1192,7 @@ window.__escA = function (s) {
 
 <!-- ════ GESTÃO DE MULTAS DE ATRASO ════ -->
 <div class="view" id="v-renovacoes">
-  <div class="ph"><div><div class="ph-title">Renovações e Inscrições</div><div class="ph-sub">Renovar os alunos actuais e inscrever novos alunos para o próximo ano lectivo</div></div></div>
+  <div class="ph"><div><div class="ph-title">Renovações e Matrículas</div><div class="ph-sub">Renovar os alunos actuais e matricular novos alunos para o próximo ano lectivo</div></div></div>
   <div id="renovacoes-c"></div>
 </div>
 <div class="view" id="v-multas">
@@ -1658,7 +1658,7 @@ window.__escA = function (s) {
       <div class="fgr"><label class="fl">Bolseiro</label><select class="ffi"><option>Não</option><option>Sim</option></select></div>
     </div>
   </div>
-  <div class="mft"><button class="btn btn-g" onclick="closeM('m-naluno')">Cancelar</button><button class="btn btn-p" onclick="guardarNovoAluno()">Guardar & Inscrever</button></div>
+  <div class="mft"><button class="btn btn-g" onclick="closeM('m-naluno')">Cancelar</button><button class="btn btn-p" onclick="guardarNovoAluno()">Guardar & Matricular</button></div>
 </div></div>
 
 <div class="modal-ov" id="m-nprof"><div class="modal" style="max-width:640px;max-height:90vh;overflow-y:auto">
@@ -2746,7 +2746,7 @@ window.__escA = function (s) {
 <!-- ════ MODAL: NOVO ALUNO — FICHA COMPLETA ════ -->
 <div class="modal-ov" id="m-novo-aluno"><div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
   <div class="mhd">
-    <span class="mt"><i class="ti ti-user-plus"></i> Inscrição de Novo Aluno</span>
+    <span class="mt"><i class="ti ti-user-plus"></i> Matrícula de Novo Aluno</span>
     <button class="mclose" onclick="closeM('m-novo-aluno')"><i class="ti ti-x"></i></button>
   </div>
   <div class="mbod">
@@ -2760,7 +2760,7 @@ window.__escA = function (s) {
       </div>
       <div style="flex:1">
         <div class="ib-box ib-blue" style="margin-bottom:10px"><i class="ti ti-info-circle"></i>
-          Campos com <strong>*</strong> são obrigatórios. O boletim de inscrição é emitido automaticamente após guardar.
+          Campos com <strong>*</strong> são obrigatórios. O boletim de matrícula é emitido automaticamente após guardar.
         </div>
         <div class="fg">
           <div class="fgr full"><label class="fl">Nome Completo *</label>
@@ -2852,7 +2852,7 @@ window.__escA = function (s) {
     <!-- Matrícula -->
     <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 10px;border-top:1px solid var(--b);padding-top:12px">Matrícula</div>
     <div class="fg">
-      <div class="fgr"><label class="fl">Data de Inscrição</label>
+      <div class="fgr"><label class="fl">Data de Matrícula</label>
         <input class="ffi" type="date" id="na-ingresso"></div>
       <div class="fgr full"><label class="fl">Turma (opcional — pode ser alocado depois)</label>
         <select class="ffi" id="na-turma"></select>
@@ -2863,7 +2863,7 @@ window.__escA = function (s) {
   <div class="mft">
     <button class="btn btn-g" onclick="closeM('m-novo-aluno')">Cancelar</button>
     <button class="btn btn-p" onclick="guardarNovoAluno()">
-      <i class="ti ti-user-plus"></i> Inscrever Aluno
+      <i class="ti ti-user-plus"></i> Matricular Aluno
     </button>
   </div>
 </div></div>
@@ -3415,7 +3415,7 @@ const ROLES={
         {i:'ti-star',l:'Notas Finais',id:'notas'},
         {i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'},
       ]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-user-check',l:'Renovações e Inscrições',id:'renovacoes'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},{i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},{i:'ti-credit-card',l:'Propinas',id:'propinas'},{i:'ti-user-check',l:'Renovações e Matrículas',id:'renovacoes'},{i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},{i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},{i:'ti-cash',l:'Despesas',id:'despesas'},{i:'ti-chart-donut',l:'Despesas por Categoria',id:'despesas-cat'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'},{i:'ti-trending-up',l:'Fluxo de Caixa',id:'fluxo-caixa'},{i:'ti-target',l:'Orçamento vs Real',id:'orcamento'},{i:'ti-telescope',l:'Previsão de Receita',id:'previsao-receita'},{i:'ti-users',l:'Folha de Salários',id:'folha-salarios'}]},
       {sl:'Gestão RH',sub:[
         {i:'ti-briefcase',l:'Staff / Dep.',id:'staff'},
         {i:'ti-star',l:'Avaliações',id:'aval'},
@@ -3436,7 +3436,7 @@ const ROLES={
     sidebar:[
       {sl:'Principal',flat:[{i:'ti-layout-dashboard',l:'Dashboard',id:'dash'}]},
       {sl:'Académico',sub:[{i:'ti-layout-grid',l:'Turmas',id:'turmas'},{i:'ti-users',l:'Alunos',id:'alunos'},{i:'ti-heart',l:'Encarregados',id:'encarregados'},{i:'ti-calendar',l:'Horário',id:'horario'},{i:'ti-star',l:'Notas Finais',id:'notas'},{i:'ti-alert-circle',l:'Gestão de Faltas',id:'faltas'}]},
-      {sl:'Gestão Financeira',sub:[{i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},{i:'ti-user-check',l:'Renovações e Inscrições',id:'renovacoes'},{i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'}]},
+      {sl:'Gestão Financeira',sub:[{i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},{i:'ti-user-check',l:'Renovações e Matrículas',id:'renovacoes'},{i:'ti-arrow-up-circle',l:'Despesas',id:'despesas'},{i:'ti-receipt',l:'Emolumentos',id:'emolumentos'}]},
       {sl:'Gestão Curricular',sub:[
         {i:'ti-circles',l:'Ciclos',id:'ciclos'},
         {i:'ti-clock',l:'Períodos Lectivos',id:'periodos'},
@@ -3504,7 +3504,7 @@ const ROLES={
         {i:'ti-chart-pie',l:'Dashboard Financeiro',id:'fin-dashboard'},
         {i:'ti-report-money',l:'Relatório Financeiro',id:'relatorio-fin'},{i:'ti-clipboard-text',l:'Registo de Pagamentos',id:'relatorio-actividades'},
         {i:'ti-credit-card',l:'Pagamentos',id:'pagamentos'},
-        {i:'ti-user-check',l:'Renovações e Inscrições',id:'renovacoes'},
+        {i:'ti-user-check',l:'Renovações e Matrículas',id:'renovacoes'},
         {i:'ti-credit-card',l:'Propinas',id:'propinas'},
         {i:'ti-alert-circle',l:'Dívidas Consolidadas',id:'dividas'},
         {i:'ti-cash-off',l:'Multas de Atraso',id:'multas'},
@@ -4517,7 +4517,7 @@ function openAluno(id){
     if(!rows.length){gEl.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--t3);padding:20px;font-size:12px">Horário ainda não gerado para esta turma.</div>';return;}
     gEl.innerHTML=['','Seg','Ter','Qua','Qui','Sex'].map(dh=>'<div class="hh">'+dh+'</div>').join('')+rows.map(row=>'<div class="hhr">'+row.h+'</div>'+dias.map(dd=>{const cell=row[dd];return cell?'<div class="hc oc" title="'+cell.d+' — '+(cell.p||'Sem professor')+'"><div style="font-size:11px;font-weight:700;color:var(--a)">'+cell.d+'</div><div style="font-size:9px;color:var(--t3)">'+nomeProfHorario(cell.p)+'</div></div>':'<div class="hc vz"></div>'}).join('')).join('');
   })();
-  rIR('ap-td-r',[['Director Turma','Prof. António Cuna'],['Disciplinas',a.notas.t1.length+''],['Inscrições','Activas']]);
+  rIR('ap-td-r',[['Director Turma','Prof. António Cuna'],['Disciplinas',a.notas.t1.length+''],['Matrícula','Activa']]);
   // Financeiro
   const totP=a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
   document.getElementById('ap-fin-c').innerHTML=`
@@ -5878,7 +5878,7 @@ function updDespCat(v){const d=document.getElementById('desp-desc');if(d){const 
 
 // ══ EMOLUMENTOS ══
 function rEmol(){
-  document.getElementById('tb-emol').innerHTML=[['Propina Mensal',CONFIG.valorPropina.toLocaleString()+'.00 MZM','Mensal','Todos os alunos'],['Taxa de Inscrição/Matrícula','2,500.00 MZM','Anual','Novos alunos e renovações'],['Multa de Atraso',CONFIG.multaPropina+'% sobre propina','Condicional','Pagamento após dia 10 do mês'],['Taxa de Exame de Recurso','500.00 MZM','Por exame','Alunos em situação de recurso'],['Seguro Escolar','300.00 MZM','Anual','Todos os alunos'],['Segunda Via de Declaração','150.00 MZM','Por pedido','A pedido do encarregado']].map(([d,v,p,a])=>`<tr><td style="font-weight:700">${d}</td><td style="font-weight:700;color:var(--am)">${v}</td><td style="color:var(--t2)">${p}</td><td style="color:var(--t2);font-size:12px">${a}</td><td>${curRole==='gestor'?`<button class="btn btn-g btn-sm" onclick="toast('Editar')">Editar</button>`:''}</td></tr>`).join('');
+  document.getElementById('tb-emol').innerHTML=[['Propina Mensal',CONFIG.valorPropina.toLocaleString()+'.00 MZM','Mensal','Todos os alunos'],['Matrícula / Renovação','2,500.00 MZM','Anual','Novos alunos e renovações'],['Multa de Atraso',CONFIG.multaPropina+'% sobre propina','Condicional','Pagamento após dia 10 do mês'],['Taxa de Exame de Recurso','500.00 MZM','Por exame','Alunos em situação de recurso'],['Seguro Escolar','300.00 MZM','Anual','Todos os alunos'],['Segunda Via de Declaração','150.00 MZM','Por pedido','A pedido do encarregado']].map(([d,v,p,a])=>`<tr><td style="font-weight:700">${d}</td><td style="font-weight:700;color:var(--am)">${v}</td><td style="color:var(--t2)">${p}</td><td style="color:var(--t2);font-size:12px">${a}</td><td>${curRole==='gestor'?`<button class="btn btn-g btn-sm" onclick="toast('Editar')">Editar</button>`:''}</td></tr>`).join('');
 }
 
 // ══ GESTÃO DE FALTAS ══
@@ -17311,7 +17311,7 @@ function exportarMapaAproveitamento() {
           <th class="left">Turma</th>
           <th class="left">Ciclo</th>
           <th class="left">Curso</th>
-          <th>Inscritos</th>
+          <th>Matriculados</th>
           <th>Aprovados</th>
           <th>Reprovados</th>
           <th>Sem Nota</th>
@@ -19357,7 +19357,7 @@ function guardarNovoAluno() {
     }
     try{ closeM('m-novo-aluno'); }catch(_){}
     try{ closeM('m-naluno'); }catch(_){}
-    toast('<i class="ti ti-check"></i> ' + nome + ' inscrito! Nº ' + aluno.num);
+    toast('<i class="ti ti-check"></i> ' + nome + ' matriculado! Nº ' + aluno.num);
     // v6.89: fechar a candidatura (matrícula concluída) NO PONTO DE SUCESSO REAL e a PERSISTIR
     // (antes o wrapper verificava o modal antes da gravação terminar → nunca fechava → duplicados).
     try {
@@ -19466,7 +19466,7 @@ function emitirBoletimAluno(alunoId) {
   const cod    = `BOL-${a.num}-${new Date().getFullYear()}`;
 
   const htmlDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Boletim de Inscrição — ${a.nome}</title>
+  <title>Boletim de Matrícula — ${a.nome}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -19509,7 +19509,7 @@ function emitirBoletimAluno(alunoId) {
         <div class="sub">República de Moçambique · MINEDH · Ano Lectivo ${new Date().getFullYear()}</div>
       </div>
       <div class="doc-info">
-        <div class="tipo">Boletim de Inscrição</div>
+        <div class="tipo">Boletim de Matrícula</div>
         <div class="cod">${cod}</div>
         <div style="font-size:9px;color:#94a3b8;margin-top:2px">${hoje}</div>
       </div>
@@ -19572,14 +19572,14 @@ function emitirBoletimAluno(alunoId) {
 
     <div class="sig-section">
       <div><div class="sig-line">Encarregado de Educação<br>${a.enome||'_____________________'}</div></div>
-      <div><div class="sig-line">Secretário(a) / Inscrição<br>${a.inscritoPor||'_____________________'}</div></div>
+      <div><div class="sig-line">Secretário(a) / Matrícula<br>${a.inscritoPor||'_____________________'}</div></div>
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
     </div>
 
     <div class="footer">
       <span>Scholaris · ${escola} · ${hoje}</span>
       <span>Código: ${cod}</span>
-      <span>Documento oficial de inscrição — guardar no processo do aluno</span>
+      <span>Documento oficial de matrícula — guardar no processo do aluno</span>
     </div>
   </div></body></html>`;
 
@@ -20213,7 +20213,7 @@ function emitirDeclaracaoMatricula(alunoId) {
     </div>
 
     <div style="font-size:12px;color:#475569;line-height:1.8;margin:16px 0">
-      …encontra-se regularmente <strong>matriculado e inscrito</strong> na ${d.escola}
+      …encontra-se regularmente <strong>matriculado</strong> na ${d.escola}
       para o Ano Lectivo <strong>${d.ano}</strong>, frequentando o
       <strong>${turma?turma.classe+'º Ano de Escolaridade':'nível a confirmar'}</strong>,
       ${ciclo?`no <strong>${ciclo.nome}</strong>,`:''}
@@ -20227,7 +20227,7 @@ function emitirDeclaracaoMatricula(alunoId) {
     <div style="font-size:11px;color:#64748b;background:#fefce8;border:1px solid #fde047;
       border-radius:6px;padding:10px 12px;margin-bottom:14px">
       Validade: <strong>90 dias</strong> a partir da data de emissão.
-      Esta declaração não substitui o boletim de inscrição nem o certificado de aproveitamento.
+      Esta declaração não substitui o boletim de matrícula nem o certificado de aproveitamento.
     </div>
 
     <div class="sig sig2" style="margin-top:30px">
@@ -30914,7 +30914,7 @@ function renderTurmasSelector() {
       <div class="wiz-fees-cols">
         <span>Turmas</span>
         <span>Propina/mês (MZM)</span>
-        <span>Inscrição (MZM)</span>
+        <span>Renovação (MZM)</span>
         <span>Matrícula (MZM)</span>
       </div>
     </div>
@@ -30938,7 +30938,7 @@ function renderTurmasSelector() {
           <div style="display:flex;gap:4px;align-items:center">
             <input class="wiz-fee-input" type="number" value="${WP[cl]?.inscricao||500}"
               onchange="window._wizPropinas['${cl}'].inscricao=+this.value" placeholder="500">
-            <label class="wiz-fee-isc" title="Isentar inscrição antecipada">
+            <label class="wiz-fee-isc" title="Isentar renovação antecipada">
               <input type="checkbox" ${WP[cl]?.isentoInscricao?'checked':''}
                 onchange="window._wizPropinas['${cl}'].isentoInscricao=this.checked">
               <span>Isenção</span>
@@ -30959,7 +30959,7 @@ function renderTurmasSelector() {
     <div class="wiz-fees-note">
       <i class="ti ti-info-circle"></i>
       <div>Valores <strong>por classe</strong> — aplicam-se a todas as turmas dessa classe.
-      A <strong>isenção</strong> aplica-se automaticamente a alunos inscritos/matriculados antes da data limite definida.</div>
+      A <strong>isenção</strong> aplica-se automaticamente a alunos matriculados antes da data limite definida.</div>
     </div>
     <div style="margin-top:8px;font-size:12px;color:#64748b">
       Selecionadas: <strong>${_wizTurmas.length} turmas</strong>
@@ -31394,9 +31394,9 @@ function rInscricaoMatricula(a) {
   };
 
   return `<div class="card" style="margin-bottom:14px">
-    <div class="ch"><span class="ct"><i class="ti ti-clipboard-check"></i> Inscrição e Matrícula</span></div>
+    <div class="ch"><span class="ct"><i class="ti ti-clipboard-check"></i> Matrícula e Renovação</span></div>
     <div class="cb" style="padding:0 16px 12px">
-      ${mkFeeRow('inscricao','Inscrição', vInsc)}
+      ${mkFeeRow('inscricao','Renovação', vInsc)}
       ${mkFeeRow('matricula','Matrícula', vMat)}
     </div>
   </div>`;
@@ -31416,7 +31416,7 @@ function pagarTaxa(alunoId, tipo, valor) {
         .then(()=>{}, function(e){ try{console.warn('confirmar aluno', e);}catch(_){} });
     }
   }
-  toast(`${tipo==='inscricao'?'Inscrição':'Matrícula'} registada com sucesso${tipo==='matricula'?' — aluno confirmado':''}`);
+  toast(`${tipo==='inscricao'?'Renovação':'Matrícula'} registada com sucesso${tipo==='matricula'?' — aluno confirmado':''}`);
   if (typeof openAluno === 'function') openAluno(alunoId);
 }
 
@@ -31426,7 +31426,7 @@ function isentarTaxa(alunoId, tipo) {
   a.isencoes[tipo] = true;
   if (!a[tipo]) a[tipo] = {};
   a[tipo].st = 'isento'; a[tipo].v = 0; a[tipo].dt = new Date().toLocaleDateString('pt-PT');
-  toast(`Isenção de ${tipo==='inscricao'?'inscrição':'matrícula'} concedida`);
+  toast(`Isenção de ${tipo==='inscricao'?'renovação':'matrícula'} concedida`);
   if (typeof openAluno === 'function') openAluno(alunoId);
 }
 
@@ -31444,14 +31444,14 @@ function isentarTaxaLote(turmaId, tipo) {
       count++;
     }
   });
-  toast(`Isenção de ${tipo==='inscricao'?'inscrição':'matrícula'} concedida a ${count} alunos da turma ${turmaId}`);
+  toast(`Isenção de ${tipo==='inscricao'?'renovação':'matrícula'} concedida a ${count} alunos da turma ${turmaId}`);
 }
 
 function revogarIsencao(alunoId, tipo) {
   const a = ALUNOS.find(x => x.id === alunoId); if (!a) return;
   if (a.isencoes) a.isencoes[tipo] = false;
   if (a[tipo]) a[tipo].st = 'npago';
-  toast(`Isenção de ${tipo==='inscricao'?'inscrição':'matrícula'} revogada`);
+  toast(`Isenção de ${tipo==='inscricao'?'renovação':'matrícula'} revogada`);
   if (typeof openAluno === 'function') openAluno(alunoId);
 }
 
@@ -31593,7 +31593,7 @@ function aplicarIsencaoAntecipada(turmaId, dataLimite, tipos) {
     var optAlunos = alunos.slice().sort(function(a,b){return (a.nome||'').localeCompare(b.nome||'');})
       .map(function(a){ return '<option value="'+a.id+'">'+(a.nome||'')+' ('+(a.num||'')+' / '+(a.turma||'')+')</option>'; }).join('');
     var html='';
-    html += '<div class="ib box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Taxas fixas anuais: pagas <strong>uma vez por ano</strong> por aluno (matricula e inscricao). O sistema bloqueia pagamento duplicado no mesmo ano lectivo ('+ANO+').</div>';
+    html += '<div class="ib box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i> Taxas fixas anuais: pagas <strong>uma vez por ano</strong> por aluno (matrícula e renovação). O sistema bloqueia pagamento duplicado no mesmo ano lectivo ('+ANO+').</div>';
     html += '<div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px">';
     html += '<label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Aluno / Encarregado</label>';
     html += '<select id="tx-aluno" class="btn btn-g" style="width:100%;max-width:420px" onchange="renderTaxasAluno()"><option value="">Seleccionar aluno...</option>'+optAlunos+'</select>';
@@ -32520,7 +32520,7 @@ window.renderBalanceteRange=function(mIni,mFim){
     {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
       {id:'fg-dash-ent', lbl:'Dashboard de Entradas', ic:'ti-trending-up', go:'dash-entradas'},
       {id:'fg-pagamentos', lbl:'Propinas & Pagamentos', ic:'ti-credit-card', go:'pagamentos'},
-      {id:'fg-renovacoes', lbl:'Renovações e Inscrições', ic:'ti-user-check', go:'renovacoes'},
+      {id:'fg-renovacoes', lbl:'Renovações e Matrículas', ic:'ti-user-check', go:'renovacoes'},
       {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'},
       {id:'fg-reconciliacao', lbl:'Reconciliação Bancária', ic:'ti-file-check', go:'reconciliacao'},
       {id:'fg-bolsas', lbl:'Bolsas / Bolseiros', ic:'ti-discount-2', go:'bolsas'}
@@ -32551,7 +32551,7 @@ window.renderBalanceteRange=function(mIni,mFim){
   var GRUPOS_SECRETARIO=[
     {id:'fg-receitas', lbl:'Receitas', ic:'ti-login-2', itens:[
       {id:'fg-pagamentos', lbl:'Propinas & Pagamentos', ic:'ti-credit-card', go:'pagamentos'},
-      {id:'fg-renovacoes', lbl:'Renovações e Inscrições', ic:'ti-user-check', go:'renovacoes'},
+      {id:'fg-renovacoes', lbl:'Renovações e Matrículas', ic:'ti-user-check', go:'renovacoes'},
       {id:'fg-emolumentos', lbl:'Emolumentos', ic:'ti-receipt', go:'emolumentos'}
     ]},
     {id:'fg-despesas', lbl:'Despesas', ic:'ti-logout-2', itens:[
@@ -33376,7 +33376,7 @@ window.__setMultaPct=function(v){try{var n=parseFloat(v);if(isNaN(n)||n<0)n=0;if
 }catch(e){}};
 window.__applyValorClasse=function(classe,campo,val){try{val=parseFloat(val)||0;if(typeof CONFIG!=='undefined'){if(!CONFIG.valoresPorClasse)CONFIG.valoresPorClasse={};if(!CONFIG.valoresPorClasse[classe])CONFIG.valoresPorClasse[classe]={};CONFIG.valoresPorClasse[classe][campo]=val;}if(typeof TURMAS!=='undefined'){TURMAS.forEach(function(t){if((''+t.classe)===(''+classe)){t[campo]=val;}});}if(typeof window.__persistConfigSilent==='function')window.__persistConfigSilent();if(typeof toast==='function')toast('Guardado');if(typeof window.__refreshFinanceiro==='function')window.__refreshFinanceiro();}catch(e){}};
 window.__syncValoresClasse=function(){try{if(typeof CONFIG==='undefined'||!CONFIG.valoresPorClasse||typeof TURMAS==='undefined')return;TURMAS.forEach(function(t){var v=CONFIG.valoresPorClasse[t.classe];if(v){if(v.propina!==undefined)t.propina=v.propina;if(v.inscricao!==undefined)t.inscricao=v.inscricao;if(v.matricula!==undefined)t.matricula=v.matricula;}});}catch(e){}};
-window.__renderValoresClasse=function(){try{var host=document.getElementById('config-fin');if(!host)return;if(document.getElementById('vpc-box'))return;window.__syncValoresClasse();var can=(typeof curRole!=='undefined')&&(curRole==='gestor'||curRole==='director');var dis=can?'':'disabled';var classes=[];try{if(typeof TURMAS!=='undefined')TURMAS.forEach(function(t){if(classes.indexOf(''+t.classe)<0)classes.push(''+t.classe);});}catch(e){}classes.sort(function(a,b){return (parseFloat(a)||0)-(parseFloat(b)||0);});var dv=(typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)||5;var pp=(typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500;var Q=String.fromCharCode(34);var A=String.fromCharCode(39);var box=document.createElement('div');box.id='vpc-box';box.style.marginTop='18px';var h='';h+='<div class='+Q+'setting-row'+Q+'><div><div class='+Q+'setting-label'+Q+'>Dia de vencimento da propina</div><div class='+Q+'setting-desc'+Q+'>Dia do mes em que a propina vence. A multa conta os dias de atraso a partir deste dia.</div></div><div><input type='+Q+'number'+Q+' min='+Q+'1'+Q+' max='+Q+'28'+Q+' class='+Q+'ffi'+Q+' style='+Q+'width:80px'+Q+' value='+Q+dv+Q+' '+dis+' onchange='+Q+'__setDiaVenc(this.value)'+Q+'></div></div>';h+='<div style='+Q+'margin-top:16px;font-weight:600'+Q+'>Valores por Classe</div><div class='+Q+'setting-desc'+Q+' style='+Q+'margin-bottom:8px'+Q+'>Propina, inscricao e matricula por classe. Aplica-se a todas as turmas da mesma classe.</div>';if(!classes.length){h+='<div class='+Q+'ib box ib-am'+Q+'>Sem turmas. Crie turmas para definir os valores por classe.</div>';}else{h+='<table style='+Q+'width:100%;border-collapse:collapse'+Q+'><tr style='+Q+'text-align:left;color:var(--t3);font-size:12px'+Q+'><th style='+Q+'padding:6px'+Q+'>Classe</th><th style='+Q+'padding:6px'+Q+'>Propina</th><th style='+Q+'padding:6px'+Q+'>Inscricao</th><th style='+Q+'padding:6px'+Q+'>Matricula</th></tr>';classes.forEach(function(c){var vp=(CONFIG.valoresPorClasse&&CONFIG.valoresPorClasse[c])||{};function inp(campo,val,ph){return '<input type='+Q+'number'+Q+' class='+Q+'ffi'+Q+' style='+Q+'width:90px'+Q+' '+dis+' value='+Q+(val!==undefined?val:'')+Q+' placeholder='+Q+ph+Q+' onchange='+Q+'__applyValorClasse('+A+c+A+','+A+campo+A+',this.value)'+Q+'>';}h+='<tr style='+Q+'border-top:1px solid var(--b)'+Q+'><td style='+Q+'padding:6px;font-weight:600'+Q+'>'+c+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('propina',vp.propina,pp)+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('inscricao',vp.inscricao,'0')+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('matricula',vp.matricula,'0')+'</td></tr>';});h+='</table>';}if(!can)h+='<div class='+Q+'setting-desc'+Q+' style='+Q+'margin-top:8px'+Q+'>Apenas o gestor e o director podem alterar estes valores.</div>';box.innerHTML=h;host.appendChild(box);}catch(e){}};
+window.__renderValoresClasse=function(){try{var host=document.getElementById('config-fin');if(!host)return;if(document.getElementById('vpc-box'))return;window.__syncValoresClasse();var can=(typeof curRole!=='undefined')&&(curRole==='gestor'||curRole==='director');var dis=can?'':'disabled';var classes=[];try{if(typeof TURMAS!=='undefined')TURMAS.forEach(function(t){if(classes.indexOf(''+t.classe)<0)classes.push(''+t.classe);});}catch(e){}classes.sort(function(a,b){return (parseFloat(a)||0)-(parseFloat(b)||0);});var dv=(typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)||5;var pp=(typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500;var Q=String.fromCharCode(34);var A=String.fromCharCode(39);var box=document.createElement('div');box.id='vpc-box';box.style.marginTop='18px';var h='';h+='<div class='+Q+'setting-row'+Q+'><div><div class='+Q+'setting-label'+Q+'>Dia de vencimento da propina</div><div class='+Q+'setting-desc'+Q+'>Dia do mes em que a propina vence. A multa conta os dias de atraso a partir deste dia.</div></div><div><input type='+Q+'number'+Q+' min='+Q+'1'+Q+' max='+Q+'28'+Q+' class='+Q+'ffi'+Q+' style='+Q+'width:80px'+Q+' value='+Q+dv+Q+' '+dis+' onchange='+Q+'__setDiaVenc(this.value)'+Q+'></div></div>';h+='<div style='+Q+'margin-top:16px;font-weight:600'+Q+'>Valores por Classe</div><div class='+Q+'setting-desc'+Q+' style='+Q+'margin-bottom:8px'+Q+'>Propina, renovação e matrícula por classe. Aplica-se a todas as turmas da mesma classe.</div>';if(!classes.length){h+='<div class='+Q+'ib box ib-am'+Q+'>Sem turmas. Crie turmas para definir os valores por classe.</div>';}else{h+='<table style='+Q+'width:100%;border-collapse:collapse'+Q+'><tr style='+Q+'text-align:left;color:var(--t3);font-size:12px'+Q+'><th style='+Q+'padding:6px'+Q+'>Classe</th><th style='+Q+'padding:6px'+Q+'>Propina</th><th style='+Q+'padding:6px'+Q+'>Renovação</th><th style='+Q+'padding:6px'+Q+'>Matricula</th></tr>';classes.forEach(function(c){var vp=(CONFIG.valoresPorClasse&&CONFIG.valoresPorClasse[c])||{};function inp(campo,val,ph){return '<input type='+Q+'number'+Q+' class='+Q+'ffi'+Q+' style='+Q+'width:90px'+Q+' '+dis+' value='+Q+(val!==undefined?val:'')+Q+' placeholder='+Q+ph+Q+' onchange='+Q+'__applyValorClasse('+A+c+A+','+A+campo+A+',this.value)'+Q+'>';}h+='<tr style='+Q+'border-top:1px solid var(--b)'+Q+'><td style='+Q+'padding:6px;font-weight:600'+Q+'>'+c+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('propina',vp.propina,pp)+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('inscricao',vp.inscricao,'0')+'</td><td style='+Q+'padding:6px'+Q+'>'+inp('matricula',vp.matricula,'0')+'</td></tr>';});h+='</table>';}if(!can)h+='<div class='+Q+'setting-desc'+Q+' style='+Q+'margin-top:8px'+Q+'>Apenas o gestor e o director podem alterar estes valores.</div>';box.innerHTML=h;host.appendChild(box);}catch(e){}};
 try{if(typeof rConfigFin==='function'&&!rConfigFin.__v21){var _origRCF=rConfigFin;window.rConfigFin=function(){var r=_origRCF.apply(this,arguments);try{setTimeout(function(){window.__renderValoresClasse();},20);}catch(e){}return r;};window.rConfigFin.__v21=true;}}catch(e){}
 try{window.__syncValoresClasse&&window.__syncValoresClasse();}catch(e){}
 window.__finV21 = true;
@@ -34111,7 +34111,7 @@ window.__finV30=true;})();
       a.isencoes[tipo]=!a.isencoes[tipo];
       var col=(tipo==='matricula')?'isento_matricula':'isento_inscricao'; var upd={}; upd[col]=a.isencoes[tipo]===true;
       if(sb()&&a._dbId){ sb().from('alunos').update(upd).eq('id',a._dbId).then(function(){},function(){}); }
-      if(typeof toast==='function') toast((a.isencoes[tipo]?'Isenção de ':'Isenção removida de ')+(tipo==='matricula'?'matrícula':'inscrição'));
+      if(typeof toast==='function') toast((a.isencoes[tipo]?'Isenção de ':'Isenção removida de ')+(tipo==='matricula'?'matrícula':'renovação'));
       fillRows();
     }catch(e){}
   };
@@ -34142,7 +34142,7 @@ window.__finV30=true;})();
         +'<td style="padding:9px"><input type="text" list="bolsa-motivos" value="'+((a.bolsaMotivo||'').replace(/"/g,'&quot;'))+'"'+(canEdit?'':' disabled')+' placeholder="Motivo..." onchange="window.__setBolsaMotivo(\''+a.id+'\',this.value)" style="width:150px;background:var(--bg3);border:1px solid var(--b);border-radius:7px;padding:5px 8px;color:var(--t);font-size:12px"></td>'
         +'<td style="padding:9px;text-align:center;white-space:nowrap">'
         +'<button onclick="window.__setIsencaoBolsa(\''+a.id+'\',\'matricula\')"'+(canEdit?'':' disabled')+' style="margin:2px;padding:4px 8px;border-radius:7px;border:1px solid var(--b2);cursor:pointer;font-size:11px;font-weight:600;'+(isM?'background:#16a34a;color:#fff':'background:var(--bg3);color:var(--t2)')+'">Matrícula</button>'
-        +'<button onclick="window.__setIsencaoBolsa(\''+a.id+'\',\'inscricao\')"'+(canEdit?'':' disabled')+' style="margin:2px;padding:4px 8px;border-radius:7px;border:1px solid var(--b2);cursor:pointer;font-size:11px;font-weight:600;'+(isI?'background:#16a34a;color:#fff':'background:var(--bg3);color:var(--t2)')+'">Inscrição</button>'
+        +'<button onclick="window.__setIsencaoBolsa(\''+a.id+'\',\'inscricao\')"'+(canEdit?'':' disabled')+' style="margin:2px;padding:4px 8px;border-radius:7px;border:1px solid var(--b2);cursor:pointer;font-size:11px;font-weight:600;'+(isI?'background:#16a34a;color:#fff':'background:var(--bg3);color:var(--t2)')+'">Renovação</button>'
         +'</td></tr>';
     });
     tb.innerHTML=h;
@@ -35111,7 +35111,7 @@ window.__finV30=true;})();
     o.criadoPor=((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||'Gestor';
     o.estado='rascunho'; o.mesesLetivos=o.mesesLetivos||10;
     o.receitaClasses=classesInfo();
-    o.outrasReceitas=(o.outrasReceitas&&o.outrasReceitas.length)?o.outrasReceitas:[{id:'r'+Date.now(),label:'Matrículas / Inscrições',valor:0}];
+    o.outrasReceitas=(o.outrasReceitas&&o.outrasReceitas.length)?o.outrasReceitas:[{id:'r'+Date.now(),label:'Matrículas / Renovações',valor:0}];
     // v6.03: folha mensal real (despesas de salário / meses com folha), para sugerir valor
     var _folhaMensal = 0;
     try{
@@ -35176,7 +35176,7 @@ window.__finV30=true;})();
     o.criadoPor=o.criadoPor||(((typeof curUser!=='undefined')&&curUser)?curUser.nome:'Gestor');
     o.mesesLetivos=o.mesesLetivos||m;
     if(typeof window.__persistOrcamento==='function') window.__persistOrcamento();
-    if(typeof toast==='function') toast('Orçamento actualizado com dados reais (alunos inscritos + despesas registadas)');
+    if(typeof toast==='function') toast('Orçamento actualizado com dados reais (alunos matriculados + despesas registadas)');
     if(typeof rOrcamento==='function') rOrcamento();
   };
 
@@ -38692,7 +38692,7 @@ window.trimestreActual = function(d){
         {id:'d5',label:'Outros / Imprevistos',modo:'anual',valor:0}
       ];
     }
-    if(!o.outrasReceitas) o.outrasReceitas=[{id:'r1',label:'Matrículas / Inscrições',valor:0}];
+    if(!o.outrasReceitas) o.outrasReceitas=[{id:'r1',label:'Matrículas / Renovações',valor:0}];
     if(!o.criadoPor) o.criadoPor=((typeof curUser!=='undefined'&&curUser)?curUser.nome:'Gestor');
     var ex=document.getElementById('m-orc-edit'); if(ex) ex.remove();
     var m=document.createElement('div'); m.className='modal-ov'; m.id='m-orc-edit'; m.style.cssText='display:flex';
@@ -39762,7 +39762,7 @@ window.trimestreActual = function(d){
     var dados=window._fechoDados||[];
     var pendentes=dados.filter(function(d){ var e=window._efEstado(d); return e==='pendente'||e==='aguarda_exame'; });
     var aviso=pendentes.length?('\n\nATENÇÃO: '+pendentes.length+' aluno(s) ainda em Pendente/Aguarda Exame. O fecho fica pendente para esses até haver decisão/resultado.'):'';
-    if(!confirm('Fechar o ano lectivo '+((CONFIG&&CONFIG.anoLectivo)||2026)+'?\n\n• As matrículas passam a "concluída"\n• O resultado de cada aluno fica gravado\n• As notas NÃO são apagadas (ficam para consulta)\n• O ano fica só-leitura'+aviso+'\n\nÉ reversível até inscrever alunos no ano seguinte.')) return;
+    if(!confirm('Fechar o ano lectivo '+((CONFIG&&CONFIG.anoLectivo)||2026)+'?\n\n• As matrículas passam a "concluída"\n• O resultado de cada aluno fica gravado\n• As notas NÃO são apagadas (ficam para consulta)\n• O ano fica só-leitura'+aviso+'\n\nÉ reversível até matricular alunos no ano seguinte.')) return;
     window.__executarFecho();
   };
 
@@ -40670,7 +40670,7 @@ window.trimestreActual = function(d){
       +'<div style="display:grid;grid-template-columns:1fr;gap:8px">'
       +'<button class="btn btn-p" style="justify-content:flex-start" onclick="__secTipoPag(\'propina\')"><i class="ti ti-credit-card"></i> Propina (mensalidade)</button>'
       +'<button class="btn btn-g" style="justify-content:flex-start" onclick="__secTipoPag(\'matricula\')"><i class="ti ti-file-plus"></i> Matrícula</button>'
-      +'<button class="btn btn-g" style="justify-content:flex-start" onclick="__secTipoPag(\'inscricao\')"><i class="ti ti-writing-sign"></i> Inscrição</button>'
+      +'<button class="btn btn-g" style="justify-content:flex-start" onclick="__secTipoPag(\'inscricao\')"><i class="ti ti-writing-sign"></i> Renovação</button>'
       +'</div>');
   };
 
@@ -40678,7 +40678,7 @@ window.trimestreActual = function(d){
   window.__secTipoPag=function(tipo){
     _tipoSel=tipo;
     var body=document.getElementById('sec-sc-body'); if(!body) return;
-    var lbl={propina:'Propina',matricula:'Matrícula',inscricao:'Inscrição'}[tipo]||tipo;
+    var lbl={propina:'Propina',matricula:'Matrícula',inscricao:'Renovação'}[tipo]||tipo;
     body.innerHTML='<div style="font-size:12px;color:var(--t2);margin-bottom:8px"><b>'+esc(lbl)+'</b> — escolha o aluno:</div>'
       +'<input id="sec-sc-busca" class="ffi" placeholder="Pesquisar por nome ou nº…" oninput="__secFiltrarAlunos(this.value)" style="width:100%;margin-bottom:10px">'
       +'<div id="sec-sc-lista" style="max-height:44vh;overflow:auto"></div>';
@@ -43919,7 +43919,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
    v6.178 — Emolumentos ligados aos valores REAIS por classe
-   A escola define propina, inscrição e matrícula POR CLASSE em
+   A escola define propina, renovação e matrícula POR CLASSE em
    Configurações › Financeiro › "Valores por Classe" (CONFIG.valoresPorClasse,
    espelhado em TURMAS[].propina/inscricao/matricula e lido por
    getPropinaTurma()). Os Emolumentos mostravam só a propina global de
@@ -43992,7 +43992,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       D.classes.forEach(function(c){
         var turmas=c.turmas.length?('Turmas '+esc(c.turmas.join(', '))):'—';
         h+=row('Propina — '+ordinal(c.classe), mz(c.propina), 'Mensal', turmas, linkCfg);
-        if(c.inscricao>0) h+=row('Inscrição — '+ordinal(c.classe), mz(c.inscricao), 'Anual', 'Alunos novos', linkCfg);
+        if(c.inscricao>0) h+=row('Renovação — '+ordinal(c.classe), mz(c.inscricao), 'Anual', 'Alunos novos', linkCfg);
         if(c.matricula>0) h+=row('Matrícula — '+ordinal(c.classe), mz(c.matricula), 'Anual', 'Renovação de matrícula', linkCfg);
       });
     } else {
@@ -44021,7 +44021,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         var nota=document.createElement('div'); nota.id='emol-nota2';
         nota.className='ib-box ib-blue'; nota.style.marginBottom='14px';
         nota.innerHTML='<i class="ti ti-info-circle"></i> Os valores vêm de <strong>Configurações › Financeiro › Valores por Classe</strong> '
-          +'(propina, inscrição e matrícula) e de <strong>Serviços</strong> (avulsos). Alterar aqui não é possível — altere na origem para não haver duas verdades.';
+          +'(propina, renovação e matrícula) e de <strong>Serviços</strong> (avulsos). Alterar aqui não é possível — altere na origem para não haver duas verdades.';
         var ph=view.querySelector('.ph');
         if(ph && ph.nextSibling) view.insertBefore(nota, ph.nextSibling); else view.insertBefore(nota, view.firstChild);
       }
@@ -44038,7 +44038,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var linhas='';
     D.classes.forEach(function(c){
       linhas+='<tr><td>Propina — '+ordinal(c.classe)+'</td><td class="v">'+mz(c.propina)+'</td><td>Mensal</td></tr>';
-      if(c.inscricao>0) linhas+='<tr><td>Inscrição — '+ordinal(c.classe)+'</td><td class="v">'+mz(c.inscricao)+'</td><td>Anual (alunos novos)</td></tr>';
+      if(c.inscricao>0) linhas+='<tr><td>Renovação — '+ordinal(c.classe)+'</td><td class="v">'+mz(c.inscricao)+'</td><td>Anual (alunos novos)</td></tr>';
       if(c.matricula>0) linhas+='<tr><td>Matrícula — '+ordinal(c.classe)+'</td><td class="v">'+mz(c.matricula)+'</td><td>Anual (renovação)</td></tr>';
     });
     var srv=D.servicos.map(function(s){
@@ -44672,7 +44672,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
        e Junho saía "Mai".
 
    Agora existe um único __reciboOficial(pag), com o layout bom, que serve
-   propinas, taxas (matrícula/inscrição) e serviços avulsos. Os dois nomes
+   propinas, taxas (matrícula/renovação) e serviços avulsos. Os dois nomes
    antigos passam a apontar para ele, para não haver dois documentos com a
    mesma finalidade e conteúdos diferentes.
    ═══════════════════════════════════════════════════════════════════════ */
@@ -44709,7 +44709,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         }).join(', ');
       }
       if(pag.tipo === 'matricula') return 'Taxa de Matrícula';
-      if(pag.tipo === 'inscricao') return 'Taxa de Inscrição';
+      if(pag.tipo === 'inscricao') return 'Taxa de Renovação';
       if(pag.categoriaNome) return String(pag.categoriaNome);
       if(pag.familia === 'taxa_fixa') return 'Taxa fixa';
       if(pag.familia === 'avulso') return 'Serviço avulso';
@@ -45949,7 +45949,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       var classes=[1,2,3,4,5,6,7,8].map(function(c){ return {classe:c,alunos:30,propina:c<=3?3000:(c<=6?3500:4000)}; });
       var o={ano:ANO,estado:'aprovado',criadoPor:'Elísio Chichava',aprovadoPor:'Direcção da Escola',dataSubmissao:iso(ANO,1,20),dataAprovacao:iso(ANO,1,28),comentario:'Aprovado em reunião de direcção de 28/01/'+ANO+'.',
         alunosEsperados:240,mesesLetivos:10,valorPropinaMensal:3500,receitaClasses:classes,
-        outrasReceitas:[{id:'erc1',label:'Matrículas e inscrições',valor:240*4000},{id:'erc2',label:'Emolumentos e declarações',valor:120000}],
+        outrasReceitas:[{id:'erc1',label:'Matrículas e renovações',valor:240*4000},{id:'erc2',label:'Emolumentos e declarações',valor:120000}],
         despesas:[{id:'d1',label:'Salários (folha)',modo:'mensal',valor:600000},{id:'d2',label:'Água e Electricidade',modo:'mensal',valor:16000},{id:'d3',label:'Segurança e limpeza',modo:'mensal',valor:15000},{id:'d4',label:'Internet e comunicações',modo:'mensal',valor:3500},{id:'d5',label:'Material didáctico',modo:'anual',valor:80000},{id:'d6',label:'Manutenção e obras',modo:'anual',valor:120000},{id:'d7',label:'Marketing e eventos',modo:'anual',valor:40000},{id:'d8',label:'Outros / Imprevistos',modo:'anual',valor:60000}]};
       window.ORCAMENTO_ANUAL=o; CONFIG.orcamento=o; window.__orcHydrated=true;
     }catch(e){ console.warn('[demo198 orcamento]', e&&e.message); }
@@ -46687,7 +46687,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
            +'<tfoot><tr><th colspan="3" style="text-align:right">TOTAL EM DÍVIDA</th><th style="text-align:right">'+mz(sit.total)+' MZM</th></tr></tfoot></table>'
            +'<div class="txt">Solicita-se a regularização da situação junto da secretaria da escola.</div>')
         : ('<div class="txt">À data de hoje, o(a) aluno(a) <strong>não tem qualquer dívida</strong> para com esta escola: '
-           +'não tem propinas em atraso, nem matrícula ou inscrição por liquidar, relativas ao ano lectivo '+ano+'.</div>'))
+           +'não tem propinas em atraso, nem matrícula ou renovação por liquidar, relativas ao ano lectivo '+ano+'.</div>'))
       +'<div class="txt">Por ser verdade e a pedido do(a) interessado(a), se passa a presente declaração, que vai por nós assinada e autenticada com o carimbo em uso nesta instituição.</div>'
       +'<div class="txt">'+esc(morada?String(morada).split(',')[0]:'')+', '+hoje+'.</div>'
       +'<div class="ass"><div><div class="ln">A Direcção da Escola</div></div><div><div class="ln">Secretaria / Tesouraria</div></div></div>'
@@ -46755,7 +46755,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 </script>
 <script>
 /* v6.223 — RENOVAÇÕES E INSCRIÇÕES (parte 1: ecrã e listas)
-   Gestão Financeira › Receitas › Renovações e Inscrições. Trabalha sempre para o ANO SEGUINTE ao activo.
+   Gestão Financeira › Receitas › Renovações e Matrículas. Trabalha sempre para o ANO SEGUINTE ao activo.
    Aberto por omissão; gestor e director podem fechar/abrir (CONFIG.renovacoes.fechado).
    Separadores: Renovar · Inscrever novos · Não renovados.
    v6.227: inscrever novos (aluno + matrícula por classe + inscrição/matrícula), «não volta» (CONFIG.renovacoes.naoVoltam)
@@ -46969,7 +46969,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
            :'<div style="font-size:10px;color:var(--am)"><i class="ti ti-lock"></i> Precisa de autorização</div>')+'</td>';
   }
   function botoesRenovar(a, fech){
-    if(fech) return '<button class="btn btn-p btn-sm" disabled title="Renovações e inscrições fechadas"><i class="ti ti-refresh"></i> Renovar</button>';
+    if(fech) return '<button class="btn btn-p btn-sm" disabled title="Renovações e matrículas fechadas"><i class="ti ti-refresh"></i> Renovar</button>';
     var d=dividaActual(a), aut=autorizacao(a), h='';
     if(d.total>0 && !aut){
       if(!podeAutorizar()) return '<button class="btn btn-p btn-sm" disabled title="Aguarda autorização do director ou do gestor"><i class="ti ti-lock"></i> Aguarda autorização</button>';
@@ -47017,16 +47017,16 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 
     var h='';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px 18px;margin-bottom:14px">'
-      +'<div><div style="font-size:16px;font-weight:800">Renovações e Inscrições '+prox+'</div>'
-      +'<div style="font-size:12px;margin-top:2px">'+(fech?'<span style="color:var(--r);font-weight:700">● Fechado</span> · não é possível renovar nem inscrever':'<span style="color:var(--g);font-weight:700">● Aberto</span> · ano em curso: '+activo)+'</div></div>'
-      +(podeFechar?('<button class="btn '+(fech?'btn-p':'btn-g')+' btn-sm" onclick="window.__renovAbrirFechar()"><i class="ti ti-'+(fech?'lock-open':'lock')+'"></i> '+(fech?'Abrir':'Fechar')+' renovações e inscrições</button>'):'')
+      +'<div><div style="font-size:16px;font-weight:800">Renovações e Matrículas '+prox+'</div>'
+      +'<div style="font-size:12px;margin-top:2px">'+(fech?'<span style="color:var(--r);font-weight:700">● Fechado</span> · não é possível renovar nem matricular':'<span style="color:var(--g);font-weight:700">● Aberto</span> · ano em curso: '+activo)+'</div></div>'
+      +(podeFechar?('<button class="btn '+(fech?'btn-p':'btn-g')+' btn-sm" onclick="window.__renovAbrirFechar()"><i class="ti ti-'+(fech?'lock-open':'lock')+'"></i> '+(fech?'Abrir':'Fechar')+' renovações e matrículas</button>'):'')
       +'</div>';
     h+=faixaCampanha(D.mats);
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px">'
       +kpi('A renovar',aRenovar.length,'var(--a)','renovar')+kpi('Renovados',renovados.length,'var(--g)','renovar')
-      +kpi('Novos inscritos',novos.length,'var(--tl, #06b6d4)','novos')+kpi('Por aprovar',pendentes.length,'var(--am)','aprovar')+kpi('Não renovados',naoVoltam.length,'var(--r)','nao')
+      +kpi('Novos matriculados',novos.length,'var(--tl, #06b6d4)','novos')+kpi('Por aprovar',pendentes.length,'var(--am)','aprovar')+kpi('Não renovados',naoVoltam.length,'var(--r)','nao')
       +'</div>';
-    var tabs=[['renovar','Renovar'],['novos','Inscrever novos'],['aprovar','Por aprovar'+(pendentes.length?(' ('+pendentes.length+')'):'')],['nao','Não renovados']];
+    var tabs=[['renovar','Renovar'],['novos','Matricular novos'],['aprovar','Por aprovar'+(pendentes.length?(' ('+pendentes.length+')'):'')],['nao','Não renovados']];
     h+='<div class="tabs">'+tabs.map(function(x){ return '<button class="tab '+(tab===x[0]?'on':'')+'" data-t="'+x[0]+'" onclick="window.__renovIr(this.dataset.t)">'+x[1]+'</button>'; }).join('')+'</div>';
 
     if(tab==='renovar'){
@@ -47045,15 +47045,15 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         +'<div class="cb" style="font-size:12px;color:var(--t2)">'+concluem.map(function(a){ return esc(a.nome)+' ('+esc(a.turma)+')'; }).join(' · ')+'</div></div>';
     } else if(tab==='novos'){
       h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">'
-        +'<div style="font-size:13px;color:var(--t2)">Candidaturas aprovadas e alunos inscritos para '+prox+'.</div>'
-        +'<button class="btn btn-p btn-sm"'+(fech?' disabled title="Renovações e inscrições fechadas"':' onclick="window.__renovNovo()"')+'><i class="ti ti-user-plus"></i> Novo aluno</button></div>';
+        +'<div style="font-size:13px;color:var(--t2)">Candidaturas aprovadas e alunos matriculados para '+prox+'.</div>'
+        +'<button class="btn btn-p btn-sm"'+(fech?' disabled title="Renovações e matrículas fechadas"':' onclick="window.__renovNovo()"')+'><i class="ti ti-user-plus"></i> Novo aluno</button></div>';
       h+='<div class="card"><div class="ch"><span class="ct">Candidaturas aprovadas</span><span style="font-size:11px;color:var(--t3)">'+D.cands.length+'</span></div><div class="tw"><table><thead><tr><th>Candidato</th><th>Classe pretendida</th><th>Encarregado</th><th>Contacto</th><th></th></tr></thead><tbody>'
         +(D.cands.length?D.cands.map(function(c){
             return '<tr><td style="font-weight:600">'+esc(c.nome)+'</td><td>'+esc(c.classe_desejada||'—')+'</td><td>'+esc(c.encarregado||'—')+'</td><td>'+esc(c.tel||'—')+'</td>'
-              +'<td style="text-align:right"><button class="btn btn-p btn-sm"'+(fech?' disabled title="Renovações e inscrições fechadas"':(' data-c="'+esc(c.id)+'" onclick="window.__renovNovo(this.dataset.c)"'))+'><i class="ti ti-check"></i> Inscrever</button></td></tr>';
+              +'<td style="text-align:right"><button class="btn btn-p btn-sm"'+(fech?' disabled title="Renovações e matrículas fechadas"':(' data-c="'+esc(c.id)+'" onclick="window.__renovNovo(this.dataset.c)"'))+'><i class="ti ti-check"></i> Matricular</button></td></tr>';
           }).join(''):'<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--t3)">Sem candidaturas aprovadas.</td></tr>')
         +'</tbody></table></div></div>';
-      h+='<div class="card" style="margin-top:12px"><div class="ch"><span class="ct">Novos inscritos para '+prox+'</span><span style="font-size:11px;color:var(--t3)">'+novos.length+'</span></div><div class="tw"><table><thead><tr><th>Aluno</th><th>Nº</th><th>Classe '+prox+'</th><th>Estado</th><th>Matrícula</th><th></th></tr></thead><tbody>'
+      h+='<div class="card" style="margin-top:12px"><div class="ch"><span class="ct">Novos matriculados para '+prox+'</span><span style="font-size:11px;color:var(--t3)">'+novos.length+'</span></div><div class="tw"><table><thead><tr><th>Aluno</th><th>Nº</th><th>Classe '+prox+'</th><th>Estado</th><th>Matrícula</th><th></th></tr></thead><tbody>'
         +(novos.length?novos.slice().sort(function(x,y){ return String((x.alunos||{}).nome_completo).localeCompare(String((y.alunos||{}).nome_completo),'pt'); }).map(function(m){
             var al=m.alunos||{};
             var faltam=m.isenta_matricula?[]:['matricula'].filter(function(tp){ return !(PG[al.numero_aluno]||{})[tp]; });
@@ -47063,13 +47063,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
               +'<td>'+(m.estado==='pendente'?'<span class="badge bwn">Por aprovar</span>':'<span class="badge bok">Aprovado</span>')+'</td>'
               +'<td>'+(m.isenta_matricula?'<span class="badge bok">Isenta · campanha</span>':estadoPag(PG,al.numero_aluno,'matricula'))+'</td>'
               +'<td style="text-align:right">'+((faltam.length&&!fech)?('<button class="btn btn-p btn-sm" data-n="'+esc(al.numero_aluno)+'" onclick="window.__renovPagarAbrir(this.dataset.n)"><i class="ti ti-cash"></i> Registar pagamento</button>'):'')+'</td></tr>'; }).join('')
-          :'<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--t3)">Ainda não há novos inscritos.</td></tr>')
+          :'<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--t3)">Ainda não há novos matriculados.</td></tr>')
         +'</tbody></table></div></div>';
     } else if(tab==='aprovar'){
       var podeAprovar=podeAutorizar();
       h+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">'+(podeAprovar
-        ? 'Inscrições e renovações à espera da sua aprovação. Só depois de aprovadas é que contam e que as contas são criadas.'
-        : 'Inscrições e renovações registadas, à espera da aprovação do gestor ou do director.')+'</div>';
+        ? 'Matrículas e renovações à espera da sua aprovação. Só depois de aprovadas é que contam e que as contas são criadas.'
+        : 'Matrículas e renovações registadas, à espera da aprovação do gestor ou do director.')+'</div>';
       h+='<div class="card"><div class="tw"><table><thead><tr><th>Aluno</th><th>Tipo</th><th>Classe '+prox+'</th><th>Pago</th><th>Registado</th><th></th></tr></thead><tbody>'
         +(pendentes.length?pendentes.map(function(m){
             var al=m.alunos||{}, pg=PG[al.numero_aluno]||{};
@@ -47084,7 +47084,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
                 ?('<button class="btn btn-p btn-sm" data-m="'+esc(m.id)+'" onclick="window.__aprovarMat(this.dataset.m)"><i class="ti ti-check"></i> Aprovar</button> '
                  +'<button class="btn btn-re btn-sm" data-m="'+esc(m.id)+'" onclick="window.__rejeitarMat(this.dataset.m)"><i class="ti ti-x"></i> Rejeitar</button>')
                 :'<span class="badge bwn">Aguarda aprovação</span>')+'</td></tr>';
-          }).join(''):'<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--t3)">Não há inscrições nem renovações por aprovar.</td></tr>')
+          }).join(''):'<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--t3)">Não há matrículas nem renovações por aprovar.</td></tr>')
         +'</tbody></table></div></div>';
     } else {
       var sub=window.__renovSub==='naovoltam'?'naovoltam':'decidir', Fl=window.__renovFiltro||{};
@@ -47186,7 +47186,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 
   /* ── Parte 2: renovar um aluno para o ano seguinte ── */
   window.__renovAbrir=function(localId){
-    if(fechado()){ t('Renovações e inscrições fechadas'); return; }
+    if(fechado()){ t('Renovações e matrículas fechadas'); return; }
     var a=alunoLocal(localId); if(!a) return;
     var prox=proximoAno(), activo=window.__anoActivo(), c=classeDe(a)||0, d=dividaActual(a), aut=autorizacao(a);
     var precisa=d.total>0 && !aut;
@@ -47230,7 +47230,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   };
   window.__renovConfirmar=async function(){
     var a=alunoLocal((window.__renovCtx||{}).id); if(!a) return;
-    if(fechado()){ t('Renovações e inscrições fechadas'); return; }
+    if(fechado()){ t('Renovações e matrículas fechadas'); return; }
     if(PAPEIS.indexOf(papel())<0){ t('Sem permissão para renovar'); return; }
     var prox=proximoAno(), idProx=window.__anoIdDe(prox); if(!idProx){ t('O ano '+prox+' não existe'); return; }
     var d=dividaActual(a), aut=autorizacao(a), autorizarAgora=false;
@@ -47282,7 +47282,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 
   /* ── Parte 3: inscrever um aluno novo para o ano seguinte (mesmos campos do formulário Novo Aluno) ── */
   window.__renovNovo=function(candId){
-    if(fechado()){ t('Renovações e inscrições fechadas'); return; }
+    if(fechado()){ t('Renovações e matrículas fechadas'); return; }
     var c=candId?((window.__renovCands||[]).find(function(x){ return String(x.id)===String(candId); })||null):null;
     var prox=proximoAno(), hoje=new Date().toISOString().slice(0,10);
     var classeC=c?parseInt(String(c.classe_desejada||'').replace(/[^0-9]/g,''),10):0;
@@ -47297,7 +47297,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var sec='font-size:12px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin:4px 0 6px';
     var html='<div id="m-inscrever" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99995;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
       +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:640px;max-width:100%;max-height:92vh;overflow:auto">'
-      +'<h3 style="margin:0 0 4px;font-size:17px">Inscrever para '+prox+'</h3>'
+      +'<h3 style="margin:0 0 4px;font-size:17px">Matricular para '+prox+'</h3>'
       +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">'+(c?('Candidatura aprovada de '+esc(c.nome)):'Aluno novo')+' · a turma é atribuída depois</div>'
       +'<div style="'+sec+'">Aluno</div><div style="'+grid+'">'
       +campo('Nome completo *', inp('in-nome', c&&c.nome))
@@ -47323,7 +47323,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +campo('Data', '<input id="in-data" type="date" class="ffi" value="'+hoje+'">')
       +'</div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-g btn-sm" data-m="m-inscrever" onclick="document.getElementById(this.dataset.m).remove()">Cancelar</button>'
-      +'<button id="in-go" class="btn btn-p btn-sm" onclick="window.__renovNovoConfirmar()"><i class="ti ti-check"></i> Confirmar inscrição</button></div>'
+      +'<button id="in-go" class="btn btn-p btn-sm" onclick="window.__renovNovoConfirmar()"><i class="ti ti-check"></i> Confirmar matrícula</button></div>'
       +'</div></div>';
     var w=document.createElement('div'); w.innerHTML=html; document.body.appendChild(w.firstChild);
     window.__renovNovoValores();
@@ -47335,7 +47335,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var ck=document.getElementById('in-pagar'), lb=ck?ck.closest('label'):null, pg=document.getElementById('in-pag');
     if(c){
       el.innerHTML='<s style="color:var(--t3);font-weight:400">'+mz(m)+'</s> <span style="color:var(--g)">Isenta</span>';
-      if(cx) cx.innerHTML='<div style="'+CAIXA_VERDE+';color:var(--g);font-size:13px"><i class="ti ti-gift"></i> Campanha «'+esc(c.nome)+'»: matrícula isenta — não há nada a pagar nesta inscrição.</div>';
+      if(cx) cx.innerHTML='<div style="'+CAIXA_VERDE+';color:var(--g);font-size:13px"><i class="ti ti-gift"></i> Campanha «'+esc(c.nome)+'»: matrícula isenta — não há nada a pagar nesta matrícula.</div>';
       if(ck) ck.checked=false;
       if(lb) lb.style.display='none';
       if(pg) pg.style.display='none';
@@ -47349,8 +47349,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }
   };
   window.__renovNovoConfirmar=async function(){
-    if(fechado()){ t('Renovações e inscrições fechadas'); return; }
-    if(PAPEIS.indexOf(papel())<0){ t('Sem permissão para inscrever'); return; }
+    if(fechado()){ t('Renovações e matrículas fechadas'); return; }
+    if(PAPEIS.indexOf(papel())<0){ t('Sem permissão para matricular'); return; }
     function v(id){ var el=document.getElementById(id); return el?String(el.value||'').trim():''; }
     var nome=v('in-nome'), nasc=v('in-nasc'), genero=v('in-genero')||'M', bi=v('in-bi'), enome=v('in-enome'), erel=v('in-erel'), etel=v('in-etel'), eemail=v('in-eemail');
     if(!nome){ t('Nome do aluno obrigatório'); return; }
@@ -47363,7 +47363,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var campVista=!!isentaMatricula();
     await refrescarCampanhas();
     var campM=isentaMatricula();
-    if(campVista && !campM){ t('A campanha de isenção terminou entretanto. Abra a inscrição outra vez para ver o valor a pagar.'); var mo=document.getElementById('m-inscrever'); if(mo) mo.remove(); window.rRenovacoes(); return; }
+    if(campVista && !campM){ t('A campanha de isenção terminou entretanto. Abra a matrícula outra vez para ver o valor a pagar.'); var mo=document.getElementById('m-inscrever'); if(mo) mo.remove(); window.rRenovacoes(); return; }
     var pagar=!campM && !!(document.getElementById('in-pagar')&&document.getElementById('in-pagar').checked);
     var canal=pagar?v('in-canal'):null, ref=pagar?v('in-ref'):'', data=pagar?(v('in-data')||new Date().toISOString().slice(0,10)):null;
     if(pagar && (canal==='transferencia'||canal==='deposito') && !ref){ t('Indique a referência da transferência ou do depósito'); return; }
@@ -47400,7 +47400,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         if(del.error){ try{ await sb().from('alunos').update({ ativo:false }).eq('id',ra.data.id); }catch(e){} }
         return falha('Não foi guardado: '+rm.error.message);
       }
-      var msg=nome+(aprovaJa?' inscrito para ':' registado para ')+prox+' · Nº '+num+(aprovaJa?'':' — aguarda aprovação do gestor ou do director');
+      var msg=nome+(aprovaJa?' matriculado para ':' registado para ')+prox+' · Nº '+num+(aprovaJa?'':' — aguarda aprovação do gestor ou do director');
       if(campM) msg+=' · matrícula isenta (campanha «'+campM.nome+'»)';
       if(pagar){
         var estado=(canal==='transferencia'||canal==='deposito')?'por_confirmar':'confirmado', suf=Date.now().toString(36).toUpperCase(), agora=new Date().toISOString(), rows=[];
@@ -47436,7 +47436,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       if(contas.length) mostrarContas(contas, nome);
       window.__renovTab='novos';
       window.rRenovacoes();
-    }catch(e){ falha('Erro ao inscrever: '+(e&&e.message||e)); }
+    }catch(e){ falha('Erro ao matricular: '+(e&&e.message||e)); }
   };
 
   /* ── Parte 4a: pagar inscrição/matrícula do ano seguinte (novos inscritos e perfil financeiro) ── */
@@ -47523,12 +47523,12 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var al=m.alunos||{}, NL=String.fromCharCode(10);
     var faltam=[], aviso='';
     var contasAviso=m._novo?(NL+NL+'Ao aprovar são criadas as contas do aluno e do encarregado.'):'';
-    if(!confirm('Aprovar a '+(m._novo?'inscrição':'renovação')+' de '+(al.nome_completo||'')+' para '+proximoAno()+'?'+aviso+contasAviso)) return;
+    if(!confirm('Aprovar a '+(m._novo?'matrícula':'renovação')+' de '+(al.nome_completo||'')+' para '+proximoAno()+'?'+aviso+contasAviso)) return;
     var r=await sb().from('matriculas').update({ estado:'activa', aprovado_por:quem(), aprovado_em:new Date().toISOString() }).eq('id',id).select('id');
     if(r.error){ t('Erro ao aprovar: '+r.error.message); return; }
     var contas=m._novo?await criarContasDoAluno(m.aluno_id, al.encarregado_id):[];
     try{ if(typeof logAudit==='function') logAudit('APROVACAO_MATRICULA', (al.nome_completo||'')+' ('+(al.numero_aluno||'')+')',
-      (m._novo?'Inscrição':'Renovação')+' para '+proximoAno()+' aprovada'+(faltam.length?(' · dossier incompleto ('+faltam.length+' por entregar)'):'')+(contas.length?(' · '+contas.length+' conta(s) criada(s)'):'')); }catch(e){}
+      (m._novo?'Matrícula':'Renovação')+' para '+proximoAno()+' aprovada'+(faltam.length?(' · dossier incompleto ('+faltam.length+' por entregar)'):'')+(contas.length?(' · '+contas.length+' conta(s) criada(s)'):'')); }catch(e){}
     t('Aprovado'+(contas.length?(' · '+contas.length+' conta(s) criada(s)'):''));
     if(contas.length) mostrarContas(contas, al.nome_completo||'');
     window.rRenovacoes();
@@ -47548,7 +47548,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(r.error){ t('Erro ao rejeitar: '+r.error.message); return; }
     if(m._novo){ try{ await sb().from('alunos').update({ ativo:false }).eq('id',m.aluno_id); }catch(e){} }
     try{ if(typeof logAudit==='function') logAudit('REJEICAO_MATRICULA', (al.nome_completo||'')+' ('+(al.numero_aluno||'')+')',
-      (m._novo?'Inscrição':'Renovação')+' para '+proximoAno()+' rejeitada — '+motivo+(pagos.length?(' · atenção: '+pagos.join(' e ')+' por estornar'):'')); }catch(e){}
+      (m._novo?'Matrícula':'Renovação')+' para '+proximoAno()+' rejeitada — '+motivo+(pagos.length?(' · atenção: '+pagos.join(' e ')+' por estornar'):'')); }catch(e){}
     t('Rejeitado'+(pagos.length?(' · há pagamentos por estornar'):''));
     window.rRenovacoes();
   };
@@ -47562,7 +47562,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var html='<div id="m-conta-enc" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99996;display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)this.remove()">'
       +'<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;padding:20px;width:480px;max-width:100%;max-height:92vh;overflow:auto">'
       +'<h3 style="margin:0 0 4px;font-size:17px">Contas criadas</h3>'
-      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Inscrição de '+esc(alunoNome||'')+' aprovada. Entregue estes dados à família.</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Matrícula de '+esc(alunoNome||'')+' aprovada. Entregue estes dados à família.</div>'
       +linhas
       +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-g btn-sm" data-t="'+esc(texto)+'" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.dataset.t)"><i class="ti ti-copy"></i> Copiar</button>'
       +'<button class="btn btn-p btn-sm" data-m="m-conta-enc" onclick="document.getElementById(this.dataset.m).remove()">Fechar</button></div></div></div>';
@@ -47571,13 +47571,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   window.__renovAbrirFechar=function(){
     if(['gestor','director'].indexOf(papel())<0){ t('Só o gestor ou o director podem abrir ou fechar'); return; }
     var fech=fechado();
-    if(!confirm((fech?'Abrir':'Fechar')+' as renovações e inscrições para '+proximoAno()+'?')) return;
+    if(!confirm((fech?'Abrir':'Fechar')+' as renovações e matrículas para '+proximoAno()+'?')) return;
     if(!CONFIG.renovacoes||typeof CONFIG.renovacoes!=='object') CONFIG.renovacoes={};
     CONFIG.renovacoes.fechado=!fech;
     CONFIG.renovacoes.alteradoPor=(typeof curUser!=='undefined'&&curUser&&curUser.nome)||'';
     CONFIG.renovacoes.alteradoEm=new Date().toISOString();
     persist();
-    t('Renovações e inscrições '+(fech?'abertas':'fechadas'));
+    t('Renovações e matrículas '+(fech?'abertas':'fechadas'));
     window.rRenovacoes();
   };
 
