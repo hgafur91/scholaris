@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.236</span>
+    <span class="logo-ver">v6.237</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -46838,7 +46838,15 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function campanhasFuturas(){ var d=hojeLocal(); return campanhas().filter(function(c){ return !c.encerrada_em && c.inicio>d; }); }
   function isentaRenovacao(){ var c=campanhaActiva(); return (c&&c.isenta_renovacao)?c:null; }
   function isentaMatricula(){ var c=campanhaActiva(); return (c&&c.isenta_matricula)?c:null; }
-  function descreverIsencao(c){ return (c.isenta_matricula&&c.isenta_renovacao)?'matrícula e renovação isentas':(c.isenta_matricula?'matrícula isenta (alunos novos)':'renovação isenta (quem já é aluno)'); }
+  function permiteDivida(){ var c=campanhaActiva(); return (c&&c.permite_divida)?c:null; }
+  function descreverIsencao(c){
+    var p=[];
+    if(c.isenta_matricula&&c.isenta_renovacao) p.push('matrícula e renovação isentas');
+    else if(c.isenta_matricula) p.push('matrícula isenta (alunos novos)');
+    else if(c.isenta_renovacao) p.push('renovação isenta (quem já é aluno)');
+    if(c.permite_divida) p.push('renova quem tem dívida');
+    return p.join(' · ') || 'sem isenções';
+  }
   async function refrescarCampanhas(){
     try{
       var r=await sb().from('campanhas_isencao').select('*').eq('escola_id',escId()).is('encerrada_em',null).gte('fim',hojeLocal()).order('inicio');
@@ -46891,7 +46899,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +op('ambas','Matrícula e renovação','Novos e quem já é aluno', true)
       +op('matricula','Só matrícula','Alunos novos (4 255 MZM)', false)
       +op('renovacao','Só renovação','Quem já é aluno', false)
+      +op('nenhuma','Sem isenção de taxas','As taxas pagam-se na mesma', false)
       +'</div>'
+      +'<label style="display:flex;gap:8px;align-items:flex-start;border:1px solid var(--b);border-radius:10px;padding:10px;margin-bottom:12px;cursor:pointer">'
+      +'<input type="checkbox" id="cp-divida" style="margin-top:3px"><span><span style="font-weight:700;font-size:13px">Permitir renovar quem tem dívida</span><br>'
+      +'<span style="font-size:11px;color:var(--t2)">Durante a campanha, a secretaria renova alunos com propinas em atraso sem pedir autorização caso a caso. A dívida mantém-se.</span></span></label>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
       +'<div><div class="fl">De</div><input id="cp-inicio" type="date" class="ffi" min="'+hoje+'" value="'+hoje+'"></div>'
       +'<div><div class="fl">Até</div><input id="cp-fim" type="date" class="ffi" min="'+hoje+'"></div>'
@@ -46910,15 +46922,17 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var tipoEl=document.querySelector('#m-campanha input[name="cp-tipo"]:checked'), tipo=tipoEl?tipoEl.value:'';
     var inicio=(document.getElementById('cp-inicio')||{}).value||'', fim=(document.getElementById('cp-fim')||{}).value||'';
     var hoje=hojeLocal();
+    var permite=!!(document.getElementById('cp-divida')||{}).checked;
     if(!nome){ t('Dê um nome à campanha'); return; }
     if(!tipo){ t('Escolha o que fica isento'); return; }
+    if(tipo==='nenhuma' && !permite){ t('Escolha o que fica isento ou marque «Permitir renovar quem tem dívida»'); return; }
     if(!inicio){ t('Indique a data de início'); return; }
     if(!fim){ t('Indique a data de fim'); return; }
     if(inicio<hoje){ t('A campanha não pode começar antes de hoje'); return; }
     if(fim<inicio){ t('A data de fim tem de ser igual ou posterior à de início'); return; }
     var go=document.getElementById('cp-go'); if(go){ go.disabled=true; go.style.opacity=.5; }
     var row={ escola_id:escId(), nome:nome, isenta_matricula:(tipo==='ambas'||tipo==='matricula'), isenta_renovacao:(tipo==='ambas'||tipo==='renovacao'),
-      inicio:inicio, fim:fim, criada_por:quem() };
+      permite_divida:permite, inicio:inicio, fim:fim, criada_por:quem() };
     var r=await sb().from('campanhas_isencao').insert(row);
     if(r.error){ t('Não foi criada: '+r.error.message); if(go){ go.disabled=false; go.style.opacity=1; } return; }
     try{ if(typeof logAudit==='function') logAudit('CAMPANHA_ISENCAO', nome, 'Criada — '+descreverIsencao(row)+' · '+dataPT(inicio)+' a '+dataPT(fim)); }catch(e){}
@@ -46995,12 +47009,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(d.total<=0) return '<td style="text-align:right;font-weight:700;color:var(--g)">Sem dívida</td>';
     return '<td style="text-align:right"><div style="font-weight:700;color:var(--r)">'+mz(d.total)+' MZM</div>'
       +(semAutorizacao?'':aut?'<div style="font-size:10px;color:var(--g)"><i class="ti ti-shield-check"></i> Autorizado por '+esc(aut.por||'—')+'</div>'
+           :permiteDivida()?'<div style="font-size:10px;color:var(--g)"><i class="ti ti-gift"></i> Renovação permitida pela campanha</div>'
            :'<div style="font-size:10px;color:var(--am)"><i class="ti ti-lock"></i> Precisa de autorização</div>')+'</td>';
   }
   function botoesRenovar(a, fech){
     if(fech) return '<button class="btn btn-p btn-sm" disabled title="Renovações e matrículas fechadas"><i class="ti ti-refresh"></i> Renovar</button>';
     var d=dividaActual(a), aut=autorizacao(a), h='';
-    if(d.total>0 && !aut){
+    if(d.total>0 && !aut && !permiteDivida()){
       if(!podeAutorizar()) return '<button class="btn btn-p btn-sm" disabled title="Aguarda autorização do director ou do gestor"><i class="ti ti-lock"></i> Aguarda autorização</button>';
       h+='<button class="btn btn-g btn-sm" onclick="window.__renovAutorizar('+Number(a.id)+')"><i class="ti ti-shield-check"></i> Autorizar</button> ';
     }
@@ -47248,7 +47263,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(fechado()){ t('Renovações e matrículas fechadas'); return; }
     var a=alunoLocal(localId); if(!a) return;
     var prox=proximoAno(), activo=window.__anoActivo(), c=classeDe(a)||0, d=dividaActual(a), aut=autorizacao(a);
-    var precisa=d.total>0 && !aut;
+    var campD=permiteDivida();
+    var precisa=d.total>0 && !aut && !campD;
     if(precisa && !podeAutorizar()){ t('Este aluno tem dívida: a renovação precisa de autorização do director ou do gestor'); return; }
     var isento=!!(a.isencoes&&a.isencoes.inscricao), campR=isento?null:isentaRenovacao();
     var old=document.getElementById('m-renovar'); if(old) old.remove();
@@ -47261,7 +47277,9 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'<h3 style="margin:0 0 4px;font-size:17px">Renovar para '+prox+'</h3>'
       +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">'+esc(a.nome)+' · '+esc(a.num)+' · Turma '+esc(a.turma||'—')+' em '+activo+'</div>'
       +(d.total>0?('<div class="ib-box ib-am" style="margin-bottom:12px"><i class="ti ti-alert-triangle"></i><span>Este aluno tem dívida de <strong>'+mz(d.total)+' MZM</strong> em '+activo+(d.meses.length?(' (propinas: '+d.meses.join(', ')+')'):'')+'. '
-          +(aut?('Renovação autorizada por <strong>'+esc(aut.por||'—')+'</strong>.'):'A renovação precisa da autorização do director ou do gestor.')+'</span></div>'):'')
+          +(aut?('Renovação autorizada por <strong>'+esc(aut.por||'—')+'</strong>.')
+             :campD?('A campanha «'+esc(campD.nome)+'» permite renovar com dívida. A dívida mantém-se.')
+             :'A renovação precisa da autorização do director ou do gestor.')+'</span></div>'):'')
       +(precisa?'<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;margin-bottom:12px"><input type="checkbox" id="rn-autorizo"> Autorizo a renovação apesar da dívida</label>':'')
       +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px">'
       +'<div><div class="fl">Classe em '+prox+'</div><select id="rn-classe" class="ffi" onchange="window.__renovValor()">'+opts+'</select></div>'
@@ -47293,7 +47311,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(PAPEIS.indexOf(papel())<0){ t('Sem permissão para renovar'); return; }
     var prox=proximoAno(), idProx=window.__anoIdDe(prox); if(!idProx){ t('O ano '+prox+' não existe'); return; }
     var d=dividaActual(a), aut=autorizacao(a), autorizarAgora=false;
-    if(d.total>0 && !aut){
+    var campDiv=permiteDivida();
+    if(d.total>0 && !aut && !campDiv){
       if(!podeAutorizar()){ t('Este aluno tem dívida: a renovação precisa de autorização do director ou do gestor'); return; }
       var ck=document.getElementById('rn-autorizo'); if(!ck||!ck.checked){ t('Marque «Autorizo a renovação apesar da dívida» para continuar'); return; }
       autorizarAgora=true;
@@ -47313,11 +47332,12 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var rm=await sb().from('matriculas').insert({ escola_id:escId(), aluno_id:a._dbId, ano_lectivo_id:idProx, classe:classe, turma_id:null,
       estado:aprovaJa?'activa':'pendente', data_matricula:hojeD, registado_por:quem(),
       aprovado_por:aprovaJa?quem():null, aprovado_em:aprovaJa?agoraISO:null,
-      isenta_renovacao:!!campR, campanha_id:campR?campR.id:null }).select();
+      isenta_renovacao:!!campR, campanha_id:(campR?campR.id:(campDiv&&d.total>0?campDiv.id:null)) }).select();
     if(rm.error){ t(/duplicate|unique/i.test(rm.error.message)?('Este aluno já está renovado para '+prox):('Erro ao renovar: '+rm.error.message)); if(go){ go.disabled=false; go.style.opacity=1; } return; }
     var msg=(aprovaJa?'Renovado para ':'Renovação registada para ')+prox+' ('+nomeClasse(classe)+')'+(aprovaJa?'':' — aguarda aprovação do gestor ou do director');
     if(autorizarAgora){ try{ await registarAutorizacao(a,d); msg+=' · com autorização'; }catch(e){ msg+=' — atenção: a autorização não foi gravada'; } }
     if(campR) msg+=' · renovação isenta (campanha «'+campR.nome+'»)';
+    if(campDiv && d.total>0 && !aut) msg+=' · com dívida de '+mz(d.total)+' MZM, permitida pela campanha «'+campDiv.nome+'»';
     if(pagar && valor>0){
       var estado=(canal==='transferencia'||canal==='deposito')?'por_confirmar':'confirmado';
       var row={ escola_id:escId(), pag_id:'REN'+prox+'-'+a.num+'-'+Date.now().toString(36).toUpperCase(), aluno_num:a.num, aluno_nome:a.nome, turma_id:null,
