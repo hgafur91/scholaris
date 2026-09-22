@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.235</span>
+    <span class="logo-ver">v6.236</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -47727,11 +47727,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     +'.rod{margin-top:18px;border-top:1px solid #111;padding-top:6px;font-size:10px;display:flex;justify-content:space-between;gap:10px}'
     +'@media print{body{background:#fff;padding:0}.barra{display:none}.folha{box-shadow:none;margin:0;width:auto;min-height:auto;page-break-after:always}@page{size:A4;margin:0}}'
     /* v6.233 — duas vias numa folha A4 (recibos e facturas) */
-    +'.a4dup{width:210mm;height:297mm;background:#fff;margin:0 auto 14px;box-shadow:0 4px 18px rgba(0,0,0,.14);display:flex;flex-direction:column;overflow:hidden}'
-    +'.a4dup .meia{position:relative;height:148.5mm;padding:8mm 14mm 6mm;overflow:hidden;flex:0 0 148.5mm}'
+    +'.a4dup{width:210mm;background:#fff;margin:0 auto 14px;box-shadow:0 4px 18px rgba(0,0,0,.14);padding:4mm 0}'
+    +'.a4dup .meia{position:relative;padding:5mm 14mm 4mm;overflow:hidden}'
     +'.a4dup .marca img{width:52%;max-height:78%}'
     +'.a4dup .via{position:absolute;top:3.5mm;right:14mm;z-index:2;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#555}'
-    +'.a4dup .corte{flex:0 0 0;border-top:1px dashed #666;position:relative;overflow:visible}'
+    +'.a4dup .corte{border-top:1px dashed #666;position:relative;margin:4mm 0}'
     +'.a4dup .corte span{position:absolute;left:50%;top:-7px;transform:translateX(-50%);background:#fff;padding:0 8px;font-size:9px;color:#666;letter-spacing:.06em}'
     +'.a4dup .corpo{font-size:11px;line-height:1.55}'
     +'.a4dup .cab{padding-bottom:5px;margin-bottom:8px}'
@@ -47741,7 +47741,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     +'.a4dup .bx{margin:7px 0;padding:4px 0}'
     +'.a4dup .ass{margin-top:16px;font-size:10px}'
     +'.a4dup .rod{margin-top:8px;padding-top:4px;font-size:8.5px}'
-    +'@media print{.a4dup{box-shadow:none;margin:0;page-break-after:always}}'
+    +'@media print{.a4dup{box-shadow:none;margin:0;break-inside:avoid;page-break-inside:avoid}.a4dup+.a4dup{break-before:page;page-break-before:always}}'
     +'</style>';
 
   window.__docMarca = function(){
@@ -47778,9 +47778,10 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   window.__docDuplicado = function(corpo){
     function via(rotulo){ return '<div class="meia">'+window.__docMarca()+'<div class="via">'+rotulo+'</div><div class="corpo">'+corpo+'</div></div>'; }
     return '<div class="a4dup">'+via('Via do encarregado')+'<div class="corte"><span>&#9986; corte aqui</span></div>'+via('Via da escola')+'</div>'
-      +'<script>(function(){ function caber(){ document.querySelectorAll(".a4dup .meia").forEach(function(m){ var c=m.querySelector(".corpo"); if(!c) return;'
-      +' var cs=getComputedStyle(m), livre=m.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom), fs=11;'
-      +' c.style.fontSize=fs+"px"; while(c.scrollHeight>livre && fs>7){ fs-=0.25; c.style.fontSize=fs+"px"; } }); }'
+      +'<script>(function(){ function caber(){ var limite=Math.round(262*96/25.4);'
+      +' document.querySelectorAll(".a4dup").forEach(function(p){ var cs=p.querySelectorAll(".corpo"), fs=11;'
+      +' cs.forEach(function(c){ c.style.fontSize=fs+"px"; });'
+      +' while(p.offsetHeight>limite && fs>7){ fs-=0.25; cs.forEach(function(c){ c.style.fontSize=fs+"px"; }); } }); }'
       +' if(document.readyState==="complete") caber(); else window.addEventListener("load", caber); window.addEventListener("beforeprint", caber); })();<\/script>';
   };
   window.__docFolha = function(corpo){
