@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.240</span>
+    <span class="logo-ver">v6.241</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -48116,6 +48116,95 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }catch(e){}
     if((apanhou && jaCorreu) || tentativas>60) clearInterval(iv);
   }, 1500);
+})();
+</script>
+<script>
+/* v6.241 — MULTAS POR ESCALÕES (mesmo motor do Atlântico, v6.212)
+   Regra da escola: pagamento até ao dia de vencimento (CONFIG.diaVencimento, 10) sem multa;
+   do dia seguinte até ao dia 20 → 25 %; do dia 21 ao fim do mês → 50 %; a partir do mês seguinte → 100 %.
+   Persistido em CONFIG.multaEscaloes = {dia1, pct1, dia2, pct2, pctMes}. Sem esta chave, o motor v6.96 (uma só %) mantém-se.
+   __multaDe(p) continua a ler p.multaPct, por isso recibos, facturas, dívidas e acordos não mudam. */
+(function(){
+  if(window.__multas212) return; window.__multas212=true;
+  function esc(){ try{ var e=(typeof CONFIG!=='undefined')?CONFIG.multaEscaloes:null; if(!e||typeof e!=='object') return null;
+    return { dia1:parseInt(e.dia1,10)||11, pct1:parseFloat(e.pct1)||0, dia2:parseInt(e.dia2,10)||21, pct2:parseFloat(e.pct2)||0, pctMes:parseFloat(e.pctMes)||0 }; }catch(x){ return null; } }
+  function dv(){ return (typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)?(parseInt(CONFIG.diaVencimento,10)||10):10; }
+  function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
+
+  /* % devida HOJE por uma propina do mês mesIdx (0-based) do ano lectivo anoL; 0 = sem multa */
+  window.__pctMultaHoje=function(mesIdx, anoL, hoje){
+    var E=esc(); if(!E) return null; hoje=hoje||new Date(); anoL=anoL||((typeof window.__anoVista==='function')?window.__anoVista():((typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||hoje.getFullYear()));
+    var venc=new Date(anoL, mesIdx, dv(), 23, 59, 59);
+    if(hoje<=venc) return 0;
+    var mesmoMes=(hoje.getFullYear()===anoL && hoje.getMonth()===mesIdx);
+    if(!mesmoMes) return (hoje>new Date(anoL, mesIdx+1, 0, 23, 59, 59)) ? E.pctMes : 0;
+    var d=hoje.getDate();
+    if(d>=E.dia2) return E.pct2;
+    if(d>=E.dia1) return E.pct1;
+    return 0;
+  };
+
+  var _orig=window.__aplicarMultasAutomaticas;
+  window.__aplicarMultasAutomaticas=function(aluno){
+    var E=esc(); if(!E){ return (typeof _orig==='function')?_orig.apply(this,arguments):false; }
+    try{
+      var anoL=(typeof window.__anoVista==='function')?window.__anoVista():((typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||new Date().getFullYear()); var hoje=new Date();
+      var lista=aluno?[aluno]:((typeof ALUNOS!=='undefined')?ALUNOS:[]); var mudou=false;
+      lista.forEach(function(a){ if(!a||!a.propinas) return; var bol=(a.bolsaPct||0); if(bol>=100) return;
+        var base=((typeof getPropinaTurma==='function')?getPropinaTurma(a.turma):((typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500))*(1-bol/100);
+        Object.keys(a.propinas).forEach(function(k){ var p=a.propinas[k]; if(!p) return; if(p.st==='pago'||p.st==='isento'||p.multaIsenta) return;
+          var mesIdx=(typeof p.m!=='undefined')?(p.m-1):(parseInt(k,10)); if(mesIdx>=11) return;   /* Dezembro não é mensalidade */
+          var pct=window.__pctMultaHoje(mesIdx, anoL, hoje)||0;
+          if(pct>0){
+            if(p.st==='npago'){ p.st='multa'; p.multaAuto=true; p.multaLock=true; p.multaPct=pct; p.v=Math.round(base); mudou=true; }
+            else if(p.st==='multa' && p.multaAuto && p.multaPct!==pct){ p.multaPct=pct; mudou=true; }   /* subiu de escalão */
+          } else if(p.st==='multa' && p.multaAuto){ p.st='npago'; p.multaPct=0; p.multaAuto=false; p.multaLock=false; mudou=true; }
+        });
+      });
+      return mudou;
+    }catch(e){ return false; }
+  };
+
+  window.__setMultaEscalao=function(campo, v){
+    try{ if(typeof CONFIG==='undefined') return; if(!CONFIG.multaEscaloes||typeof CONFIG.multaEscaloes!=='object') CONFIG.multaEscaloes={dia1:11,pct1:25,dia2:21,pct2:50,pctMes:100};
+      var n=(campo==='dia1'||campo==='dia2')?(parseInt(v,10)||1):(parseFloat(v)||0); if(n<0) n=0; CONFIG.multaEscaloes[campo]=n;
+      CONFIG.multaPropina=CONFIG.multaEscaloes.pctMes;   /* compatibilidade com exports antigos */
+      window.__aplicarMultasAutomaticas(); persist();
+      if(typeof toast==='function') toast('Escalões de multa actualizados');
+      if(typeof renderEscaloes==='function'&&document.getElementById('escaloes-lista')) renderEscaloes();
+      if(typeof window.__refreshFinanceiro==='function') window.__refreshFinanceiro();
+    }catch(e){}
+  };
+  /* o setter antigo da % única passa a editar a % do mês seguinte */
+  window.__setMultaPct=function(v){ window.__setMultaEscalao('pctMes', v); };
+
+  /* Ecrã «Multa de Atraso» (Configurações › Financeiro): dia de vencimento + 3 escalões */
+  var _origRender=window.renderEscaloes;
+  window.renderEscaloes=function(){
+    var E=esc(); if(!E){ return (typeof _origRender==='function')?_origRender.apply(this,arguments):undefined; }
+    var el=document.getElementById('escaloes-lista'); if(!el) return;
+    var canEdit=(typeof curRole!=='undefined')&&(curRole==='gestor'||curRole==='director'); var dis=canEdit?'':'disabled';
+    var base=(typeof CONFIG!=='undefined'&&CONFIG.valorPropina)||4500; var d=dv();
+    function campo(label, valor, campoId, min, max){ return '<div><div class="fl" style="margin-bottom:4px">'+label+'</div><input type="number" class="ffi" style="width:120px" value="'+valor+'" min="'+min+'" max="'+max+'" '+dis+' onchange="__setMultaEscalao(\''+campoId+'\', this.value)"></div>'; }
+    function f(n){ try{ return Math.round(n).toLocaleString('pt-PT'); }catch(e){ return String(Math.round(n)); } }
+    el.innerHTML=
+      '<div class="ib-box ib-blue" style="margin-bottom:14px"><i class="ti ti-info-circle"></i><span><strong>Regime de multas por escalões:</strong> a propina paga-se até ao dia <strong>'+d+'</strong> sem multa. '
+      +'Do dia '+(d+1)+' ao dia '+(E.dia2-1)+' acresce <strong>'+E.pct1+'%</strong>; do dia '+E.dia2+' ao fim do mês <strong>'+E.pct2+'%</strong>; a partir do mês seguinte <strong>'+E.pctMes+'%</strong>. '
+      +'O escalão é recalculado todos os dias e sobe automaticamente.</span></div>'
+      +'<div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px">'
+      +'<div><div class="fl" style="margin-bottom:4px">Dia de vencimento</div><input type="number" class="ffi" style="width:120px" value="'+d+'" min="1" max="28" '+dis+' onchange="__setDiaVenc(this.value)"></div>'
+      +campo('1.º escalão a partir do dia', E.dia1, 'dia1', 1, 31)+campo('% do 1.º escalão', E.pct1, 'pct1', 0, 200)
+      +campo('2.º escalão a partir do dia', E.dia2, 'dia2', 1, 31)+campo('% do 2.º escalão', E.pct2, 'pct2', 0, 200)
+      +campo('% a partir do mês seguinte', E.pctMes, 'pctMes', 0, 300)
+      +'</div>'
+      +'<div class="ib-box ib-am" style="margin-top:14px"><i class="ti ti-alert-triangle"></i><span>Exemplo com propina de <strong>'+f(base)+' MZM</strong>: '
+      +'até dia '+d+' paga '+f(base)+'; de '+E.dia1+' a '+(E.dia2-1)+' paga <strong>'+f(base*(1+E.pct1/100))+'</strong>; de '+E.dia2+' ao fim do mês <strong>'+f(base*(1+E.pct2/100))+'</strong>; no mês seguinte <strong>'+f(base*(1+E.pctMes/100))+'</strong>.</span></div>'
+      +(canEdit?'':'<div class="setting-desc" style="margin-top:8px">Apenas o gestor e o director podem alterar.</div>');
+  };
+
+  /* recalcular ao arrancar (o loader já correu o motor antigo antes deste bloco existir) e uma vez por hora */
+  function recalc(){ try{ if(window.__aplicarMultasAutomaticas()) { if(typeof window.__refreshFinanceiro==='function') window.__refreshFinanceiro(); } }catch(e){} }
+  setTimeout(recalc, 4000); setTimeout(recalc, 12000); setInterval(recalc, 60*60*1000);
 })();
 </script>
 
