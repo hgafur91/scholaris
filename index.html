@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.243</span>
+    <span class="logo-ver">v6.244</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -48129,6 +48129,18 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function esc(){ try{ var e=(typeof CONFIG!=='undefined')?CONFIG.multaEscaloes:null; if(!e||typeof e!=='object') return null;
     return { dia1:parseInt(e.dia1,10)||11, pct1:parseFloat(e.pct1)||0, dia2:parseInt(e.dia2,10)||21, pct2:parseFloat(e.pct2)||0, pctMes:parseFloat(e.pctMes)||0 }; }catch(x){ return null; } }
   function dv(){ return (typeof CONFIG!=='undefined'&&CONFIG.diaVencimento)?(parseInt(CONFIG.diaVencimento,10)||10):10; }
+
+  /* Auditoria: quem mudou o regime de multas, de quanto para quanto */
+  var ROTULOS={ dia1:'1.º escalão começa no dia', pct1:'% do 1.º escalão', dia2:'2.º escalão começa no dia',
+                pct2:'% do 2.º escalão', pctMes:'% a partir do mês seguinte', diaVencimento:'dia de vencimento' };
+  function regimeTexto(){ var E=esc(); if(!E) return 'sem escalões definidos';
+    return 'sem multa até ao dia '+dv()+' · a partir do dia '+E.dia1+' acresce '+E.pct1+'% · a partir do dia '+E.dia2+' acresce '+E.pct2+'% · a partir do mês seguinte '+E.pctMes+'%'; }
+  function auditar(campo, antes, depois){
+    try{ if(typeof logAudit!=='function') return;
+      logAudit('MULTA_REGIME_ALTERADO', 'Multa de atraso — '+(ROTULOS[campo]||campo),
+               'Regime em vigor: '+regimeTexto(), antes, depois);
+    }catch(e){}
+  }
   function persist(){ try{ if(typeof window.__persistConfigSilent==='function') window.__persistConfigSilent(); }catch(e){} }
 
   /* % devida HOJE por uma propina do mês mesIdx (0-based) do ano lectivo anoL; 0 = sem multa */
@@ -48166,10 +48178,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   };
 
   window.__setMultaEscalao=function(campo, v){
-    try{ if(typeof CONFIG==='undefined') return; if(!CONFIG.multaEscaloes||typeof CONFIG.multaEscaloes!=='object') CONFIG.multaEscaloes={dia1:11,pct1:25,dia2:21,pct2:50,pctMes:100};
+    try{ if(typeof CONFIG==='undefined') return;
+      var antes=(CONFIG.multaEscaloes&&typeof CONFIG.multaEscaloes==='object')?CONFIG.multaEscaloes[campo]:null;
+      if(!CONFIG.multaEscaloes||typeof CONFIG.multaEscaloes!=='object') CONFIG.multaEscaloes={dia1:11,pct1:25,dia2:21,pct2:50,pctMes:100};
       var n=(campo==='dia1'||campo==='dia2')?(parseInt(v,10)||1):(parseFloat(v)||0); if(n<0) n=0; CONFIG.multaEscaloes[campo]=n;
       CONFIG.multaPropina=CONFIG.multaEscaloes.pctMes;   /* compatibilidade com exports antigos */
       window.__aplicarMultasAutomaticas(); persist();
+      if(antes!==n) auditar(campo, antes, n);
       if(typeof toast==='function') toast('Escalões de multa actualizados');
       if(typeof renderEscaloes==='function'&&document.getElementById('escaloes-lista')) renderEscaloes();
       if(typeof window.__refreshFinanceiro==='function') window.__refreshFinanceiro();
@@ -48177,6 +48192,16 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   };
   /* o setter antigo da % única passa a editar a % do mês seguinte */
   window.__setMultaPct=function(v){ window.__setMultaEscalao('pctMes', v); };
+
+  /* o dia de vencimento tem setter próprio, mais antigo: envolve-se só para registar */
+  var _setDiaVenc=window.__setDiaVenc;
+  window.__setDiaVenc=function(v){
+    var antes=(typeof CONFIG!=='undefined')?CONFIG.diaVencimento:null;
+    var r=(typeof _setDiaVenc==='function')?_setDiaVenc.apply(this, arguments):undefined;
+    var depois=(typeof CONFIG!=='undefined')?CONFIG.diaVencimento:null;
+    if(antes!==depois) auditar('diaVencimento', antes, depois);
+    return r;
+  };
 
   /* Ecrã «Multa de Atraso» (Configurações › Financeiro): dia de vencimento + 3 escalões */
   var _origRender=window.renderEscaloes;
