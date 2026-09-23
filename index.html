@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.241</span>
+    <span class="logo-ver">v6.242</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -4490,7 +4490,7 @@ function openAluno(id){
   const a=ALUNOS.find(x=>x.id===id);if(!a)return;
   // Garantir campos financeiros (calculados a partir das propinas)
   // v6.59: saldo = só propinas EM DÍVIDA (vencidas e não pagas). Antes somava também os meses futuros.
-  try{ if(typeof a.saldo!=='number'){ const _div=(a.propinas||[]).filter(p=>(window.__estadoPropina?window.__estadoPropina(p):(p.st==='npago'?'divida':p.st))==='divida').reduce((s,p)=>s+(p.v||0),0); a.saldo=-_div; } if(typeof a.adiant!=='number') a.adiant=0; }catch(_e){ a.saldo=a.saldo||0; a.adiant=a.adiant||0; }
+  try{ if(typeof a.saldo!=='number'){ const _div=(a.propinas||[]).filter(p=>(window.__estadoPropina?window.__estadoPropina(p):(p.st==='npago'?'divida':p.st))==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0); a.saldo=-_div; } if(typeof a.adiant!=='number') a.adiant=0; }catch(_e){ a.saldo=a.saldo||0; a.adiant=a.adiant||0; }
   if(!Array.isArray(a.docs)) a.docs=[];
   curAlunoId=id;const i=ALUNOS.indexOf(a),c=gc(i);
   go('aluno-p');
@@ -5716,7 +5716,7 @@ function renderPropTabela(list){
   document.getElementById('tb-prop').innerHTML=list.map(a=>{
     const pago=a.propinas.filter(p=>p.st==='pago').reduce((s,p)=>s+p.v,0);
     const _ep=p=>(window.__estadoPropina?window.__estadoPropina(p):(p.st==='npago'?'divida':p.st));
-    const div=a.propinas.filter(p=>_ep(p)==='divida').reduce((s,p)=>s+(p.v||getPropinaTurma(a.turma)),0);
+    const div=a.propinas.filter(p=>_ep(p)==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||getPropinaTurma(a.turma))),0);
     const m6=a.propinas.slice(0,6).map(p=>{var e=_ep(p);var cls=e==='pago'?'bok':e==='divida'?(p.st==='multa'?'bwn':'ber'):e==='isento'?'bok':'bne';var lt=e==='pago'?'P':e==='divida'?(p.st==='multa'?'M':'D'):e==='isento'?'I':'○';return`<td style="text-align:center"><span class="badge ${cls}" style="font-size:9px">${lt}</span></td>`;}).join('');
     return`<tr onclick="openPA(${a.id})"><td>${mkAv(a.nome,24,ALUNOS.indexOf(a),false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${a.num}</td><td style="font-weight:700">${a.nome}</td>${m6}<td style="font-weight:700;color:var(--g)">${pago.toLocaleString()}</td><td style="font-weight:700;color:${div?'var(--r)':'var(--g)'}">${div?'-'+div.toLocaleString():'OK'}</td><td style="white-space:nowrap"><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openPA(${a.id})">Gerir</button> ${['gestor','secretario'].includes(curRole)?`<button class="btn btn-p btn-sm" onclick="event.stopPropagation();curAlunoId=${a.id};gerarFactura()"><i class="ti ti-file-invoice"></i></button>`:''}</td></tr>`;
   }).join('');
@@ -9345,11 +9345,11 @@ function exportRelatorioFinanceiroPDF() {
     }, 0);
     const multas = ALUNOS.reduce((s,a) => {
       const p = a.propinas[mi];
-      return s + (p && p.st==='multa' ? p.v - CONFIG.valorPropina : 0);
+      return s + (p && p.st==='multa' ? (window.__multaDe?window.__multaDe(p):Math.round((p.v||0)*(p.multaPct||0)/100)) : 0);
     }, 0);
     const emDiv = ALUNOS.reduce((s,a) => {
       const p = a.propinas[mi];
-      return s + (p && (window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida' ? (p.v||CONFIG.valorPropina) : 0);
+      return s + (p && (window.__estadoPropina?window.__estadoPropina(p):p.st)==='divida' ? (window.__totalProp?window.__totalProp(p):(p.v||CONFIG.valorPropina)) : 0);
     }, 0);
     return {m, mi, cobrado, multas, emDiv};
   });
@@ -20082,7 +20082,7 @@ function emitirReciboPropina(pagamentoId) {
   const _enc = (typeof ENCS!=='undefined') ? ENCS.find(e=>e.num===(a&&a.enc)) : null;
   const _encNome = (_enc&&_enc.nome) || (a&&a.erel) || '\u2014';
   // v6.59: dívida = só propinas vencidas e não pagas (não os meses futuros)
-  const _divAberto = a ? (a.propinas||[]).filter(p=>(window.__estadoPropina?window.__estadoPropina(p):(p.st==='npago'?'divida':p.st))==='divida').reduce((s,p)=>s+(p.v||0),0) : 0;
+  const _divAberto = a ? (a.propinas||[]).filter(p=>(window.__estadoPropina?window.__estadoPropina(p):(p.st==='npago'?'divida':p.st))==='divida').reduce((s,p)=>s+(window.__totalProp?window.__totalProp(p):(p.v||0)),0) : 0;
 
   const mesesStr = pag.meses.map(mi=>M[mi]+'/'+d.ano).join(', ');
   const canalLabel = {
