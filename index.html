@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.239</span>
+    <span class="logo-ver">v6.240</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -48096,11 +48096,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 (function(){
   if(window.__recSyncCedo) return; window.__recSyncCedo=true;
   function sincronizar(){ try{ if(typeof window.__rcSincronizar==='function') window.__rcSincronizar(); }catch(e){} }
-  var tentativas=0;
+  var tentativas=0, jaCorreu=false;
   var iv=setInterval(function(){
     tentativas++;
     var apanhou=false;
     try{
+      /* assim que houver pagamentos carregados, trazer os números uma vez */
+      if(!jaCorreu && typeof window.__rcSincronizar==='function' && typeof PAGAMENTOS!=='undefined' && PAGAMENTOS.length){ jaCorreu=true; sincronizar(); }
       if(typeof window.openPA==='function' && !window.openPA.__recSync){
         var _pa=window.openPA;
         window.openPA=function(){ sincronizar(); return _pa.apply(this, arguments); };
@@ -48108,11 +48110,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       }
       if(typeof window.go==='function' && !window.go.__recSync){
         var _go=window.go;
-        window.go=function(id){ if(id==='extracto-escola'||id==='propaluno') sincronizar(); return _go.apply(this, arguments); };
+        window.go=function(id){ if(id==='extracto-escola'||id==='propaluno'||id==='propinas'||id==='pagamentos'||id==='dividas') sincronizar(); return _go.apply(this, arguments); };
         window.go.__recSync=true;
       }
     }catch(e){}
-    if(apanhou || tentativas>40) clearInterval(iv);
+    if((apanhou && jaCorreu) || tentativas>60) clearInterval(iv);
   }, 1500);
 })();
 </script>
