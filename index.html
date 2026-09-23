@@ -700,7 +700,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.242</span>
+    <span class="logo-ver">v6.243</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -17904,7 +17904,7 @@ renderPropTabela = function(list) {
       <td style="font-weight:700">${a.nome}</td>
       ${meses6}
       <td style="font-weight:700;color:var(--g)">${pago.toLocaleString()} MZM</td>
-      <td style="font-weight:700;color:${(window.__propCompleto&&window.__propCompleto(a))?'var(--g)':'var(--r)'}">${(window.__propCompleto&&window.__propCompleto(a))?'<span class="badge bok" style="font-size:10px"><i class="ti ti-circle-check"></i> Completo</span>':'-'+(window.__propFalta?window.__propFalta(a):0).toLocaleString()+' MZM'}</td>
+      <td style="font-weight:700;color:${(window.__propCompleto&&window.__propCompleto(a))?'var(--g)':(div>0?'var(--r)':'var(--t2)')}">${(window.__propCompleto&&window.__propCompleto(a))?'<span class="badge bok" style="font-size:10px"><i class="ti ti-circle-check"></i> Completo</span>':(div>0?'-'+div.toLocaleString()+' MZM':'<span class="badge bok" style="font-size:10px">Em dia</span>')}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-g btn-sm" onclick="event.stopPropagation();openPA(${a.id})"><i class="ti ti-eye"></i></button>
         ${canPay && a.propinas.some(p=>p.st!=='pago'&&p.st!=='isento') ? `<button class="btn btn-p btn-sm" onclick="event.stopPropagation();abrirRegistarPagamento(${a.id})"><i class="ti ti-plus"></i> Pagar</button>` : ''}
@@ -44768,7 +44768,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         divida = a.propinas.filter(function(p){
           var st = (typeof window.__estadoPropina==='function') ? window.__estadoPropina(p) : (p.st==='npago'?'divida':p.st);
           return st === 'divida';
-        }).reduce(function(s,p){ return s + (p.v||0); }, 0);
+        }).reduce(function(s,p){ return s + (window.__totalProp?window.__totalProp(p):(p.v||0)); }, 0);
       }
     }catch(e){}
 
