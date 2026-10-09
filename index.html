@@ -701,7 +701,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.246</span>
+    <span class="logo-ver">v6.247</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3742,8 +3742,8 @@ function closeSR(){document.getElementById('sr').classList.remove('open');docume
 document.addEventListener('click',e=>{if(!e.target.closest('.srch-wrap'))document.getElementById('sr').classList.remove('open')});
 
 // ══ HELPERS ══
-function mkAv(nome,sz,ci,sq){const c=gc(ci);return`<div style="width:${sz}px;height:${sz}px;border-radius:${sq?'12px':'50%'};background:${c}18;color:${c};display:flex;align-items:center;justify-content:center;font-size:${sz*.32}px;font-weight:800;flex-shrink:0">${ini(nome)}</div>`}
-function rIR(id,rows){const el=document.getElementById(id);if(!el)return;el.innerHTML=rows.map(([l,v])=>`<div class="ir"><span class="il">${l}</span><span class="iv">${v}</span></div>`).join('')}
+function mkAv(nome,sz,ci,sq){const c=gc(ci);return`<div style="width:${sz}px;height:${sz}px;border-radius:${sq?'12px':'50%'};background:${c}18;color:${c};display:flex;align-items:center;justify-content:center;font-size:${sz*.32}px;font-weight:800;flex-shrink:0">${window.__escH(ini(nome))}</div>`}
+function rIR(id,rows){const el=document.getElementById(id);if(!el)return;const H=window.__escH;/* v6.247: escapado (XSS) */el.innerHTML=rows.map(([l,v])=>`<div class="ir"><span class="il">${H(l)}</span><span class="iv">${H(v)}</span></div>`).join('')}
 function swT(pref,tab,btn){const vId={ap:'v-aluno-p',pp:'v-prof-p',ep:'v-enc-p'}[pref];document.querySelectorAll(`#${vId} .tab`).forEach(t=>t.classList.remove('on'));document.querySelectorAll(`#${vId} .tp`).forEach(p=>p.classList.remove('on'));const el=document.getElementById(`${pref}-t-${tab}`);if(el)el.classList.add('on');if(btn)btn.classList.add('on')}
 function openM(id){document.getElementById(id).classList.add('op')}
 function closeM(id){document.getElementById(id).classList.remove('op')}
@@ -4305,7 +4305,7 @@ async function rCurrPlanos(disc,cl){
   }
 
   const discOpts = discs.map(d =>
-    `<option value="${d.id}" ${disc&&disc.id===d.id?'selected':''}>${d.nome} — ${d.classe?d.classe+'ª Classe':'Classe n/d'}</option>`
+    `<option value="${window.__escH(d.id)}" ${disc&&disc.id===d.id?'selected':''}>${window.__escH(d.nome)} — ${d.classe?window.__escH(d.classe)+'ª Classe':'Classe n/d'}</option>`
   ).join('');
 
   el.innerHTML = `
@@ -4325,19 +4325,20 @@ async function rCurrPlanos(disc,cl){
 }
 
 function renderPlanosDisc(planos, disc) {
+  const H = window.__escH, A = window.__escA;   // v6.247: planos escapados (XSS)
   const p = planos.filter(p => p.disciplina_id === disc.id);
-  if (!p.length) return `<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem planos para esta disciplina. <button class="btn btn-p btn-sm" onclick="abrirNovoPlanoTematico('${disc.id}')"><i class="ti ti-plus"></i> Adicionar</button></div>`;
+  if (!p.length) return `<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem planos para esta disciplina. <button class="btn btn-p btn-sm" onclick="abrirNovoPlanoTematico('${A(disc.id)}')"><i class="ti ti-plus"></i> Adicionar</button></div>`;
   return p.map(pl => `
     <div style="background:var(--bg3);border:1px solid var(--b);border-radius:var(--rads);padding:14px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div>
-          <div style="font-size:14px;font-weight:700">${pl.unidade||'—'} · ${pl.tema||'—'}</div>
-          <div style="font-size:12px;color:var(--t2)">Semana ${pl.semana||'—'} · ${pl.carga_horaria||0}h · ${pl.turmas?.nome||'—'}</div>
+          <div style="font-size:14px;font-weight:700">${H(pl.unidade||'—')} · ${H(pl.tema||'—')}</div>
+          <div style="font-size:12px;color:var(--t2)">Semana ${H(pl.semana||'—')} · ${H(pl.carga_horaria||0)}h · ${H(pl.turmas?.nome||'—')}</div>
         </div>
         <span class="badge ${pl.executado?'bsuc':'bin'}">${pl.executado?'Executado':'Previsto'}</span>
       </div>
-      ${pl.objectivos?`<div style="font-size:12px;color:var(--t2);margin-bottom:6px"><strong>Objectivos:</strong> ${pl.objectivos}</div>`:''}
-      ${pl.conteudos?`<div style="font-size:12px;color:var(--t2)"><strong>Conteúdos:</strong> ${pl.conteudos}</div>`:''}
+      ${pl.objectivos?`<div style="font-size:12px;color:var(--t2);margin-bottom:6px"><strong>Objectivos:</strong> ${H(pl.objectivos)}</div>`:''}
+      ${pl.conteudos?`<div style="font-size:12px;color:var(--t2)"><strong>Conteúdos:</strong> ${H(pl.conteudos)}</div>`:''}
     </div>`).join('');
 }
 
@@ -4504,7 +4505,7 @@ function openAluno(id){
   const f=calcFaltas(id),pend=(window.__propsEmAtraso?window.__propsEmAtraso(a):a.propinas.filter(p=>p.st==='npago').length);
   document.getElementById('ap-badges').innerHTML=`<span class="badge ${a.verif?'bok':'bwn'}">${a.verif?'<i class="ti ti-check"></i> Verificado':'Pendente'}</span>${pend?`<span class="badge ber">${pend} prop. em atraso</span>`:''} ${f.excluido?`<span class="badge ber"><i class="ti ti-alert-triangle" style="color:#f59e0b"></i> Excluído (${f.pct}% faltas)</span>`:f.emRisco?`<span class="badge bwn"><i class="ti ti-bolt" style="color:#f59e0b"></i> Em risco (${f.pct}% faltas)</span>`:''}`;
   const _t1m=(a.notas&&Array.isArray(a.notas.t1))?a.notas.t1:[];const med1=_t1m.length?_t1m.reduce((s,n)=>s+(n.n||0),0)/_t1m.length:null;
-  document.getElementById('ap-kpis').innerHTML=[{l:'Nº Aluno',v:a.num,c:'var(--a)'},{l:'Turma',v:a.turma,c:'var(--t)'},{l:'Média T1',v:(med1===null?'—':med1.toFixed(1)),c:(med1===null?'var(--t2)':(med1>=CONFIG.mediaAprovacao?'var(--g)':'var(--am)'))},{l:'Faltas',v:`${f.total} (${f.pct}%)`,c:f.excluido?'var(--r)':f.emRisco?'var(--am)':'var(--g)'}].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
+  document.getElementById('ap-kpis').innerHTML=[{l:'Nº Aluno',v:a.num,c:'var(--a)'},{l:'Turma',v:a.turma,c:'var(--t)'},{l:'Média T1',v:(med1===null?'—':med1.toFixed(1)),c:(med1===null?'var(--t2)':(med1>=CONFIG.mediaAprovacao?'var(--g)':'var(--am)'))},{l:'Faltas',v:`${f.total} (${f.pct}%)`,c:f.excluido?'var(--r)':f.emRisco?'var(--am)':'var(--g)'}].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${window.__escH(k.v)}</div><div class="pkpil">${window.__escH(k.l)}</div></div>`).join('');
   rIR('ap-id-r',[['Nome',a.nome],['Data Nasc.',a.nasc],['Género',a.genero==='M'?'Masculino':'Feminino'],['BI',a.bi],['Naturalidade',a.nat],['Ano de Adesão',a.ingresso]]);
   rIR('ap-ct-r',[['Telefone',a.tel],['Email',a.email||'N/A'],['Encarregado',a.enc||a.enome]]);
   rIR('ap-ac-r',[['Classe',a.classe],['Turma',a.turma],['Regime','Manhã'],['Campus','Sede'],['Ano Lectivo','2026']]);
@@ -4630,14 +4631,14 @@ function openProf(id){
   // Para parcial: MZN por aula = salario / total aulas no mês (cargaReal × 4 semanas)
   const aulasNoMes = cargaReal * 4;
   const mznPorAula = p.regime==='parcial' && aulasNoMes > 0 ? Math.round(p.salario / aulasNoMes) : 0;
-  document.getElementById('pp-badges').innerHTML=`<span class="badge bpu">${p.form}</span><span class="badge bin">${p.area}</span><span class="badge ${p.regime==='inteiro'?'bok':'bwn'}">${p.regime==='inteiro'?'Tempo Inteiro':'Tempo Parcial'}</span><span class="badge ${cargaReal>cargaMax?'ber':cargaReal>cargaMax*0.85?'bam':'bok'}">${cargaReal}h/${cargaMax}h sem.</span>`;
+  document.getElementById('pp-badges').innerHTML=`<span class="badge bpu">${window.__escH(p.form)}</span><span class="badge bin">${window.__escH(p.area)}</span><span class="badge ${p.regime==='inteiro'?'bok':'bwn'}">${p.regime==='inteiro'?'Tempo Inteiro':'Tempo Parcial'}</span><span class="badge ${cargaReal>cargaMax?'ber':cargaReal>cargaMax*0.85?'bam':'bok'}">${cargaReal}h/${cargaMax}h sem.</span>`;
   document.getElementById('pp-kpis').innerHTML=[
     {l:'Nº Professor',v:p.num,c:'var(--a2)'},
     {l:'Carga Real',v:cargaReal+'h/sem',c:cargaReal>cargaMax?'var(--r)':cargaReal>cargaMax*0.85?'var(--am)':'var(--g)'},
     {l:'Turmas',v:numTurmas,c:'var(--g)'},
     ...(canSeeSalary()?[{l:p.regime==='parcial'?'Salário/Mês (est.)':'Salário Mensal',v:p.salario.toLocaleString()+' MZM',c:'var(--am)'}]:[]),
     ...(p.regime==='parcial'&&canSeeSalary()?[{l:'MZN / Aula',v:mznPorAula.toLocaleString()+' MZM',c:'var(--pi)'}]:[]),
-  ].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
+  ].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${window.__escH(k.v)}</div><div class="pkpil">${window.__escH(k.l)}</div></div>`).join('');
   rIR('pp-id-r',[['Nome',p.nome],['Data Nasc.',p.nasc],['Género',p.genero==='M'?'Masculino':'Feminino'],['BI',p.bi],['Naturalidade',p.nat],['Ano Adesão',p.adesao]]);
   const ctRows = [
     ['Telefone', p.tel],
@@ -4667,7 +4668,7 @@ function openProf(id){
 
 // ══ ENCARREGADOS ══
 function rEncs(){
-  document.getElementById('tb-enc').innerHTML=ENCS.map((e,i)=>{const div=e.filhos.reduce((s,f)=>s+(f.saldo<0?Math.abs(f.saldo):0),0);return`<tr onclick="openEnc(${e.id})"><td>${mkAv(e.nome,28,i+3,false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${e.num}</td><td style="font-weight:700">${e.nome}</td><td style="color:var(--t2)">${e.tel}</td><td><span class="badge bin">${e.filhos.length} filho(s)</span></td><td style="font-weight:700;color:${div?'var(--r)':'var(--g)'}">${div?div.toLocaleString()+' MZM':'—'}</td><td style="color:var(--t2)">${e.adesao}</td><td><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openEnc(${e.id})">Ver</button></td></tr>`}).join('');
+  document.getElementById('tb-enc').innerHTML=ENCS.map((e,i)=>{const div=e.filhos.reduce((s,f)=>s+(f.saldo<0?Math.abs(f.saldo):0),0);return`<tr onclick="openEnc(${e.id})"><td>${mkAv(e.nome,28,i+3,false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${window.__escH(e.num)}</td><td style="font-weight:700">${window.__escH(e.nome)}</td><td style="color:var(--t2)">${window.__escH(e.tel)}</td><td><span class="badge bin">${e.filhos.length} filho(s)</span></td><td style="font-weight:700;color:${div?'var(--r)':'var(--g)'}">${div?div.toLocaleString()+' MZM':'—'}</td><td style="color:var(--t2)">${window.__escH(e.adesao)}</td><td><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openEnc(${e.id})">Ver</button></td></tr>`}).join('');
 }
 function abrirNovoEnc(){
   const nextId=ENCS.length+1;
@@ -4711,8 +4712,8 @@ function openEnc(id){
   avt.textContent=ini(e.nome);
   document.getElementById('ep-nome').textContent=e.nome;document.getElementById('ep-num').textContent=`${e.num} · Encarregado de Educação`;
   const tdiv=e.filhos.reduce((s,f)=>s+(f.saldo<0?Math.abs(f.saldo):0),0);
-  document.getElementById('ep-badges').innerHTML=`<span class="badge bok">Activo</span><span class="badge bin">${e.filhos.length} filho(s) na escola</span><span class="badge bne">${e.prof}</span>`;
-  document.getElementById('ep-kpis').innerHTML=[{l:'Nº Encarregado',v:e.num,c:'var(--g)'},{l:'Filhos',v:e.filhos.length,c:'var(--a)'},{l:'Dívida Total',v:tdiv?tdiv.toLocaleString()+' MZM':'Sem dívida',c:tdiv?'var(--r)':'var(--g)'},{l:'Adesão',v:e.adesao,c:'var(--t2)'}].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
+  document.getElementById('ep-badges').innerHTML=`<span class="badge bok">Activo</span><span class="badge bin">${e.filhos.length} filho(s) na escola</span><span class="badge bne">${window.__escH(e.prof)}</span>`;
+  document.getElementById('ep-kpis').innerHTML=[{l:'Nº Encarregado',v:e.num,c:'var(--g)'},{l:'Filhos',v:e.filhos.length,c:'var(--a)'},{l:'Dívida Total',v:tdiv?tdiv.toLocaleString()+' MZM':'Sem dívida',c:tdiv?'var(--r)':'var(--g)'},{l:'Adesão',v:e.adesao,c:'var(--t2)'}].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${window.__escH(k.v)}</div><div class="pkpil">${window.__escH(k.l)}</div></div>`).join('');
   rIR('ep-id-r',[['Nome',e.nome],['Ano Nasc.',e.nasc],['Género',e.genero==='M'?'Masculino':'Feminino'],['BI',e.bi],['Profissão',e.prof],['Morada',e.morada]]);
   rIR('ep-ct-r',[['Telefone',e.tel],['Email',e.email||'N/A'],['Ano Adesão',e.adesao]]);
   document.getElementById('ep-fi-t').textContent=`Filhos na Escola — ${e.filhos.length} registo(s)`;
@@ -5264,7 +5265,7 @@ async function __carregarTemasPlano(turmaId, discId){
     sel.innerHTML='<option value="">— Sem tema do plano —</option>'+r.data.map(function(p){
       var mk=p.executado?' ✓':'';
       var lbl=(p.semana?('S'+p.semana+' · '):'')+(p.tema||p.unidade||'(sem tema)')+mk;
-      return '<option value="'+p.id+'" data-tema="'+String(p.tema||'').replace(/"/g,'&quot;')+'">'+lbl+'</option>';
+      return '<option value="'+window.__escH(p.id)+'" data-tema="'+window.__escH(p.tema||'')+'">'+window.__escH(lbl)+'</option>';
     }).join('');
   }catch(e){}
 }
@@ -5928,8 +5929,8 @@ function rStaff(dep){
   if(btns[idx])btns[idx].classList.add('on');
   const list=dep==='todos'?PROFS:PROFS.filter(p=>p.dep===dep);
   document.getElementById('tb-staff').innerHTML=list.map((p,i)=>`<tr onclick="loadAval(${p.id})">
-    <td>${mkAv(p.nome,28,i,false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${p.num}</td>
-    <td style="font-weight:700">${p.nome}</td><td style="color:var(--t2);font-size:12px">${p.cargo}</td>
+    <td>${mkAv(p.nome,28,i,false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${window.__escH(p.num)}</td>
+    <td style="font-weight:700">${window.__escH(p.nome)}</td><td style="color:var(--t2);font-size:12px">${window.__escH(p.cargo)}</td>
     <td><span class="badge ${p.dep==='academico'?'bin':p.dep==='gestao'?'bpu':'bwn'}">${p.dep==='academico'?'<i class="ti ti-school"></i> Acad.':p.dep==='gestao'?'<i class="ti ti-building"></i> Gestão':'<i class="ti ti-currency-dollar"></i> Fin.'}</span></td>
     <td><span class="badge ${p.regime==='inteiro'?'bok':'bwn'}" style="font-size:9px">${p.regime==='inteiro'?'Inteiro':'Parcial'}</span></td>
     ${canSeeSalary()?`<td style="font-weight:700;color:var(--am)">${(p.salario||0).toLocaleString()} MZM</td>`:`<td style="color:var(--t3);text-align:right">—</td>`}
@@ -7030,20 +7031,21 @@ function rComunicados() {
 
   const prioColor = {urgente:'var(--r)',info:'var(--tl)',normal:'var(--t2)'};
   const prioIcon = {urgente:'<i class="ti ti-circle-filled" style="color:#ef4444"></i>',info:'ℹ',normal:'<i class="ti ti-speakerphone"></i>'};
+  const H = window.__escH, A = window.__escA;   // v6.247: comunicados escapados (XSS)
 
   el.innerHTML = COMUNICADOS.map(c => `
     <div class="card" style="border-left:4px solid ${prioColor[c.prio]||'var(--b2)'}">
       <div class="ch">
         <div>
           <div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:3px">
-            ${prioIcon[c.prio]||'<i class="ti ti-speakerphone"></i>'} ${c.titulo}
+            ${prioIcon[c.prio]||'<i class="ti ti-speakerphone"></i>'} ${H(c.titulo)}
           </div>
-          <div style="font-size:11px;color:var(--t2)">${c.autor} · ${c.data} · Para: ${c.para==='todos'?'Toda a escola':c.para}</div>
+          <div style="font-size:11px;color:var(--t2)">${H(c.autor)} · ${H(c.data)} · Para: ${c.para==='todos'?'Toda a escola':H(c.para)}</div>
         </div>
-        ${canCreate?`<button class="btn btn-re btn-sm" onclick="COMUNICADOS.splice(COMUNICADOS.indexOf(COMUNICADOS.find(x=>x.id===${c.id})),1);rComunicados();toast('Comunicado removido')"><i class="ti ti-trash"></i></button>`:''}
+        ${canCreate?`<button class="btn btn-re btn-sm" onclick="COMUNICADOS.splice(COMUNICADOS.indexOf(COMUNICADOS.find(x=>String(x.id)==='${A(c.id)}')),1);rComunicados();toast('Comunicado removido')"><i class="ti ti-trash"></i></button>`:''}
       </div>
       <div class="cb">
-        <div style="font-size:13px;color:var(--t2);line-height:1.6">${c.corpo}</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.6">${H(c.corpo)}</div>
       </div>
     </div>`).join('') || '<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Sem comunicados publicados.</div>';
 }
@@ -7956,7 +7958,7 @@ openProf = function(id) {
       {l:'Regime',         v: 'Tempo Parcial',  c:'var(--am)'},
       {l:'Horas Alocadas', v: totalHoras+'h/'+(p.horasMaxSem||12)+'h', c: totalHoras>(p.horasMaxSem||12)?'var(--r)':totalHoras>(p.horasMaxSem||12)*0.85?'var(--am)':'var(--g)'},
       {l:'Remuneração',    v: salCalc.toLocaleString()+' MZM', c:'var(--g)'},
-    ].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${k.v}</div><div class="pkpil">${k.l}</div></div>`).join('');
+    ].map(k=>`<div class="pkpi"><div class="pkpiv" style="color:${k.c}">${window.__escH(k.v)}</div><div class="pkpil">${window.__escH(k.l)}</div></div>`).join('');
     // Show breakdown
     const ctEl = document.getElementById('pp-ct-r');
     if (ctEl) {
@@ -10227,10 +10229,11 @@ function renderPortalComunicados(a) {
   );
   const prioColor = {urgente:'var(--r)',info:'var(--tl)',normal:'var(--t2)'};
   const prioIcon  = {urgente:'<i class="ti ti-circle-filled" style="color:#ef4444"></i>',info:'ℹ',normal:'<i class="ti ti-speakerphone"></i>'};
+  const H = window.__escH;   // v6.247: escapado (XSS)
   document.getElementById('portal-c').innerHTML = meus.length
     ? meus.map(c=>`<div class="card" style="border-left:4px solid ${prioColor[c.prio]||'var(--b2)'};margin-bottom:10px">
-        <div class="ch"><div><div style="font-size:14px;font-weight:700">${prioIcon[c.prio]||'<i class="ti ti-speakerphone"></i>'} ${c.titulo}</div><div style="font-size:11px;color:var(--t2)">${c.autor} · ${c.data}</div></div></div>
-        <div class="cb"><div style="font-size:13px;color:var(--t2);line-height:1.6">${c.corpo}</div></div>
+        <div class="ch"><div><div style="font-size:14px;font-weight:700">${prioIcon[c.prio]||'<i class="ti ti-speakerphone"></i>'} ${H(c.titulo)}</div><div style="font-size:11px;color:var(--t2)">${H(c.autor)} · ${H(c.data)}</div></div></div>
+        <div class="cb"><div style="font-size:13px;color:var(--t2);line-height:1.6">${H(c.corpo)}</div></div>
       </div>`).join('')
     : '<div class="ib-box ib-blue"><i class="ti ti-info-circle"></i> Sem comunicados para a sua turma.</div>';
 }
@@ -12176,7 +12179,7 @@ function rPortalEncTrabalhos() {
     const pend     = meusTrab.filter(t=>{const e=t.entregas[a.id];return typeof e==='object'?e.estado==='pendente':e==='pendente'}).length;
     return `
       <div style="font-size:15px;font-weight:800;color:var(--t);margin:16px 0 10px;display:flex;align-items:center;gap:8px">
-        ${mkAv(a.nome,28,ALUNOS.indexOf(a),false)} ${a.nome}
+        ${mkAv(a.nome,28,ALUNOS.indexOf(a),false)} ${window.__escH(a.nome)}
         ${pend?`<span class="si-badge">${pend} pendentes</span>`:''}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
@@ -12188,13 +12191,13 @@ function rPortalEncTrabalhos() {
           return `<div style="background:var(--card);border:1px solid ${estado==='entregue'||estado==='corrigido'?'rgba(34,197,94,.25)':'var(--b)'};border-radius:var(--rads);padding:12px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
               <i class="ti ${tp.label.includes('Redac')?'ti-writing':tp.label.includes('Resumo')?'ti-file-text':tp.label.includes('Pesq')?'ti-search':tp.label.includes('Apres')?'ti-microphone':'ti-clipboard'}" style="color:${tp.cor};font-size:18px"></i>
-              <div style="font-size:12px;font-weight:700;flex:1">${t.titulo}</div>
+              <div style="font-size:12px;font-weight:700;flex:1">${window.__escH(t.titulo)}</div>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center">
               ${badgePrazo(t.prazo, estado)}
               <span class="badge ${estado==='corrigido'?'bok':estado==='entregue'?'btl':d<0?'ber':'bwn'}">${estado==='corrigido'?'Corrigido':estado==='entregue'?'Entregue':d<0?'Em atraso':'Pendente'}</span>
             </div>
-            ${typeof entrega==='object'&&entrega.nota!=null?`<div style="margin-top:6px;font-size:14px;font-weight:800;color:${entrega.nota>=10?'var(--g)':'var(--r)'}">Nota: ${entrega.nota}/20</div>`:''}
+            ${typeof entrega==='object'&&entrega.nota!=null?`<div style="margin-top:6px;font-size:14px;font-weight:800;color:${entrega.nota>=10?'var(--g)':'var(--r)'}">Nota: ${window.__escH(entrega.nota)}/20</div>`:''}
           </div>`;
         }).join('')}
       </div>`;
@@ -12860,15 +12863,16 @@ function rComunicacaoBidirec() {
         </div>
         <div style="overflow-y:auto;flex:1">
           ${CONVERSAS.map((c,i)=>{
+            const H = window.__escH, A = window.__escA;   // v6.247: texto das conversas escapado (XSS)
             const ultMsg = c.msgs[c.msgs.length-1];
             const naoLidas = c.msgs.filter(m=>m.de!==curUser.nome&&!m.lida).length;
-            return `<div onclick="abrirConversa(${c.id})" style="padding:12px 14px;border-bottom:1px solid var(--b);cursor:pointer;background:${i===0?'rgba(79,142,247,.08)':'transparent'};transition:background .15s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${i===0?'rgba(79,142,247,.08)':'transparent'}'">
+            return `<div onclick="abrirConversa('${A(c.id)}')" style="padding:12px 14px;border-bottom:1px solid var(--b);cursor:pointer;background:${i===0?'rgba(79,142,247,.08)':'transparent'};transition:background .15s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${i===0?'rgba(79,142,247,.08)':'transparent'}'">
               <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                <span style="font-size:12px;font-weight:700;color:var(--t)">${c.assunto}</span>
+                <span style="font-size:12px;font-weight:700;color:var(--t)">${H(c.assunto)}</span>
                 ${naoLidas?`<span class="si-badge">${naoLidas}</span>`:''}
               </div>
-              <div style="font-size:11px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ultMsg?.texto||'—'}</div>
-              <div style="font-size:10px;color:var(--t3);margin-top:3px">${ultMsg?.data||''}</div>
+              <div style="font-size:11px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${H(ultMsg?.texto||'—')}</div>
+              <div style="font-size:10px;color:var(--t3);margin-top:3px">${H(ultMsg?.data||'')}</div>
             </div>`;
           }).join('')}
         </div>
@@ -12881,23 +12885,24 @@ function rComunicacaoBidirec() {
 }
 
 function renderChatConversa(c) {
+  const H = window.__escH, A = window.__escA;   // v6.247: mensagens escapadas (XSS)
   return `
     <div style="padding:12px 16px;border-bottom:1px solid var(--b);background:var(--bg2)">
-      <div style="font-size:13px;font-weight:700">${c.assunto}</div>
-      <div style="font-size:11px;color:var(--t2)">${c.participantes.join(' · ')}</div>
+      <div style="font-size:13px;font-weight:700">${H(c.assunto)}</div>
+      <div style="font-size:11px;color:var(--t2)">${H(c.participantes.join(' · '))}</div>
     </div>
     <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px" id="chat-msgs">
       ${c.msgs.map(m=>{
         const isMine = m.de === curUser.nome;
         return `<div style="display:flex;flex-direction:column;align-items:${isMine?'flex-end':'flex-start'};gap:2px">
-          <div style="font-size:10px;color:var(--t3)">${m.de} · ${m.data}</div>
-          <div style="max-width:70%;padding:10px 14px;border-radius:${isMine?'14px 14px 4px 14px':'14px 14px 14px 4px'};background:${isMine?'var(--a)':'var(--bg3)'};color:${isMine?'#fff':'var(--t)'};font-size:13px;line-height:1.5">${m.texto}</div>
+          <div style="font-size:10px;color:var(--t3)">${H(m.de)} · ${H(m.data)}</div>
+          <div style="max-width:70%;padding:10px 14px;border-radius:${isMine?'14px 14px 4px 14px':'14px 14px 14px 4px'};background:${isMine?'var(--a)':'var(--bg3)'};color:${isMine?'#fff':'var(--t)'};font-size:13px;line-height:1.5">${H(m.texto)}</div>
         </div>`;
       }).join('')}
     </div>
     <div style="padding:12px;border-top:1px solid var(--b);display:flex;gap:8px;background:var(--bg2)">
-      <input type="text" id="chat-input" class="ffi" style="flex:1" placeholder="Escreva a sua mensagem..." onkeydown="if(event.key==='Enter')enviarMsgChat(${c.id})">
-      <button class="btn btn-p" onclick="enviarMsgChat(${c.id})"><i class="ti ti-send"></i></button>
+      <input type="text" id="chat-input" class="ffi" style="flex:1" placeholder="Escreva a sua mensagem..." onkeydown="if(event.key==='Enter')enviarMsgChat('${A(c.id)}')">
+      <button class="btn btn-p" onclick="enviarMsgChat('${A(c.id)}')"><i class="ti ti-send"></i></button>
     </div>`;
 }
 
@@ -13995,7 +14000,7 @@ function rPlanoAnalitico(turmaId) {
     </div>
 
     <div class="tabs" id="pa-disc-tabs" style="margin-bottom:16px">
-      ${discs.map((d,i)=>`<button class="tab ${i===0?'on':''}" onclick="swPATab('${d}',this)">${d}</button>`).join('')}
+      ${discs.map((d,i)=>`<button class="tab ${i===0?'on':''}" onclick="swPATab('${window.__escA(d)}',this)">${window.__escH(d)}</button>`).join('')}
     </div>
     <div id="pa-disc-body">
       ${renderPADisc(turmaId, discs[0])}
@@ -14011,6 +14016,7 @@ function swPATab(disc, btn) {
 }
 
 function renderPADisc(turmaId, disc) {
+  const H = window.__escH, A = window.__escA;   // v6.247: sumários dos professores escapados (XSS)
   const entries = getPlanoAnalitico(turmaId, disc);
   const aloc    = ALOCACOES.find(a=>a.turma===turmaId&&a.disc===disc);
   const prof    = PROFS.find(p=>p.num===aloc?.prof);
@@ -14019,8 +14025,8 @@ function renderPADisc(turmaId, disc) {
   return `<div class="card">
     <div class="ch">
       <div>
-        <span class="ct">${disc}</span>
-        ${prof?`<span style="font-size:12px;color:var(--t2);margin-left:10px"><i class="ti ti-user" style="font-size:11px"></i> ${prof.nome}</span>`:''}
+        <span class="ct">${H(disc)}</span>
+        ${prof?`<span style="font-size:12px;color:var(--t2);margin-left:10px"><i class="ti ti-user" style="font-size:11px"></i> ${H(prof.nome)}</span>`:''}
       </div>
       <span style="font-size:12px;color:var(--t2)">${entries.length} aulas registadas</span>
     </div>
@@ -14032,17 +14038,17 @@ function renderPADisc(turmaId, disc) {
         </tr></thead>
         <tbody>
           ${entries.map((e,i)=>`<tr>
-            <td style="white-space:nowrap;font-family:var(--fm);font-size:11px">${e.data}</td>
-            <td style="font-family:var(--fm);font-size:11px">${e.hora}</td>
-            <td style="max-width:220px">${e.conteudo}</td>
-            <td style="color:var(--t2);font-size:12px">${e.metodo||'—'}</td>
-            <td style="color:var(--t2);font-size:12px">${e.avaliacao||'—'}</td>
-            ${canEdit?`<td><button class="btn btn-re btn-sm" onclick="removerAulaAnalitico('${turmaId}','${disc}',${i})"><i class="ti ti-trash"></i></button></td>`:''}
+            <td style="white-space:nowrap;font-family:var(--fm);font-size:11px">${H(e.data)}</td>
+            <td style="font-family:var(--fm);font-size:11px">${H(e.hora)}</td>
+            <td style="max-width:220px">${H(e.conteudo)}</td>
+            <td style="color:var(--t2);font-size:12px">${H(e.metodo||'—')}</td>
+            <td style="color:var(--t2);font-size:12px">${H(e.avaliacao||'—')}</td>
+            ${canEdit?`<td><button class="btn btn-re btn-sm" onclick="removerAulaAnalitico('${A(turmaId)}','${A(disc)}',${i})"><i class="ti ti-trash"></i></button></td>`:''}
           </tr>`).join('')}
         </tbody>
       </table>` : `<div style="padding:24px;text-align:center;color:var(--t2)">
         <i class="ti ti-notebook" style="font-size:32px;display:block;margin-bottom:8px;color:var(--t3)"></i>
-        Sem aulas registadas para ${disc}.
+        Sem aulas registadas para ${H(disc)}.
         ${canEdit?`<br><button class="btn btn-p btn-sm" style="margin-top:10px" onclick="abrirRegistoAnalitico()"><i class="ti ti-plus"></i> Registar Primeira Aula</button>`:''}
       </div>`}
     </div>
@@ -14086,11 +14092,12 @@ function exportPlanoAnalitico() {
   const escola  = ESCOLA_SETTINGS?.nome || 'Scholaris';
   const discs   = [...new Set(ALOCACOES.filter(a=>a.turma===_paTurma).map(a=>a.disc))];
 
+  const H = window.__escH;   // v6.247: escapado (XSS na janela do documento)
   const tableRows = discs.map(disc => {
     const entries = getPlanoAnalitico(_paTurma, disc);
     const aloc    = ALOCACOES.find(a=>a.turma===_paTurma&&a.disc===disc);
     const prof    = PROFS.find(p=>p.num===aloc?.prof);
-    return `<h3 style="margin:16px 0 8px;color:#0d1526;border-bottom:2px solid #4f8ef7;padding-bottom:4px">${disc} ${prof?`<span style="font-size:12px;font-weight:400;color:#666">— ${prof.nome}</span>`:''}</h3>
+    return `<h3 style="margin:16px 0 8px;color:#0d1526;border-bottom:2px solid #4f8ef7;padding-bottom:4px">${H(disc)} ${prof?`<span style="font-size:12px;font-weight:400;color:#666">— ${H(prof.nome)}</span>`:''}</h3>
       ${entries.length ? `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px">
         <thead><tr style="background:#0d1526;color:#fff">
           <th style="padding:7px;text-align:left;width:90px">Data</th>
@@ -14100,11 +14107,11 @@ function exportPlanoAnalitico() {
           <th style="padding:7px;text-align:left">Avaliação</th>
         </tr></thead>
         <tbody>${entries.map((e,i)=>`<tr style="background:${i%2?'#f8f9fa':'#fff'}">
-          <td style="padding:6px 7px;font-family:monospace">${e.data}</td>
-          <td style="padding:6px 7px;font-family:monospace">${e.hora}</td>
-          <td style="padding:6px 7px">${e.conteudo}</td>
-          <td style="padding:6px 7px;color:#666">${e.metodo||'—'}</td>
-          <td style="padding:6px 7px;color:#666">${e.avaliacao||'—'}</td>
+          <td style="padding:6px 7px;font-family:monospace">${H(e.data)}</td>
+          <td style="padding:6px 7px;font-family:monospace">${H(e.hora)}</td>
+          <td style="padding:6px 7px">${H(e.conteudo)}</td>
+          <td style="padding:6px 7px;color:#666">${H(e.metodo||'—')}</td>
+          <td style="padding:6px 7px;color:#666">${H(e.avaliacao||'—')}</td>
         </tr>`).join('')}</tbody>
       </table>` : '<p style="color:#999;font-style:italic;margin-bottom:12px">Sem aulas registadas.</p>'}`;
   }).join('');
@@ -14123,7 +14130,7 @@ function exportPlanoAnalitico() {
       <button onclick="window.close()">Fechar</button>
     </div>
     <div class="page">
-      <h1>${escola} — Plano Analítico</h1>
+      <h1>${H(escola)} — Plano Analítico</h1>
       <h2>Turma ${_paTurma} · ${turma?.classe}ª Classe · ${turma?.curso} · Ano Lectivo 2026</h2>
       ${tableRows}
       <div style="margin-top:30px;font-size:9px;color:#999;text-align:center">
@@ -18642,17 +18649,18 @@ function filtrarAuditTrail() {
 
   // v6.98: linha da tabela (reutilizada nos grupos por semana)
   const _linha = (l) => {
+    const H = window.__escH;   // v6.247: tudo o que vem da tabela auditoria é escapado (XSS)
     const info = ACCAO_LABEL[l.accao]||{l:l.accao,c:'var(--t2)',ic:'ti-activity'};
     const ts   = new Date(l.timestamp);
     return `<tr>
       <td style="font-family:var(--fm);font-size:10px;white-space:nowrap">${ts.toLocaleDateString('pt-PT')}<br><span style="color:var(--t3)">${ts.toLocaleTimeString('pt-PT')}</span></td>
-      <td style="font-weight:700;font-size:12px">${l.utilizador}</td>
-      <td><span class="badge bin" style="font-size:9px">${l.role}</span></td>
-      <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:${info.c};font-weight:600"><i class="ti ${info.ic}" style="font-size:12px"></i>${info.l}</span></td>
-      <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.entidade}</td>
-      <td style="font-size:10px;color:var(--t2);max-width:180px">${l.detalhe}</td>
-      <td style="font-size:11px;color:var(--t3)">${l.valorAntes||'—'}</td>
-      <td style="font-size:11px;color:var(--g)">${l.valorDepois||'—'}</td>
+      <td style="font-weight:700;font-size:12px">${H(l.utilizador)}</td>
+      <td><span class="badge bin" style="font-size:9px">${H(l.role)}</span></td>
+      <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:${info.c};font-weight:600"><i class="ti ${info.ic}" style="font-size:12px"></i>${H(info.l)}</span></td>
+      <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${H(l.entidade)}</td>
+      <td style="font-size:10px;color:var(--t2);max-width:180px">${H(l.detalhe)}</td>
+      <td style="font-size:11px;color:var(--t3)">${H(l.valorAntes||'—')}</td>
+      <td style="font-size:11px;color:var(--g)">${H(l.valorDepois||'—')}</td>
     </tr>`;
   };
   // v6.98: agrupar por SEMANA DO ANO (ISO), em janelas colapsáveis, mais recente primeiro.
@@ -21220,18 +21228,19 @@ function emitirRegistoDisciplinar(alunoId) {
   d.tipo     = 'Registo Disciplinar';
   const ocors= (typeof OCORRENCIAS_DISC!=='undefined'?OCORRENCIAS_DISC:[])
     .filter(o=>o.alunoId===alunoId);
+  const H = window.__escH;   // v6.247: ocorrências escritas pelos professores escapadas (XSS)
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Registo Disciplinar — ${a.nome}</title>${CSS_BASE}
+  <title>Registo Disciplinar — ${H(a.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
     ${_hdrHtml(d)}
 
     <div class="g3" style="margin-bottom:14px">
-      <div class="campo"><div class="lbl">Aluno</div><div class="val">${a.nome}</div></div>
-      <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${a.num}</div></div>
-      <div class="campo"><div class="lbl">Turma</div><div class="val">${a.turma||'—'}</div></div>
+      <div class="campo"><div class="lbl">Aluno</div><div class="val">${H(a.nome)}</div></div>
+      <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${H(a.num)}</div></div>
+      <div class="campo"><div class="lbl">Turma</div><div class="val">${H(a.turma||'—')}</div></div>
     </div>
 
     ${ocors.length ? `<table style="margin-bottom:14px">
@@ -21241,13 +21250,13 @@ function emitirRegistoDisciplinar(alunoId) {
       </tr></thead>
       <tbody>
         ${ocors.map(o=>`<tr>
-          <td style="white-space:nowrap">${o.data||'—'}</td>
-          <td>${o.tipo||'—'}</td>
-          <td style="color:${o.gravidade==='grave'?'#991b1b':o.gravidade==='moderada'?'#92400e':'#1e293b'};font-weight:700">${o.gravidade||'—'}</td>
-          <td style="max-width:200px;font-size:10px">${o.descricao||'—'}</td>
-          <td style="font-size:10px">${o.fase||'—'}</td>
+          <td style="white-space:nowrap">${H(o.data||'—')}</td>
+          <td>${H(o.tipo||'—')}</td>
+          <td style="color:${o.gravidade==='grave'?'#991b1b':o.gravidade==='moderada'?'#92400e':'#1e293b'};font-weight:700">${H(o.gravidade||'—')}</td>
+          <td style="max-width:200px;font-size:10px">${H(o.descricao||'—')}</td>
+          <td style="font-size:10px">${H(o.fase||'—')}</td>
           <td style="font-size:10px;font-weight:700;color:${o.sancao?'#991b1b':'#166534'}">
-            ${o.sancao||'Sem sanção'}</td>
+            ${H(o.sancao||'Sem sanção')}</td>
         </tr>`).join('')}
       </tbody>
     </table>` : `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;
@@ -25197,14 +25206,14 @@ function maCarregarHistorico() {
         </tr></thead>
         <tbody>
           ${todasAulas.map(a => `<tr>
-            <td style="font-family:var(--fm);font-size:11px">${a.data}</td>
+            <td style="font-family:var(--fm);font-size:11px">${window.__escH(a.data)}</td>
             <td style="font-size:11px">
-              ${PERIODOS.find(p=>p.inicio===a.hora)?.nome||a.hora}
+              ${window.__escH(PERIODOS.find(p=>p.inicio===a.hora)?.nome||a.hora)}
             </td>
-            <td><span class="badge bin" style="font-size:10px">${a.tid}</span></td>
-            <td style="font-size:11px;font-weight:600">${a.disc}</td>
-            <td style="font-size:11px;max-width:200px">${a.conteudo||'—'}</td>
-            <td style="font-size:10px;color:var(--t2)">${a.metodo||'—'}</td>
+            <td><span class="badge bin" style="font-size:10px">${window.__escH(a.tid)}</span></td>
+            <td style="font-size:11px;font-weight:600">${window.__escH(a.disc)}</td>
+            <td style="font-size:11px;max-width:200px">${window.__escH(a.conteudo||'—')}</td>
+            <td style="font-size:10px;color:var(--t2)">${window.__escH(a.metodo||'—')}</td>
           </tr>`).join('')}
         </tbody>
       </table></div>
@@ -25438,6 +25447,7 @@ function cpTab(tab, btn) {
   const prof = resolverMeuProf ? resolverMeuProf() : PROFS[0];
   const alocs = ALOCACOES.filter(a => a.prof === prof?.num);
   const minhasTurmas = [...new Set(alocs.map(a => a.turma))];
+  const H = window.__escH;   // v6.247: escapado (XSS)
 
   if (tab === 'recebidos') {
     const recebidos = COMUNICADOS.filter(c =>
@@ -25448,16 +25458,16 @@ function cpTab(tab, btn) {
     el.innerHTML = recebidos.length ? recebidos.map(c => `
       <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);
         padding:16px;margin-bottom:10px;${!c.lido?'border-left:3px solid var(--a)':''}"
-        onclick="c${c.id}lido=true">
+        onclick="c${String(c.id).replace(/[^A-Za-z0-9_]/g,'')}lido=true">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div style="flex:1">
             <div style="font-weight:700;font-size:14px;margin-bottom:4px">
               ${!c.lido?'<span style="width:8px;height:8px;background:var(--a);border-radius:50%;display:inline-block;margin-right:6px"></span>':''}
-              ${c.titulo}
+              ${H(c.titulo)}
             </div>
-            <div style="font-size:12px;color:var(--t2);margin-bottom:8px">${c.corpo}</div>
-            <div style="font-size:10px;color:var(--t3)">${c.autor} · ${c.data}
-              <span class="badge ${c.prio==='urgente'?'bok':'bin'}" style="font-size:9px;margin-left:6px">${c.prio||'normal'}</span>
+            <div style="font-size:12px;color:var(--t2);margin-bottom:8px">${H(c.corpo)}</div>
+            <div style="font-size:10px;color:var(--t3)">${H(c.autor)} · ${H(c.data)}
+              <span class="badge ${c.prio==='urgente'?'bok':'bin'}" style="font-size:9px;margin-left:6px">${H(c.prio||'normal')}</span>
             </div>
           </div>
         </div>
@@ -25505,10 +25515,10 @@ function cpTab(tab, btn) {
       .sort((a,b)=>b.data.localeCompare(a.data));
     el.innerHTML = enviados.length ? enviados.map(c=>`
       <div style="background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:14px;margin-bottom:8px">
-        <div style="font-weight:700">${c.titulo}</div>
-        <div style="font-size:12px;color:var(--t2);margin:4px 0">${c.corpo}</div>
-        <div style="font-size:10px;color:var(--t3)">Para: ${c.para} · ${c.data}
-          <span class="badge bin" style="font-size:9px;margin-left:4px">${c.prio||'normal'}</span>
+        <div style="font-weight:700">${H(c.titulo)}</div>
+        <div style="font-size:12px;color:var(--t2);margin:4px 0">${H(c.corpo)}</div>
+        <div style="font-size:10px;color:var(--t3)">Para: ${H(c.para)} · ${H(c.data)}
+          <span class="badge bin" style="font-size:9px;margin-left:4px">${H(c.prio||'normal')}</span>
         </div>
       </div>`).join('') :
       '<div style="text-align:center;padding:30px;color:var(--t3)"><i class="ti ti-history" style="font-size:36px;display:block;margin-bottom:10px"></i>Nenhum recado enviado.</div>';
@@ -36044,7 +36054,7 @@ window.__finV30=true;})();
         var _alT=(typeof ALUNOS!=='undefined'?ALUNOS:[]).filter(function(a){ return t.turma==='todas' || String(a.turma)===String(t.turma); });
         var total=_alT.length||_un.length;
         var entregues=_un.filter(function(e){ return e.estado==='entregue'||e.estado==='corrigido'; }).length;
-        var anexo=t.anexo_url?'<a href="#" onclick="TB.link(\''+t.anexo_url+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px"><i class="ti ti-paperclip"></i> Material</a>':'';
+        var anexo=t.anexo_url?'<a href="#" onclick="TB.link(\''+window.__escA(t.anexo_url)+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px"><i class="ti ti-paperclip"></i> Material</a>':'';
         var prazo=t.prazo?new Date(t.prazo).toLocaleDateString('pt-PT'):'-';
         return '<div class="card" style="margin-bottom:10px"><div class="cb" style="padding:14px 16px">'
           +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">'
@@ -36053,7 +36063,7 @@ window.__finV30=true;})();
           +(t.descricao?'<div style="font-size:12px;color:var(--t3);margin-top:6px">'+_esc(t.descricao)+'</div>':'')
           +(anexo?'<div style="margin-top:8px">'+anexo+'</div>':'')+'</div>'
           +'<div style="text-align:right;flex-shrink:0"><div style="font-size:20px;font-weight:800;color:var(--a)">'+entregues+'/'+total+'</div><div style="font-size:11px;color:var(--t2)">entregues</div>'
-          +'<button class="btn btn-g btn-sm" style="margin-top:8px" onclick="verEntregasTrab(\''+t._dbId+'\')">Ver entregas</button></div>'
+          +'<button class="btn btn-g btn-sm" style="margin-top:8px" onclick="verEntregasTrab(\''+window.__escA(t._dbId)+'\')">Ver entregas</button></div>'
           +'</div></div></div>';
       }).join('');
       c.innerHTML=head+cards;
@@ -36087,19 +36097,19 @@ window.__finV30=true;})();
     // RLS já restringe os trabalhos à turma do aluno — mostrar todos os carregados.
     var todos=(window.TRABALHOS||[]);
     var head='<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:var(--t)">Os Meus Trabalhos</div>'
-      +'<div style="font-size:13px;color:var(--t2)">'+a.turma+' · '+todos.length+' trabalho(s)</div></div>';
+      +'<div style="font-size:13px;color:var(--t2)">'+_esc(a.turma)+' · '+todos.length+' trabalho(s)</div></div>';
     if(!todos.length){ c.innerHTML=head+'<div class="card"><div class="cb" style="text-align:center;padding:44px;color:var(--t2)"><i class="ti ti-clipboard-check" style="font-size:42px;display:block;margin-bottom:12px;color:var(--t3)"></i>Sem trabalhos por agora.</div></div>'; return; }
     var cards=todos.map(function(t){
       var e=(t.entregas&&(t.entregas[window._meuAlunoId]||t.entregas['L'+a.id]))||null;
       var estado=e?e.estado:'pendente';
       var d=_dias(t.prazo);
       var corEstado=estado==='corrigido'?'#22c55e':estado==='entregue'?'#3B82F6':(d!=null&&d<0)?'#ef4444':'var(--t2)';
-      var lblEstado=estado==='corrigido'?('Corrigido'+(e&&e.nota!=null?(' · '+e.nota+' val'):'')):estado==='entregue'?'Entregue':(d!=null&&d<0)?'Atrasado':'Pendente';
+      var lblEstado=estado==='corrigido'?('Corrigido'+(e&&e.nota!=null?(' · '+_esc(e.nota)+' val'):'')):estado==='entregue'?'Entregue':(d!=null&&d<0)?'Atrasado':'Pendente';
       var prazo=t.prazo?new Date(t.prazo).toLocaleDateString('pt-PT'):'-';
-      var material=t.anexo_url?'<a href="#" onclick="TB.link(\''+t.anexo_url+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px;margin-right:12px"><i class="ti ti-paperclip"></i> Material</a>':'';
+      var material=t.anexo_url?'<a href="#" onclick="TB.link(\''+window.__escA(t.anexo_url)+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px;margin-right:12px"><i class="ti ti-paperclip"></i> Material</a>':'';
       var btn=(estado==='pendente'||(d!=null&&d<0&&estado!=='entregue'&&estado!=='corrigido'))
-        ? '<button class="btn btn-p btn-sm" onclick="abrirEntregaAluno(\''+t._dbId+'\')">Entregar</button>'
-        : (estado==='entregue'?'<button class="btn btn-g btn-sm" onclick="abrirEntregaAluno(\''+t._dbId+'\')">Reenviar</button>':'');
+        ? '<button class="btn btn-p btn-sm" onclick="abrirEntregaAluno(\''+window.__escA(t._dbId)+'\')">Entregar</button>'
+        : (estado==='entregue'?'<button class="btn btn-g btn-sm" onclick="abrirEntregaAluno(\''+window.__escA(t._dbId)+'\')">Reenviar</button>':'');
       var feedback=(e&&e.feedback)?'<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--t2)"><b>Feedback:</b> '+_esc(e.feedback)+'</div>':'';
       return '<div class="card" style="margin-bottom:10px"><div class="cb" style="padding:14px 16px">'
         +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">'
@@ -36203,16 +36213,16 @@ window.__finV30=true;})();
       var nome=al.nome_completo||al.numero_aluno||'Aluno';
       var estado=e.estado||'pendente';
       var cor=estado==='corrigido'?'#22c55e':estado==='entregue'?'#3B82F6':'var(--t2)';
-      var fic=e.ficheiro_url?'<a href="#" onclick="TB.link(\''+e.ficheiro_url+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px"><i class="ti ti-paperclip"></i> Ficheiro</a>':'';
+      var fic=e.ficheiro_url?'<a href="#" onclick="TB.link(\''+window.__escA(e.ficheiro_url)+'\').then(function(u){if(u)window.open(u,\'_blank\')});return false;" style="color:var(--a);font-size:12px"><i class="ti ti-paperclip"></i> Ficheiro</a>':'';
       var txt=e.texto?'<div style="font-size:12px;color:var(--t3);margin-top:4px;padding:6px 8px;background:var(--bg3);border-radius:6px">'+_esc(e.texto)+'</div>':'';
       return '<div class="card" style="margin-bottom:10px"><div class="cb" style="padding:12px 14px">'
         +'<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:700;color:var(--t)">'+_esc(nome)+'</div>'
-        +'<span style="font-size:11px;font-weight:700;color:'+cor+'">'+estado+'</span></div>'
+        +'<span style="font-size:11px;font-weight:700;color:'+cor+'">'+_esc(estado)+'</span></div>'
         +'<div style="margin-top:4px">'+fic+'</div>'+txt
         +'<div style="display:flex;gap:8px;margin-top:10px;align-items:center">'
-        +'<input id="nota-'+e.id+'" class="ffi" type="number" min="0" max="20" step="0.5" placeholder="Nota" value="'+(e.nota!=null?e.nota:'')+'" style="width:80px">'
-        +'<input id="fb-'+e.id+'" class="ffi" placeholder="Feedback (opcional)" value="'+_esc(e.feedback||'')+'" style="flex:1">'
-        +'<button class="btn btn-p btn-sm" onclick="guardarNotaEntrega(\''+e.id+'\',event)">Guardar</button>'
+        +'<input id="nota-'+_esc(e.id)+'" class="ffi" type="number" min="0" max="20" step="0.5" placeholder="Nota" value="'+(e.nota!=null?_esc(e.nota):'')+'" style="width:80px">'
+        +'<input id="fb-'+_esc(e.id)+'" class="ffi" placeholder="Feedback (opcional)" value="'+_esc(e.feedback||'')+'" style="flex:1">'
+        +'<button class="btn btn-p btn-sm" onclick="guardarNotaEntrega(\''+window.__escA(e.id)+'\',event)">Guardar</button>'
         +'</div></div></div>';
     }).join('');
   };
