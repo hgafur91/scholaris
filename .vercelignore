@@ -1,0 +1,6 @@
+supabase
+tools
+*.md
+*.sql
+*.py
+*.mjs

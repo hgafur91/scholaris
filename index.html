@@ -525,7 +525,7 @@ body[data-theme]{--primary:var(--theme-color,#4f8ef7);--primary2:var(--theme-col
 
 </style>
 <!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/vendor/supabase-js-2.117.3.js"></script><!-- v6.248: versão fixa, servida pelo próprio site (OWASP A03) -->
 <script>
 // ════════════════════════════════════════════════════════════
 //  SUPABASE CONFIG — substitua pelos valores do seu projecto
@@ -701,7 +701,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.247</span>
+    <span class="logo-ver">v6.248</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3583,9 +3583,27 @@ function isIsento(aluno, tipo) {
   return aluno?.isencoes?.[tipo] === true;
 }
 
-function doLogout(){
-  try{ if(window._supabase&&window._supabase.auth){ window._supabase.auth.signOut(); } }catch(e){}
-  // Limpa estado e recarrega para não arrastar dados da sessão anterior (sem lag)
+// v6.248 (OWASP A04/A07): sair apaga a sessão e a cópia local dos dados.
+// Antes o signOut não era esperado (o reload cortava-o) e a cópia offline
+// (alunos, staff, despesas) ficava no browser depois de sair.
+function limparDadosLocais(){
+  try{
+    const apagar=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i)||'';
+      if(k.indexOf('scholaris-cache-')===0 || k==='scholaris-sessao' || k==='scholaris-last-online' || /^sb-.*-auth-token/.test(k)) apagar.push(k);
+    }
+    apagar.forEach(k=>localStorage.removeItem(k));
+  }catch(e){ console.warn('[sair] limpar dados locais:', e&&e.message); }
+}
+async function doLogout(){
+  try{
+    if(window._supabase&&window._supabase.auth){
+      await Promise.race([ window._supabase.auth.signOut(), new Promise(r=>setTimeout(r,3000)) ]);
+    }
+  }catch(e){ console.warn('[sair] signOut:', e&&e.message); }
+  limparDadosLocais();
+  // Limpa estado e recarrega para não arrastar dados da sessão anterior
   try{ curRole=''; curUser={}; window._meuAlunoId=null; window._meuEncId=null; window._meuStaffId=null; window._currentUser=null; }catch(e){}
   location.reload();
 }
@@ -6157,6 +6175,7 @@ async function fbLogin() {
       role: 'professor', // fallback seguro: nunca dar 'gestor' por omissão
       escolaId: localStorage.getItem('scholaris-escola-id') || 'escola_demo'
     };
+    window._meuPerfilId = null;
 
     try {
       // v6.109: maybeSingle() + erro tratado. Antes usava .single() e ignorava
@@ -6184,7 +6203,16 @@ async function fbLogin() {
         window._passAlterada = (perfil.pass_alterada === true); // v6.211: false → troca obrigatória ao entrar
       }
     } catch(pe) {
-      console.warn('[Login] Sem perfil na BD — a usar defaults');
+      console.warn('[Login] Sem perfil na BD:', pe&&pe.message);
+    }
+
+    // v6.248 (OWASP A07/A10): sem perfil válido não se entra. Antes entrava
+    // como 'professor' por omissão (a base bloqueava os dados, mas a app abria).
+    if (!window._meuPerfilId) {
+      await window._supabase.auth.signOut().catch(()=>{});
+      showLoginError('Não foi possível carregar o seu perfil. Tente novamente ou contacte a direcção da escola.');
+      resetBtn();
+      return;
     }
 
     // 3. Entrar na app
@@ -9627,7 +9655,7 @@ function downloadStyledExcel(content, filename, title) {
 </head>
 <body>
   <p class="title">${title}</p>
-  <p class="subtitle">Scholaris v1.9 · ${ESCOLA_SETTINGS?.nome||'Scholaris'} · Gerado em ${new Date().toLocaleDateString('pt-PT')}</p>
+  <p class="subtitle">Scholaris v1.9 · ${__escH(ESCOLA_SETTINGS?.nome ||'Scholaris')} · Gerado em ${new Date().toLocaleDateString('pt-PT')}</p>
   ${content}
 </body></html>`;
   const blob = new Blob([fullHtml], {type:'application/vnd.ms-excel;charset=utf-8'});
@@ -10850,7 +10878,7 @@ function imprimirCartaoIndividual() {
 
   const cardHTML = gerarCartaoHTML(a, foto, escola, logoB64, corP, true);
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${a.nome}</title>
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${__escH(a.nome)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
@@ -10877,7 +10905,7 @@ function imprimirCartaoIndividual() {
         <p style="margin-top:10px;font-size:12px;color:#666">Após imprimir, corte o cartão. Tamanho real: 85.6×54mm (= Bilhete de Identidade)</p>
       </div>
       <div class="card-container">
-        <div class="card-label">Cartão Frente + Verso — ${a.nome} · ${a.num}</div>
+        <div class="card-label">Cartão Frente + Verso — ${__escH(a.nome)} · ${__escH(a.num)}</div>
         ${cardHTML}
         <div style="margin-top:8px;font-size:9px;color:#aaa;text-align:center">Scholaris · ${escola} · Ano Lectivo 2026 · Cortar nas linhas de contorno</div>
       </div>
@@ -10962,7 +10990,7 @@ function imprimirCartoesOpcao() {
           const foto = FOTOS_ALUNOS[a.id] || null;
           return `<div class="card-slot">
             <div class="card-pair">${gerarCartaoHTML(a, foto, escola, logoB64, corP, true)}</div>
-            <div class="card-name">${a.nome} · ${a.num}</div>
+            <div class="card-name">${__escH(a.nome)} · ${__escH(a.num)}</div>
           </div>`;
         }).join('')}
       </div>
@@ -11122,7 +11150,7 @@ function gerarCartaoProfHTML(p, foto, escola, logoB64, corP, paraImpressao) {
         <!-- Info -->
         <div style="flex:1;min-width:0">
           <div style="font-size:${paraImpressao?'3.2mm':'9.5px'};font-weight:800;letter-spacing:-.01em;line-height:1.2;margin-bottom:${paraImpressao?'0.8mm':'2px'}">${p.nome}</div>
-          <div style="font-size:${paraImpressao?'2.5mm':'7px'};opacity:.8;margin-bottom:${paraImpressao?'0.5mm':'1px'};font-weight:600">${p.cargo||'Professor'}</div>
+          <div style="font-size:${paraImpressao?'2.5mm':'7px'};opacity:.8;margin-bottom:${paraImpressao?'0.5mm':'1px'};font-weight:600">${__escH(p.cargo||'Professor')}</div>
           <div style="font-size:${paraImpressao?'2mm':'6px'};opacity:.6;margin-bottom:${paraImpressao?'1mm':'3px'}">${depLabel}</div>
           <div style="background:rgba(255,255,255,.15);border-radius:${paraImpressao?'1mm':'3px'};padding:${paraImpressao?'0.6mm 1.5mm':'2px 5px'};display:inline-block">
             <div style="font-size:${paraImpressao?'1.8mm':'5px'};opacity:.6;letter-spacing:.08em">Nº COLABORADOR</div>
@@ -11179,7 +11207,7 @@ function imprimirCartaoProfIndividual() {
   const cardHTML = gerarCartaoProfHTML(p, foto, escola, logoB64, corP, true);
 
   const w = window.open('', '_blank', 'width=700,height=800');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${p.nome}</title>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${__escH(p.nome)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
     <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Sora',Arial,sans-serif;background:#f0f0f0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}.no-print{text-align:center;margin-bottom:20px}.no-print button{padding:10px 24px;background:#0891B2;border:none;border-radius:8px;color:#fff;font-weight:700;font-size:14px;cursor:pointer;margin:0 6px}.card-container{background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.12)}.card-label{font-size:11px;color:#666;text-align:center;margin-bottom:8px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}@media print{body{background:#fff;display:block;padding:0}.no-print{display:none!important}.card-container{box-shadow:none;padding:0}@page{size:A4;margin:15mm}}</style>
@@ -11191,7 +11219,7 @@ function imprimirCartaoProfIndividual() {
       <p style="margin-top:10px;font-size:12px;color:#666">Tamanho real: 85.6×54mm (igual ao Bilhete de Identidade)</p>
     </div>
     <div class="card-container">
-      <div class="card-label">Cartão Profissional — ${p.nome} · ${p.num}</div>
+      <div class="card-label">Cartão Profissional — ${__escH(p.nome)} · ${__escH(p.num)}</div>
       ${cardHTML}
     </div>
   </div></body></html>`);
@@ -11224,7 +11252,7 @@ function imprimirCartoesProf() {
       <div class="cards-grid">
         ${grupo.map(p => `<div class="card-slot">
           <div class="card-pair">${gerarCartaoProfHTML(p, FOTOS_STAFF[p.id]||null, escola, logoB64, corP, true)}</div>
-          <div class="card-name">${p.nome} · ${p.num}</div>
+          <div class="card-name">${__escH(p.nome)} · ${__escH(p.num)}</div>
         </div>`).join('')}
       </div>
     </div>`).join('')}
@@ -12725,7 +12753,7 @@ function gerarTranscriptPDF(alunoId) {
     })},
   ];
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Transcript — ${a.nome}</title>
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Transcript — ${__escH(a.nome)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
@@ -12778,12 +12806,12 @@ function gerarTranscriptPDF(alunoId) {
       </div>
 
       <div class="aluno-box">
-        <div class="field"><div class="field-l">Nome Completo</div><div class="field-v">${a.nome}</div></div>
-        <div class="field"><div class="field-l">Nº de Aluno</div><div class="field-v" style="font-family:monospace">${a.num}</div></div>
-        <div class="field"><div class="field-l">Data de Nascimento</div><div class="field-v">${a.nasc}</div></div>
-        <div class="field"><div class="field-l">BI / Documento</div><div class="field-v">${a.bi}</div></div>
-        <div class="field"><div class="field-l">Naturalidade</div><div class="field-v">${a.nat}</div></div>
-        <div class="field"><div class="field-l">Encarregado</div><div class="field-v">${a.enome}</div></div>
+        <div class="field"><div class="field-l">Nome Completo</div><div class="field-v">${__escH(a.nome)}</div></div>
+        <div class="field"><div class="field-l">Nº de Aluno</div><div class="field-v" style="font-family:monospace">${__escH(a.num)}</div></div>
+        <div class="field"><div class="field-l">Data de Nascimento</div><div class="field-v">${__escH(a.nasc)}</div></div>
+        <div class="field"><div class="field-l">BI / Documento</div><div class="field-v">${__escH(a.bi)}</div></div>
+        <div class="field"><div class="field-l">Naturalidade</div><div class="field-v">${__escH(a.nat)}</div></div>
+        <div class="field"><div class="field-l">Encarregado</div><div class="field-v">${__escH(a.enome)}</div></div>
       </div>
 
       <div style="font-size:12px;font-weight:800;color:${corP};border-bottom:2px solid ${corP};padding-bottom:6px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">Registo Académico por Ano</div>
@@ -12791,14 +12819,14 @@ function gerarTranscriptPDF(alunoId) {
       ${todasNotas.map(ano=>`
         <div style="margin-bottom:16px">
           <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
-            <span>Ano Lectivo ${ano.ano} · Turma ${ano.turma}</span>
+            <span>Ano Lectivo ${ano.ano} · Turma ${__escH(ano.turma)}</span>
             <span style="font-size:13px;font-weight:800;color:${ano.aprovado===null?'#94a3b8':ano.aprovado?'#065f46':'#991b1b'}">${ano.aprovado===null?'Em curso':ano.aprovado?'Aprovado':'Reprovado'}${ano.media?' — Média: '+ano.media:''}</span>
           </div>
           ${ano.discs && ano.discs.length ? `<table>
             <thead><tr><th>Disciplina</th><th style="text-align:center;width:100px">Nota Final</th><th style="text-align:center;width:100px">Resultado</th></tr></thead>
             <tbody>
               ${ano.discs.map(d=>`<tr>
-                <td>${d.disc}</td>
+                <td>${__escH(d.disc)}</td>
                 <td style="text-align:center" class="${d.nota!=null?(d.nota>=10?'ok':'re'):'nd'}">${d.nota??'Pendente'}</td>
                 <td style="text-align:center" class="${d.nota!=null?(d.nota>=10?'ok':'re'):'nd'}">${d.nota!=null?(d.nota>=10?'Aprovado':'Reprovado'):'—'}</td>
               </tr>`).join('')}
@@ -14131,7 +14159,7 @@ function exportPlanoAnalitico() {
     </div>
     <div class="page">
       <h1>${H(escola)} — Plano Analítico</h1>
-      <h2>Turma ${_paTurma} · ${turma?.classe}ª Classe · ${turma?.curso} · Ano Lectivo 2026</h2>
+      <h2>Turma ${_paTurma} · ${__escH(turma?.classe)}ª Classe · ${__escH(turma?.curso)} · Ano Lectivo 2026</h2>
       ${tableRows}
       <div style="margin-top:30px;font-size:9px;color:#999;text-align:center">
         Scholaris v1.2 · ${escola} · Gerado em ${new Date().toLocaleDateString('pt-PT')}
@@ -17085,10 +17113,10 @@ function exportarLivroPonto(turmaId) {
     </div>
     <div class="meta-grid">
       <div class="meta-item"><div class="label">Turma</div><div class="value">${turmaId}</div></div>
-      <div class="meta-item"><div class="label">Classe</div><div class="value">${turma.classe}ª Classe</div></div>
+      <div class="meta-item"><div class="label">Classe</div><div class="value">${__escH(turma.classe)}ª Classe</div></div>
       <div class="meta-item"><div class="label">Ciclo</div><div class="value">${ciclo?.sigla||'—'}</div></div>
-      <div class="meta-item"><div class="label">Curso</div><div class="value">${turma.curso}</div></div>
-      <div class="meta-item"><div class="label">Director de Turma</div><div class="value">${dtProf?.nome||'Não atribuído'}</div></div>
+      <div class="meta-item"><div class="label">Curso</div><div class="value">${__escH(turma.curso)}</div></div>
+      <div class="meta-item"><div class="label">Director de Turma</div><div class="value">${__escH(dtProf?.nome ||'Não atribuído')}</div></div>
       <div class="meta-item"><div class="label">Regime</div><div class="value">${turma.regime}</div></div>
       <div class="meta-item"><div class="label">Total Alunos</div><div class="value">${alunos.length}</div></div>
       <div class="meta-item"><div class="label">Dias Lectivos Reg.</div><div class="value">${diasOrdenados.length}</div></div>
@@ -17107,7 +17135,7 @@ function exportarLivroPonto(turmaId) {
       <tbody>${tableRows}</tbody>
     </table>` : '<div style="text-align:center;padding:40px;color:#94a3b8;border:1px dashed #e2e8f0;border-radius:8px">Sem aulas registadas nesta turma.</div>'}
     <div class="sig-section">
-      <div><div class="sig-line">Director(a) de Turma<br>${dtProf?.nome||'_________________'}</div></div>
+      <div><div class="sig-line">Director(a) de Turma<br>${__escH(dtProf?.nome ||'_________________')}</div></div>
       <div><div class="sig-line">Director(a) Pedagógico(a)</div></div>
       <div><div class="sig-line">Director(a) da Escola</div></div>
     </div>
@@ -17182,9 +17210,9 @@ function exportarPautaOficial(turmaId, trimestre) {
     <div class="meta-row">
       <span><b>Escola:</b> ${escola}</span>
       <span><b>Turma:</b> ${turmaId}</span>
-      <span><b>Classe:</b> ${turma.classe}ª</span>
-      <span><b>Ciclo:</b> ${ciclo?.nome||'—'}</span>
-      <span><b>Curso:</b> ${turma.curso}</span>
+      <span><b>Classe:</b> ${__escH(turma.classe)}ª</span>
+      <span><b>Ciclo:</b> ${__escH(ciclo?.nome ||'—')}</span>
+      <span><b>Curso:</b> ${__escH(turma.curso)}</span>
       <span><b>Regime:</b> ${turma.regime}</span>
       <span><b>Ano Lectivo:</b> 2026</span>
       <span><b>Data:</b> ${dt_str}</span>
@@ -17221,7 +17249,7 @@ function exportarPautaOficial(turmaId, trimestre) {
           const apv = medCalc!=null && medCalc>=(CONFIG.mediaAprovacao||10);
           return `<tr>
             <td class="td-num">${idx+1}</td>
-            <td class="td-nome">${a.nome}</td>
+            <td class="td-nome">${__escH(a.nome)}</td>
             ${mts.map(m=>{
               if (!m) return tk?'<td class="nd">—</td><td class="nd">—</td><td class="nd">—</td>':'<td class="nd">—</td>';
               if (tk) {
@@ -17335,9 +17363,9 @@ function exportarMapaAproveitamento() {
       </thead>
       <tbody>
         ${rows.map(r=>`<tr>
-          <td class="left" style="font-weight:700">${r.t.id} — ${r.t.classe}ª</td>
+          <td class="left" style="font-weight:700">${r.t.id} — ${__escH(r.t.classe)}ª</td>
           <td class="left" style="font-size:9px">${r.ciclo?.sigla||'—'}</td>
-          <td class="left">${r.t.curso}</td>
+          <td class="left">${__escH(r.t.curso)}</td>
           <td>${r.alunos}</td>
           <td class="apv">${r.aprovados}</td>
           <td class="rep">${r.reprovados}</td>
@@ -17400,7 +17428,7 @@ function exportarMapaFrequencia(turmaId) {
     <div style="text-align:center;border-bottom:2px solid #0D1526;padding-bottom:10px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700">REPÚBLICA DE MOÇAMBIQUE — MINEDH</div>
       <div style="font-size:16px;font-weight:900;color:#0D1526;margin-top:4px">MAPA DE FREQUÊNCIA</div>
-      <div style="font-size:9px;color:#64748b">${escola} · Turma ${turmaId} — ${turma.classe}ª ${turma.curso} · Ano 2026 · ${dt_str}</div>
+      <div style="font-size:9px;color:#64748b">${escola} · Turma ${turmaId} — ${__escH(turma.classe)}ª ${__escH(turma.curso)} · Ano 2026 · ${dt_str}</div>
     </div>
     <table>
       <thead>
@@ -17423,8 +17451,8 @@ function exportarMapaFrequencia(turmaId) {
           const exc = f.excluido;
           return `<tr>
             <td>${i+1}</td>
-            <td class="left" style="font-weight:600">${a.nome}</td>
-            <td style="font-family:monospace;font-size:8px">${a.num}</td>
+            <td class="left" style="font-weight:600">${__escH(a.nome)}</td>
+            <td style="font-family:monospace;font-size:8px">${__escH(a.num)}</td>
             <td>${totalAulas}</td>
             <td>0</td>
             <td class="${f.total?'rep':''}">${f.total||0}</td>
@@ -19480,7 +19508,7 @@ function emitirBoletimAluno(alunoId) {
   const cod    = `BOL-${a.num}-${new Date().getFullYear()}`;
 
   const htmlDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Boletim de Matrícula — ${a.nome}</title>
+  <title>Boletim de Matrícula — ${__escH(a.nome)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -19524,7 +19552,7 @@ function emitirBoletimAluno(alunoId) {
       </div>
       <div class="doc-info">
         <div class="tipo">Boletim de Matrícula</div>
-        <div class="cod">${cod}</div>
+        <div class="cod">${__escH(cod)}</div>
         <div style="font-size:9px;color:#94a3b8;margin-top:2px">${hoje}</div>
       </div>
     </div>
@@ -19535,9 +19563,9 @@ function emitirBoletimAluno(alunoId) {
         ${a.foto ? `<img src="${a.foto}">` : '<div>Sem<br>foto</div>'}
       </div>
       <div class="dados-basicos">
-        <div style="font-size:22px;font-weight:900;color:#0D1526;margin-bottom:4px">${a.nome}</div>
+        <div style="font-size:22px;font-weight:900;color:#0D1526;margin-bottom:4px">${__escH(a.nome)}</div>
         <div style="font-size:13px;color:#64748b;margin-bottom:8px">
-          ${a.num}
+          ${__escH(a.num)}
           <span class="badge ${a.verif?'badge-ok':'badge-pend'}" style="margin-left:8px">
             ${a.verif?'Verificado':'Pendente verificação'}
           </span>
@@ -19553,22 +19581,22 @@ function emitirBoletimAluno(alunoId) {
     <!-- Dados pessoais -->
     <h3>Dados Pessoais do Aluno</h3>
     <div class="grid3">
-      <div class="campo"><div class="label">Data de Nascimento</div><div class="valor">${a.nasc||'—'}</div></div>
+      <div class="campo"><div class="label">Data de Nascimento</div><div class="valor">${__escH(a.nasc ||'—')}</div></div>
       <div class="campo"><div class="label">Género</div><div class="valor">${a.genero==='M'?'Masculino':'Feminino'}</div></div>
-      <div class="campo"><div class="label">Naturalidade</div><div class="valor">${a.nat||'—'}</div></div>
-      <div class="campo"><div class="label">Nº BI / DIRE</div><div class="valor">${a.bi||'—'}</div></div>
+      <div class="campo"><div class="label">Naturalidade</div><div class="valor">${__escH(a.nat ||'—')}</div></div>
+      <div class="campo"><div class="label">Nº BI / DIRE</div><div class="valor">${__escH(a.bi ||'—')}</div></div>
       <div class="campo"><div class="label">NISS</div><div class="valor">${a.niss||'—'}</div></div>
       <div class="campo"><div class="label">Bolseiro</div><div class="valor">${a.bolseiro==='nao'?'Não':a.bolseiro||'Não'}</div></div>
-      <div class="campo" style="grid-column:1/-1"><div class="label">Morada</div><div class="valor">${a.morada||'—'}</div></div>
-      <div class="campo"><div class="label">Telefone</div><div class="valor">${a.tel||'—'}</div></div>
-      <div class="campo"><div class="label">Email</div><div class="valor">${a.email||'—'}</div></div>
+      <div class="campo" style="grid-column:1/-1"><div class="label">Morada</div><div class="valor">${__escH(a.morada ||'—')}</div></div>
+      <div class="campo"><div class="label">Telefone</div><div class="valor">${__escH(a.tel ||'—')}</div></div>
+      <div class="campo"><div class="label">Email</div><div class="valor">${__escH(a.email ||'—')}</div></div>
       <div class="campo"><div class="label">Escola Anterior</div><div class="valor">${a.escola_anterior||'—'}</div></div>
     </div>
 
     <!-- Encarregado -->
     <h3>Dados do Encarregado de Educação</h3>
     <div class="grid3">
-      <div class="campo" style="grid-column:1/3"><div class="label">Nome Completo</div><div class="valor">${a.enome||'—'}</div></div>
+      <div class="campo" style="grid-column:1/3"><div class="label">Nome Completo</div><div class="valor">${__escH(a.enome ||'—')}</div></div>
       <div class="campo"><div class="label">Parentesco</div><div class="valor">${a.erel||'—'}</div></div>
       <div class="campo"><div class="label">Nº BI</div><div class="valor">${a.ebi||'—'}</div></div>
       <div class="campo"><div class="label">Telefone</div><div class="valor">${a.etel||'—'}</div></div>
@@ -19585,14 +19613,14 @@ function emitirBoletimAluno(alunoId) {
     </div>
 
     <div class="sig-section">
-      <div><div class="sig-line">Encarregado de Educação<br>${a.enome||'_____________________'}</div></div>
+      <div><div class="sig-line">Encarregado de Educação<br>${__escH(a.enome ||'_____________________')}</div></div>
       <div><div class="sig-line">Secretário(a) / Matrícula<br>${a.inscritoPor||'_____________________'}</div></div>
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
     </div>
 
     <div class="footer">
       <span>Scholaris · ${escola} · ${hoje}</span>
-      <span>Código: ${cod}</span>
+      <span>Código: ${__escH(cod)}</span>
       <span>Documento oficial de matrícula — guardar no processo do aluno</span>
     </div>
   </div></body></html>`;
@@ -19840,7 +19868,7 @@ function emitirFichaStaff(staffId) {
   const liquido = p.salario - irps - inss;
 
   const htmlDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Ficha de Colaborador — ${p.nome}</title>
+  <title>Ficha de Colaborador — ${__escH(p.nome)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -19878,7 +19906,7 @@ function emitirFichaStaff(staffId) {
       </div>
       <div style="text-align:right">
         <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4f8ef7">Ficha de Contrato</div>
-        <div style="font-size:9px;color:#94a3b8;font-family:monospace;margin-top:3px">${cod}</div>
+        <div style="font-size:9px;color:#94a3b8;font-family:monospace;margin-top:3px">${__escH(cod)}</div>
         <div style="font-size:9px;color:#94a3b8;margin-top:2px">${hoje}</div>
       </div>
     </div>
@@ -19887,8 +19915,8 @@ function emitirFichaStaff(staffId) {
     <div style="display:flex;gap:16px;margin-bottom:14px">
       <div class="foto">${p.foto?`<img src="${p.foto}">`:'<div style="text-align:center">Sem<br>foto</div>'}</div>
       <div style="flex:1">
-        <div style="font-size:22px;font-weight:900;color:#0D1526">${p.nome}</div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:8px">${p.num} · ${p.cargo}</div>
+        <div style="font-size:22px;font-weight:900;color:#0D1526">${__escH(p.nome)}</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:8px">${__escH(p.num)} · ${__escH(p.cargo)}</div>
         <div class="grid3">
           <div class="campo"><div class="label">Departamento</div><div class="valor">${p.dep==='academico'?'Académico':p.dep==='gestao'?'Gestão':'Financeiro'}</div></div>
           <div class="campo"><div class="label">Regime</div><div class="valor">${p.regime==='inteiro'?'Tempo Inteiro':'Tempo Parcial'}</div></div>
@@ -19900,30 +19928,30 @@ function emitirFichaStaff(staffId) {
     <!-- Dados pessoais -->
     <h3>Dados Pessoais (Lei 23/2007 — Art. 23)</h3>
     <div class="grid3">
-      <div class="campo"><div class="label">Data de Nascimento</div><div class="valor">${p.nasc||'—'}</div></div>
+      <div class="campo"><div class="label">Data de Nascimento</div><div class="valor">${__escH(p.nasc ||'—')}</div></div>
       <div class="campo"><div class="label">Género</div><div class="valor">${p.genero==='M'?'Masculino':'Feminino'}</div></div>
-      <div class="campo"><div class="label">Naturalidade</div><div class="valor">${p.nat||'—'}</div></div>
-      <div class="campo"><div class="label">Nº BI / DIRE</div><div class="valor">${p.bi||'—'}</div></div>
+      <div class="campo"><div class="label">Naturalidade</div><div class="valor">${__escH(p.nat ||'—')}</div></div>
+      <div class="campo"><div class="label">Nº BI / DIRE</div><div class="valor">${__escH(p.bi ||'—')}</div></div>
       <div class="campo"><div class="label">Validade BI</div><div class="valor">${p.biValidade||'—'}</div></div>
-      <div class="campo"><div class="label">NUIT (Fiscal)</div><div class="valor">${p.nuit||'—'}</div></div>
+      <div class="campo"><div class="label">NUIT (Fiscal)</div><div class="valor">${__escH(p.nuit ||'—')}</div></div>
       <div class="campo"><div class="label">NISS (INSS)</div><div class="valor">${p.niss||'—'}</div></div>
-      <div class="campo"><div class="label">Telefone</div><div class="valor">${p.tel||'—'}</div></div>
-      <div class="campo"><div class="label">Email</div><div class="valor">${p.email||'—'}</div></div>
-      <div class="campo" style="grid-column:1/-1"><div class="label">Morada</div><div class="valor">${p.morada||'—'}</div></div>
+      <div class="campo"><div class="label">Telefone</div><div class="valor">${__escH(p.tel ||'—')}</div></div>
+      <div class="campo"><div class="label">Email</div><div class="valor">${__escH(p.email ||'—')}</div></div>
+      <div class="campo" style="grid-column:1/-1"><div class="label">Morada</div><div class="valor">${__escH(p.morada ||'—')}</div></div>
     </div>
 
     <!-- Habilitações -->
     <h3>Habilitações & Área</h3>
     <div class="grid3">
-      <div class="campo"><div class="label">Formação Académica</div><div class="valor">${p.form||'—'}</div></div>
-      <div class="campo"><div class="label">Área de Formação</div><div class="valor">${p.area||'—'}</div></div>
+      <div class="campo"><div class="label">Formação Académica</div><div class="valor">${__escH(p.form ||'—')}</div></div>
+      <div class="campo"><div class="label">Área de Formação</div><div class="valor">${__escH(p.area ||'—')}</div></div>
       <div class="campo"><div class="label">Disciplinas</div><div class="valor">${(p.disc||[]).join(', ')||'—'}</div></div>
     </div>
 
     <!-- Contrato -->
     <h3>Condições Contratuais</h3>
     <div class="grid3">
-      <div class="campo"><div class="label">Data de Início</div><div class="valor">${p.contIni||'—'}</div></div>
+      <div class="campo"><div class="label">Data de Início</div><div class="valor">${__escH(p.contIni||'—')}</div></div>
       <div class="campo"><div class="label">Data de Fim</div><div class="valor">${p.contFim||'Indeterminado'}</div></div>
       <div class="campo"><div class="label">Horas/Semana</div><div class="valor">${p.horasMaxSem||22}h</div></div>
     </div>
@@ -19944,8 +19972,8 @@ function emitirFichaStaff(staffId) {
     <!-- Dados bancários -->
     <h3>Dados Bancários para Pagamento</h3>
     <div class="grid">
-      <div class="campo"><div class="label">Banco</div><div class="valor">${p.banco||'—'}</div></div>
-      <div class="campo"><div class="label">IBAN / Nº de Conta</div><div class="valor">${p.iban||'—'}</div></div>
+      <div class="campo"><div class="label">Banco</div><div class="valor">${__escH(p.banco ||'—')}</div></div>
+      <div class="campo"><div class="label">IBAN / Nº de Conta</div><div class="valor">${__escH(p.iban ||'—')}</div></div>
     </div>
 
     <!-- Contacto emergência -->
@@ -19964,13 +19992,13 @@ function emitirFichaStaff(staffId) {
     </div>
 
     <div class="sig-section">
-      <div><div class="sig-line">Trabalhador<br>${p.nome}</div></div>
+      <div><div class="sig-line">Trabalhador<br>${__escH(p.nome)}</div></div>
       <div><div class="sig-line">Director(a) / Representante Legal<br>${escola}</div></div>
     </div>
 
     <div style="margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:8px;color:#94a3b8">
       <span>Scholaris · ${escola} · ${hoje}</span>
-      <span>${cod}</span>
+      <span>${__escH(cod)}</span>
       <span>Lei 23/2007 · Decreto 62/2013 · Lei 33/2007</span>
     </div>
   </div></body></html>`;
@@ -20103,16 +20131,16 @@ function emitirReciboPropina(pagamentoId) {
     deposito:'Depósito Bancário',numerario:'Numerário (Caixa)'
   }[pag.canal]||pag.canal;
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo ${cod}</title>${CSS_BASE}
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo ${__escH(cod)}</title>${CSS_BASE}
   <style>.page{max-width:148mm}@media print{@page{size:A5;margin:0}}</style>
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4" style="max-width:148mm">
     <div class="hdr">
-      <div><div class="hdr-nome">${d.escola}</div><div class="hdr-sub">${d.subNome}</div></div>
+      <div><div class="hdr-nome">${__escH(d.escola)}</div><div class="hdr-sub">${__escH(d.subNome)}</div></div>
       <div class="hdr-tipo">
         <div class="tipo">Recibo de Pagamento</div>
-        <div class="cod">${cod}</div>
+        <div class="cod">${__escH(cod)}</div>
         <div style="font-size:9px;color:#94a3b8;margin-top:2px">${d.hoje}</div>
       </div>
     </div>
@@ -20129,11 +20157,11 @@ function emitirReciboPropina(pagamentoId) {
     </div>
 
     <div class="g2" style="margin-bottom:10px">
-      <div class="campo"><div class="lbl">Aluno</div><div class="val">${a?.nome||pag.alunoNome}</div></div>
+      <div class="campo"><div class="lbl">Aluno</div><div class="val">${__escH(a?.nome ||pag.alunoNome)}</div></div>
       <div class="campo"><div class="lbl">Encarregado de Educação</div><div class="val">${_encNome}</div></div>
       <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${pag.alunoNum}</div></div>
       <div class="campo"><div class="lbl">Turma</div><div class="val">${pag.turmaId||'—'}</div></div>
-      <div class="campo"><div class="lbl">Referência Bancária</div><div class="val" style="font-family:monospace">${pag.ref||'—'}</div></div>
+      <div class="campo"><div class="lbl">Referência Bancária</div><div class="val" style="font-family:monospace">${__escH(pag.ref ||'—')}</div></div>
       <div class="campo"><div class="lbl">Canal de Pagamento</div><div class="val">${canalLabel}</div></div>
       <div class="campo"><div class="lbl">Banco</div><div class="val">${pag.banco?.toUpperCase()||'—'}</div></div>
       <div class="campo"><div class="lbl">Data do Pagamento</div><div class="val">${pag.data||'—'}</div></div>
@@ -20159,7 +20187,7 @@ function emitirReciboPropina(pagamentoId) {
       <div><div class="sig-line">Encarregado de Educação</div></div>
     </div>
     <div class="stamp">Carimbo da Escola</div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(cod)}</span>
       <span>Guardar como comprovativo de pagamento</span></div>
   </div></body></html>`;
 
@@ -20188,22 +20216,22 @@ function emitirDeclaracaoMatricula(alunoId) {
   const cod   = `DM-${a.num}-${d.ano}`;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Declaração de Matrícula — ${a.nome}</title>${CSS_BASE}
+  <title>Declaração de Matrícula — ${__escH(a.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
     <div class="hdr">
-      <div><div class="hdr-nome">${d.escola}</div><div class="hdr-sub">${d.subNome}</div></div>
+      <div><div class="hdr-nome">${__escH(d.escola)}</div><div class="hdr-sub">${__escH(d.subNome)}</div></div>
       <div class="hdr-tipo">
         <div class="tipo">Declaração de Matrícula</div>
-        <div class="cod">${cod}</div>
+        <div class="cod">${__escH(cod)}</div>
         <div style="font-size:9px;color:#94a3b8;margin-top:2px">${d.hoje}</div>
       </div>
     </div>
 
     <div style="text-align:center;margin:20px 0">
       <div style="font-size:13px;font-weight:700;color:#0D1526;margin-bottom:6px">
-        O Abaixo Assinado Director(a) da ${d.escola}
+        O Abaixo Assinado Director(a) da ${__escH(d.escola)}
       </div>
       <div style="font-size:12px;color:#475569">Declara para os devidos efeitos que:</div>
     </div>
@@ -20211,26 +20239,26 @@ function emitirDeclaracaoMatricula(alunoId) {
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin:14px 0;
       background:#f8fafc">
       <div style="font-size:15px;font-weight:800;color:#0D1526;margin-bottom:12px">
-        ${a.nome}
+        ${__escH(a.nome)}
       </div>
       <div class="g3">
-        <div class="campo"><div class="lbl">Nº de Aluno</div><div class="val">${a.num}</div></div>
-        <div class="campo"><div class="lbl">BI / DIRE</div><div class="val">${a.bi||'—'}</div></div>
-        <div class="campo"><div class="lbl">Data de Nascimento</div><div class="val">${a.nasc||'—'}</div></div>
+        <div class="campo"><div class="lbl">Nº de Aluno</div><div class="val">${__escH(a.num)}</div></div>
+        <div class="campo"><div class="lbl">BI / DIRE</div><div class="val">${__escH(a.bi ||'—')}</div></div>
+        <div class="campo"><div class="lbl">Data de Nascimento</div><div class="val">${__escH(a.nasc ||'—')}</div></div>
         <div class="campo"><div class="lbl">Turma</div><div class="val">${turma?turma.id+' — '+turma.classe+'ª Classe':'Não alocado'}</div></div>
-        <div class="campo"><div class="lbl">Ciclo</div><div class="val">${ciclo?.nome||'—'}</div></div>
-        <div class="campo"><div class="lbl">Curso</div><div class="val">${turma?.curso||'—'}</div></div>
+        <div class="campo"><div class="lbl">Ciclo</div><div class="val">${__escH(ciclo?.nome ||'—')}</div></div>
+        <div class="campo"><div class="lbl">Curso</div><div class="val">${__escH(turma?.curso ||'—')}</div></div>
         <div class="campo"><div class="lbl">Regime</div><div class="val">${turma?.regime||'—'}</div></div>
-        <div class="campo"><div class="lbl">Ano de Ingresso</div><div class="val">${a.ingresso||d.ano}</div></div>
-        <div class="campo"><div class="lbl">Encarregado</div><div class="val">${a.enome||'—'}</div></div>
+        <div class="campo"><div class="lbl">Ano de Ingresso</div><div class="val">${__escH(a.ingresso ||d.ano)}</div></div>
+        <div class="campo"><div class="lbl">Encarregado</div><div class="val">${__escH(a.enome ||'—')}</div></div>
       </div>
     </div>
 
     <div style="font-size:12px;color:#475569;line-height:1.8;margin:16px 0">
-      …encontra-se regularmente <strong>matriculado</strong> na ${d.escola}
+      …encontra-se regularmente <strong>matriculado</strong> na ${__escH(d.escola)}
       para o Ano Lectivo <strong>${d.ano}</strong>, frequentando o
       <strong>${turma?turma.classe+'º Ano de Escolaridade':'nível a confirmar'}</strong>,
-      ${ciclo?`no <strong>${ciclo.nome}</strong>,`:''}
+      ${ciclo?`no <strong>${__escH(ciclo.nome)}</strong>,`:''}
       regime <strong>${turma?.regime||'Manhã'}</strong>.
       <br><br>
       A presente declaração é emitida a pedido do(a) interessado(a) para os fins que este(a) entender
@@ -20248,7 +20276,7 @@ function emitirDeclaracaoMatricula(alunoId) {
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
       <div><div class="sig-line">Secretário(a)</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(cod)}</span>
       <span>Validade: 90 dias</span></div>
   </div></body></html>`;
 
@@ -20271,15 +20299,15 @@ function emitirCertificadoFrequencia(alunoId) {
   const txPresenca = Math.round(presencas/totalAulas*100);
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Certificado de Frequência — ${a.nome}</title>${CSS_BASE}
+  <title>Certificado de Frequência — ${__escH(a.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
     <div class="hdr">
-      <div><div class="hdr-nome">${d.escola}</div><div class="hdr-sub">${d.subNome}</div></div>
+      <div><div class="hdr-nome">${__escH(d.escola)}</div><div class="hdr-sub">${__escH(d.subNome)}</div></div>
       <div class="hdr-tipo">
         <div class="tipo">Certificado de Frequência</div>
-        <div class="cod">${cod}</div>
+        <div class="cod">${__escH(cod)}</div>
         <div style="font-size:9px;color:#94a3b8;margin-top:2px">${d.hoje}</div>
       </div>
     </div>
@@ -20303,16 +20331,16 @@ function emitirCertificadoFrequencia(alunoId) {
 
     <div style="border:2px solid ${txPresenca>=75?'#bbf7d0':'#fecaca'};border-radius:10px;
       padding:16px;margin:10px 0;background:${txPresenca>=75?'#f0fdf4':'#fff1f2'}">
-      <div style="font-size:16px;font-weight:900;color:#0D1526;margin-bottom:8px">${a.nome}</div>
+      <div style="font-size:16px;font-weight:900;color:#0D1526;margin-bottom:8px">${__escH(a.nome)}</div>
       <div class="g3">
-        <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${a.num}</div></div>
+        <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${__escH(a.num)}</div></div>
         <div class="campo"><div class="lbl">Turma</div><div class="val">${turma?turma.id:'—'}</div></div>
         <div class="campo"><div class="lbl">Classe</div><div class="val">${turma?turma.classe+'ª':'—'}</div></div>
       </div>
     </div>
 
     <div style="font-size:12px;color:#475569;line-height:1.8;margin:16px 0">
-      …frequentou regularmente as aulas na ${d.escola} durante o Ano Lectivo <strong>${d.ano}</strong>,
+      …frequentou regularmente as aulas na ${__escH(d.escola)} durante o Ano Lectivo <strong>${d.ano}</strong>,
       registando uma taxa de presença de <strong style="color:${txPresenca>=75?'#166534':'#991b1b'}">${txPresenca}%</strong>
       (${presencas} presenças em ${totalAulas} aulas).
       ${f.excluido
@@ -20331,7 +20359,7 @@ function emitirCertificadoFrequencia(alunoId) {
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
       <div><div class="sig-line">Data e Rubrica</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(cod)}</span>
       <span>Validade: 30 dias</span></div>
   </div></body></html>`;
 
@@ -20368,16 +20396,16 @@ function emitirBoletimTrimestral(alunoId, trimestre) {
   const medFinal = calcMediaGeralAluno(alunoId);
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Boletim ${trimLabel} — ${a.nome}</title>${CSS_BASE}
+  <title>Boletim ${trimLabel} — ${__escH(a.nome)}</title>${CSS_BASE}
   <style>@media print{@page{size:A4;margin:0}}</style>
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
     <div class="hdr">
-      <div><div class="hdr-nome">${d.escola}</div><div class="hdr-sub">${d.subNome}</div></div>
+      <div><div class="hdr-nome">${__escH(d.escola)}</div><div class="hdr-sub">${__escH(d.subNome)}</div></div>
       <div class="hdr-tipo">
         <div class="tipo">Boletim — ${trimLabel}</div>
-        <div class="cod">${cod}</div>
+        <div class="cod">${__escH(cod)}</div>
         <div style="font-size:9px;color:#94a3b8;margin-top:2px">${d.hoje}</div>
       </div>
     </div>
@@ -20390,9 +20418,9 @@ function emitirBoletimTrimestral(alunoId, trimestre) {
         ${a.foto?`<img src="${a.foto}" style="width:100%;height:100%;object-fit:cover">`:'Foto'}
       </div>
       <div style="flex:1">
-        <div style="font-size:18px;font-weight:900;color:#0D1526">${a.nome}</div>
+        <div style="font-size:18px;font-weight:900;color:#0D1526">${__escH(a.nome)}</div>
         <div class="g4" style="margin-top:8px">
-          <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${a.num}</div></div>
+          <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${__escH(a.num)}</div></div>
           <div class="campo"><div class="lbl">Turma</div><div class="val">${turma?turma.id:'—'}</div></div>
           <div class="campo"><div class="lbl">Classe</div><div class="val">${turma?turma.classe+'ª':'—'}</div></div>
           <div class="campo"><div class="lbl">Período</div><div class="val">${trimLabel}</div></div>
@@ -20426,7 +20454,7 @@ function emitirBoletimTrimestral(alunoId, trimestre) {
       </tr></thead>
       <tbody>
         ${rows.map(r=>`<tr>
-          <td style="font-weight:600">${r.disc}</td>
+          <td style="font-weight:600">${__escH(r.disc)}</td>
           <td style="text-align:center;${r.as1<(CONFIG.mediaAprovacao||10)?'color:#991b1b':'color:#166534'};font-weight:700">${r.as1??'—'}</td>
           <td style="text-align:center;${r.as2<(CONFIG.mediaAprovacao||10)?'color:#991b1b':'color:#166534'};font-weight:700">${r.as2??'—'}</td>
           <td style="text-align:center;${r.at<(CONFIG.mediaAprovacao||10)?'color:#991b1b':'color:#166534'};font-weight:700">${r.at??'—'}</td>
@@ -20493,10 +20521,10 @@ function emitirBoletimTrimestral(alunoId, trimestre) {
 
     <div class="sig sig3">
       <div><div class="sig-line">Director(a) de Turma</div></div>
-      <div><div class="sig-line">Encarregado de Educação<br>${a.enome||'_____________'}</div></div>
+      <div><div class="sig-line">Encarregado de Educação<br>${__escH(a.enome ||'_____________')}</div></div>
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(cod)}</span>
       <span>Ano Lectivo ${d.ano} · ${trimLabel}</span></div>
   </div></body></html>`;
 
@@ -20614,7 +20642,7 @@ function exportarNotasExcel(turmaId) {
   // Load SheetJS if needed
   if (!window.XLSX) {
     const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.src = '/vendor/xlsx-0.20.3.full.min.js';
     script.onload = buildExcel;
     script.onerror = () => { toast('Sem ligação — a exportar como CSV'); exportarNotasCSV(turmaId); };
     document.head.appendChild(script);
@@ -20708,13 +20736,14 @@ function _docMeta(cod) {
 
 function _hdrHtml(d) {
   const escola = d.escola || ESCOLA_SETTINGS?.nome || 'Scholaris';
+  const H = window.__escH;   // v6.248: o código do documento leva o nº do aluno/staff (XSS)
   return `<div class="hdr">
-    <div><div class="hdr-nome">${escola}</div>
-      <div class="hdr-sub">${d.subNome||''}</div></div>
+    <div><div class="hdr-nome">${H(escola)}</div>
+      <div class="hdr-sub">${H(d.subNome||'')}</div></div>
     <div class="hdr-tipo">
-      <div class="tipo">${d.tipo}</div>
-      <div class="cod">${d.cod}</div>
-      <div style="font-size:9px;color:#94a3b8;margin-top:2px">${d.hoje}</div>
+      <div class="tipo">${H(d.tipo)}</div>
+      <div class="cod">${H(d.cod)}</div>
+      <div style="font-size:9px;color:#94a3b8;margin-top:2px">${H(d.hoje)}</div>
     </div>
   </div>`;
 }
@@ -20762,7 +20791,7 @@ function emitirBoletimCiclo(alunoId) {
   });
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Boletim de Ciclo — ${a.nome}</title>${CSS_BASE}
+  <title>Boletim de Ciclo — ${__escH(a.nome)}</title>${CSS_BASE}
   <style>@media print{@page{size:A4;margin:0}}</style>
   </head><body>
   ${NO_PRINT_BAR}
@@ -20777,11 +20806,11 @@ function emitirBoletimCiclo(alunoId) {
         ${a.foto?`<img src="${a.foto}" style="width:100%;height:100%;object-fit:cover">`:'Sem foto'}
       </div>
       <div style="flex:1">
-        <div style="font-size:18px;font-weight:900;color:#0D1526">${a.nome}</div>
+        <div style="font-size:18px;font-weight:900;color:#0D1526">${__escH(a.nome)}</div>
         <div class="g4" style="margin-top:8px">
-          <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${a.num}</div></div>
-          <div class="campo"><div class="lbl">BI</div><div class="val">${a.bi||'—'}</div></div>
-          <div class="campo"><div class="lbl">Ciclo</div><div class="val">${ciclo?.nome||'—'}</div></div>
+          <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${__escH(a.num)}</div></div>
+          <div class="campo"><div class="lbl">BI</div><div class="val">${__escH(a.bi ||'—')}</div></div>
+          <div class="campo"><div class="lbl">Ciclo</div><div class="val">${__escH(ciclo?.nome ||'—')}</div></div>
           <div class="campo"><div class="lbl">Turma</div><div class="val">${turma?turma.id+' — '+turma.classe+'ª':a.turma||'—'}</div></div>
         </div>
       </div>
@@ -20806,7 +20835,7 @@ function emitirBoletimCiclo(alunoId) {
       </tr></thead>
       <tbody>
         ${discRows.map(r=>`<tr>
-          <td style="font-weight:600">${r.disc}</td>
+          <td style="font-weight:600">${__escH(r.disc)}</td>
           ${r.trims.map(m=>`<td style="text-align:center;font-weight:700;
             color:${m!=null?(m>=(CONFIG.mediaAprovacao||10)?'#166534':'#991b1b'):'#94a3b8'}">${m??'—'}</td>`).join('')}
           <td style="text-align:center;font-size:15px;font-weight:800;
@@ -20850,9 +20879,9 @@ function emitirBoletimCiclo(alunoId) {
     <div class="sig sig3">
       <div><div class="sig-line">Director(a) de Turma</div></div>
       <div><div class="sig-line">Director(a) Pedagógico(a)<br>e Carimbo</div></div>
-      <div><div class="sig-line">Encarregado de Educação<br>${a.enome||'_______________'}</div></div>
+      <div><div class="sig-line">Encarregado de Educação<br>${__escH(a.enome ||'_______________')}</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>${ciclo?.nome||'Ano Lectivo '+d.ano}</span></div>
   </div></body></html>`;
 
@@ -20874,7 +20903,7 @@ function emitirHistoricoAcademico(alunoId) {
   const cicloActual = turmaActual ? CICLOS.find(c=>c.id===turmaActual.cicloId) : null;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Histórico Académico — ${a.nome}</title>${CSS_BASE}
+  <title>Histórico Académico — ${__escH(a.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
@@ -20886,16 +20915,16 @@ function emitirHistoricoAcademico(alunoId) {
         ${a.foto?`<img src="${a.foto}" style="width:100%;height:100%;object-fit:cover">`:'Sem foto'}
       </div>
       <div style="flex:1">
-        <div style="font-size:18px;font-weight:900;color:#0D1526">${a.nome}</div>
+        <div style="font-size:18px;font-weight:900;color:#0D1526">${__escH(a.nome)}</div>
         <div class="g4" style="margin-top:8px">
-          <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${a.num}</div></div>
-          <div class="campo"><div class="lbl">BI / DIRE</div><div class="val">${a.bi||'—'}</div></div>
-          <div class="campo"><div class="lbl">Data Nascimento</div><div class="val">${a.nasc||'—'}</div></div>
-          <div class="campo"><div class="lbl">Naturalidade</div><div class="val">${a.nat||'—'}</div></div>
+          <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${__escH(a.num)}</div></div>
+          <div class="campo"><div class="lbl">BI / DIRE</div><div class="val">${__escH(a.bi ||'—')}</div></div>
+          <div class="campo"><div class="lbl">Data Nascimento</div><div class="val">${__escH(a.nasc ||'—')}</div></div>
+          <div class="campo"><div class="lbl">Naturalidade</div><div class="val">${__escH(a.nat ||'—')}</div></div>
           <div class="campo"><div class="lbl">Turma Actual</div><div class="val">${turmaActual?turmaActual.id:'Sem turma'}</div></div>
           <div class="campo"><div class="lbl">Ciclo Actual</div><div class="val">${cicloActual?.sigla||'—'}</div></div>
-          <div class="campo"><div class="lbl">Encarregado</div><div class="val">${a.enome||'—'}</div></div>
-          <div class="campo"><div class="lbl">Ano de Ingresso</div><div class="val">${a.ingresso||'—'}</div></div>
+          <div class="campo"><div class="lbl">Encarregado</div><div class="val">${__escH(a.enome ||'—')}</div></div>
+          <div class="campo"><div class="lbl">Ano de Ingresso</div><div class="val">${__escH(a.ingresso ||'—')}</div></div>
         </div>
       </div>
     </div>
@@ -20958,7 +20987,7 @@ function emitirHistoricoAcademico(alunoId) {
       <tbody>
         ${(a.transferencias||[]).map(t=>`<tr>
           <td>${t.data||'—'}</td><td>${t.de||'—'}</td><td>${t.para||'—'}</td>
-          <td>${t.motivo||'—'}</td>
+          <td>${__escH(t.motivo ||'—')}</td>
         </tr>`).join('')}
       </tbody>
     </table>` : ''}
@@ -20967,7 +20996,7 @@ function emitirHistoricoAcademico(alunoId) {
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
       <div><div class="sig-line">Secretário(a)</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Documento oficial — integra o processo individual do aluno</span></div>
   </div></body></html>`;
 
@@ -20999,7 +21028,7 @@ function emitirExtractoPropinas(alunoId) {
   const mesesDivida = (window.__propsEmAtraso?window.__propsEmAtraso(a):a.propinas.filter(p=>p.st==='npago').length);  // v6.59: só vencidas
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Extracto Propinas — ${a.nome}</title>${CSS_BASE}
+  <title>Extracto Propinas — ${__escH(a.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
@@ -21007,9 +21036,9 @@ function emitirExtractoPropinas(alunoId) {
 
     <div class="g4" style="margin-bottom:14px">
       <div class="campo"><div class="lbl">Aluno</div><div class="val">${a.nome.split(' ')[0]+' '+a.nome.split(' ').slice(-1)}</div></div>
-      <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${a.num}</div></div>
-      <div class="campo"><div class="lbl">Turma</div><div class="val">${a.turma||'—'}</div></div>
-      <div class="campo"><div class="lbl">Encarregado</div><div class="val">${a.enome||'—'}</div></div>
+      <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${__escH(a.num)}</div></div>
+      <div class="campo"><div class="lbl">Turma</div><div class="val">${__escH(a.turma ||'—')}</div></div>
+      <div class="campo"><div class="lbl">Encarregado</div><div class="val">${__escH(a.enome ||'—')}</div></div>
     </div>
 
     <!-- Resumo financeiro -->
@@ -21048,7 +21077,7 @@ function emitirExtractoPropinas(alunoId) {
           <td style="text-align:right;font-weight:${p.st!=='npago'?'700':'400'};
             color:${p.st!=='npago'?'#166534':'#94a3b8'}">
             ${p.st!=='npago'?(p.v||CONFIG.valorPropina||4500).toLocaleString('pt-PT'):'—'}</td>
-          <td style="font-family:monospace;font-size:10px">${p.ref||'—'}</td>
+          <td style="font-family:monospace;font-size:10px">${__escH(p.ref ||'—')}</td>
           <td style="font-size:10px">${p.dataConfirm||'—'}</td>
           <td style="text-align:center">
             <span style="font-size:11px;color:${p.estadoBanco==='confirmado'?'#166534':'#94a3b8'}">
@@ -21069,9 +21098,9 @@ function emitirExtractoPropinas(alunoId) {
 
     <div class="sig sig2">
       <div><div class="sig-line">Tesouraria / Secretaria</div></div>
-      <div><div class="sig-line">Encarregado de Educação<br>${a.enome||'_______________'}</div></div>
+      <div><div class="sig-line">Encarregado de Educação<br>${__escH(a.enome ||'_______________')}</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Extracto gerado electronicamente — válido sem assinatura</span></div>
   </div></body></html>`;
 
@@ -21092,7 +21121,7 @@ function emitirDeclaracaoNaoDivida(alunoId) {
   const turma = a.turma ? TURMAS.find(t=>t.id===a.turma) : null;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Declaração de Não Dívida — ${a.nome}</title>${CSS_BASE}
+  <title>Declaração de Não Dívida — ${__escH(a.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
@@ -21100,17 +21129,17 @@ function emitirDeclaracaoNaoDivida(alunoId) {
 
     <div style="text-align:center;margin:24px 0 20px">
       <div style="font-size:13px;font-weight:700;color:#0D1526">
-        O Abaixo Assinado Director(a) da ${d.escola}
+        O Abaixo Assinado Director(a) da ${__escH(d.escola)}
       </div>
       <div style="font-size:12px;color:#475569;margin-top:4px">Declara para os devidos efeitos que:</div>
     </div>
 
     <div style="border:${divida===0?'2px solid #bbf7d0':'2px solid #fecaca'};border-radius:12px;
       padding:20px;margin:14px 0;background:${divida===0?'#f0fdf4':'#fff1f2'}">
-      <div style="font-size:16px;font-weight:900;color:#0D1526;margin-bottom:12px">${a.nome}</div>
+      <div style="font-size:16px;font-weight:900;color:#0D1526;margin-bottom:12px">${__escH(a.nome)}</div>
       <div class="g3">
-        <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${a.num}</div></div>
-        <div class="campo"><div class="lbl">BI / DIRE</div><div class="val">${a.bi||'—'}</div></div>
+        <div class="campo"><div class="lbl">Nº Aluno</div><div class="val">${__escH(a.num)}</div></div>
+        <div class="campo"><div class="lbl">BI / DIRE</div><div class="val">${__escH(a.bi ||'—')}</div></div>
         <div class="campo"><div class="lbl">Turma</div><div class="val">${turma?turma.id+' — '+turma.classe+'ª':'—'}</div></div>
       </div>
     </div>
@@ -21118,7 +21147,7 @@ function emitirDeclaracaoNaoDivida(alunoId) {
     <div style="font-size:12px;color:#475569;line-height:1.9;margin:16px 0">
       ${divida === 0
         ? `…<strong>não possui qualquer dívida</strong> de propinas ou outros encargos escolares
-          para com a ${d.escola}, à data de emissão do presente documento
+          para com a ${__escH(d.escola)}, à data de emissão do presente documento
           (${d.hoje}).
           <br><br>
           Todas as prestações escolares relativas ao Ano Lectivo ${d.ano} encontram-se
@@ -21143,7 +21172,7 @@ function emitirDeclaracaoNaoDivida(alunoId) {
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
       <div><div class="sig-line">Tesouraria / Secretaria</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Validade: 30 dias</span></div>
   </div></body></html>`;
 
@@ -21164,14 +21193,14 @@ function emitirDeclaracaoAproveitamento(alunoId) {
   const turma = a.turma ? TURMAS.find(t=>t.id===a.turma) : null;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Declaração de Aproveitamento — ${a.nome}</title>${CSS_BASE}
+  <title>Declaração de Aproveitamento — ${__escH(a.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
     ${_hdrHtml(d)}
 
     <div style="text-align:center;margin:24px 0 20px">
-      <div style="font-size:13px;font-weight:700;color:#0D1526">O Abaixo Assinado Director(a) da ${d.escola}</div>
+      <div style="font-size:13px;font-weight:700;color:#0D1526">O Abaixo Assinado Director(a) da ${__escH(d.escola)}</div>
       <div style="font-size:12px;color:#475569;margin-top:4px">Certifica que:</div>
     </div>
 
@@ -21186,13 +21215,13 @@ function emitirDeclaracaoAproveitamento(alunoId) {
         ${med!=null?(apv?'APROVADO':'REPROVADO'):'PENDENTE'}
       </div>
       <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:4px">
-        ${a.nome} · ${turma?turma.id+' — '+turma.classe+'ª Classe':'—'}
+        ${__escH(a.nome)} · ${turma?turma.id+' — '+turma.classe+'ª Classe':'—'}
       </div>
     </div>
 
     <div style="font-size:12px;color:#475569;line-height:1.9;margin:16px 0">
-      …o(a) aluno(a) <strong>${a.nome}</strong>, nº ${a.num},
-      ${turma?`do <strong>${turma.classe}º Ano</strong> (Turma ${turma.id}),`:''} obteve no
+      …o(a) aluno(a) <strong>${__escH(a.nome)}</strong>, nº ${__escH(a.num)},
+      ${turma?`do <strong>${__escH(turma.classe)}º Ano</strong> (Turma ${turma.id}),`:''} obteve no
       Ano Lectivo <strong>${d.ano}</strong> a média final de
       <strong style="color:${apv?'#166534':'#991b1b'};font-size:14px">${med??'—'} valores</strong>,
       tendo sido <strong style="color:${apv?'#166534':'#991b1b'}">${med!=null?(apv?'aprovado(a)':'reprovado(a)'):'—'}</strong>
@@ -21210,7 +21239,7 @@ function emitirDeclaracaoAproveitamento(alunoId) {
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
       <div><div class="sig-line">Data e Rubrica</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Ano Lectivo ${d.ano}</span></div>
   </div></body></html>`;
 
@@ -21269,7 +21298,7 @@ function emitirRegistoDisciplinar(alunoId) {
       <div><div class="sig-line">Director(a) Pedagógico(a)</div></div>
       <div><div class="sig-line">Director(a) de Turma</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Confidencial — uso restrito</span></div>
   </div></body></html>`;
 
@@ -21292,7 +21321,7 @@ function emitirReciboSalario(profId, mes) {
   const liq  = p.salario - irps - inss;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Recibo Salário — ${p.nome}</title>${CSS_BASE}
+  <title>Recibo Salário — ${__escH(p.nome)}</title>${CSS_BASE}
   <style>.page{max-width:180mm}@media print{@page{size:A5 landscape;margin:0}}</style>
   </head><body>
   ${NO_PRINT_BAR}
@@ -21306,8 +21335,8 @@ function emitirReciboSalario(profId, mes) {
         ${p.foto?`<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover">`:'Foto'}
       </div>
       <div>
-        <div style="font-size:16px;font-weight:900;color:#0D1526">${p.nome}</div>
-        <div style="font-size:12px;color:#64748b">${p.cargo||'Colaborador'} · ${p.num}</div>
+        <div style="font-size:16px;font-weight:900;color:#0D1526">${__escH(p.nome)}</div>
+        <div style="font-size:12px;color:#64748b">${__escH(p.cargo ||'Colaborador')} · ${__escH(p.num)}</div>
         <div style="font-size:11px;color:#64748b;margin-top:2px">
           ${M[mesN-1]} ${new Date().getFullYear()} · ${p.regime==='inteiro'?'Tempo Inteiro':'Tempo Parcial'}
         </div>
@@ -21340,15 +21369,15 @@ function emitirReciboSalario(profId, mes) {
     </table>
 
     <div class="g2">
-      <div class="campo"><div class="lbl">Banco</div><div class="val">${p.banco||'—'}</div></div>
-      <div class="campo"><div class="lbl">IBAN / Conta</div><div class="val" style="font-family:monospace">${p.iban||'—'}</div></div>
+      <div class="campo"><div class="lbl">Banco</div><div class="val">${__escH(p.banco ||'—')}</div></div>
+      <div class="campo"><div class="lbl">IBAN / Conta</div><div class="val" style="font-family:monospace">${__escH(p.iban ||'—')}</div></div>
     </div>
 
     <div class="sig sig2" style="margin-top:20px">
-      <div><div class="sig-line">Trabalhador(a)<br>${p.nome}</div></div>
+      <div><div class="sig-line">Trabalhador(a)<br>${__escH(p.nome)}</div></div>
       <div><div class="sig-line">Direcção / Tesouraria<br>e Carimbo</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Guardar como comprovativo de vencimento</span></div>
   </div></body></html>`;
 
@@ -21371,41 +21400,41 @@ function emitirDeclaracaoVinculo(profId) {
   }[p.contrato]||'Tempo Indeterminado';
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Declaração Vínculo — ${p.nome}</title>${CSS_BASE}
+  <title>Declaração Vínculo — ${__escH(p.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
     ${_hdrHtml(d)}
 
     <div style="text-align:center;margin:24px 0 20px">
-      <div style="font-size:13px;font-weight:700;color:#0D1526">O Abaixo Assinado Director(a) da ${d.escola}</div>
+      <div style="font-size:13px;font-weight:700;color:#0D1526">O Abaixo Assinado Director(a) da ${__escH(d.escola)}</div>
       <div style="font-size:12px;color:#475569;margin-top:4px">Declara para os devidos efeitos que:</div>
     </div>
 
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:14px 0;background:#f8fafc">
-      <div style="font-size:16px;font-weight:900;color:#0D1526;margin-bottom:10px">${p.nome}</div>
+      <div style="font-size:16px;font-weight:900;color:#0D1526;margin-bottom:10px">${__escH(p.nome)}</div>
       <div class="g3">
-        <div class="campo"><div class="lbl">Nº Colaborador</div><div class="val">${p.num}</div></div>
-        <div class="campo"><div class="lbl">BI / DIRE</div><div class="val">${p.bi||'—'}</div></div>
-        <div class="campo"><div class="lbl">NUIT</div><div class="val">${p.nuit||'—'}</div></div>
-        <div class="campo"><div class="lbl">Cargo</div><div class="val">${p.cargo||'—'}</div></div>
+        <div class="campo"><div class="lbl">Nº Colaborador</div><div class="val">${__escH(p.num)}</div></div>
+        <div class="campo"><div class="lbl">BI / DIRE</div><div class="val">${__escH(p.bi ||'—')}</div></div>
+        <div class="campo"><div class="lbl">NUIT</div><div class="val">${__escH(p.nuit ||'—')}</div></div>
+        <div class="campo"><div class="lbl">Cargo</div><div class="val">${__escH(p.cargo ||'—')}</div></div>
         <div class="campo"><div class="lbl">Departamento</div><div class="val">${p.dep==='academico'?'Académico':p.dep==='gestao'?'Gestão':'Financeiro'}</div></div>
         <div class="campo"><div class="lbl">Tipo Contrato</div><div class="val">${contratoLabel}</div></div>
         <div class="campo"><div class="lbl">Regime</div><div class="val">${p.regime==='inteiro'?'Tempo Inteiro':'Tempo Parcial'}</div></div>
-        <div class="campo"><div class="lbl">Data de Início</div><div class="val">${p.contIni||p.adesao||'—'}</div></div>
+        <div class="campo"><div class="lbl">Data de Início</div><div class="val">${__escH(p.contIni||p.adesao||'—')}</div></div>
         <div class="campo"><div class="lbl">NISS (INSS)</div><div class="val">${p.niss||'—'}</div></div>
       </div>
     </div>
 
     <div style="font-size:12px;color:#475569;line-height:1.9;margin:16px 0">
-      …<strong>${p.nome}</strong> exerce as suas funções como <strong>${p.cargo||'Colaborador'}</strong>
-      na ${d.escola} desde <strong>${p.contIni||p.adesao||'data de contratação'}</strong>,
+      …<strong>${__escH(p.nome)}</strong> exerce as suas funções como <strong>${__escH(p.cargo ||'Colaborador')}</strong>
+      na ${__escH(d.escola)} desde <strong>${__escH(p.contIni||p.adesao||'data de contratação')}</strong>,
       em regime de <strong>${p.regime==='inteiro'?'Tempo Inteiro':'Tempo Parcial'}</strong>,
       ao abrigo de um contrato de <strong>${contratoLabel}</strong>, nos termos da
       Lei do Trabalho (Lei nº 23/2007 e respectivas alterações).
       <br><br>
       O trabalhador encontra-se devidamente inscrito no INSS (NISS: ${p.niss||'—'}) e
-      registado na Autoridade Tributária de Moçambique (NUIT: ${p.nuit||'—'}).
+      registado na Autoridade Tributária de Moçambique (NUIT: ${__escH(p.nuit ||'—')}).
       <br><br>
       A presente declaração é emitida a pedido do(a) interessado(a) para os fins que entender convenientes,
       nomeadamente junto de instituições bancárias, senhorios, embaixadas e outros organismos.
@@ -21420,7 +21449,7 @@ function emitirDeclaracaoVinculo(profId) {
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
       <div><div class="sig-line">Secretário(a)</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Lei 23/2007 · Validade: 90 dias</span></div>
   </div></body></html>`;
 
@@ -21444,7 +21473,7 @@ function emitirDeclaracaoRendimentos(profId) {
   const liqAnual  = brutAnual - irpsAnual - inssAnual;
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Declaração Rendimentos — ${p.nome}</title>${CSS_BASE}
+  <title>Declaração Rendimentos — ${__escH(p.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
@@ -21452,7 +21481,7 @@ function emitirDeclaracaoRendimentos(profId) {
 
     <div style="text-align:center;margin:20px 0">
       <div style="font-size:13px;font-weight:700;color:#0D1526">
-        ${d.escola} — NIF/NUIT: ${(ESCOLA_SETTINGS?.nuit)||'___________'}
+        ${__escH(d.escola)} — NIF/NUIT: ${(ESCOLA_SETTINGS?.nuit)||'___________'}
       </div>
       <div style="font-size:12px;color:#475569;margin-top:4px">
         Declara, para fins fiscais, os rendimentos do trabalho dependente:
@@ -21461,10 +21490,10 @@ function emitirDeclaracaoRendimentos(profId) {
 
     <div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin:14px 0;background:#f8fafc">
       <div class="g3">
-        <div class="campo"><div class="lbl">Trabalhador</div><div class="val">${p.nome}</div></div>
-        <div class="campo"><div class="lbl">NUIT Trabalhador</div><div class="val">${p.nuit||'—'}</div></div>
+        <div class="campo"><div class="lbl">Trabalhador</div><div class="val">${__escH(p.nome)}</div></div>
+        <div class="campo"><div class="lbl">NUIT Trabalhador</div><div class="val">${__escH(p.nuit ||'—')}</div></div>
         <div class="campo"><div class="lbl">NISS</div><div class="val">${p.niss||'—'}</div></div>
-        <div class="campo"><div class="lbl">Cargo</div><div class="val">${p.cargo||'—'}</div></div>
+        <div class="campo"><div class="lbl">Cargo</div><div class="val">${__escH(p.cargo ||'—')}</div></div>
         <div class="campo"><div class="lbl">Ano Fiscal</div><div class="val">${ano}</div></div>
         <div class="campo"><div class="lbl">Meses Trabalhados</div><div class="val">${meses}</div></div>
       </div>
@@ -21511,7 +21540,7 @@ function emitirDeclaracaoRendimentos(profId) {
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
       <div><div class="sig-line">Responsável Financeiro</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Ano Fiscal ${ano} · ATM · INSS</span></div>
   </div></body></html>`;
 
@@ -21550,7 +21579,7 @@ function emitirRelatorioDesempenho(profId) {
   const totalAulas    = stats.reduce((s,r)=>s+r.aulasDadas,0);
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Relatório Desempenho — ${p.nome}</title>${CSS_BASE}
+  <title>Relatório Desempenho — ${__escH(p.nome)}</title>${CSS_BASE}
   </head><body>
   ${NO_PRINT_BAR}
   <div class="page a4">
@@ -21563,11 +21592,11 @@ function emitirRelatorioDesempenho(profId) {
         ${p.foto?`<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover">`:'Foto'}
       </div>
       <div style="flex:1">
-        <div style="font-size:18px;font-weight:900;color:#0D1526">${p.nome}</div>
+        <div style="font-size:18px;font-weight:900;color:#0D1526">${__escH(p.nome)}</div>
         <div class="g4" style="margin-top:8px">
-          <div class="campo"><div class="lbl">Nº</div><div class="val">${p.num}</div></div>
-          <div class="campo"><div class="lbl">Cargo</div><div class="val">${p.cargo||'Professor'}</div></div>
-          <div class="campo"><div class="lbl">Formação</div><div class="val">${p.form||'—'}</div></div>
+          <div class="campo"><div class="lbl">Nº</div><div class="val">${__escH(p.num)}</div></div>
+          <div class="campo"><div class="lbl">Cargo</div><div class="val">${__escH(p.cargo ||'Professor')}</div></div>
+          <div class="campo"><div class="lbl">Formação</div><div class="val">${__escH(p.form ||'—')}</div></div>
           <div class="campo"><div class="lbl">Regime</div><div class="val">${p.regime==='inteiro'?'T. Inteiro':'T. Parcial'}</div></div>
         </div>
       </div>
@@ -21641,11 +21670,11 @@ function emitirRelatorioDesempenho(profId) {
     </table>
 
     <div class="sig sig3">
-      <div><div class="sig-line">Professor(a)<br>${p.nome}</div></div>
+      <div><div class="sig-line">Professor(a)<br>${__escH(p.nome)}</div></div>
       <div><div class="sig-line">Director(a) Pedagógico(a)</div></div>
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
     </div>
-    <div class="footer"><span>${d.escola} · ${d.hoje}</span><span>${d.cod}</span>
+    <div class="footer"><span>${__escH(d.escola)} · ${d.hoje}</span><span>${__escH(d.cod)}</span>
       <span>Relatório Anual de Desempenho Docente — ${d.ano}</span></div>
   </div></body></html>`;
 
@@ -21962,19 +21991,19 @@ function emitirRelatorioDesempenhoTrimestre(profId, trimestre) {
   const txG=tA?Math.round(tApv/tA*100):0;
   const tAulas=stats.reduce((s,r)=>s+r.aulasN,0);
   const htmlDoc=`<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Relatório Desempenho — ${p.nome} — ${periodoLabel}</title>${CSS}</head><body>${NP}
+  <title>Relatório Desempenho — ${__escH(p.nome)} — ${periodoLabel}</title>${CSS}</head><body>${NP}
   <div class="page a4">
     <div class="hdr"><div><div class="hdr-nome">${escola}</div>
       <div class="hdr-sub">Relatório de Desempenho Docente · ${periodoLabel} · ${ano}</div></div>
       <div class="hdr-tipo"><div class="tipo">Relatório de Desempenho</div>
-        <div class="cod">RDP-${p.num}-T${trimestre||'Anual'}-${ano}</div>
+        <div class="cod">RDP-${__escH(p.num)}-T${trimestre||'Anual'}-${ano}</div>
         <div style="font-size:9px;color:#94a3b8">${hoje}</div></div></div>
     <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">
       <div style="width:60px;height:72px;border:2px solid #e2e8f0;border-radius:8px;overflow:hidden;flex-shrink:0;background:#f8fafc;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:20px;font-weight:800">
         ${p.foto?`<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover">`:(p.nome||'').split(' ').map(n=>n[0]).slice(0,2).join('')}
       </div>
-      <div><div style="font-size:18px;font-weight:900;color:#0D1526">${p.nome}</div>
-        <div style="font-size:12px;color:#64748b;margin-top:2px">${p.num} · ${p.cargo||'Professor'} · <strong>${periodoLabel}</strong></div>
+      <div><div style="font-size:18px;font-weight:900;color:#0D1526">${__escH(p.nome)}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">${__escH(p.num)} · ${__escH(p.cargo ||'Professor')} · <strong>${periodoLabel}</strong></div>
       </div></div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       ${[{l:'Turmas',v:turmasIds.length,c:'#4f8ef7'},{l:'Alunos',v:tA,c:'#06b6d4'},
@@ -21988,7 +22017,7 @@ function emitirRelatorioDesempenhoTrimestre(profId, trimestre) {
       <th style="text-align:center">Alunos</th><th style="text-align:center">Aprovados</th>
       <th style="text-align:center">Taxa</th><th style="text-align:center">Aulas</th></tr></thead>
     <tbody>${stats.map(r=>`<tr>
-      <td style="font-weight:700">${r.tid}${r.turma?`<div style="font-size:9px;color:#64748b">${r.turma.classe}ª</div>`:''}</td>
+      <td style="font-weight:700">${r.tid}${r.turma?`<div style="font-size:9px;color:#64748b">${__escH(r.turma.classe)}ª</div>`:''}</td>
       <td style="font-size:10px">${r.discsT.join(', ')||'—'}</td>
       <td style="text-align:center">${r.alunos}</td>
       <td style="text-align:center;font-weight:700;color:#166534">${r.aprovados}</td>
@@ -22001,12 +22030,12 @@ function emitirRelatorioDesempenhoTrimestre(profId, trimestre) {
       <td style="text-align:center;color:${txG>=60?'#166534':'#991b1b'}">${txG}%</td>
       <td style="text-align:center">${tAulas}</td></tr></tbody></table>
     <div class="sig sig3" style="margin-top:20px">
-      <div><div class="sig-line">Professor(a)<br>${p.nome}</div></div>
+      <div><div class="sig-line">Professor(a)<br>${__escH(p.nome)}</div></div>
       <div><div class="sig-line">Director(a) Pedagógico(a)</div></div>
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
     </div>
     <div class="footer"><span>${escola} · ${hoje}</span>
-      <span>RDP-${p.num}-T${trimestre||'Anual'}-${ano}</span>
+      <span>RDP-${__escH(p.num)}-T${trimestre||'Anual'}-${ano}</span>
       <span>${periodoLabel}</span></div>
   </div></body></html>`;
   const w=window.open('','_blank','width=960,height=800');
@@ -22599,7 +22628,7 @@ function exportarListaUtilizadores() {
     const roleP = p.cargos?.some(c=>c.startsWith('dir-ciclo')) ? 'Director de Ciclo' :
                   p.dep === 'academico' ? 'Professor' : 'Secretário';
     return `<tr><td>${p.nome}</td><td>${roleP}</td><td style="font-family:monospace">${username}</td>
-      <td style="font-family:monospace">${p.tel||'—'}</td></tr>`;
+      <td style="font-family:monospace">${__escH(p.tel||'—')}</td></tr>`;
   }).join('');
 
   const alunoRows = ALUNOS.map(a => {
@@ -22609,13 +22638,13 @@ function exportarListaUtilizadores() {
   }).join('');
 
   const htmlDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Lista de Utilizadores — ${d.escola}</title>
+  <title>Lista de Utilizadores — ${__escH(d.escola)}</title>
   ${typeof CSS_BASE !== 'undefined' ? CSS_BASE : '<style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th{background:#0D1526;color:#fff;padding:6px}td{padding:5px;border:0.5px solid #e2e8f0}</style>'}
   </head><body>
   <div class="no-print"><button onclick="window.print()">Imprimir / PDF</button><button onclick="window.close()">Fechar</button></div>
   <div class="page a4">
     <div style="text-align:center;border-bottom:2px solid #0D1526;padding-bottom:10px;margin-bottom:14px">
-      <div style="font-size:16px;font-weight:900">${d.escola}</div>
+      <div style="font-size:16px;font-weight:900">${__escH(d.escola)}</div>
       <div style="font-size:12px;font-weight:700;color:#4f8ef7;margin-top:4px">Lista de Utilizadores do Sistema</div>
       <div style="font-size:10px;color:#64748b">${d.hoje} · CONFIDENCIAL</div>
     </div>
@@ -22626,7 +22655,7 @@ function exportarListaUtilizadores() {
     <table><thead><tr><th>Nome</th><th>Role</th><th>Username</th><th>Password Inicial</th></tr></thead>
     <tbody>${alunoRows}</tbody></table>
     <div style="margin-top:14px;font-size:9px;color:#94a3b8;text-align:center">
-      Documento confidencial — uso interno · ${d.escola} · ${d.hoje}
+      Documento confidencial — uso interno · ${__escH(d.escola)} · ${d.hoje}
     </div>
   </div></body></html>`;
 
@@ -22777,7 +22806,7 @@ function rCicloVisao() {
             const txP     = alsP.length?Math.round(apvP.length/alsP.length*100):0;
             return `<tr>
               <td><div style="font-weight:700">${p.nome}</div>
-                <div style="font-size:10px;color:var(--t2)">${p.cargo||p.dep}</div></td>
+                <div style="font-size:10px;color:var(--t2)">${__escH(p.cargo||p.dep)}</div></td>
               <td style="font-size:11px">${discs.join(', ')||'—'}</td>
               <td>${turmasP.map(t=>`<span class="badge bin" style="font-size:10px;margin-right:3px">${t}</span>`).join('')}</td>
               <td><span style="font-weight:700;color:${txP>=60?'var(--g)':'var(--r)'}">${txP}%</span></td>
@@ -24018,7 +24047,7 @@ function imprimirCartaoStaff(profId) {
   if (!prof) return;
   const escola = ESCOLA_SETTINGS?.nome || 'Scholaris';
   const htmlDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Cartão — ${prof.nome}</title>
+    <title>Cartão — ${__escH(prof.nome)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
@@ -24425,28 +24454,28 @@ emitirReciboSalario = function(profId, mes) {
   const NP  = typeof NO_PRINT_BAR !== 'undefined' ? NO_PRINT_BAR : '';
 
   const htmlDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Recibo — ${p.nome} — ${M[mesN-1]} ${ano}</title>${CSS}
+  <title>Recibo — ${__escH(p.nome)} — ${M[mesN-1]} ${ano}</title>${CSS}
   <style>@media print{@page{size:A5 landscape}}</style>
   </head><body>${NP}
   <div class="page a4" style="max-width:180mm">
     <div class="hdr">
-      <div><div class="hdr-nome">${d.escola}</div></div>
+      <div><div class="hdr-nome">${__escH(d.escola)}</div></div>
       <div class="hdr-tipo">
         <div class="tipo">Recibo de Salário</div>
-        <div class="cod">${d.cod}</div>
+        <div class="cod">${__escH(d.cod)}</div>
         <div style="font-size:9px;color:#94a3b8">${d.hoje}</div>
       </div>
     </div>
 
     <div class="g2" style="margin-bottom:12px">
       <div class="campo"><div class="lbl">Funcionário</div>
-        <div class="val">${p.nome}</div></div>
+        <div class="val">${__escH(p.nome)}</div></div>
       <div class="campo"><div class="lbl">Mês</div>
         <div class="val">${M[mesN-1]} ${ano}</div></div>
       <div class="campo"><div class="lbl">Nº Funcionário</div>
-        <div class="val">${p.num}</div></div>
+        <div class="val">${__escH(p.num)}</div></div>
       <div class="campo"><div class="lbl">Cargo</div>
-        <div class="val">${p.cargo||'—'}</div></div>
+        <div class="val">${__escH(p.cargo ||'—')}</div></div>
     </div>
 
     <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:12px">
@@ -24464,7 +24493,7 @@ emitirReciboSalario = function(profId, mes) {
             Contrato de trabalho</td></tr>
         ${subs.map(sb => `<tr style="background:#f0fdf4">
           <td style="padding:5px 8px;border:0.5px solid #e2e8f0">
-            (+) ${sb.tipo}</td>
+            (+) ${__escH(sb.tipo)}</td>
           <td style="text-align:right;padding:5px 8px;border:0.5px solid #e2e8f0;
             font-weight:700;color:#166534">+ ${sb.valor.toLocaleString('pt-PT')}</td>
           <td style="padding:5px 8px;border:0.5px solid #e2e8f0;font-size:9px;color:#64748b">
@@ -24504,18 +24533,18 @@ emitirReciboSalario = function(profId, mes) {
     </table>
 
     <div class="g2">
-      <div class="campo"><div class="lbl">Banco</div><div class="val">${p.banco||'—'}</div></div>
+      <div class="campo"><div class="lbl">Banco</div><div class="val">${__escH(p.banco ||'—')}</div></div>
       <div class="campo"><div class="lbl">IBAN</div>
-        <div class="val" style="font-family:monospace">${p.iban||'—'}</div></div>
+        <div class="val" style="font-family:monospace">${__escH(p.iban ||'—')}</div></div>
     </div>
 
     <div class="sig sig2" style="margin-top:20px">
-      <div><div class="sig-line">Funcionário<br>${p.nome}</div></div>
-      <div><div class="sig-line">Direcção / Tesouraria<br>${d.escola}</div></div>
+      <div><div class="sig-line">Funcionário<br>${__escH(p.nome)}</div></div>
+      <div><div class="sig-line">Direcção / Tesouraria<br>${__escH(d.escola)}</div></div>
     </div>
     <div class="footer">
-      <span>${d.escola} · ${d.hoje}</span>
-      <span>${d.cod}</span>
+      <span>${__escH(d.escola)} · ${d.hoje}</span>
+      <span>${__escH(d.cod)}</span>
       <span>Inclui ${subs.length} subsídio(s) · ${M[mesN-1]} ${ano}</span>
     </div>
   </div></body></html>`;
@@ -26393,7 +26422,7 @@ function renderPortalJornada(a) {
         letter-spacing:.1em;margin-bottom:6px">A Minha Jornada Escolar</div>
       <div style="font-size:28px;font-weight:900;color:#fff;margin-bottom:4px">${a.nome}</div>
       <div style="font-size:13px;color:rgba(255,255,255,.5)">
-        ${a.turma} · ${turmaAtual?.classe}ª Classe · Na escola desde ${a.ingresso||anoAtual}
+        ${__escH(a.turma)} · ${__escH(turmaAtual?.classe)}ª Classe · Na escola desde ${__escH(a.ingresso||anoAtual)}
       </div>
       <!-- KPIs -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px">
@@ -27262,7 +27291,7 @@ emitirRelatorioDesempenhoTrimestre = function(profId, trimestre) {
   const meses=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
   const htmlDoc = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Relatório ${p.nome} — ${periodoLabel}</title>${CSS}
+  <title>Relatório ${__escH(p.nome)} — ${periodoLabel}</title>${CSS}
   </head><body>${NP}
   <div class="page a4">
     <div class="hdr">
@@ -27270,7 +27299,7 @@ emitirRelatorioDesempenhoTrimestre = function(profId, trimestre) {
         <div class="hdr-sub">Relatório de Desempenho e Cumprimento · ${periodoLabel}</div></div>
       <div class="hdr-tipo">
         <div class="tipo">Relatório Docente</div>
-        <div class="cod">RD-${p.num}-${trimestre||'A'}-${ano}</div>
+        <div class="cod">RD-${__escH(p.num)}-${trimestre||'A'}-${ano}</div>
         <div style="font-size:9px;color:#94a3b8">${hoje}</div>
       </div>
     </div>
@@ -27284,8 +27313,8 @@ emitirRelatorioDesempenhoTrimestre = function(profId, trimestre) {
           p.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}
       </div>
       <div>
-        <div style="font-size:18px;font-weight:900;color:#0D1526">${p.nome}</div>
-        <div style="font-size:12px;color:#64748b">${p.num} · ${p.cargo||'Professor'} · ${periodoLabel}</div>
+        <div style="font-size:18px;font-weight:900;color:#0D1526">${__escH(p.nome)}</div>
+        <div style="font-size:12px;color:#64748b">${__escH(p.num)} · ${__escH(p.cargo ||'Professor')} · ${periodoLabel}</div>
       </div>
     </div>
 
@@ -27317,7 +27346,7 @@ emitirRelatorioDesempenhoTrimestre = function(profId, trimestre) {
       <tbody>
         ${tematicoRows.map(r=>`<tr>
           <td style="font-weight:700">${r.turma?.id||r.turma}</td>
-          <td>${r.disc}</td>
+          <td>${__escH(r.disc)}</td>
           <td style="text-align:center">${r.ct.previstas}</td>
           <td style="text-align:center;color:#166534;font-weight:700">${r.ct.leccionadas}</td>
           <td style="text-align:center">
@@ -27343,8 +27372,8 @@ emitirRelatorioDesempenhoTrimestre = function(profId, trimestre) {
             ${fa.faltasDetalhes.slice(0,20).map(f=>`<tr>
               <td style="font-family:monospace;font-size:10px">${f.data}</td>
               <td>${f.dia}</td>
-              <td style="font-weight:700">${f.turma}</td>
-              <td>${f.disc}</td>
+              <td style="font-weight:700">${__escH(f.turma)}</td>
+              <td>${__escH(f.disc)}</td>
               <td style="font-family:monospace">${f.hora}</td>
             </tr>`).join('')}
             ${fa.faltasDetalhes.length>20?`<tr><td colspan="5" style="text-align:center;color:#64748b;font-size:10px">
@@ -27354,13 +27383,13 @@ emitirRelatorioDesempenhoTrimestre = function(profId, trimestre) {
         </table>`}
 
     <div class="sig sig3" style="margin-top:20px">
-      <div><div class="sig-line">Professor(a)<br>${p.nome}</div></div>
+      <div><div class="sig-line">Professor(a)<br>${__escH(p.nome)}</div></div>
       <div><div class="sig-line">Director(a) Pedagógico(a)</div></div>
       <div><div class="sig-line">Director(a) da Escola<br>e Carimbo</div></div>
     </div>
     <div class="footer">
       <span>${escola} · ${hoje}</span>
-      <span>RD-${p.num}-${trimestre||'A'}-${ano}</span>
+      <span>RD-${__escH(p.num)}-${trimestre||'A'}-${ano}</span>
       <span>${periodoLabel} · Confidencial</span>
     </div>
   </div></body></html>`;
@@ -27659,7 +27688,7 @@ function abrirNovaReuniao() {
   const profsList = PROFS.filter(p=>['academico','gestao'].includes(p.dep));
   const psel = document.getElementById('nr-participantes');
   if (psel) psel.innerHTML = profsList.map(p=>
-    `<option value="${p.num}">${p.nome} (${p.cargo||p.num})</option>`).join('');
+    `<option value="${__escH(p.num)}">${__escH(p.nome)} (${__escH(p.cargo||p.num)})</option>`).join('');
   document.getElementById('nr-titulo').value = '';
   document.getElementById('nr-data').value = new Date().toISOString().split('T')[0];
   document.getElementById('nr-ordem').value = '';
@@ -27715,14 +27744,14 @@ function exportarActa(id) {
   const CSS = typeof CSS_BASE!=='undefined'?CSS_BASE:'';
   const NP  = typeof NO_PRINT_BAR!=='undefined'?NO_PRINT_BAR:'';
   const htmlDoc=`<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Acta — ${r.titulo}</title>${CSS}</head><body>${NP}
+  <title>Acta — ${__escH(r.titulo)}</title>${CSS}</head><body>${NP}
   <div class="page a4">
     <div class="hdr">
       <div><div class="hdr-nome">${escola}</div><div class="hdr-sub">Acta de Reunião</div></div>
       <div class="hdr-tipo"><div class="tipo">Acta</div><div class="cod">${r.id}</div></div>
     </div>
     <div class="g2" style="margin-bottom:14px">
-      <div class="campo"><div class="lbl">Reunião</div><div class="val">${r.titulo}</div></div>
+      <div class="campo"><div class="lbl">Reunião</div><div class="val">${__escH(r.titulo)}</div></div>
       <div class="campo"><div class="lbl">Data</div><div class="val">${r.data}</div></div>
       <div class="campo"><div class="lbl">Participantes</div>
         <div class="val" style="font-size:11px">${(r.participantes||[]).map(num=>PROFS.find(p=>p.num===num)?.nome||num).join(', ')||'—'}</div>
@@ -28284,7 +28313,7 @@ function exportarFolhaSalarios(mes) {
     </tr></thead><tbody>
       ${inteiroRows.length?inteiroRows.map((r,i)=>`<tr>
         <td style="text-align:center;font-size:10px">${i+1}</td>
-        <td style="font-weight:700">${r.p.nome}</td><td style="font-size:10px">${r.p.cargo||'Professor'}</td>
+        <td style="font-weight:700">${__escH(r.p.nome)}</td><td style="font-size:10px">${__escH(r.p.cargo ||'Professor')}</td>
         <td style="font-size:9px;font-family:monospace;color:#334155">${(()=>{try{const c=window.__contaDe?window.__contaDe(r.p.id):null;return c&&c.conta?((c.banco?c.banco+' ':'')+c.conta):'&nbsp;';}catch(e){return '&nbsp;';}})()}</td>
         <td style="text-align:right;font-family:monospace">${fmt(r.bruto)}</td>
         <td style="text-align:right;font-family:monospace">${r.subsTotal?'+'+fmt(r.subsTotal):'—'}</td>
@@ -28314,7 +28343,7 @@ function exportarFolhaSalarios(mes) {
     </tr></thead><tbody>
       ${parcialRows.length?parcialRows.map((r,i)=>`<tr>
         <td style="text-align:center;font-size:10px">${i+1}</td>
-        <td style="font-weight:700">${r.p.nome}<span style="font-size:9px;color:#94a3b8"> · ${r.p.num||''}</span></td>
+        <td style="font-weight:700">${__escH(r.p.nome)}<span style="font-size:9px;color:#94a3b8"> · ${__escH(r.p.num ||'')}</span></td>
         <td style="text-align:right;font-family:monospace">${r.aulas}</td>
         <td style="text-align:right;font-family:monospace">${fmt(r.valAula)}</td>
         <td style="text-align:right;font-family:monospace;font-weight:800">${fmt(r.total)}</td>
@@ -34725,12 +34754,14 @@ window.__finV30=true;})();
   window.__cacheDados = function(){
     try{
       if(!navigator.onLine) return;
+      /* v6.248 (OWASP A04): a cópia local não leva salários, valores nem dados bancários do staff, nem despesas */
+      var SENSIVEL=/sal|valor|remun|iban|nib|banco|conta|nuit|irps|inss|subs[ií]dio|extra/i;
+      var profsSemSal=(typeof PROFS!=='undefined'?PROFS:[]).map(function(p){ var o={}; Object.keys(p||{}).forEach(function(k){ if(!SENSIVEL.test(k)) o[k]=p[k]; }); return o; });
       var snap = {
         ts: Date.now(),
         alunos: (typeof ALUNOS!=='undefined'?ALUNOS:[]),
         turmas: (typeof TURMAS!=='undefined'?TURMAS:[]),
-        profs: (typeof PROFS!=='undefined'?PROFS:[]),
-        despesas: (window.DESPESAS_REG||[]),
+        profs: profsSemSal,
         config: (typeof CONFIG!=='undefined'?CONFIG:{}),
         settings: (typeof ESCOLA_SETTINGS!=='undefined'?ESCOLA_SETTINGS:{})
       };
@@ -34973,7 +35004,7 @@ window.__finV30=true;})();
 
   function dl(blob, nome){ var u=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=u; a.download=nome; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
   function baixarJSON(obj, nome){ dl(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}), nome); }
-  function carregarSheetJS(){ return new Promise(function(res,rej){ if(window.XLSX) return res(); var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; s.onload=function(){res();}; s.onerror=function(){rej(new Error('cdn'));}; document.head.appendChild(s); }); }
+  function carregarSheetJS(){ return new Promise(function(res,rej){ if(window.XLSX) return res(); var s=document.createElement('script'); s.src='/vendor/xlsx-0.20.3.full.min.js'; s.onload=function(){res();}; s.onerror=function(){rej(new Error('cdn'));}; document.head.appendChild(s); }); }
   function achatar(obj){ var o={}; Object.keys(obj||{}).forEach(function(k){ var v=obj[k]; o[k]=(v&&typeof v==='object')?JSON.stringify(v):v; }); return o; }
   async function baixarExcel(dump, nome){
     try{ await carregarSheetJS(); }catch(e){ if(typeof toast==='function') toast('Sem net para a biblioteca Excel — guardei só o JSON'); baixarJSON(dump, nome.replace('.xlsx','.json')); return; }
@@ -40057,7 +40088,7 @@ window.trimestreActual = function(d){
   window.exportarBalanceteExcel = function(){
     try{
       var X = window.XLSX;
-      if(!X){ if(typeof toast==='function') toast('A carregar Excel...'); var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=function(){ window.exportarBalanceteExcel(); }; document.head.appendChild(s); return; }
+      if(!X){ if(typeof toast==='function') toast('A carregar Excel...'); var s=document.createElement('script'); s.src='/vendor/xlsx-0.20.3.full.min.js'; s.onload=function(){ window.exportarBalanceteExcel(); }; document.head.appendChild(s); return; }
       var E = dadosExport(); var dt=E.dt;
       function n(v){ return Math.round(v||0); }
       var wb = X.utils.book_new();
@@ -42282,7 +42313,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         fr.readAsArrayBuffer(file);
       };
       if(window.XLSX) go2();
-      else { var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=go2; s.onerror=function(){ if(typeof toast==='function') toast('Sem internet para carregar o leitor de Excel — use CSV.'); }; document.head.appendChild(s); }
+      else { var s=document.createElement('script'); s.src='/vendor/xlsx-0.20.3.full.min.js'; s.onload=go2; s.onerror=function(){ if(typeof toast==='function') toast('Sem internet para carregar o leitor de Excel — use CSV.'); }; document.head.appendChild(s); }
       return;
     }
     var fr2=new FileReader();
