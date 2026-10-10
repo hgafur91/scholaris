@@ -536,6 +536,62 @@ const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ─── v6.250: listas com mais de 1000 linhas ──────────────────
+// O Supabase entrega no máximo 1000 linhas por pedido e corta o resto em
+// silêncio (alunos, faltas, sumários, notas de uma turma, facturas… numa
+// escola grande). Aqui, qualquer leitura de lista que volte com 1000 linhas
+// é repetida aos blocos, por ordem estável, até vir tudo. Pedidos com
+// .range()/.limit(), de um só registo (.single/.maybeSingle), contagens e
+// gravações não mudam. Instalado no protótipo: cobre todos os pedidos.
+(function instalarPaginacao(){
+  const LIMITE = 1000;
+  let proto = Object.getPrototypeOf(_supa.from('alunos').select('id'));
+  while (proto && !Object.prototype.hasOwnProperty.call(proto, 'then')) proto = Object.getPrototypeOf(proto);
+  if (!proto || proto.__paginacao) return;
+  const thenOriginal = proto.then;
+
+  async function lerTudo(q, primeira, comOrdemId){
+    const sp = q.url.searchParams;
+    const ordemAntes = sp.get('order');
+    if (comOrdemId) sp.set('order', ordemAntes ? ordemAntes + ',id.asc' : 'id.asc');
+    let todos = [], desde = 0, ultima = null;
+    try {
+      for (let volta = 0; volta < 1000; volta++) {
+        sp.set('offset', String(desde)); sp.set('limit', String(LIMITE));
+        ultima = await thenOriginal.call(q);
+        if (ultima.error) return { erro: ultima.error };
+        const bloco = Array.isArray(ultima.data) ? ultima.data : [];
+        todos = todos.concat(bloco);
+        if (bloco.length < LIMITE) break;
+        desde += LIMITE;
+      }
+    } finally {
+      sp.delete('offset'); sp.delete('limit');
+      if (ordemAntes) sp.set('order', ordemAntes); else sp.delete('order');
+    }
+    return { res: Object.assign({}, ultima, { data: todos, count: primeira.count != null ? primeira.count : ultima.count }) };
+  }
+
+  proto.then = function(onOk, onErro){
+    const q = this;
+    const sp = q && q.url && q.url.searchParams;
+    const aceita = (q && q.headers && typeof q.headers.get === 'function' && q.headers.get('Accept')) || '';
+    const simples = !sp || q.method !== 'GET' || sp.has('limit') || sp.has('offset')
+      || aceita.indexOf('vnd.pgrst.object') >= 0 || aceita.indexOf('text/csv') >= 0;
+    if (simples) return thenOriginal.call(q, onOk, onErro);
+    const p = (async () => {
+      const primeira = await thenOriginal.call(q);
+      if (primeira.error || !Array.isArray(primeira.data) || primeira.data.length < LIMITE) return primeira;
+      let r = await lerTudo(q, primeira, true);           // ordem estável por id
+      if (r.erro) r = await lerTudo(q, primeira, false);  // tabela sem coluna id
+      if (r.erro) { console.warn('[Scholaris] lista cortada em ' + LIMITE + ' linhas:', r.erro.message || r.erro); return primeira; }
+      return r.res;
+    })();
+    return p.then(onOk, onErro);
+  };
+  proto.__paginacao = true;
+})();
+
 // ─── Camada de compatibilidade Firebase → Supabase ───────────
 // Mantém window._db / window._auth / window._fs funcionais
 // para que o restante código não precise mudar
@@ -701,7 +757,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.249</span>
+    <span class="logo-ver">v6.250</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
