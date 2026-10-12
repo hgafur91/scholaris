@@ -757,7 +757,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.253</span>
+    <span class="logo-ver">v6.254</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -48565,7 +48565,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         +'<td style="font-size:12px">'+H(tipoNome(a.tipo))+'</td>'
         +'<td><select class="ffi" style="min-width:170px;font-size:12px;padding:5px 8px" onchange="window.__avalChefe(\''+A(a.staff_id)+'\',this.value)">'+opts+'</select></td>'
         +'<td>'+chip(a.estado)+'</td><td>'+classe(a.classificacao,a.nota_final)+'</td>'
-        +'<td style="text-align:right"><button class="btn btn-g btn-sm" onclick="window.__avalDetalhe(\''+A(a.id)+'\')">Abrir</button></td></tr>';
+        +'<td style="text-align:right;white-space:nowrap"><button class="btn btn-g btn-sm" title="Ficha individual (PDF)" onclick="window.__avalFicha(\''+A(a.id)+'\')"><i class="ti ti-file-text"></i></button> <button class="btn btn-g btn-sm" onclick="window.__avalDetalhe(\''+A(a.id)+'\')">Abrir</button></td></tr>';
     }).join('');
     el.innerHTML=chips+'<div class="card"><div class="tw"><table><thead><tr><th>Funcionário</th><th>Grelha</th><th>Chefe directo</th><th>Estado</th><th>Classificação</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div></div>'
       +'<div class="ib-box ib-blue" style="margin-top:12px"><i class="ti ti-info-circle"></i> A chefia avalia na opção <b>Avaliar a Minha Equipa</b>. Quem não tiver chefe directo pode ser avaliado aqui pelo RH ou pela direcção.</div>';
@@ -48604,7 +48604,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(a.plano_melhoria) corpo+=bloco('Plano de melhoria', H('Objectivos: '+(a.plano_melhoria.objectivos||'')+'\nAcções: '+(a.plano_melhoria.accoes||'')+'\nPrazo: '+(a.plano_melhoria.prazo||'')));
     if(a.validada_em) corpo+=bloco('Validação', H('Validada por '+(a.validada_por||'')+' em '+new Date(a.validada_em).toLocaleDateString('pt-PT')));
     if(a.conhecimento_em) corpo+=bloco('Conhecimento do funcionário', H(new Date(a.conhecimento_em).toLocaleDateString('pt-PT')+(a.conhecimento_comentario?' — '+a.conhecimento_comentario:'')));
-    var acc='<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:16px;border-top:1px solid var(--b);padding-top:14px">';
+    var acc='<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:16px;border-top:1px solid var(--b);padding-top:14px">'
+      +'<button class="btn btn-g btn-sm" style="margin-right:auto" onclick="window.__avalFicha(\''+A(a.id)+'\')"><i class="ti ti-file-text"></i> Ficha (PDF)</button>';
     if(a.estado==='chefia_feita'){
       corpo+='<div style="margin-top:14px;border:1px dashed var(--b);border-radius:10px;padding:12px"><div style="font-weight:700;margin-bottom:6px">Plano de melhoria '+(n!=null&&n<2.5?'<span style="color:#dc2626">(obrigatório — abaixo de «Bom»)</span>':'<span style="color:var(--t3);font-weight:400">(opcional)</span>')+'</div>'
         +'<textarea id="pm-obj" class="ffi" rows="2" placeholder="Objectivos a atingir" style="width:100%;margin-bottom:6px"></textarea>'
@@ -48778,9 +48779,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         +(a.chefia?bloco('Pontos fortes', H(a.chefia.pontos_fortes||''))+bloco('A melhorar', H(a.chefia.a_melhorar||''))+bloco('Comentário da chefia', H(a.chefia.comentario||'')):'')
         +(a.plano_melhoria?bloco('Plano de melhoria', H('Objectivos: '+(a.plano_melhoria.objectivos||'')+'\nAcções: '+(a.plano_melhoria.accoes||'')+'\nPrazo: '+(a.plano_melhoria.prazo||''))):'');
       if(a.estado==='validada'){
+        h+='<div style="margin-top:12px"><button class="btn btn-g btn-sm" onclick="window.__avalFicha(\''+A(a.id)+'\')"><i class="ti ti-file-text"></i> Ficha (PDF)</button></div>';
         h+='<div style="margin-top:14px;border-top:1px solid var(--b);padding-top:12px"><label style="font-size:12px;color:var(--t2)">Comentário seu (opcional)</label><textarea id="cn-coment" class="ffi" rows="3" style="width:100%"></textarea>'
           +'<div style="text-align:right;margin-top:10px"><button class="btn btn-p btn-sm" onclick="window.__avalConhecimento()"><i class="ti ti-check"></i> Tomei conhecimento</button></div></div>';
       } else {
+        h+='<div style="margin-top:12px"><button class="btn btn-g btn-sm" onclick="window.__avalFicha(\''+A(a.id)+'\')"><i class="ti ti-file-text"></i> Ficha (PDF)</button></div>';
         h+=bloco('Tomou conhecimento', H(new Date(a.conhecimento_em).toLocaleDateString('pt-PT')+(a.conhecimento_comentario?' — '+a.conhecimento_comentario:'')));
       }
     }
@@ -48798,26 +48801,196 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(!r.error){ aviso('Registado. Obrigado.'); window.rAvalMinha(); }
   };
 
+  /* ══════════════ 4) RELATÓRIOS (fase 4 — v6.254) ══════════════
+     · Ficha individual (documento A4, com marca de água/auditoria da app);
+     · Resumo do ano: distribuição das classificações, médias por grupo e
+       por critério, abaixo de «Bom» com plano, pendentes;
+     · Evolução de ano para ano (até 5 anos). ═══════════════════════════ */
+  var ORDEM_CLASSES=['Excelente','Muito Bom','Bom','Suficiente','Insuficiente'];
+  function fmtN(n){ return n==null?'—':Number(n).toFixed(2).replace('.',','); }
+  function dataPT(d){ try{ return d?new Date(d).toLocaleDateString('pt-PT'):''; }catch(e){ return ''; } }
+  function concluida(a){ return a.estado==='validada'||a.estado==='conhecimento'; }
+  function depNome(d){ return d==='academico'?'Académico':d==='gestao'?'Gestão':d==='financeiro'?'Financeiro':(d||'—'); }
+
+  /* ── ficha individual ── */
+  window.__avalFicha=function(id){
+    var a=porId(id) || (MINHA&&MINHA.id===id?Object.assign({nome:(curUser&&curUser.nome)||'', num:'', cargo:''}, MINHA):null);
+    if(!a){ aviso('Avaliação não encontrada'); return; }
+    var d=_docMeta('AD-'+(a.num||'')+'-'+anoSel); d.tipo='Avaliação de Desempenho';
+    var nv=niveis(a.grelha), resp=(a.chefia&&a.chefia.respostas)||{}, auto=(a.auto&&a.auto.respostas)||{};
+    var oficial=concluida(a);
+    var linhas=((a.grelha&&a.grelha.criterios)||[]).map(function(c){
+      var ch=parseInt(resp[c.id],10), au=parseInt(auto[c.id],10);
+      return '<tr><td><b>'+H(c.nome)+'</b><div style="font-size:8px;color:#64748b">'+H(c.descricao||'')+'</div></td>'
+        +'<td style="text-align:center">'+H(c.peso)+'</td><td style="text-align:center">'+(au||'—')+'</td>'
+        +'<td style="text-align:center;font-weight:800">'+(ch||'—')+'</td><td style="font-size:9px">'+(ch?H(nv[ch]):'')+'</td></tr>';
+    }).join('');
+    var ind=a.indicadores||{}, as=ind.assiduidade, su=ind.sumarios;
+    var txt=function(t,v){ return v?'<h3>'+H(t)+'</h3><div style="white-space:pre-wrap;font-size:10px">'+H(v)+'</div>':''; };
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Avaliação de Desempenho — '+H(a.nome)+'</title>'+CSS_BASE+'</head><body>'+NO_PRINT_BAR
+      +'<div class="page a4">'+_hdrHtml(d)
+      +(oficial?'':'<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:6px 10px;margin-bottom:10px;font-size:10px;color:#92400e"><b>Documento provisório</b> — a avaliação ainda não foi validada pelo RH.</div>')
+      +'<div class="g4" style="margin-bottom:10px">'
+      +'<div class="campo"><div class="lbl">Funcionário</div><div class="val">'+H(a.nome)+'</div></div>'
+      +'<div class="campo"><div class="lbl">Nº / Cargo</div><div class="val">'+H((a.num||'—')+' · '+(a.cargo||'—'))+'</div></div>'
+      +'<div class="campo"><div class="lbl">Ano / Grelha</div><div class="val">'+H(anoSel+' · '+tipoNome(a.tipo))+'</div></div>'
+      +'<div class="campo"><div class="lbl">Chefe directo</div><div class="val">'+H(a.chefe_nome||(a.chefia&&a.chefia.por)||'—')+'</div></div></div>'
+      +'<div style="display:flex;gap:14px;align-items:center;border:2px solid #0D1526;border-radius:8px;padding:10px 14px;margin-bottom:6px">'
+      +'<div><div style="font-size:8px;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em">Classificação final</div><div style="font-size:20px;font-weight:900;color:'+(CLASSE_COR[a.classificacao]||'#0D1526')+'">'+H(a.classificacao||'—')+'</div></div>'
+      +'<div style="font-size:12px">Nota: <b>'+H(fmtN(a.nota_final))+'</b> / 5</div>'
+      +'<div style="margin-left:auto;font-size:8px;color:#64748b;text-align:right">Escala: ≥4,5 Excelente · ≥3,5 Muito Bom · ≥2,5 Bom · ≥1,5 Suficiente · abaixo Insuficiente</div></div>'
+      +'<h3>Avaliação por critério</h3><table><thead><tr><th style="text-align:left">Critério</th><th>Peso</th><th>Auto</th><th>Chefia</th><th style="text-align:left">Nível (chefia)</th></tr></thead><tbody>'+linhas+'</tbody></table>'
+      +((as||su)?'<h3>Indicadores do ano</h3><div style="font-size:10px">'+(as?'Faltas injustificadas: <b>'+H(as.injustificadas)+'</b> · justificadas: '+H(as.justificadas)+' (nível sugerido '+H(as.nivel)+')':'')+(su&&a.tipo==='docente'?' &nbsp;·&nbsp; Sumários registados: <b>'+H(su.aulas)+'</b>':'')+'</div>':'')
+      +(a.revisao?'<h3>Revisão de meio do ano</h3><div style="font-size:10px">'+H(dataPT(a.revisao.data))+' — '+H(a.revisao.por||'')+'</div><div style="white-space:pre-wrap;font-size:10px">'+H(a.revisao.notas||'')+'</div>':'')
+      +txt('Comentário do funcionário (auto-avaliação)', a.auto&&a.auto.comentario)
+      +txt('Pontos fortes', a.chefia&&a.chefia.pontos_fortes)
+      +txt('A melhorar', a.chefia&&a.chefia.a_melhorar)
+      +txt('Comentário da chefia', a.chefia&&a.chefia.comentario)
+      +(a.plano_melhoria?'<h3>Plano de melhoria</h3><div style="font-size:10px"><b>Objectivos:</b> '+H(a.plano_melhoria.objectivos||'')+'<br><b>Acções:</b> '+H(a.plano_melhoria.accoes||'')+'<br><b>Prazo:</b> '+H(dataPT(a.plano_melhoria.prazo)||a.plano_melhoria.prazo||'')+'</div>':'')
+      +'<h3>Validação e conhecimento</h3><div style="font-size:10px">'
+      +(a.validada_em?'Validada por <b>'+H(a.validada_por||'')+'</b> em '+H(dataPT(a.validada_em)):'Ainda não validada')
+      +(a.conhecimento_em?' · O funcionário tomou conhecimento em '+H(dataPT(a.conhecimento_em))+(a.conhecimento_comentario?' — «'+H(a.conhecimento_comentario)+'»':''):'')+'</div>'
+      +'<div class="sig sig3"><div><div class="sig-line">O(A) Funcionário(a)</div></div><div><div class="sig-line">O(A) Chefe directo(a)</div></div><div><div class="sig-line">Recursos Humanos / Direcção</div></div></div>'
+      +'<div class="footer"><span>'+H(d.escola)+' · '+H(d.hoje)+'</span><span>'+H(d.cod)+'</span><span>Confidencial — uso restrito</span></div>'
+      +'</div></body></html>';
+    abrirJanela(html, 'Avaliação de Desempenho — '+a.nome);
+  };
+
+  /* ── relatórios ── */
+  var REL_TAB='resumo', REL={};
+  window.__avalRelTab=function(t){ REL_TAB=t; window.rAvalRelatorios(); };
+  window.__avalAnoRel=function(a){ anoSel=a; window.rAvalRelatorios(); };
+  async function dadosAno(ano){
+    if(REL[ano]) return REL[ano];
+    var r=await rpc('aval_equipa',{p_ano:ano, p_todos:true});
+    if(r.error) return null;
+    REL[ano]=r.data||[]; guardarUltimas(REL[ano]); return REL[ano];
+  }
+  function media(xs){ var v=xs.filter(function(x){ return x!=null; }); return v.length?Math.round(v.reduce(function(s,x){ return s+Number(x); },0)/v.length*100)/100:null; }
+  function barras(cont, total){
+    return ORDEM_CLASSES.map(function(c){
+      var n=cont[c]||0, pct=total?Math.round(n/total*100):0;
+      return '<div style="display:grid;grid-template-columns:110px 1fr 70px;gap:8px;align-items:center;margin-bottom:6px">'
+        +'<span style="font-size:12px;font-weight:700;color:'+CLASSE_COR[c]+'">'+H(c)+'</span>'
+        +'<div style="background:var(--bg3);border-radius:6px;height:16px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+CLASSE_COR[c]+';border-radius:6px"></div></div>'
+        +'<span style="font-size:12px;color:var(--t2);text-align:right">'+n+' · '+pct+'%</span></div>';
+    }).join('');
+  }
+  function resumoDados(L){
+    var conc=L.filter(concluida), cont={};
+    conc.forEach(function(a){ cont[a.classificacao]=(cont[a.classificacao]||0)+1; });
+    var grupos={};
+    conc.forEach(function(a){ var g=tipoNome(a.tipo)+' — '+depNome(a.dep); (grupos[g]=grupos[g]||[]).push(a); });
+    var crit={};
+    conc.forEach(function(a){ ((a.grelha&&a.grelha.criterios)||[]).forEach(function(c){
+      var k=tipoNome(a.tipo)+'|'+c.nome, v=parseInt((a.chefia&&a.chefia.respostas||{})[c.id],10);
+      if(v>=1&&v<=5){ (crit[k]=crit[k]||[]).push(v); } }); });
+    var fases={}; L.forEach(function(a){ fases[a.estado]=(fases[a.estado]||0)+1; });
+    return { conc:conc, cont:cont, grupos:grupos, crit:crit, fases:fases,
+             abaixo:conc.filter(function(a){ return a.nota_final!=null && a.nota_final<2.5; }),
+             pendentes:L.filter(function(a){ return !concluida(a); }) };
+  }
+  window.rAvalRelatorios=async function(){
+    var el=document.getElementById('aval-relatorios-c'); if(!el) return;
+    if(!gere()){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor de RH e à direcção.</div>'; return; }
+    var ac=document.getElementById('aval-relatorios-acoes');
+    if(ac) ac.innerHTML=seletorAno('window.__avalAnoRel')+' <button class="btn btn-g btn-sm" onclick="window.__avalRelImprimir()"><i class="ti ti-printer"></i> Imprimir relatório</button>';
+    var tabs='<div style="display:flex;gap:6px;margin-bottom:14px">'
+      +'<button class="btn btn-sm '+(REL_TAB==='resumo'?'btn-p':'btn-g')+'" onclick="window.__avalRelTab(\'resumo\')"><i class="ti ti-chart-bar"></i> Resumo de '+anoSel+'</button>'
+      +'<button class="btn btn-sm '+(REL_TAB==='evolucao'?'btn-p':'btn-g')+'" onclick="window.__avalRelTab(\'evolucao\')"><i class="ti ti-trending-up"></i> Evolução</button></div>';
+    el.innerHTML=tabs+'<div style="padding:20px;color:var(--t2)">A preparar o relatório…</div>';
+    if(REL_TAB==='evolucao'){ el.innerHTML=tabs+await htmlEvolucao(false); return; }
+    var L=await dadosAno(anoSel);
+    if(!L){ el.innerHTML=tabs; return; }
+    if(!L.length){ el.innerHTML=tabs+'<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Ainda não há avaliações abertas em '+anoSel+'.</div>'; return; }
+    el.innerHTML=tabs+htmlResumo(L, false);
+  };
+  function cartao(t, html){ return '<div class="card" style="margin-bottom:12px"><div class="ch"><span class="ct">'+H(t)+'</span></div><div class="cb" style="padding:14px">'+html+'</div></div>'; }
+  function htmlResumo(L, impressao){
+    var R=resumoDados(L), tot=R.conc.length;
+    var kpi=function(l,v,c){ return '<div style="border:1px solid var(--b);border-radius:12px;padding:12px;background:var(--card)"><div style="font-size:11px;color:var(--t2)">'+H(l)+'</div><div style="font-size:22px;font-weight:800;color:'+(c||'var(--t)')+'">'+v+'</div></div>'; };
+    var mGeral=media(R.conc.map(function(a){ return a.nota_final; }));
+    var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px">'
+      +kpi('Funcionários com avaliação', L.length)+kpi('Concluídas (validadas)', tot+' <span style="font-size:13px;color:var(--t2)">('+(L.length?Math.round(tot/L.length*100):0)+'%)</span>','#15803d')
+      +kpi('Nota média da escola', fmtN(mGeral)+(mGeral!=null?' <span style="font-size:13px">'+H(classifica(mGeral))+'</span>':''), CLASSE_COR[classifica(mGeral)])
+      +kpi('Abaixo de «Bom»', R.abaixo.length, R.abaixo.length?'#dc2626':'var(--t)')+'</div>';
+    h+=cartao('Distribuição das classificações (avaliações validadas)', tot?barras(R.cont, tot):'<span style="color:var(--t2)">Ainda não há avaliações validadas.</span>');
+    var gk=Object.keys(R.grupos).sort();
+    h+=cartao('Por grupo e departamento', gk.length?'<div class="tw"><table><thead><tr><th>Grupo</th><th>Validadas</th><th>Nota média</th>'+ORDEM_CLASSES.map(function(c){ return '<th>'+H(c)+'</th>'; }).join('')+'</tr></thead><tbody>'
+      +gk.map(function(g){ var xs=R.grupos[g], m=media(xs.map(function(a){ return a.nota_final; })), c={}; xs.forEach(function(a){ c[a.classificacao]=(c[a.classificacao]||0)+1; });
+        return '<tr><td><b>'+H(g)+'</b></td><td>'+xs.length+'</td><td>'+classe(classifica(m), m)+'</td>'+ORDEM_CLASSES.map(function(k){ return '<td style="text-align:center">'+(c[k]||'')+'</td>'; }).join('')+'</tr>'; }).join('')
+      +'</tbody></table></div>':'<span style="color:var(--t2)">—</span>');
+    var ck=Object.keys(R.crit).map(function(k){ var p=k.split('|'); return {g:p[0], c:p[1], m:media(R.crit[k]), n:R.crit[k].length}; }).sort(function(x,y){ return x.m-y.m; });
+    h+=cartao('Média por critério — onde a escola está mais forte e mais fraca', ck.length?'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">Ordenado do mais fraco para o mais forte. Os primeiros são candidatos a formação para todo o pessoal.</div>'
+      +ck.map(function(x){ var pct=Math.round((x.m/5)*100), cl=classifica(x.m);
+        return '<div style="display:grid;grid-template-columns:minmax(160px,1.4fr) 2fr 60px;gap:8px;align-items:center;margin-bottom:5px"><span style="font-size:12px">'+H(x.c)+' <span style="color:var(--t3)">('+H(x.g)+')</span></span>'
+          +'<div style="background:var(--bg3);border-radius:6px;height:12px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(CLASSE_COR[cl]||'#64748b')+'"></div></div>'
+          +'<span style="font-size:12px;text-align:right;font-weight:700">'+fmtN(x.m)+'</span></div>'; }).join('')
+      :'<span style="color:var(--t2)">Ainda não há avaliações validadas.</span>');
+    h+=cartao('Abaixo de «Bom» — planos de melhoria', R.abaixo.length?'<div class="tw"><table><thead><tr><th>Funcionário</th><th>Classificação</th><th>Objectivos do plano</th><th>Prazo</th>'+(impressao?'':'<th></th>')+'</tr></thead><tbody>'
+      +R.abaixo.map(function(a){ var p=a.plano_melhoria||{}; return '<tr><td><b>'+H(a.nome)+'</b><div style="font-size:11px;color:var(--t2)">'+H(a.cargo||'')+'</div></td><td>'+classe(a.classificacao,a.nota_final)+'</td><td style="font-size:12px">'+H(p.objectivos||'—')+'</td><td style="font-size:12px">'+H(dataPT(p.prazo)||p.prazo||'—')+'</td>'
+        +(impressao?'':'<td><button class="btn btn-g btn-sm" onclick="window.__avalFicha(\''+A(a.id)+'\')"><i class="ti ti-file-text"></i> Ficha</button></td>')+'</tr>'; }).join('')+'</tbody></table></div>'
+      :'<span style="color:var(--t2)">Ninguém abaixo de «Bom».</span>');
+    h+=cartao('Pendentes ('+R.pendentes.length+')', R.pendentes.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+Object.keys(ESTADOS).filter(function(k){ return !/validada|conhecimento/.test(k); }).map(function(k){ return chip(k)+' <b style="font-size:12px;margin-right:10px">'+(R.fases[k]||0)+'</b>'; }).join('')+'</div>'
+      +'<div style="font-size:12px;color:var(--t2)">'+R.pendentes.map(function(a){ return H(a.nome)+' <span style="color:var(--t3)">('+H((ESTADOS[a.estado]||{}).l||a.estado)+(a.chefe_nome?'':', sem chefe')+')</span>'; }).join(' · ')+'</div>'
+      :'<span style="color:#15803d">Todas as avaliações estão concluídas.</span>');
+    return h;
+  }
+  async function htmlEvolucao(impressao){
+    var anos=[anoSel-4,anoSel-3,anoSel-2,anoSel-1,anoSel], dados={}, pessoas={};
+    for(var i=0;i<anos.length;i++){ var L=await dadosAno(anos[i]); dados[anos[i]]=L||[]; (L||[]).forEach(function(a){ (pessoas[a.staff_id]=pessoas[a.staff_id]||{nome:a.nome, cargo:a.cargo, notas:{}}).notas[anos[i]]=concluida(a)?a.nota_final:null; }); }
+    var usados=anos.filter(function(y){ return dados[y].length; });
+    if(!usados.length) return '<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Ainda não há avaliações nos últimos 5 anos.</div>';
+    var medias=usados.map(function(y){ return media(dados[y].filter(concluida).map(function(a){ return a.nota_final; })); });
+    var ids=Object.keys(pessoas).sort(function(x,y){ return pessoas[x].nome.localeCompare(pessoas[y].nome,'pt'); });
+    var seta=function(ns){ var v=usados.map(function(y){ return ns[y]; }).filter(function(x){ return x!=null; }); if(v.length<2) return '<span style="color:var(--t3)">—</span>'; var d=v[v.length-1]-v[v.length-2];
+      return d>0.05?'<span style="color:#15803d;font-weight:800">▲ '+fmtN(d)+'</span>':d<-0.05?'<span style="color:#dc2626;font-weight:800">▼ '+fmtN(-d)+'</span>':'<span style="color:var(--t2)">= estável</span>'; };
+    var h=cartao('Nota média da escola por ano', '<div style="display:flex;gap:12px;align-items:flex-end;height:150px;padding:6px 4px">'
+      +usados.map(function(y,i){ var m=medias[i], alt=m?Math.round(m/5*120):2;
+        return '<div style="flex:1;text-align:center"><div style="font-size:12px;font-weight:800;margin-bottom:4px">'+fmtN(m)+'</div><div style="height:'+alt+'px;background:'+(CLASSE_COR[classifica(m)]||'#94a3b8')+';border-radius:6px 6px 0 0"></div><div style="font-size:12px;color:var(--t2);margin-top:4px">'+y+'</div></div>'; }).join('')+'</div>');
+    h+=cartao('Evolução de cada funcionário (avaliações validadas)', '<div class="tw"><table><thead><tr><th>Funcionário</th>'+usados.map(function(y){ return '<th>'+y+'</th>'; }).join('')+'<th>Último ano</th></tr></thead><tbody>'
+      +ids.map(function(id){ var p=pessoas[id]; return '<tr><td><b>'+H(p.nome)+'</b><div style="font-size:11px;color:var(--t2)">'+H(p.cargo||'')+'</div></td>'
+        +usados.map(function(y){ var n=p.notas[y]; return '<td style="text-align:center">'+(n!=null?'<span style="font-weight:700;color:'+(CLASSE_COR[classifica(n)]||'var(--t)')+'">'+fmtN(n)+'</span>':'<span style="color:var(--t3)">—</span>')+'</td>'; }).join('')
+        +'<td style="text-align:center">'+seta(p.notas)+'</td></tr>'; }).join('')+'</tbody></table></div>');
+    return h;
+  }
+  window.__avalRelImprimir=async function(){
+    var corpo, titulo;
+    if(REL_TAB==='evolucao'){ corpo=await htmlEvolucao(true); titulo='Evolução da Avaliação de Desempenho'; }
+    else { var L=await dadosAno(anoSel); if(!L||!L.length){ aviso('Sem dados para imprimir'); return; } corpo=htmlResumo(L, true); titulo='Relatório de Avaliação de Desempenho '+anoSel; }
+    var d=_docMeta('RAD-'+anoSel); d.tipo=titulo;
+    /* no documento as variáveis de tema da app não existem: cores fixas para papel */
+    var css='<style>:root{--t:#1e293b;--t2:#475569;--t3:#94a3b8;--b:#e2e8f0;--bg3:#f1f5f9;--card:#fff}.card{border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;page-break-inside:avoid}.ch{padding:8px 12px;border-bottom:1px solid #e2e8f0}.ct{font-weight:800;font-size:11px;color:#0D1526}.cb{padding:10px 12px}.tw{overflow:visible}td,th{font-size:9px}.ib-box{padding:8px;border:1px solid #f59e0b;border-radius:6px}</style>';
+    abrirJanela('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+H(titulo)+'</title>'+CSS_BASE+css+'</head><body>'+NO_PRINT_BAR
+      +'<div class="page a4">'+_hdrHtml(d)+corpo
+      +'<div class="footer"><span>'+H(d.escola)+' · '+H(d.hoje)+'</span><span>'+H(d.cod)+'</span><span>Confidencial — uso restrito</span></div></div></body></html>', titulo);
+  };
+
   /* ── registo dos ecrãs e menus ── */
   registar('aval-gestao','Avaliação de Desempenho','Abrir o ano, chefes directos, validação e grelhas', function(){ window.rAvalGestao(); });
   registar('aval-equipa','Avaliar a Minha Equipa','Revisão de meio do ano e avaliação de quem chefia', function(){ window.rAvalEquipa(); });
   registar('aval-minha','A Minha Avaliação','Auto-avaliação e resultado da avaliação de desempenho', function(){ window.rAvalMinha(); });
+  registar('aval-relatorios','Relatórios de Desempenho','Resumo do ano, médias por critério e evolução', function(){ window.rAvalRelatorios(); });
 
   try{
     var ITEM_GESTAO={i:'ti-star',l:'Avaliação de Desempenho',id:'aval-gestao'};
     var ITEM_EQUIPA={i:'ti-users-group',l:'Avaliar a Minha Equipa',id:'aval-equipa'};
     var ITEM_MINHA ={i:'ti-user-star',l:'A Minha Avaliação',id:'aval-minha'};
+    var ITEM_REL   ={i:'ti-chart-histogram',l:'Relatórios de Desempenho',id:'aval-relatorios'};
     /* RH: troca o antigo «Avaliações» pelo módulo novo */
     var rh=ROLES['gestor-rh'];
     if(rh && rh.sidebar && rh.sidebar[0] && rh.sidebar[0].flat){
       rh.sidebar[0].flat=rh.sidebar[0].flat.filter(function(x){ return x.id!=='aval' && x.id!=='aval-dep'; });
-      rh.sidebar[0].flat.splice(2,0,ITEM_GESTAO);
+      rh.sidebar[0].flat.splice(2,0,ITEM_GESTAO,ITEM_REL);
       rh.sidebar.push({sl:'O Meu Desempenho',flat:[ITEM_EQUIPA, ITEM_MINHA]});
     }
     /* direcção: o item «Avaliações» passa a abrir o módulo novo */
     ['gestor','director'].forEach(function(r){
       (ROLES[r]&&ROLES[r].sidebar||[]).forEach(function(s){
-        (s.sub||s.flat||[]).forEach(function(x){ if(x.id==='aval'){ x.id='aval-gestao'; x.l='Avaliação de Desempenho'; } });
+        (s.sub||s.flat||[]).forEach(function(x){
+          if(x.id==='aval'){ x.id='aval-gestao'; x.l='Avaliação de Desempenho'; }
+          else if(x.id==='aval-dep'){ x.id='aval-relatorios'; x.l='Relatórios de Desempenho'; x.i='ti-chart-histogram'; }
+        });
       });
       if(ROLES[r]&&ROLES[r].sidebar) ROLES[r].sidebar.push({sl:'O Meu Desempenho',flat:[ITEM_EQUIPA, ITEM_MINHA]});
     });
@@ -48844,7 +49017,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 
   /* navegação: algumas camadas de go() não consultam o RENDER_MAP — garantir
      que estes três ecrãs ficam visíveis e são desenhados */
-  var ECRAS={'aval-gestao':function(){ window.rAvalGestao(); }, 'aval-equipa':function(){ window.rAvalEquipa(); }, 'aval-minha':function(){ window.rAvalMinha(); }};
+  var ECRAS={'aval-gestao':function(){ window.rAvalGestao(); }, 'aval-equipa':function(){ window.rAvalEquipa(); }, 'aval-minha':function(){ window.rAvalMinha(); }, 'aval-relatorios':function(){ window.rAvalRelatorios(); }};
   function embrulharGo(){
     if(typeof window.go!=='function' || window.go.__aval253) return;
     var anterior=window.go;
