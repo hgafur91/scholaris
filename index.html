@@ -757,7 +757,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.254</span>
+    <span class="logo-ver">v6.255</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -48529,7 +48529,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function bloco(titulo, html){ return html?'<div style="margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">'+H(titulo)+'</div><div style="font-size:13px;color:var(--t);white-space:pre-wrap">'+html+'</div></div>':''; }
 
   /* ══════════════ 1) GESTÃO (RH e direcção) ══════════════ */
-  var LISTA=[], filtro='';
+  var LISTA=[], filtro='', GES_AL=null;
   window.__avalAnoGestao=function(a){ anoSel=a; window.rAvalGestao(); };
   window.__avalFiltro=function(f){ filtro=f; desenharGestao(); };
   window.rAvalGestao=async function(){
@@ -48537,11 +48537,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(!gere()){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor de RH e à direcção.</div>'; return; }
     var ac=document.getElementById('aval-gestao-acoes');
     if(ac) ac.innerHTML=seletorAno('window.__avalAnoGestao')
+      +' <button class="btn btn-g btn-sm" onclick="window.__avalCalendario()"><i class="ti ti-calendar-event"></i> Calendário</button>'
       +' <button class="btn btn-g btn-sm" onclick="window.__avalGrelhas()"><i class="ti ti-list-check"></i> Grelhas</button>'
       +' <button class="btn btn-p btn-sm" onclick="window.__avalAbrirAno()"><i class="ti ti-player-play"></i> Abrir avaliação de '+anoSel+'</button>';
     el.innerHTML='<div style="padding:24px;color:var(--t2)">A carregar avaliações…</div>';
     var r=await rpc('aval_equipa',{p_ano:anoSel, p_todos:true});
     LISTA=(r.data||[]); guardarUltimas(LISTA);
+    GES_AL=await lerAlertas(anoSel);
     desenharGestao();
   };
   function desenharGestao(){
@@ -48567,7 +48569,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
         +'<td>'+chip(a.estado)+'</td><td>'+classe(a.classificacao,a.nota_final)+'</td>'
         +'<td style="text-align:right;white-space:nowrap"><button class="btn btn-g btn-sm" title="Ficha individual (PDF)" onclick="window.__avalFicha(\''+A(a.id)+'\')"><i class="ti ti-file-text"></i></button> <button class="btn btn-g btn-sm" onclick="window.__avalDetalhe(\''+A(a.id)+'\')">Abrir</button></td></tr>';
     }).join('');
-    el.innerHTML=chips+'<div class="card"><div class="tw"><table><thead><tr><th>Funcionário</th><th>Grelha</th><th>Chefe directo</th><th>Estado</th><th>Classificação</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div></div>'
+    el.innerHTML=faixaFases(GES_AL)+chips+'<div class="card"><div class="tw"><table><thead><tr><th>Funcionário</th><th>Grelha</th><th>Chefe directo</th><th>Estado</th><th>Classificação</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div></div>'
       +'<div class="ib-box ib-blue" style="margin-top:12px"><i class="ti ti-info-circle"></i> A chefia avalia na opção <b>Avaliar a Minha Equipa</b>. Quem não tiver chefe directo pode ser avaliado aqui pelo RH ou pela direcção.</div>';
   }
   window.__avalAbrirAno=async function(){
@@ -48691,15 +48693,17 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     el.innerHTML='<div style="padding:24px;color:var(--t2)">A carregar a equipa…</div>';
     var r=await rpc('aval_equipa',{p_ano:anoSel, p_todos:false});
     EQUIPA=r.data||[]; guardarUltimas(EQUIPA);
+    var alE=await lerAlertas(anoSel), rvAb=gere()||!!(faseInfo(alE,'revisao')||{}).aberta, chAb=gere()||!!(faseInfo(alE,'chefia')||{}).aberta;
     if(!EQUIPA.length){ el.innerHTML='<div class="card"><div class="cb" style="padding:28px;text-align:center;color:var(--t2)">Não tem funcionários a avaliar em '+anoSel+'.<br><span style="font-size:12px">O RH define quem é chefe directo de quem e abre o ano de avaliação.</span></div></div>'; return; }
-    el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">'+EQUIPA.map(function(a){
+    el.innerHTML=faixaFases(alE)+'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">'+EQUIPA.map(function(a){
       var pode=['aberta','auto_feita','chefia_feita'].indexOf(a.estado)>=0;
       return '<div class="card"><div class="cb" style="padding:14px">'
         +'<div style="font-weight:800;color:var(--t)">'+H(a.nome)+'</div><div style="font-size:12px;color:var(--t2);margin-bottom:8px">'+H(a.cargo||'')+' · '+H(tipoNome(a.tipo))+'</div>'
         +chip(a.estado)+(a.devolvida_motivo?' <span style="font-size:11px;color:#b45309"><i class="ti ti-arrow-back-up"></i> devolvida</span>':'')
         +'<div style="font-size:12px;color:var(--t2);margin-top:8px">'+(a.auto?'<i class="ti ti-check"></i> Auto-avaliação feita':'<i class="ti ti-clock"></i> Sem auto-avaliação')+'<br>'+(a.revisao?'<i class="ti ti-check"></i> Revisão de meio do ano feita':'<i class="ti ti-clock"></i> Revisão de meio do ano por fazer')+'</div>'
         +'<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
-        +(pode?'<button class="btn btn-g btn-sm" onclick="window.__avalRevisaoForm(\''+A(a.id)+'\')"><i class="ti ti-messages"></i> Revisão</button><button class="btn btn-p btn-sm" onclick="window.__avalChefiaForm(\''+A(a.id)+'\')"><i class="ti ti-pencil"></i> Avaliar</button>'
+        +(pode?(rvAb?'<button class="btn btn-g btn-sm" onclick="window.__avalRevisaoForm(\''+A(a.id)+'\')"><i class="ti ti-messages"></i> Revisão</button>':'<button class="btn btn-g btn-sm" disabled title="Fora das datas da revisão" style="opacity:.5"><i class="ti ti-messages"></i> Revisão</button>')
+              +(chAb?'<button class="btn btn-p btn-sm" onclick="window.__avalChefiaForm(\''+A(a.id)+'\')"><i class="ti ti-pencil"></i> Avaliar</button>':'<button class="btn btn-p btn-sm" disabled title="Fora das datas da avaliação pelas chefias" style="opacity:.5"><i class="ti ti-pencil"></i> Avaliar</button>')
               :'<span style="font-size:12px">'+classe(a.classificacao,a.nota_final)+'</span>')
         +'</div></div></div>';
     }).join('')+'</div>';
@@ -48715,7 +48719,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   };
   window.__avalRevisaoGravar=async function(id){
     var r=await rpc('aval_revisao',{p_id:id, p_data:(document.getElementById('rv-data')||{}).value||null, p_notas:(document.getElementById('rv-notas')||{}).value||''});
-    if(!r.error){ aviso('Revisão gravada'); fecharModal(); recarregarTudo(); }
+    if(!r.error){ aviso('Revisão gravada'); fecharModal(); recarregarTudo(); actualizarAlertas(true); }
   };
   window.__avalChefiaForm=function(id){
     var a=porId(id); if(!a) return;
@@ -48744,7 +48748,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }
     var r=await rpc('aval_guardar_chefia',{p_id:id, p_resp:resp, p_comentario:(document.getElementById('ch-coment')||{}).value||'',
       p_fortes:(document.getElementById('ch-fortes')||{}).value||'', p_melhorar:(document.getElementById('ch-melhorar')||{}).value||'', p_submeter:!!submeter});
-    if(!r.error){ aviso(submeter?'Avaliação submetida ao RH':'Rascunho guardado'); fecharModal(); recarregarTudo(); }
+    if(!r.error){ aviso(submeter?'Avaliação submetida ao RH':'Rascunho guardado'); fecharModal(); recarregarTudo(); actualizarAlertas(true); }
   };
   function recarregarTudo(){
     try{ if(document.getElementById('v-aval-gestao') && document.getElementById('v-aval-gestao').classList.contains('on')) window.rAvalGestao(); }catch(e){}
@@ -48760,10 +48764,18 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(!window._meuStaffId){ el.innerHTML='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> A sua conta não está ligada a uma ficha de funcionário. Fale com o RH.</div>'; return; }
     el.innerHTML='<div style="padding:24px;color:var(--t2)">A carregar…</div>';
     var r=await rpc('aval_minha',{p_ano:anoSel}); MINHA=r.data||null;
+    var alM=await lerAlertas(anoSel), auF=faseInfo(alM,'auto');
     if(r.error) { el.innerHTML=''; return; }
     if(!MINHA){ el.innerHTML='<div class="card"><div class="cb" style="padding:28px;text-align:center;color:var(--t2)"><i class="ti ti-star" style="font-size:34px;display:block;margin-bottom:8px;color:var(--t3)"></i>A avaliação de '+anoSel+' ainda não foi aberta pelo RH.</div></div>'; return; }
     var a=MINHA, h='<div style="margin-bottom:12px">'+chip(a.estado)+' <span style="font-size:13px;color:var(--t2);margin-left:6px">'+H(tipoNome(a.tipo))+'</span></div>';
-    if(a.estado==='aberta'){
+    if(a.estado==='aberta' && !(auF&&auF.aberta)){
+      var hj=alM&&alM.hoje;
+      h+='<div class="ib-box ib-am"><i class="ti ti-calendar-event"></i> '+(auF&&auF.inicio
+          ? (auF.inicio>hj ? 'A auto-avaliação de '+anoSel+' decorre de <b>'+H(d2(auF.inicio))+'</b> a <b>'+H(d2(auF.fim))+'</b>. Nessa altura recebe um alerta.'
+                           : 'O prazo da auto-avaliação terminou a <b>'+H(d2(auF.fim))+'</b>. A sua chefia vai avaliá-lo(a) na mesma.')
+          : 'O RH ainda não marcou as datas da auto-avaliação de '+anoSel+'.')+'</div>';
+    } else if(a.estado==='aberta'){
+      h+='<div class="ib-box ib-am" style="margin-bottom:8px"><i class="ti ti-clock"></i> Prazo: até <b>'+H(d2(auF.fim))+'</b>.</div>';
       h+='<div class="ib-box ib-blue" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> <b>Auto-avaliação.</b> Avalie o seu próprio trabalho neste ano, de 1 a 5 em cada critério. A sua chefia vai ver as suas respostas ao lado das dela. Depois de submeter já não pode alterar.</div>'
         +grelhaHTML(a.grelha, {}, 'au-', 'editar')
         +'<label style="font-size:12px;color:var(--t2)">Comentário (o que correu bem, dificuldades, que apoio precisa)</label><textarea id="au-coment" class="ffi" rows="4" style="width:100%"></textarea>'
@@ -48794,11 +48806,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     if(falta.length){ aviso('Falta responder: '+falta.map(function(c){ return c.nome; }).join(', ')); return; }
     if(!confirm('Submeter a sua auto-avaliação? Depois de submeter não pode alterar.')) return;
     var r=await rpc('aval_submeter_auto',{p_ano:anoSel, p_resp:resp, p_comentario:(document.getElementById('au-coment')||{}).value||''});
-    if(!r.error){ aviso('Auto-avaliação entregue'); window.rAvalMinha(); }
+    if(!r.error){ aviso('Auto-avaliação entregue'); window.rAvalMinha(); actualizarAlertas(true); }
   };
   window.__avalConhecimento=async function(){
     var r=await rpc('aval_tomar_conhecimento',{p_ano:anoSel, p_comentario:(document.getElementById('cn-coment')||{}).value||''});
-    if(!r.error){ aviso('Registado. Obrigado.'); window.rAvalMinha(); }
+    if(!r.error){ aviso('Registado. Obrigado.'); window.rAvalMinha(); actualizarAlertas(true); }
   };
 
   /* ══════════════ 4) RELATÓRIOS (fase 4 — v6.254) ══════════════
@@ -48965,6 +48977,113 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'<div class="page a4">'+_hdrHtml(d)+corpo
       +'<div class="footer"><span>'+H(d.escola)+' · '+H(d.hoje)+'</span><span>'+H(d.cod)+'</span><span>Confidencial — uso restrito</span></div></div></body></html>', titulo);
   };
+
+  /* ══════════════ 5) CALENDÁRIO E ALERTAS (v6.255) ══════════════
+     O RH marca as datas de cada fase (revisão, auto-avaliação, chefias);
+     o servidor só aceita cada acção dentro das datas. Quando uma fase está a
+     decorrer, cada pessoa vê um alerta no seu perfil com o que tem por fazer. */
+  var FASES=[
+    {k:'revisao', l:'Revisão de meio do ano', q:'chefias registam a conversa com cada funcionário'},
+    {k:'auto',    l:'Auto-avaliação',         q:'cada funcionário avalia o próprio trabalho'},
+    {k:'chefia',  l:'Avaliação pelas chefias', q:'cada chefe avalia a sua equipa e submete ao RH'}
+  ];
+  var ALERTA=null;
+  function d2(s){ try{ return s?new Date(s+'T12:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric'}):''; }catch(e){ return s||''; } }
+  function estadoFase(f, hoje){
+    if(!f||!f.inicio||!f.fim) return {t:'Por marcar', c:'var(--t3)'};
+    if(f.aberta) return {t:'A decorrer até '+d2(f.fim), c:'#15803d'};
+    if(hoje && f.inicio>hoje) return {t:'Começa a '+d2(f.inicio), c:'#2563eb'};
+    return {t:'Terminou a '+d2(f.fim), c:'var(--t2)'};
+  }
+  async function lerAlertas(ano){
+    if(!ligado()) return null;
+    try{ var r=await sb().rpc('aval_alertas',{p_ano:ano}); return r.error?null:r.data; }catch(e){ return null; }
+  }
+  function faseInfo(al, k){ return (al&&al.fases&&al.fases[k])||null; }
+
+  /* RH: marcar as datas */
+  window.__avalCalendario=async function(){
+    if(!ligado()){ aviso('Disponível só com a escola ligada.'); return; }
+    var r=await sb().from('aval_periodos').select('*').eq('escola_id',window._escolaId).eq('ano',anoSel).maybeSingle();
+    var p=(r&&r.data)||{}, al=await lerAlertas(anoSel);
+    var corpo='<div style="font-size:13px;color:var(--t2);margin-bottom:12px">Escolha quando decorre cada fase da avaliação de '+anoSel+'. Fora destas datas a app não deixa fazer a fase (o RH e a direcção podem sempre corrigir). Durante cada fase, as pessoas envolvidas vêem um alerta no seu perfil.</div>'
+      +FASES.map(function(f){
+        var est=estadoFase(faseInfo(al,f.k), al&&al.hoje);
+        return '<div style="border:1px solid var(--b);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+          +'<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>'+H(f.l)+'</b><div style="font-size:11px;color:var(--t2)">'+H(f.q)+'</div></div><span style="font-size:12px;font-weight:700;color:'+est.c+'">'+H(est.t)+'</span></div>'
+          +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><label style="font-size:12px;color:var(--t2)">De</label><input id="cal-'+f.k+'-i" class="ffi" type="date" value="'+H(p[f.k+'_inicio']||'')+'" style="width:auto">'
+          +'<label style="font-size:12px;color:var(--t2)">a</label><input id="cal-'+f.k+'-f" class="ffi" type="date" value="'+H(p[f.k+'_fim']||'')+'" style="width:auto">'
+          +'<button class="btn btn-g btn-sm" onclick="document.getElementById(\'cal-'+f.k+'-i\').value=\'\';document.getElementById(\'cal-'+f.k+'-f\').value=\'\'">Limpar</button></div></div>';
+      }).join('')
+      +'<label style="font-size:12px;color:var(--t2)">Mensagem para o pessoal (opcional — aparece no alerta)</label><textarea id="cal-msg" class="ffi" rows="2" style="width:100%">'+H(p.mensagem||'')+'</textarea>'
+      +'<div style="text-align:right;margin-top:12px"><button class="btn btn-p btn-sm" onclick="window.__avalCalGravar()"><i class="ti ti-device-floppy"></i> Gravar calendário</button></div>';
+    modal('Calendário da avaliação — '+anoSel, corpo, 640);
+  };
+  window.__avalCalGravar=async function(){
+    var row={escola_id:window._escolaId, ano:anoSel, mensagem:(document.getElementById('cal-msg')||{}).value||null,
+             actualizado_em:new Date().toISOString(), actualizado_por:(curUser&&curUser.nome)||''};
+    for(var i=0;i<FASES.length;i++){
+      var k=FASES[i].k, a=(document.getElementById('cal-'+k+'-i')||{}).value||null, b=(document.getElementById('cal-'+k+'-f')||{}).value||null;
+      if((a&&!b)||(b&&!a)){ aviso(FASES[i].l+': indique o início e o fim'); return; }
+      if(a&&b&&b<a){ aviso(FASES[i].l+': o fim não pode ser antes do início'); return; }
+      row[k+'_inicio']=a; row[k+'_fim']=b;
+    }
+    var r=await sb().from('aval_periodos').upsert(row,{onConflict:'escola_id,ano'}).select('ano');
+    if(r.error){ aviso('Não foi possível gravar: '+r.error.message); return; }
+    aviso('Calendário de '+anoSel+' gravado'); fecharModal();
+    try{ window.rAvalGestao(); }catch(e){} actualizarAlertas(true);
+  };
+  function faixaFases(al){
+    if(!al) return '';
+    return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+FASES.map(function(f){
+      var e=estadoFase(faseInfo(al,f.k), al.hoje);
+      return '<div style="border:1px solid var(--b);border-radius:10px;padding:6px 10px;font-size:12px;background:var(--card)"><b>'+H(f.l)+'</b> · <span style="color:'+e.c+';font-weight:700">'+H(e.t)+'</span></div>';
+    }).join('')+'</div>';
+  }
+
+  /* alerta no perfil de cada funcionário */
+  function itensAlerta(al){
+    var it=[]; if(!al) return it;
+    var au=faseInfo(al,'auto'), ch=faseInfo(al,'chefia'), rv=faseInfo(al,'revisao');
+    if(au&&au.aberta && al.minha_estado==='aberta') it.push({t:'Está a decorrer a <b>auto-avaliação de '+H(al.ano)+'</b> — até '+H(d2(au.fim))+'.', b:'Fazer a minha auto-avaliação', go:'aval-minha'});
+    if(ch&&ch.aberta && +al.equipa_por_avaliar>0) it.push({t:'Está a decorrer a <b>avaliação pelas chefias</b> — tem <b>'+H(al.equipa_por_avaliar)+'</b> funcionário(s) por avaliar, até '+H(d2(ch.fim))+'.', b:'Avaliar a minha equipa', go:'aval-equipa'});
+    if(rv&&rv.aberta && +al.equipa_sem_revisao>0) it.push({t:'Está a decorrer a <b>revisão de meio do ano</b> — faltam <b>'+H(al.equipa_sem_revisao)+'</b> conversa(s) por registar, até '+H(d2(rv.fim))+'.', b:'Abrir a minha equipa', go:'aval-equipa'});
+    if(al.minha_estado==='validada') it.push({t:'A sua <b>avaliação de desempenho de '+H(al.ano)+'</b> foi validada. Veja o resultado e confirme que tomou conhecimento.', b:'Ver a minha avaliação', go:'aval-minha'});
+    return it;
+  }
+  function chaveFechado(al){ return 'aval-alerta-fechado-'+(al?al.ano+'-'+JSON.stringify(itensAlerta(al).map(function(x){ return x.go+x.t.length; })):''); }
+  window.__avalAlertaFechar=function(){ try{ sessionStorage.setItem(chaveFechado(ALERTA),'1'); }catch(e){} var b=document.getElementById('aval-alerta'); if(b) b.remove(); };
+  window.__avalAlertaIr=function(id){ var b=document.getElementById('aval-alerta'); if(b) b.remove(); go(id); };
+  function desenharAlerta(){
+    var antigo=document.getElementById('aval-alerta'); if(antigo) antigo.remove();
+    ['aval-minha','aval-equipa'].forEach(function(id){ var s=document.getElementById('si-'+id); if(s){ var d=s.querySelector('.aval-ponto'); if(d) d.remove(); } });
+    var it=itensAlerta(ALERTA); if(!it.length) return;
+    /* ponto vermelho nos itens do menu */
+    it.forEach(function(x){ var s=document.getElementById('si-'+x.go); if(s && !s.querySelector('.aval-ponto')){ var d=document.createElement('span'); d.className='aval-ponto'; d.style.cssText='display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-left:6px;vertical-align:middle'; s.appendChild(d); } });
+    try{ if(sessionStorage.getItem(chaveFechado(ALERTA))) return; }catch(e){}
+    var main=document.querySelector('.main')||document.querySelector('#main'); if(!main) return;
+    var b=document.createElement('div'); b.id='aval-alerta';
+    b.style.cssText='margin:0 0 14px;border:1px solid rgba(245,158,11,.45);background:rgba(245,158,11,.10);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start';
+    b.innerHTML='<i class="ti ti-bell-ringing" style="font-size:22px;color:#d97706;margin-top:2px"></i><div style="flex:1">'
+      +(ALERTA.mensagem?'<div style="font-weight:700;margin-bottom:4px">'+H(ALERTA.mensagem)+'</div>':'')
+      +it.map(function(x){ return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:3px 0"><span style="font-size:13px">'+x.t+'</span><button class="btn btn-p btn-sm" onclick="window.__avalAlertaIr(\''+x.go+'\')">'+H(x.b)+'</button></div>'; }).join('')
+      +'</div><button onclick="window.__avalAlertaFechar()" title="Esconder até à próxima entrada" style="background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer;line-height:1">&times;</button>';
+    main.insertBefore(b, main.firstChild);
+  }
+  async function actualizarAlertas(forcar){
+    try{
+      if(!window._meuStaffId || !ligado()){ ALERTA=null; desenharAlerta(); return; }
+      ALERTA=await lerAlertas(anoAct());
+      var primeira=!window.__avalAlertaToast;
+      desenharAlerta();
+      if(primeira && itensAlerta(ALERTA).length){ window.__avalAlertaToast=true; aviso('Tem tarefas da avaliação de desempenho por fazer'); }
+    }catch(e){}
+  }
+  window.__avalActualizarAlertas=actualizarAlertas;
+  /* depois de entrar: verificar já e a cada 15 minutos */
+  var vistoStaff=null;
+  setInterval(function(){ if(window._meuStaffId && window._meuStaffId!==vistoStaff){ vistoStaff=window._meuStaffId; window.__avalAlertaToast=false; actualizarAlertas(true); } }, 2000);
+  setInterval(function(){ if(window._meuStaffId) actualizarAlertas(false); }, 15*60*1000);
 
   /* ── registo dos ecrãs e menus ── */
   registar('aval-gestao','Avaliação de Desempenho','Abrir o ano, chefes directos, validação e grelhas', function(){ window.rAvalGestao(); });
