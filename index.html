@@ -757,7 +757,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.251</span>
+    <span class="logo-ver">v6.252</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3617,6 +3617,7 @@ ROLES['gestor-rh']={nome:'Gestor de RH',cargo:'Gestor de RH',avt:'RH',color:'#8b
   sidebar:[
     {sl:'Recursos Humanos',flat:[
       {i:'ti-briefcase',l:'Pessoal / Departamentos',id:'staff'},
+      {i:'ti-cash',l:'Folha de Salários',id:'folha-salarios'},
       {i:'ti-star',l:'Avaliações',id:'aval'},
       {i:'ti-chart-bar',l:'Avaliação por Departamento',id:'aval-dep'},
       {i:'ti-calendar-x',l:'Faltas do Pessoal',id:'relat-faltas-prof'},
@@ -34368,7 +34369,7 @@ window.__finV30=true;})();
   function nomeMes(m){ return MESES[m]||(''+m); }
   function ano(){ return (typeof CONFIG!=='undefined'&&CONFIG.anoLectivo)||2026; }
   function fmtN(n){ try{ return Math.round(n||0).toLocaleString('pt-PT').replace(/\u00A0/g,' '); }catch(e){ return ''+(n||0); } }
-  function podeEditar(){ return curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'; }
+  function podeEditar(){ return curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'||curRole==='gestor-rh'; }
   function calcIRPSl(b){ try{ return (typeof calcIRPS==='function')?calcIRPS(b):Math.round(b*0.15); }catch(e){ return Math.round(b*0.15); } }
   function getFolhas(){ if(typeof CONFIG==='undefined') return {}; if(!CONFIG.folhas) CONFIG.folhas={}; return CONFIG.folhas; }
   function getFolha(a,m){ var F=getFolhas(); return (F[a]&&F[a][m])||null; }
@@ -34433,7 +34434,7 @@ window.__finV30=true;})();
   window.__aprovarFolha=function(m){
     if(!podeEditar()){ if(typeof toast==='function') toast('Apenas gestor ou director'); return; }
     var a=ano(); var f=getFolha(a,m); if(!f){ if(typeof toast==='function') toast('Gere a folha primeiro'); return; }
-    if(!confirm('Aprovar e TRANCAR a folha de '+nomeMes(m)+'?\n\nDepois de aprovada, este mês fica só de leitura e não pode ser editado.')) return;
+    if(!confirm('Fechar e TRANCAR a folha de '+nomeMes(m)+'?\n\nDepois de fechada, este mês fica só de leitura. Só a direcção a pode reabrir.')) return;
     f.status='aprovada'; f.aprovadaPor=((typeof curUser!=='undefined'&&curUser)?curUser.nome:'')||''; f.aprovadaEm=new Date().toISOString();
     // Escrever UMA linha de despesa (salários) para o mês — alimenta o balancete
     try{
@@ -34509,7 +34510,7 @@ window.__finV30=true;})();
   };
   window.__folhaRender=function(cid, soFechadas){
     var el=document.getElementById(cid||'folha-sal-c'); if(!el) return;
-    if(!['gestor','director','gestor-financeiro'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito &mdash; apenas Gestor Geral, Director e Gestor Financeiro.</div>'; return; }
+    if(!['gestor','director','gestor-financeiro','gestor-rh'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito &mdash; apenas Gestor Geral, Director e Gestor Financeiro.</div>'; return; }
     var a=ano();
     var m=window.__folhaMes||(new Date().getMonth()+1);
     var f=getFolha(a,m);
@@ -34538,7 +34539,7 @@ window.__finV30=true;})();
           +'<button class="si" style="width:100%;border-radius:0" onclick="window.__folhaExpFecha();window.__folhaImpostos('+m+')"><i class="ti ti-receipt-tax" style="font-size:15px"></i><span>Extracto de Impostos</span></button>'
         +'</div></div>';
       if(!_aprov && podeEditar()) h+='<button class="btn btn-p btn-sm" style="margin-left:6px;border-left:3px solid rgba(255,255,255,.35)" onclick="window.__aprovarFolha('+m+')" title="Acção irreversível — tranca o mês"><i class="ti ti-lock"></i> Aprovar e Trancar</button>';
-      if(_aprov && podeEditar()) h+='<button class="btn btn-am btn-sm" style="margin-left:6px" onclick="window.__reabrirFolha('+m+')"><i class="ti ti-lock-open"></i> Destrancar</button>';
+      if(_aprov && (curRole==='gestor'||curRole==='director')) h+='<button class="btn btn-am btn-sm" style="margin-left:6px" onclick="window.__reabrirFolha('+m+')"><i class="ti ti-lock-open"></i> Destrancar</button>';
     }
     h+='</div>';
     /* aviso: contas bancárias em falta (v6.162) */
@@ -34631,7 +34632,8 @@ window.__finV30=true;})();
   window.__delDespesaFolhaDB=function(id){ try{ if(window._supabase && window._escolaId && window._escolaId!=='escola_demo'){ window._supabase.from('despesas').delete().eq('escola_id',window._escolaId).eq('desp_id',id).then(function(){},function(){}); } }catch(e){} };
   // Reabrir uma folha fechada (gestor/director) — volta a rascunho e sai do balancete
   window.__reabrirFolha=function(m){
-    if(!podeEditar()){ if(typeof toast==='function') toast('Apenas gestor ou director'); return; }
+    /* v6.252: reabrir é só da direcção (o servidor também o impõe) */
+    if(!(curRole==='gestor'||curRole==='director')){ if(typeof toast==='function') toast('Só a direcção pode reabrir uma folha fechada'); return; }
     var a=ano(); var f=getFolha(a,m); if(!f||f.status!=='aprovada') return;
     if(!confirm('Reabrir a folha de '+nomeMes(m)+'?\n\nVolta a rascunho e fica editável. A despesa de salários sai do balancete até voltar a ser aprovada.')) return;
     f.status='rascunho'; f.aprovadaPor=null; f.aprovadaEm=null;
@@ -35654,7 +35656,7 @@ window.__finV30=true;})();
   };
   function curMes(){ return window.__folhaMes||(new Date().getMonth()+1); }
   function getF(m){ try{ var a=anoL(); return (CONFIG.folhas&&CONFIG.folhas[a]&&CONFIG.folhas[a][m])||null; }catch(e){ return null; } }
-  function podeEd(){ try{ return curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'; }catch(e){ return false; } }
+  function podeEd(){ try{ return curRole==='gestor'||curRole==='director'||curRole==='gestor-financeiro'||curRole==='gestor-rh'; }catch(e){ return false; } }
   function parciais(){ return (PROFS||[]).filter(function(p){ if(p.regime!=='parcial') return false; var n=(p.nome||'').toLowerCase(); if(n.indexOf('nora ismael')>=0) return false; return true; }).sort(function(x,y){return (x.nome||'').localeCompare(y.nome||'');}); }
 
   window.__aulasParcial=function(pid,a,m){ var f=getF(m); var p=(PROFS||[]).find(function(x){return String(x.id)===String(pid);}); if(!p) return 0;
@@ -46698,6 +46700,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var r=papel();
     if(['gestor','director','gestor-financeiro'].indexOf(r)>=0) return true;
     if(r==='secretario') return FIN_SECRETARIO.indexOf(id)>=0;
+    if(r==='gestor-rh') return id==='folha-salarios';   // v6.252: o RH prepara e fecha a folha
     return false;
   }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
@@ -47800,6 +47803,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var r=papel();
     if(['gestor','director','gestor-financeiro'].indexOf(r)>=0) return true;
     if(r==='secretario') return FIN_SECRETARIO.indexOf(id)>=0;
+    if(r==='gestor-rh') return id==='folha-salarios';   // v6.252: o RH prepara e fecha a folha
     return false;
   }
   window.__podeFinanceiro=podeFinanceiro;
@@ -48033,19 +48037,46 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function temConfig(){ try{ return typeof CONFIG!=='undefined' && CONFIG; }catch(e){ return false; } }
 
   /* ── Trazer da tabela para a memória ─────────────────────────────────── */
+  /* v6.252: as folhas vivem em `folhas_salario` (uma linha por mês, fecho
+     trancado no servidor). Em memória mantém-se o formato de sempre
+     (CONFIG.folhas[ano][mes] com status/aprovadaPor/aprovadaEm), por isso o
+     resto da app não muda. As contas bancárias dos funcionários continuam em
+     `escola_financas`. */
+  function semEstado(f){ var o={}; for(var k in f){ if(k!=='status' && k!=='aprovadaPor' && k!=='aprovadaEm') o[k]=f[k]; } return o; }
+  function assinatura(f){ return JSON.stringify(semEstado(f))+'|'+(f.status==='aprovada'?'fechada':'rascunho'); }
+  window.__folhasSnap = {};
   window.__carregarFinancas = async function(){
     if(!ligado() || !temConfig()) return false;
+    var okFolhas = false;
     try{
-      var r = await sb().from('escola_financas').select('folhas, contas_banco').eq('escola_id', esc()).maybeSingle();
-      /* Sem linha devolvida é porque quem está ligado não tem direito a vê-la
-         (regra da tabela). Nesse caso não se mexe no CONFIG nem se marca como
-         lido — assim ninguém grava por cima com um objecto vazio. */
-      if(r.error || !r.data) return false;
-      CONFIG.folhas      = r.data.folhas || {};
-      CONFIG.contasBanco = r.data.contas_banco || {};
-      window.__financasCarregadas = true;
-      return true;
-    }catch(e){ return false; }
+      var rf = await sb().from('folhas_salario').select('ano, mes, dados, estado, fechada_por, fechada_em').eq('escola_id', esc());
+      /* Erro = não marca como lido: assim nada se grava por cima. Sem direito
+         (ex.: professor) vem uma lista vazia — e essa pessoa não edita folhas. */
+      if(!rf.error && Array.isArray(rf.data)){
+        var F = {}, snap = {};
+        rf.data.forEach(function(r){
+          var f = Object.assign({}, r.dados || {});
+          f.status = (r.estado === 'fechada') ? 'aprovada' : 'rascunho';
+          f.aprovadaPor = r.fechada_por || null;
+          f.aprovadaEm = r.fechada_em || null;
+          (F[r.ano] = F[r.ano] || {})[r.mes] = f;
+          snap[r.ano + '-' + r.mes] = assinatura(f);
+        });
+        CONFIG.folhas = F;
+        window.__folhasSnap = snap;
+        okFolhas = true;
+      }
+    }catch(e){ console.warn('[folhas] leitura:', e && e.message); }
+    try{
+      var r = await sb().from('escola_financas').select('contas_banco').eq('escola_id', esc()).maybeSingle();
+      if(!r.error && r.data){
+        CONFIG.contasBanco = r.data.contas_banco || {};
+        window.__contasSnap = JSON.stringify(CONFIG.contasBanco);
+        window.__contasCarregadas = true;
+      }
+    }catch(e){ console.warn('[contas] leitura:', e && e.message); }
+    window.__financasCarregadas = okFolhas;
+    return okFolhas;
   };
 
   /* ── Levar da memória para a tabela ──────────────────────────────────────
@@ -48061,18 +48092,48 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     }
     if(aGravar){ porGravar=true; return; }
     aGravar=true;
+    var recarregar=false;
     try{
-      var quem=''; try{ quem=(curUser && curUser.nome)||''; }catch(e){}
-      var r=await sb().from('escola_financas').upsert({
-        escola_id: esc(),
-        folhas: CONFIG.folhas || {},
-        contas_banco: CONFIG.contasBanco || {},
-        actualizado_em: new Date().toISOString(),
-        actualizado_por: quem
-      }, { onConflict:'escola_id' });
-      if(r && r.error){ try{ toast('Não foi possível gravar a folha: '+r.error.message); }catch(e){} }
-    }catch(e){}
+      var F = CONFIG.folhas || {};
+      var mudadas = [];
+      Object.keys(F).forEach(function(a){
+        if(!/^\d{4}$/.test(a) || !F[a] || typeof F[a]!=='object') return;
+        Object.keys(F[a]).forEach(function(m){
+          var f = F[a][m]; if(!f || typeof f!=='object' || !/^\d{1,2}$/.test(m)) return;
+          var ch = a + '-' + m, ass = assinatura(f);
+          if(window.__folhasSnap[ch] === ass) return;
+          mudadas.push({ ch:ch, ass:ass, f:f, row:{ escola_id:esc(), ano:+a, mes:+m, dados:semEstado(f),
+                         estado:(f.status==='aprovada'?'fechada':'rascunho') } });
+        });
+      });
+      for(var i=0;i<mudadas.length;i++){
+        var x = mudadas[i];
+        var r = await sb().from('folhas_salario').upsert(x.row, { onConflict:'escola_id,ano,mes' })
+                          .select('estado, fechada_por, fechada_em').single();
+        if(r.error){
+          try{ toast('Não foi possível gravar a folha de '+x.row.mes+'/'+x.row.ano+': '+r.error.message); }catch(e){}
+          if(/fechada/i.test(r.error.message||'')) recarregar=true;   // alguém fechou entretanto
+          continue;
+        }
+        window.__folhasSnap[x.ch] = x.ass;
+        var d = Array.isArray(r.data) ? r.data[0] : r.data;
+        if(d){ x.f.aprovadaPor = d.fechada_por || null; x.f.aprovadaEm = d.fechada_em || null; }
+      }
+      if(window.__contasCarregadas){
+        var cs = JSON.stringify(CONFIG.contasBanco || {});
+        if(cs !== window.__contasSnap){
+          var quem=''; try{ quem=(curUser && curUser.nome)||''; }catch(e){}
+          var rc = await sb().from('escola_financas').upsert({
+            escola_id: esc(), contas_banco: CONFIG.contasBanco || {},
+            actualizado_em: new Date().toISOString(), actualizado_por: quem
+          }, { onConflict:'escola_id' });
+          if(rc && rc.error){ try{ toast('Não foi possível gravar as contas: '+rc.error.message); }catch(e){} }
+          else window.__contasSnap = cs;
+        }
+      }
+    }catch(e){ console.warn('[folhas] gravação:', e && e.message); }
     aGravar=false;
+    if(recarregar){ try{ await window.__carregarFinancas(); if(window.__folhaRerender) window.__folhaRerender(); }catch(e){} }
     if(porGravar){ porGravar=false; window.__gravarFinancas(); }
   };
 
