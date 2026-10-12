@@ -757,7 +757,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.250</span>
+    <span class="logo-ver">v6.251</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3013,6 +3013,7 @@ window.__escA = function (s) {
           <option value="dir-pedagogico">Director Pedagógico</option>
           <option value="secretario">Secretário</option>
           <option value="director">Director Escolar</option>
+          <option value="gestor-rh">Gestor de RH</option>
           <option value="gestor-financeiro">Gestor Financeiro</option>
         </select>
         <div id="ns-role-preview" style="display:none;background:var(--bg3);border-radius:var(--rads);padding:8px 14px;font-size:12px;color:var(--t2);margin-top:4px;border:1px solid var(--b)"></div>
@@ -3610,6 +3611,18 @@ const ROLES={
     ]}
 };
 
+// v6.251: Gestor de RH — pessoal, contratos, faltas e férias do pessoal, avaliações.
+// Não vê alunos, propinas nem finanças (a base de dados também o impede).
+ROLES['gestor-rh']={nome:'Gestor de RH',cargo:'Gestor de RH',avt:'RH',color:'#8b5cf6',badge:'Gestor de RH',
+  sidebar:[
+    {sl:'Recursos Humanos',flat:[
+      {i:'ti-briefcase',l:'Pessoal / Departamentos',id:'staff'},
+      {i:'ti-star',l:'Avaliações',id:'aval'},
+      {i:'ti-chart-bar',l:'Avaliação por Departamento',id:'aval-dep'},
+      {i:'ti-calendar-x',l:'Faltas do Pessoal',id:'relat-faltas-prof'},
+    ]},
+  ]};
+
 function selRole(r,btn){document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');curRole=r}
 
 function doLogin(){
@@ -3719,7 +3732,7 @@ function applyPermissions(){
   // Gestão académica (classes, planos)
   if(!gs){ hide('btn-nova-classe'); hide('btn-novo-plano'); }
 }
-function canSeeSalary(){return ['gestor','director','gestor-financeiro'].includes(curRole);}
+function canSeeSalary(){return ['gestor','director','gestor-financeiro','gestor-rh'].includes(curRole);}
 
 
 // ══ NAVEGAÇÃO ══
@@ -3786,7 +3799,7 @@ function getPlanoAnalitico(tid, disc) {
 
 function go(id){
   // Acesso à vista de Professores restrito a Gestor Geral e Director Geral
-  if(id==='professores' && !['gestor','director'].includes(curRole)){
+  if(id==='professores' && !['gestor','director','gestor-rh'].includes(curRole)){
     if(typeof toast==='function') toast('Acesso restrito — apenas Gestor Geral e Director Geral podem ver os professores.');
     return;
   }
@@ -4665,7 +4678,7 @@ function renderAlPresencas(a,id){
 
 // ══ PROFESSORES ══
 function rPr(list){
-  if(!['gestor','director'].includes(curRole)){
+  if(!['gestor','director','gestor-rh'].includes(curRole)){
     var _elpr=document.getElementById('tb-pr');
     if(_elpr) _elpr.innerHTML='<tr><td colspan="10" style="padding:30px;text-align:center;color:var(--t2)"><i class="ti ti-lock" style="font-size:22px;color:var(--r);display:block;margin-bottom:8px"></i>Acesso restrito — apenas Gestor Geral e Director Geral.</td></tr>';
     return;
@@ -4687,7 +4700,7 @@ function rPr(list){
 function fPr(f,btn){document.querySelectorAll('#v-professores .chip').forEach(c=>c.classList.remove('on'));if(btn)btn.classList.add('on');const base=PROFS.filter(p=>p.dep==='academico');rPr(f==='inteiro'?base.filter(p=>p.regime==='inteiro'):f==='parcial'?base.filter(p=>p.regime==='parcial'):base)}
 
 function openProf(id){
-  if(!['gestor','director'].includes(curRole)){ if(typeof toast==='function') toast('Acesso restrito — apenas Gestor Geral e Director Geral.'); return; }
+  if(!['gestor','director','gestor-rh'].includes(curRole)){ if(typeof toast==='function') toast('Acesso restrito — apenas a direcção e o Gestor de RH.'); return; }
   const p=PROFS.find(x=>x.id===id);if(!p)return;
   window.curProfId=id; // track for export buttons
   const i=PROFS.indexOf(p),c=gc(i+2);
@@ -6021,7 +6034,7 @@ function rAvalLanding(){
   var staff=(typeof PROFS!=='undefined'?PROFS:[])||[];
   var sel=document.getElementById('aval-sel');
   if(sel){ sel.innerHTML='<option value="">Seleccionar colaborador...</option>'+
-    staff.map(function(p){ return '<option value="'+p.id+'">'+(p.num||'')+' — '+p.nome+'</option>'; }).join(''); }
+    staff.map(function(p){ return '<option value="'+window.__escH(p.id)+'">'+window.__escH(p.num||'')+' — '+window.__escH(p.nome)+'</option>'; }).join(''); }
   var el=document.getElementById('aval-c'); if(!el) return;
   if(!staff.length){ el.innerHTML='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> Sem colaboradores registados para avaliar.</div>'; return; }
   el.innerHTML='<div class="card"><div class="ch"><span class="ct">Escolha um colaborador para avaliar</span>'
@@ -6037,7 +6050,7 @@ function loadAval(id){
   const p=PROFS.find(x=>x.id==id);if(!p)return;
   const inds=p.dep==='academico'?IND_PROF:IND_GEST;
   const c=gc(PROFS.indexOf(p));
-  if(curRole!=='gestor'){document.getElementById('aval-c').innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor Geral.</div>';return}
+  if(!['gestor','gestor-rh'].includes(curRole)){document.getElementById('aval-c').innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor Geral e ao Gestor de RH.</div>';return}
   document.getElementById('aval-c').innerHTML=`
     <div class="profile-hero" style="margin-bottom:18px">
       <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px">
@@ -6060,7 +6073,7 @@ function updSl(el,id,i){const v=+el.value;const sp=document.getElementById(`vv-$
 
 // ══ AVALIAÇÃO DEPARTAMENTO ══
 function rAvalDep(){
-  if(curRole!=='gestor'){document.getElementById('avaldep-c').innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor Geral.</div>';return}
+  if(!['gestor','gestor-rh'].includes(curRole)){document.getElementById('avaldep-c').innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor Geral e ao Gestor de RH.</div>';return}
   const deps=['academico','gestao','financeiro'];const nd={academico:'<i class="ti ti-school"></i> Departamento Académico',gestao:'<i class="ti ti-building"></i> Departamento de Gestão',financeiro:'<i class="ti ti-currency-dollar"></i> Departamento Financeiro'};
   document.getElementById('avaldep-c').innerHTML=deps.map(dep=>{
     const inds=dep==='academico'?[{k:'Taxa de aprovação geral',p:30},{k:'Cumprimento dos planos',p:25},{k:'Assiduidade docente',p:20},{k:'Satisfação dos alunos',p:25}]:dep==='gestao'?[{k:'Eficiência administrativa',p:30},{k:'Gestão de recursos',p:25},{k:'Resposta a solicitações',p:25},{k:'Qualidade dos processos',p:20}]:[{k:'Taxa de cobrança',p:35},{k:'Rigor contabilístico',p:30},{k:'Controlo orçamental',p:20},{k:'Relatórios em prazo',p:15}];
@@ -6216,7 +6229,7 @@ async function fbLogin() {
     if (!user) { showLoginError('Erro ao autenticar.'); resetBtn(); return; }
 
     // 2. Carregar perfil (papel canónico directo, sem mapa com fugas)
-    const CANON_ROLES = ['gestor','director','gestor-financeiro','dir-pedagogico','dir-ciclo','secretario','professor','encarregado','aluno'];
+    const CANON_ROLES = ['gestor','director','gestor-financeiro','gestor-rh','dir-pedagogico','dir-ciclo','secretario','professor','encarregado','aluno'];
     const normalizarPapel = (p) => {
       if (!p) return null;
       let r = String(p).trim().replace(/_/g, '-'); // dir_pedagogico -> dir-pedagogico
@@ -6297,7 +6310,7 @@ function _entrarNaApp(userData) {
   loadDadosEscola().then(() => {
     const startView = {
       aluno:'portal', professor:'portal-prof',
-      encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard'   // v6.210: 'portal-enc' não está em VM → ecrã em branco ao entrar
+      encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'staff'   // v6.210: 'portal-enc' não está em VM → ecrã em branco ao entrar
     }[curRole] || 'dash';
     go(startView);
     toast('Bem-vindo, ' + curUser.nome + '!');
@@ -6755,7 +6768,7 @@ function doLoginDemo() {
   curUser._profId = profMatch?.id  || null;
   const startView = {
     aluno:'portal', professor:'portal-prof',
-    encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard',   // v6.210
+    encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'staff',   // v6.210
   }[curRole] || 'dash';
   go(startView);
   toast('Modo demonstração activo — dados não são guardados');
@@ -13628,10 +13641,10 @@ setupRole = function() {
   // Extend colour maps for new roles in setupRole
   const pill = document.getElementById('role-pill');
   if (!pill) return;
-  const extraBgs   = {'dir-pedagogico':'rgba(6,182,212,.15)', 'dir-ciclo':'rgba(245,158,11,.15)', 'gestor-financeiro':'rgba(16,185,129,.15)'};
-  const extraBds   = {'dir-pedagogico':'rgba(6,182,212,.3)',  'dir-ciclo':'rgba(245,158,11,.3)',  'gestor-financeiro':'rgba(16,185,129,.35)'};
-  const extraIcons = {'dir-pedagogico':'ti-user-shield',      'dir-ciclo':'ti-circles',           'gestor-financeiro':'ti-cash'};
-  const extraColors= {'dir-pedagogico':'var(--tl)',           'dir-ciclo':'var(--am)',            'gestor-financeiro':'#10b981'};
+  const extraBgs   = {'dir-pedagogico':'rgba(6,182,212,.15)', 'gestor-rh':'rgba(139,92,246,.15)', 'dir-ciclo':'rgba(245,158,11,.15)', 'gestor-financeiro':'rgba(16,185,129,.15)'};
+  const extraBds   = {'dir-pedagogico':'rgba(6,182,212,.3)', 'gestor-rh':'rgba(139,92,246,.3)',  'dir-ciclo':'rgba(245,158,11,.3)',  'gestor-financeiro':'rgba(16,185,129,.35)'};
+  const extraIcons = {'dir-pedagogico':'ti-user-shield', 'gestor-rh':'ti-users-group',      'dir-ciclo':'ti-circles',           'gestor-financeiro':'ti-cash'};
+  const extraColors= {'dir-pedagogico':'var(--tl)', 'gestor-rh':'#8b5cf6',           'dir-ciclo':'var(--am)',            'gestor-financeiro':'#10b981'};
   if (extraBgs[curRole]) {
     pill.style.cssText = `background:${extraBgs[curRole]};border-color:${extraBds[curRole]};color:${extraColors[curRole]}`;
     pill.innerHTML = `<i class="ti ${extraIcons[curRole]}" style="font-size:12px"></i>${curUser.badge||curRole}`;
@@ -21959,6 +21972,7 @@ function autoFillStaffFromRole(role) {
     'dir-pedagogico': {cargo:'Director Pedagógico',dep:'academico'},
     'secretario':     {cargo:'Secretário',         dep:'gestao'},
     'director':       {cargo:'Director Escolar',   dep:'gestao'},
+    'gestor-rh':      {cargo:'Gestor de RH',       dep:'gestao'},
   };
   const info=map[role];
   if(!info)return;
@@ -22172,10 +22186,10 @@ function rUtilizadores() {
   });
 
   const allUsers = [...systemUsers, ...staffUsers];
-  const roleLabel = { gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico',
+  const roleLabel = { gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico', 'gestor-rh':'Gestor de RH',
     'dir-ciclo':'Director de Ciclo', secretario:'Secretário', professor:'Professor',
     aluno:'Aluno', 'encarregado':'Encarregado' };
-  const roleCor = { gestor:'var(--a)', director:'var(--a2)', 'dir-pedagogico':'var(--tl)',
+  const roleCor = { gestor:'var(--a)', director:'var(--a2)', 'dir-pedagogico':'var(--tl)', 'gestor-rh':'#8b5cf6',
     'dir-ciclo':'var(--am)', secretario:'var(--g)', professor:'var(--g)' };
 
   el.innerHTML = `
@@ -22575,12 +22589,12 @@ rUtilizadores = function() {
   });
 
   const roleLabel = {
-    gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico',
+    gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico', 'gestor-rh':'Gestor de RH',
     'dir-ciclo':'Dir. Ciclo', secretario:'Secretário', professor:'Professor',
     aluno:'Aluno', encarregado:'Encarregado',
   };
   const roleCor = {
-    gestor:'var(--a)', director:'var(--a2)', 'dir-pedagogico':'var(--tl)',
+    gestor:'var(--a)', director:'var(--a2)', 'dir-pedagogico':'var(--tl)', 'gestor-rh':'#8b5cf6',
     'dir-ciclo':'var(--am)', secretario:'var(--g)', professor:'var(--g)',
     aluno:'var(--pi)', encarregado:'var(--r)',
   };
@@ -23521,14 +23535,14 @@ function rMeuPerfilProf() {
   const turmasIds = [...new Set(alocs.map(a => a.turma))];
 
   const roleCor = {
-    gestor:'var(--a)', director:'var(--a2)', 'dir-pedagogico':'var(--tl)',
+    gestor:'var(--a)', director:'var(--a2)', 'dir-pedagogico':'var(--tl)', 'gestor-rh':'#8b5cf6',
     'dir-ciclo':'var(--am)', professor:'var(--g)',
   }[curRole] || 'var(--a)';
 
   const cargosLabel = {
     'dir-ciclo-1':'Dir. CEP1','dir-ciclo-2':'Dir. CEP2',
     'dir-ciclo-3':'Dir. CES1','dir-ciclo-4':'Dir. CES2',
-    director:'Director','dir-pedagogico':'Dir. Pedagógico',
+    director:'Director','dir-pedagogico':'Dir. Pedagógico', 'gestor-rh':'Gestor de RH',
   };
 
   el.innerHTML = `
@@ -23887,7 +23901,7 @@ function mppRenderTab(tab, prof, alocs, turmasIds, ciclo) {
       const cargosH  = (prof.cargos||[]).map(c => ({
         'dir-ciclo-1':'Director CEP1','dir-ciclo-2':'Director CEP2',
         'dir-ciclo-3':'Director CES1','dir-ciclo-4':'Director CES2',
-        director:'Director Escolar','dir-pedagogico':'Director Pedagógico',
+        director:'Director Escolar','dir-pedagogico':'Director Pedagógico', 'gestor-rh':'Gestor de RH',
       }[c] || c));
 
       el.innerHTML = `
@@ -24008,11 +24022,11 @@ function gerarCartaoStaffHTML(prof, paraImpressao) {
   const R = paraImpressao ? '4mm'    : '8px';
 
   const roleCores = {
-    gestor:'#4f8ef7', director:'#7c6af7', 'dir-pedagogico':'#06b6d4',
+    gestor:'#4f8ef7', director:'#7c6af7', 'dir-pedagogico':'#06b6d4', 'gestor-rh':'#8b5cf6',
     'dir-ciclo':'#f59e0b', professor:'#22c55e', secretario:'#22c55e',
   };
   const roleLabels = {
-    gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico',
+    gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico', 'gestor-rh':'Gestor de RH',
     'dir-ciclo':'Director de Ciclo', professor:'Professor', secretario:'Secretário',
   };
   const accentCor = roleCores[curRole] || '#4f8ef7';
@@ -24171,13 +24185,14 @@ const ROLES_STAFF = [
   { value:'dir-ciclo',      label:'Director de Ciclo',   icon:'ti-circles',        cor:'var(--am)' },
   { value:'professor',      label:'Professor',           icon:'ti-chalkboard',     cor:'var(--g)'  },
   { value:'secretario',     label:'Secretário',          icon:'ti-clipboard-text', cor:'var(--g)'  },
+  { value:'gestor-rh',      label:'Gestor de RH',        icon:'ti-users-group',    cor:'#8b5cf6' },
 ];
 
 // Quem pode atribuir quais roles
 function getRolesAtribuiveis() {
   if (curRole === 'gestor') return ROLES_STAFF; // all
   if (curRole === 'director') return ROLES_STAFF.filter(r =>
-    ['dir-pedagogico','dir-ciclo','professor','secretario'].includes(r.value));
+    ['dir-pedagogico','dir-ciclo','professor','secretario','gestor-rh'].includes(r.value));
   return []; // dir-ciclo só atribui DT (cargo, não role)
 }
 
@@ -33934,7 +33949,7 @@ window.__finV30=true;})();
     { v:'secretario',     t:'Secretário',          soGestor:false },
     { v:'professor',      t:'Professor',           soGestor:false }
   ];
-  var LABEL = { gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico', 'dir-ciclo':'Director de Ciclo', secretario:'Secretário', professor:'Professor', encarregado:'Encarregado', aluno:'Aluno' };
+  var LABEL = { gestor:'Gestor Geral', director:'Director', 'dir-pedagogico':'Dir. Pedagógico', 'gestor-rh':'Gestor de RH', 'dir-ciclo':'Director de Ciclo', secretario:'Secretário', professor:'Professor', encarregado:'Encarregado', aluno:'Aluno' };
 
   function supa(){ return window._supabase || window._supa || null; }
   function meuPapel(){ try { return (typeof curRole!=='undefined') ? curRole : ''; } catch(e){ return ''; } }
@@ -38349,8 +38364,8 @@ window.trimestreActual = function(d){
     var el = document.getElementById('relat-faltas-prof-c');
     if(!el) return;
     // permissão
-    if(!['gestor','director','dir-pedagogico'].includes(curRole)){
-      el.innerHTML = '<div class="ib-box ib-am" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito ao Gestor e Director.</div>';
+    if(!['gestor','director','dir-pedagogico','gestor-rh'].includes(curRole)){
+      el.innerHTML = '<div class="ib-box ib-am" style="margin:20px"><i class="ti ti-lock"></i> Acesso restrito à direcção e ao Gestor de RH.</div>';
       return;
     }
     var hoje = new Date();
@@ -38933,7 +38948,7 @@ window.trimestreActual = function(d){
     var p=(typeof PROFS!=='undefined'?PROFS:[]).find(function(x){return x.id==id;});
     if(!p) return;
     var el=document.getElementById('aval-c'); if(!el) return;
-    if(!['gestor','director'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor e Director.</div>'; return; }
+    if(!['gestor','director','gestor-rh'].includes(curRole)){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito à direcção e ao Gestor de RH.</div>'; return; }
 
     el.innerHTML='<div style="padding:24px;color:var(--t2)">A carregar avaliação...</div>';
     var auto=window.calcNotaAutoProf(p);
@@ -39066,7 +39081,7 @@ window.trimestreActual = function(d){
     var p=(typeof PROFS!=='undefined'?PROFS:[]).find(function(x){return x.id==id;}); if(!p) return;
     var view=document.getElementById('v-prof-p'); if(!view) return;
     var old=document.getElementById('rh-painel-prof'); if(old) old.remove();
-    if(!['gestor','director'].includes(curRole)) return; // dados de RH só p/ direcção
+    if(!['gestor','director','gestor-rh'].includes(curRole)) return; // dados de RH: direcção e Gestor de RH
 
     // assiduidade real (tabela faltas)
     var faltasFisicas=[], ferias=[];
@@ -39097,7 +39112,7 @@ window.trimestreActual = function(d){
     painel.style.marginTop='14px';
     painel.innerHTML=''
       +'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct"><i class="ti ti-briefcase"></i> Contrato & Vínculo</span>'
-        +(['gestor','director'].includes(curRole)?'<button class="btn btn-g btn-sm" onclick="window.__editarContrato('+id+')"><i class="ti ti-edit"></i> Editar</button>':'')+'</div>'
+        +(['gestor','director','gestor-rh'].includes(curRole)?'<button class="btn btn-g btn-sm" onclick="window.__editarContrato('+id+')"><i class="ti ti-edit"></i> Editar</button>':'')+'</div>'
         +'<div class="cb"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:13px">'
         +'<div><div style="color:var(--t2);font-size:11px">Tipo de contrato</div><div style="font-weight:700">'+tipoContrato+'</div></div>'
         +'<div><div style="color:var(--t2);font-size:11px">Data de admissão</div><div style="font-weight:700">'+admissao+'</div></div>'
@@ -39149,7 +39164,7 @@ window.trimestreActual = function(d){
 
   // ═══ EDITAR PERFIL COMPLETO DO PROFESSOR (gestor + director) ═══
   window.__editarPerfilProf = function(id){
-    if(!(typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'))){
+    if(!(typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'||curRole==='gestor-rh'))){
       toast('Apenas Gestor Geral e Director podem editar o perfil.'); return;
     }
     var p=(typeof PROFS!=='undefined'?PROFS:[]).find(function(x){return x.id==id;});
@@ -39207,7 +39222,7 @@ window.trimestreActual = function(d){
   };
 
   window.__guardarPerfilProf = async function(id){
-    if(!(typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'))){
+    if(!(typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'||curRole==='gestor-rh'))){
       toast('Apenas Gestor Geral e Director podem editar o perfil.'); return;
     }
     var p=(typeof PROFS!=='undefined'?PROFS:[]).find(function(x){return x.id==id;});
@@ -42217,6 +42232,9 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     /* v6.149: TODOS os grupos começam fechados — só abrem ao clique */
     var gs=grupos();
     gs.forEach(function(g){ var it=g.querySelector('.nav-items'); if(it && !it.children.length) g.style.display='none'; });
+    /* v6.251: com um só grupo (ex.: Gestor de RH) não há nada a escolher — abre logo */
+    var vis=gs.filter(function(g){ return g.style.display!=='none'; });
+    if(vis.length===1) vis[0].classList.add('open');
   }
   window.__navGroupsAplicar=aplicar;
   /* clique num item: fixa o grupo e fecha os outros */
@@ -45891,7 +45909,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
      O `ecra=` do URL só conta na primeira entrada (window.__demoEcraUsado). "Reiniciar" continua a recarregar. */
   window.__demoTrocar=function(r){ window.__demoEcraUsado=true; try{ history.replaceState(null,'',location.pathname+'?demo='+encodeURIComponent(r||'gestor')); }catch(e){} window.__demoEntrar(r); };
   /* ecrã inicial de cada perfil (o mesmo que doLoginDemo usa) */
-  var INICIO={aluno:'portal',professor:'portal-prof',encarregado:'dash-enc','gestor-financeiro':'fin-dashboard','dir-ciclo':'ciclo-visao'};
+  var INICIO={aluno:'portal',professor:'portal-prof',encarregado:'dash-enc','gestor-financeiro':'fin-dashboard','gestor-rh':'staff','dir-ciclo':'ciclo-visao'};
 
   var construido=false;
   window.__demoEntrar=function(role){
@@ -48135,7 +48153,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 (function(){
   if(window.__docGuarda) return; window.__docGuarda=true;
 
-  var PAPEIS={ gestor:'Gestor', director:'Director', 'dir-pedagogico':'Director Pedagógico', 'dir-ciclo':'Coordenador de Ciclo',
+  var PAPEIS={ gestor:'Gestor', director:'Director', 'dir-pedagogico':'Director Pedagógico', 'gestor-rh':'Gestor de RH', 'dir-ciclo':'Coordenador de Ciclo',
     secretario:'Secretário', professor:'Professor', 'gestor-financeiro':'Gestor Financeiro', aluno:'Aluno', encarregado:'Encarregado' };
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function quem(){ try{ return (typeof curUser!=='undefined'&&curUser&&curUser.nome)||'—'; }catch(e){ return '—'; } }
