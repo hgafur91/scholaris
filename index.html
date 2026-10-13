@@ -757,7 +757,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.255</span>
+    <span class="logo-ver">v6.256</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -3019,7 +3019,7 @@ window.__escA = function (s) {
         <div id="ns-role-preview" style="display:none;background:var(--bg3);border-radius:var(--rads);padding:8px 14px;font-size:12px;color:var(--t2);margin-top:4px;border:1px solid var(--b)"></div>
         <div id="ns-acesso-box" style="display:none;margin-top:8px;background:rgba(79,142,247,.07);border:1px solid var(--b);border-radius:var(--rads);padding:10px 12px">
           <label class="fl" style="margin-bottom:4px;display:block">Password inicial de acesso</label>
-          <input class="ffi" id="ns-pass" placeholder="Vazio = usar o telefone como password">
+          <input class="ffi" id="ns-pass" placeholder="Vazio = o sistema cria uma password segura">
           <div style="font-size:11px;color:var(--t2);margin-top:6px"><i class="ti ti-info-circle" style="color:var(--a)"></i> Será criada uma conta de login. A pessoa entra com o <b>email</b> indicado acima e esta password (ou o telefone, se deixar vazio), em qualquer dispositivo.</div>
         </div>
       </div>
@@ -19859,7 +19859,7 @@ async function guardarColaboradorComAcesso(role){
   const salario = parseFloat(g('ns-salario')?.value)||0;
   const email   = (g('ns-email')?.value||'').trim().toLowerCase();
   const tel     = (g('ns-tel')?.value||'').trim();
-  const pass    = ((g('ns-pass')?.value||'').trim()) || tel.replace(/[^0-9]/g,'');
+  const pass    = (g('ns-pass')?.value||'').trim();   // v6.256: vazio = o servidor cria uma aleatória
 
   if(!nome){ toast('Nome obrigatório'); return; }
   if(!bi){ toast('BI obrigatório'); return; }
@@ -19867,7 +19867,7 @@ async function guardarColaboradorComAcesso(role){
   if(!salario){ toast('Salário obrigatório'); return; }
   if(!niss){ toast('NISS (INSS) obrigatório por lei'); return; }
   if(!email || !/^\S+@\S+\.\S+$/.test(email)){ toast('Email válido é obrigatório para dar acesso ao sistema'); return; }
-  if(pass.length<6){ toast('Password inicial: mínimo 6 caracteres (use o telefone completo, ou preencha o campo Password)'); return; }
+  if(pass && pass.length<8){ toast('A password escolhida precisa de pelo menos 8 caracteres (ou deixe vazio e o sistema cria uma).'); return; }
 
   const sb = window._supabase;
   if(!sb || !sb.functions){ toast('Sem ligação ao servidor'); return; }
@@ -19880,14 +19880,16 @@ async function guardarColaboradorComAcesso(role){
     morada: (g('ns-morada')?.value||'').trim(),
     form: g('ns-form')?.value||'', area: (g('ns-area')?.value||'').trim(),
     nat: g('ns-nat')?.value||'', iban: (g('ns-iban')?.value||'').trim(), banco: g('ns-banco')?.value||'',
-    contrato: g('ns-contrato')?.value||'indeterminado'
+    contrato: g('ns-contrato')?.value||'indeterminado',
+    cont_ini: g('ns-cont-ini')?.value||'', cont_fim: g('ns-cont-fim')?.value||'',
+    emerg_nome: (g('ns-emerg-nome')?.value||'').trim(), emerg_tel: (g('ns-emerg-tel')?.value||'').trim()
   };
 
   const btn = document.querySelector("#m-novo-staff .mft .btn-p");
   if(btn){ btn.disabled=true; btn.dataset._t=btn.innerHTML; btn.innerHTML='<i class="ti ti-loader"></i> A criar...'; }
 
   try{
-    const res = await sb.functions.invoke('criar-utilizador', { body: { nome, role, email, telefone: pass, staff: staffPayload } });
+    const res = await sb.functions.invoke('criar-utilizador', { body: { nome, role, email, telefone: tel, password: pass, staff: staffPayload } });
     if(btn){ btn.disabled=false; if(btn.dataset._t) btn.innerHTML=btn.dataset._t; }
     if(res && res.error){
       let d=''; try{ const j=await res.error.context.json(); d=(j&&j.error)?j.error:''; }catch(e){}
@@ -19907,7 +19909,8 @@ async function guardarColaboradorComAcesso(role){
       });
     }
     closeM('m-novo-staff');
-    toast('Colaborador ' + nome + ' criado com acesso. Login: ' + email);
+    if(typeof window.__mostrarCredenciais==='function') window.__mostrarCredenciais(nome, out.email||email, out.password, out.pass_temporaria);
+    else toast('Colaborador ' + nome + ' criado com acesso. Login: ' + email);
     if(typeof rStaff==='function') rStaff('todos');
     if(typeof rPr==='function') rPr();
     if(typeof rUtilizadores==='function') rUtilizadores();
@@ -34009,7 +34012,7 @@ window.__finV30=true;})();
     var sb = supa();
     if (!sb || !sb.functions){ toast('Sem ligação ao servidor.'); return; }
     var btn = document.getElementById('cu-submit'); if (btn){ btn.disabled=true; btn.textContent='A criar...'; }
-    sb.functions.invoke('criar-utilizador', { body: { nome:nome, role:role, email:email, telefone:pass } })
+    sb.functions.invoke('criar-utilizador', { body: { nome:nome, role:role, email:email, telefone:pass, password:pass } })
       .then(async function(res){
         if (btn){ btn.disabled=false; btn.textContent='Criar Conta'; }
         if (res && res.error){
@@ -34019,7 +34022,8 @@ window.__finV30=true;})();
         }
         if (res && res.data && res.data.error){ toast(res.data.error); return; }
         window.__v35Close();
-        toast('Conta de ' + nome + ' criada (' + (LABEL[role]||role) + ').');
+        if (typeof window.__mostrarCredenciais==='function' && res && res.data) window.__mostrarCredenciais(nome, res.data.email||email, res.data.password, res.data.pass_temporaria);
+        else toast('Conta de ' + nome + ' criada (' + (LABEL[role]||role) + ').');
         if (typeof rUtilizadores === 'function') rUtilizadores();
       })
       .catch(function(e){ if (btn){ btn.disabled=false; btn.textContent='Criar Conta'; } toast('Erro: ' + (e && e.message ? e.message : e)); });
@@ -44665,7 +44669,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     function repor(){ if(btn){ btn.disabled=false; btn.textContent='Criar Gestor Geral'; } }
 
     /* Mesmo contrato do v35: o campo `telefone` é a password inicial. */
-    sb.functions.invoke('criar-utilizador', { body:{ nome:nome, role:'gestor', email:email, telefone:pass } })
+    sb.functions.invoke('criar-utilizador', { body:{ nome:nome, role:'gestor', email:email, telefone:pass, password:pass } })
       .then(async function(res){
         repor();
         var detalhe = '';
@@ -49161,5 +49165,28 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 })();
 </script>
 
+<script>
+/* v6.256 — quadro com as credenciais da conta acabada de criar.
+   A password aleatória é criada pelo servidor e só aparece aqui, uma vez. */
+(function(){
+  if(window.__mostrarCredenciais) return;
+  window.__mostrarCredenciais=function(nome, login, password, temporaria){
+    var H=window.__escH;
+    var ex=document.getElementById('cred-modal'); if(ex) ex.remove();
+    var w=document.createElement('div'); w.id='cred-modal';
+    w.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99995;display:flex;align-items:center;justify-content:center;padding:16px';
+    var linha=function(rot, val, id){ return '<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">'+rot+'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center"><code id="'+id+'" style="flex:1;font-size:16px;font-weight:700;background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:8px 10px;user-select:all">'+H(val||'—')+'</code>'
+      +'<button class="btn btn-g btn-sm" onclick="try{navigator.clipboard.writeText(document.getElementById(\''+id+'\').textContent);toast(\'Copiado\')}catch(e){}"><i class="ti ti-copy"></i></button></div></div>'; };
+    w.innerHTML='<div style="background:var(--card);border:1px solid var(--b);border-radius:16px;width:440px;max-width:100%;padding:20px 22px">'
+      +'<div style="font-size:17px;font-weight:800;margin-bottom:4px"><i class="ti ti-circle-check" style="color:#16a34a"></i> Conta criada</div>'
+      +'<div style="font-size:13px;color:var(--t2);margin-bottom:14px">Entregue estes dados a <b>'+H(nome)+'</b>.'+(password?' A password só aparece agora.':'')+'</div>'
+      +linha('Login', login, 'cred-login')+(password?linha('Password'+(temporaria?' temporária':''), password, 'cred-pass'):'')
+      +(temporaria?'<div class="ib-box ib-am" style="font-size:12px"><i class="ti ti-info-circle"></i> Peça-lhe que troque a password depois de entrar (menu <b>Password</b>, no topo).</div>':'')
+      +'<div style="text-align:right;margin-top:14px"><button class="btn btn-p btn-sm" onclick="document.getElementById(\'cred-modal\').remove()">Já anotei</button></div></div>';
+    document.body.appendChild(w);
+  };
+})();
+</script>
 </body>
 </html>
