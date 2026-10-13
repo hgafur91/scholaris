@@ -817,7 +817,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.261</span>
+    <span class="logo-ver">v6.262</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -50096,6 +50096,136 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       return r;
     };
     novo.__ponto=true; Object.keys(anterior).forEach(function(k){ try{ novo[k]=anterior[k]; }catch(e){} });
+    window.go=novo; try{ go=novo; }catch(e){}
+  }
+  embrulharGo(); setInterval(embrulharGo, 2000);
+})();
+</script>
+<script>
+/* ═══ v6.262 — O MEU PONTO ═════════════════════════════════════════════════
+   Cada funcionário com conta vê as suas entradas, saídas, atrasos e faltas
+   do ano (função ponto_meu no servidor: só os dados de quem pergunta), o
+   horário que lhe aplica e quanto os atrasos pesam na avaliação. Só leitura:
+   correcções e justificações pedem-se ao RH. Em demonstração lê a memória
+   do módulo do ponto. ═══════════════════════════════════════════════════ */
+(function(){
+  if(window.__meuPonto262) return; window.__meuPonto262=true;
+  var H=function(v){ return window.__escH(v); };
+  var TZ='Africa/Maputo';
+  var MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var DIAS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  var COR={ok:'#15803d', alerta:'#b45309', mau:'#dc2626', info:'#2563eb'};
+  var EST={ano:null, mes:null};
+  function demo(){ return window._escolaId==='escola_demo'; }
+  function hojeISO(){ return new Date().toLocaleDateString('en-CA',{timeZone:TZ}); }
+  function hora(ts){ return ts ? new Date(ts).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit',timeZone:TZ}) : ''; }
+  function mins(n){ n=+n||0; return n<60 ? n+' min' : Math.floor(n/60)+' h '+String(n%60).padStart(2,'0'); }
+  function diaTxt(s){ var d=new Date(s+'T12:00:00'); return DIAS[d.getDay()]+', '+d.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'}); }
+
+  async function dados(ano){
+    if(demo()){
+      var D=window.__pontoDados; if(!D) return null;
+      var nome=(typeof curUser!=='undefined'&&curUser&&curUser.nome)||'';
+      var P=(typeof PROFS!=='undefined'?PROFS:[]), p=P.filter(function(x){ return x.nome===nome; })[0]||P[0]; if(!p) return null;
+      var k=p._dbId||('demo-'+p.id), cfg=await D.config(), pp=(await D.pessoal())[k]||{};
+      var regs=(await D.registos(ano+'-01-01', ano+'-12-31')).filter(function(r){ return r.staff_id===k; })
+        .map(function(r){ return {data:r.data, entrada:r.entrada, saida:r.saida, prevista:String(r.hora_prevista||'').slice(0,5), atraso_min:r.atraso_min, justificado:r.justificado, motivo:r.motivo, origem:r.origem}; });
+      return {nome:p.nome, horario:{hora_entrada:pp.hora_entrada||cfg.hora_entrada, tolerancia_min:pp.tolerancia_min!=null?pp.tolerancia_min:cfg.tolerancia_min, atrasos_por_falta:cfg.atrasos_por_falta, isento:!!pp.isento, tem_cartao:!!pp.codigo}, registos:regs, faltas:[]};
+    }
+    var r=await window._supabase.rpc('ponto_meu',{p_ano:ano});
+    if(r.error) throw new Error(r.error.message);
+    return r.data;
+  }
+
+  window.rMeuPonto=async function(){
+    var el=document.getElementById('meu-ponto-c'); if(!el) return;
+    var hj=hojeISO(); EST.ano=EST.ano||+hj.slice(0,4); EST.mes=EST.mes||+hj.slice(5,7);
+    el.innerHTML='<div style="padding:20px;color:var(--t2)">A carregar…</div>';
+    var M;
+    try{ M=await dados(EST.ano); }catch(e){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-alert-triangle"></i> Não foi possível carregar o seu ponto: '+H(e.message)+'</div>'; return; }
+    if(!M){ el.innerHTML='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> A sua conta não está ligada a uma ficha de funcionário. Fale com o RH.</div>'; return; }
+    var hor=M.horario||{}, apf=+hor.atrasos_por_falta||3, regs=M.registos||[], fal=M.faltas||[];
+    var mm=EST.ano+'-'+String(EST.mes).padStart(2,'0');
+    var rMes=regs.filter(function(r){ return String(r.data).slice(0,7)===mm; }), fMes=fal.filter(function(f){ return String(f.data).slice(0,7)===mm; });
+    var atrMes=rMes.filter(function(r){ return r.atraso_min>0; }), injMes=atrMes.filter(function(r){ return !r.justificado; });
+    var injAno=regs.filter(function(r){ return r.atraso_min>0 && !r.justificado; }).length;
+    var fInjAno=fal.filter(function(f){ return !f.justif; }).length;
+    var minMes=injMes.reduce(function(s,r){ return s+(+r.atraso_min||0); },0);
+    var equiv=Math.floor(injAno/apf), faltamPara=apf-(injAno%apf);
+
+    var opM=''; for(var m=1;m<=12;m++) opM+='<option value="'+m+'"'+(m===EST.mes?' selected':'')+'>'+MESES[m]+'</option>';
+    var opA=''; [EST.ano-1, EST.ano, +hj.slice(0,4)].filter(function(a,i,arr){ return arr.indexOf(a)===i; }).sort().forEach(function(a){ opA+='<option value="'+a+'"'+(a===EST.ano?' selected':'')+'>'+a+'</option>'; });
+    var SEL='padding:8px 10px;border:1px solid var(--b);border-radius:8px;background:var(--bg2);color:inherit;font:inherit';
+    var h='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'
+      +'<select onchange="__meuPontoMes(this.value)" style="'+SEL+'">'+opM+'</select><select onchange="__meuPontoAno(this.value)" style="'+SEL+'">'+opA+'</select>'
+      +'<span style="font-size:13px;color:var(--t2);margin-left:auto">'+(hor.isento?'Não marca ponto (sem contagem de atrasos)':'A sua entrada: <b>'+H(hor.hora_entrada)+'</b> · tolerância '+H(hor.tolerancia_min)+' min')+'</span></div>';
+    if(!hor.tem_cartao && !hor.isento) h+='<div class="ib-box ib-am" style="margin-bottom:12px"><i class="ti ti-id-badge-2"></i> Ainda não tem cartão de ponto. Peça-o ao RH.</div>';
+    var kpi=function(l,v,s,c){ return '<div style="border:1px solid var(--b);border-radius:14px;padding:12px;background:var(--card)"><div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">'+l+'</div><div style="font-size:22px;font-weight:800;color:'+(c||'var(--t)')+'">'+v+'</div><div style="font-size:12px;color:var(--t2)">'+s+'</div></div>'; };
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px">'
+      +kpi('Dias com entrada', rMes.filter(function(r){ return r.entrada; }).length, 'em '+MESES[EST.mes])
+      +kpi('Atrasos', atrMes.length, injMes.length+' injustificado(s)'+(minMes?' · '+mins(minMes):''), injMes.length?COR.alerta:COR.ok)
+      +kpi('Faltas', fMes.length, fMes.filter(function(f){ return !f.justif; }).length+' injustificada(s)', fMes.some(function(f){ return !f.justif; })?COR.mau:COR.ok)
+      +kpi('Na avaliação '+EST.ano, injAno+' atraso(s)', 'injustificados = <b>'+equiv+'</b> falta(s)'+(fInjAno?' + '+fInjAno+' falta(s)':'')+(hor.isento?'':' · faltam '+faltamPara+' para a próxima'), equiv?COR.alerta:COR.info)
+      +'</div>';
+
+    /* dia a dia */
+    var porDia={}; rMes.forEach(function(r){ porDia[r.data]=r; });
+    var fDia={}; fMes.forEach(function(f){ fDia[f.data]=f; });
+    var dias=Object.keys(porDia).concat(Object.keys(fDia)).filter(function(d,i,a){ return a.indexOf(d)===i; }).sort().reverse();
+    h+='<div class="card" style="margin:0"><div class="tw"><table><thead><tr><th style="text-align:left">Dia</th><th>Entrada</th><th>Saída</th><th>Tempo na escola</th><th>Atraso</th><th style="text-align:left">Situação</th></tr></thead><tbody>';
+    dias.forEach(function(d){
+      var r=porDia[d], f=fDia[d], sit='', tempo='—';
+      if(r && r.entrada && r.saida){ var mn=Math.round((new Date(r.saida)-new Date(r.entrada))/60000); tempo=mins(mn); }
+      if(f) sit='<span class="badge '+(f.justif?'bne':'ber')+'">Falta '+(f.justif?'justificada':'injustificada')+'</span>';
+      else if(r && r.atraso_min>0) sit=r.justificado?'<span class="badge bok">Atraso justificado</span> <span style="font-size:12px;color:var(--t2)">'+H(r.motivo||'')+'</span>':'<span class="badge bwn">Atraso injustificado</span>';
+      else if(r && r.entrada) sit='<span class="badge bok">A horas</span>';
+      h+='<tr><td style="white-space:nowrap"><b>'+H(diaTxt(d))+'</b></td><td style="text-align:center">'+(r&&r.entrada?hora(r.entrada)+(r.origem==='manual'?' <span title="Registado pelo RH" style="color:var(--t3)">✎</span>':''):'—')+'</td>'
+        +'<td style="text-align:center">'+(r&&r.saida?hora(r.saida):'—')+'</td><td style="text-align:center">'+tempo+'</td>'
+        +'<td style="text-align:center">'+(r&&r.atraso_min>0?'<b style="color:'+(r.justificado?'var(--t2)':COR.alerta)+'">'+mins(r.atraso_min)+'</b>'+(r.prevista?'<div style="font-size:11px;color:var(--t2)">prevista '+H(r.prevista)+'</div>':''):'—')+'</td><td>'+sit+'</td></tr>';
+    });
+    if(!dias.length) h+='<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:18px">Sem registos em '+MESES[EST.mes]+' de '+EST.ano+'.</td></tr>';
+    h+='</tbody></table></div></div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-top:10px"><i class="ti ti-info-circle"></i> Cada '+apf+' atrasos injustificados contam como 1 falta na avaliação de desempenho. Se algum registo estiver errado ou quiser justificar um atraso, fale com o RH.</div>';
+    el.innerHTML=h;
+  };
+  window.__meuPontoMes=function(v){ EST.mes=+v; window.rMeuPonto(); };
+  window.__meuPontoAno=function(v){ EST.ano=+v; window.rMeuPonto(); };
+
+  /* vista, menus e navegação */
+  if(!document.getElementById('v-meu-ponto')){
+    var main=document.querySelector('.main')||document.querySelector('#main')||document.body;
+    var v=document.createElement('div'); v.className='view'; v.id='v-meu-ponto';
+    v.innerHTML='<div class="ph"><div><div class="ph-title">O Meu Ponto</div><div class="ph-sub">As suas entradas, saídas, atrasos e faltas</div></div><div class="ph-right"><button type="button" class="btn btn-g btn-sm" onclick="window.rMeuPonto()"><i class="ti ti-refresh"></i> Actualizar</button></div></div><div id="meu-ponto-c"></div>';
+    main.appendChild(v);
+  }
+  try{ VM['meu-ponto']='v-meu-ponto'; }catch(e){}
+  try{
+    var ITEM={i:'ti-clock-hour-8',l:'O Meu Ponto',id:'meu-ponto'};
+    Object.keys(ROLES).forEach(function(r){
+      if(['aluno','encarregado','portaria'].indexOf(r)>=0) return;
+      (ROLES[r].sidebar||[]).forEach(function(s){
+        var L=s.sub||s.flat; if(!L || L.some(function(x){ return x.id==='meu-ponto'; })) return;
+        var i=L.findIndex(function(x){ return x.id==='aval-minha'; }); if(i>=0) L.splice(i+1,0,ITEM);
+      });
+    });
+  }catch(e){ console.warn('[o meu ponto] menus:', e&&e.message); }
+  function embrulharGo(){
+    if(typeof window.go!=='function' || window.go.__meuPonto) return;
+    var anterior=window.go;
+    var novo=function(id){
+      var r=anterior.apply(this, arguments);
+      if(id==='meu-ponto'){
+        try{
+          document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+          var v=document.getElementById('v-meu-ponto'); if(v) v.classList.add('on');
+          document.querySelectorAll('.si,.ssi').forEach(function(s){ s.classList.remove('on'); });
+          var si=document.getElementById('si-meu-ponto'); if(si) si.classList.add('on');
+          window.rMeuPonto();
+        }catch(e){ console.warn('[o meu ponto]', e&&e.message); }
+      }
+      return r;
+    };
+    novo.__meuPonto=true; Object.keys(anterior).forEach(function(k){ try{ novo[k]=anterior[k]; }catch(e){} });
     window.go=novo; try{ go=novo; }catch(e){}
   }
   embrulharGo(); setInterval(embrulharGo, 2000);
