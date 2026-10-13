@@ -817,7 +817,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.260</span>
+    <span class="logo-ver">v6.261</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -6290,7 +6290,7 @@ async function fbLogin() {
     if (!user) { showLoginError('Erro ao autenticar.'); resetBtn(); return; }
 
     // 2. Carregar perfil (papel canónico directo, sem mapa com fugas)
-    const CANON_ROLES = ['gestor','director','gestor-financeiro','gestor-rh','dir-pedagogico','dir-ciclo','secretario','professor','encarregado','aluno'];
+    const CANON_ROLES = ['gestor','director','gestor-financeiro','gestor-rh','dir-pedagogico','dir-ciclo','secretario','professor','encarregado','aluno','portaria'];   // v6.261: portaria = só Modo Ponto
     const normalizarPapel = (p) => {
       if (!p) return null;
       let r = String(p).trim().replace(/_/g, '-'); // dir_pedagogico -> dir-pedagogico
@@ -6371,7 +6371,7 @@ function _entrarNaApp(userData) {
   loadDadosEscola().then(() => {
     const startView = {
       aluno:'portal', professor:'portal-prof',
-      encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'rh-painel'   // v6.210: 'portal-enc' não está em VM → ecrã em branco ao entrar
+      encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'rh-painel', portaria:'ponto-quiosque'   // v6.210: 'portal-enc' não está em VM → ecrã em branco ao entrar
     }[curRole] || 'dash';
     go(startView);
     toast('Bem-vindo, ' + curUser.nome + '!');
@@ -6829,7 +6829,7 @@ function doLoginDemo() {
   curUser._profId = profMatch?.id  || null;
   const startView = {
     aluno:'portal', professor:'portal-prof',
-    encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'rh-painel',   // v6.210
+    encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'rh-painel', portaria:'ponto-quiosque',   // v6.210
   }[curRole] || 'dash';
   go(startView);
   toast('Modo demonstração activo — dados não são guardados');
@@ -48569,7 +48569,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function niveis(g){ return (g&&g.niveis)||{1:'Muito abaixo do esperado',2:'Abaixo do esperado',3:'Corresponde ao esperado',4:'Acima do esperado',5:'Excede claramente o esperado'}; }
   function infoAuto(c, ind){
     if(!ind) return '';
-    if(c.auto==='assiduidade' && ind.assiduidade){ var a=ind.assiduidade; return '<div style="font-size:11px;color:#2563eb;margin-top:4px"><i class="ti ti-robot"></i> Registo do ano: '+H(a.injustificadas)+' falta(s) injustificada(s), '+H(a.justificadas)+' justificada(s) — nível sugerido: <b>'+H(a.nivel)+'</b></div>'; }
+    if(c.auto==='assiduidade' && ind.assiduidade){ var a=ind.assiduidade; return '<div style="font-size:11px;color:#2563eb;margin-top:4px"><i class="ti ti-robot"></i> Registo do ano: '+H(a.injustificadas)+' falta(s) injustificada(s), '+H(a.justificadas)+' justificada(s)'+(a.atrasos!=null?', '+H(a.atrasos)+' atraso(s) injustificado(s) (cada '+H(a.atrasos_por_falta)+' = 1 falta)':'')+' — nível sugerido: <b>'+H(a.nivel)+'</b></div>'; }
     if(c.auto==='sumarios' && ind.sumarios){ return '<div style="font-size:11px;color:#2563eb;margin-top:4px"><i class="ti ti-robot"></i> Sumários registados este ano: <b>'+H(ind.sumarios.aulas)+'</b></div>'; }
     return '';
   }
@@ -48739,7 +48739,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +(g.criterios||[]).map(function(c,i){
         return '<div style="display:grid;grid-template-columns:1fr 70px 34px;gap:6px;align-items:start;border:1px solid var(--b);border-radius:10px;padding:8px;margin-bottom:6px">'
           +'<div><input id="gc-n-'+i+'" class="ffi" value="'+H(c.nome)+'" style="width:100%;font-weight:700;margin-bottom:4px"><textarea id="gc-d-'+i+'" class="ffi" rows="2" style="width:100%;font-size:12px">'+H(c.descricao||'')+'</textarea>'
-          +(c.auto?'<div style="font-size:11px;color:#2563eb;margin-top:3px"><i class="ti ti-robot"></i> '+(c.auto==='assiduidade'?'Nível sugerido a partir das faltas injustificadas':'Mostra os sumários registados')+'</div>':'')+'</div>'
+          +(c.auto?'<div style="font-size:11px;color:#2563eb;margin-top:3px"><i class="ti ti-robot"></i> '+(c.auto==='assiduidade'?'Nível sugerido a partir das faltas e atrasos injustificados':'Mostra os sumários registados')+'</div>':'')+'</div>'
           +'<div><div style="font-size:10px;color:var(--t2)">Peso</div><input id="gc-p-'+i+'" class="ffi" type="number" min="0" max="100" value="'+H(c.peso)+'" style="width:100%"></div>'
           +'<button class="btn btn-re btn-sm" title="Retirar" onclick="window.__avalGrelhaRetirar('+i+')"><i class="ti ti-trash"></i></button></div>';
       }).join('')
@@ -48928,7 +48928,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
       +'<div style="font-size:12px">Nota: <b>'+H(fmtN(a.nota_final))+'</b> / 5</div>'
       +'<div style="margin-left:auto;font-size:8px;color:#64748b;text-align:right">Escala: ≥4,5 Excelente · ≥3,5 Muito Bom · ≥2,5 Bom · ≥1,5 Suficiente · abaixo Insuficiente</div></div>'
       +'<h3>Avaliação por critério</h3><table><thead><tr><th style="text-align:left">Critério</th><th>Peso</th><th>Auto</th><th>Chefia</th><th style="text-align:left">Nível (chefia)</th></tr></thead><tbody>'+linhas+'</tbody></table>'
-      +((as||su)?'<h3>Indicadores do ano</h3><div style="font-size:10px">'+(as?'Faltas injustificadas: <b>'+H(as.injustificadas)+'</b> · justificadas: '+H(as.justificadas)+' (nível sugerido '+H(as.nivel)+')':'')+(su&&a.tipo==='docente'?' &nbsp;·&nbsp; Sumários registados: <b>'+H(su.aulas)+'</b>':'')+'</div>':'')
+      +((as||su)?'<h3>Indicadores do ano</h3><div style="font-size:10px">'+(as?'Faltas injustificadas: <b>'+H(as.injustificadas)+'</b> · justificadas: '+H(as.justificadas)+(as.atrasos!=null?' · atrasos injustificados: <b>'+H(as.atrasos)+'</b>':'')+' (nível sugerido '+H(as.nivel)+')':'')+(su&&a.tipo==='docente'?' &nbsp;·&nbsp; Sumários registados: <b>'+H(su.aulas)+'</b>':'')+'</div>':'')
       +(a.revisao?'<h3>Revisão de meio do ano</h3><div style="font-size:10px">'+H(dataPT(a.revisao.data))+' — '+H(a.revisao.por||'')+'</div><div style="white-space:pre-wrap;font-size:10px">'+H(a.revisao.notas||'')+'</div>':'')
       +txt('Comentário do funcionário (auto-avaliação)', a.auto&&a.auto.comentario)
       +txt('Pontos fortes', a.chefia&&a.chefia.pontos_fortes)
@@ -49312,7 +49312,11 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   }
 
   async function dados(){
-    var a=ano(), out={faltas:[], ferias:[], aval:[], alertas:null};
+    var a=ano(), out={faltas:[], ferias:[], aval:[], alertas:null, atrasos:[], hoje:[], pp:{}};
+    /* v6.261: ponto (também na demonstração, em memória) */
+    try{ var PD=window.__pontoDados; if(PD){ var hj=new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Maputo'});
+      out.atrasos=await PD.registos(a+'-01-01', a+'-12-31', true);
+      out.hoje=await PD.registos(hj, hj); out.pp=await PD.pessoal(); } }catch(e){}
     if(!ligado()) return out;
     try{ if(typeof window.__carregarFinancas==='function' && !window.__financasCarregadas) await window.__carregarFinancas(); }catch(e){}
     try{ var r=await sb().from('faltas').select('staff_id, data, justif, tipo').eq('escola_id',window._escolaId).not('staff_id','is',null).gte('data', a+'-01-01').lte('data', a+'-12-31'); out.faltas=r.data||[]; }catch(e){}
@@ -49338,6 +49342,15 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var cont={}; injAno.forEach(function(f){ cont[f.staff_id]=(cont[f.staff_id]||0)+1; });
     var top=Object.keys(cont).sort(function(x,y){ return cont[y]-cont[x]; }).slice(0,5);
     var FM=folhaMes(a, mAct), FA=folhaMes(a, mAct-1>0?mAct-1:12);
+    /* atrasos (ponto) */
+    var mm=String(mAct).padStart(2,'0'), atrAno=D.atrasos.filter(function(r){ return !r.justificado; });
+    var atrMes=atrAno.filter(function(r){ return String(r.data).slice(5,7)===mm; }), minMes=atrMes.reduce(function(s,r){ return s+(+r.atraso_min||0); },0);
+    var minTxt=minMes<60?minMes+' min':Math.floor(minMes/60)+' h '+String(minMes%60).padStart(2,'0');
+    var contA={}; atrAno.forEach(function(r){ contA[r.staff_id]=(contA[r.staff_id]||0)+1; });
+    var topA=Object.keys(contA).sort(function(x,y){ return contA[y]-contA[x]; }).slice(0,5);
+    var marcam=P.filter(function(p){ var x=D.pp[p._dbId||('demo-'+p.id)]; return !(x&&x.isento); }).length;
+    var entHoje=D.hoje.filter(function(r){ return r.entrada; }).length, atrHoje=D.hoje.filter(function(r){ return r.atraso_min>0; }).length;
+    var nomeP=function(id){ if(porDb[id]) return porDb[id].nome; var p=P.filter(function(x){ return 'demo-'+x.id===id; })[0]; return p?p.nome:'—'; };
 
     /* avaliação */
     var AV=D.aval, conc=AV.filter(function(x){ return x.estado==='validada'||x.estado==='conhecimento'; });
@@ -49362,10 +49375,12 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     var nomes=function(L){ return L.slice(0,6).map(function(p){ return H(p.nome); }).join(', ')+(L.length>6?' e mais '+(L.length-6):''); };
     var pend=function(rot, L, ir, cor){ return L.length?'<div style="padding:6px 0;border-bottom:1px dashed var(--b)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:13px"><b style="color:'+(cor||CORES.alerta)+'">'+L.length+'</b> '+H(rot)+'</span>'+(ir?'<button class="btn btn-g btn-sm" onclick="go(\''+ir+'\')">Ver</button>':'')+'</div><div style="font-size:11px;color:var(--t3)">'+nomes(L)+'</div></div>':''; };
 
-    var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">'
+    var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px">'
       +kpi('Funcionários activos', P.length, doc+' docentes · '+(P.length-doc)+' não docentes', null, 'staff')
       +kpi('Volume salarial mensal', fmt(salBase)+' <span style="font-size:13px">MZM</span>', 'salários base + subsídio de cargo'+(parciais?' · '+parciais+' a tempo parcial (por aula)':''), CORES.info, 'folha-salarios')
       +kpi('Faltas injustificadas', injMes.length, 'em '+MESES[mAct]+' · '+injAno.length+' no ano', injMes.length?CORES.mau:CORES.ok, 'relat-faltas-prof')
+      +kpi('Entraram hoje', entHoje+' / '+marcam, (atrHoje?atrHoje+' com atraso · ':'')+Math.max(0,marcam-entHoje)+' sem registo', entHoje?CORES.ok:CORES.alerta, 'ponto')
+      +kpi('Atrasos injustificados', atrMes.length, 'em '+MESES[mAct]+(atrMes.length?' · '+minTxt:'')+' · '+atrAno.length+' no ano', atrMes.length?CORES.alerta:CORES.ok, 'ponto')
       +kpi('Avaliações '+a, conc.length+' / '+AV.length, AV.length?('concluídas'+(media!=null?' · média '+String(media).replace('.',','):'')):'ano por abrir', AV.length&&conc.length===AV.length?CORES.ok:CORES.alerta, 'aval-gestao')
       +'</div>';
 
@@ -49389,11 +49404,13 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
     /* assiduidade */
     var ass=linha('Faltas este mês', fMes.length+' ('+injMes.length+' injustificadas)', injMes.length?CORES.mau:null)
       +linha('Faltas no ano', D.faltas.length+' ('+injAno.length+' injustificadas)');
-    if(FM && FM.nMultas){ ass+='<div style="font-size:12px;color:var(--t2);margin:8px 0 4px">Multas de serviço na folha de '+MESES[mAct]+' (atrasos e outras):</div>'+Object.keys(FM.multasPor).map(function(k){ return linha(H(k), FM.multasPor[k]); }).join(''); }
+    ass+=linha('Atrasos injustificados este mês', atrMes.length+(atrMes.length?' ('+minTxt+')':''), atrMes.length?CORES.alerta:null)+linha('Atrasos injustificados no ano', atrAno.length);
+    if(topA.length) ass+='<div style="font-size:12px;color:var(--t2);margin:8px 0 4px">Mais atrasos no ano:</div>'+topA.map(function(id){ return linha(H(nomeP(id)), contA[id], CORES.alerta); }).join('');
+    if(FM && FM.nMultas){ ass+='<div style="font-size:12px;color:var(--t2);margin:8px 0 4px">Multas de serviço na folha de '+MESES[mAct]+':</div>'+Object.keys(FM.multasPor).map(function(k){ return linha(H(k), FM.multasPor[k]); }).join(''); }
     ass+= top.length?'<div style="font-size:12px;color:var(--t2);margin:8px 0 4px">Mais faltas injustificadas no ano:</div>'+top.map(function(id){ return linha(H(nomeDb(id)), cont[id], CORES.mau); }).join('')
                     :'<div style="font-size:12px;color:'+CORES.ok+';margin-top:8px"><i class="ti ti-circle-check"></i> Sem faltas injustificadas este ano.</div>';
-    ass+='<div style="font-size:11px;color:var(--t3);margin-top:8px">Os atrasos registam-se como «multa de serviço» na folha do mês.</div>';
-    h+=cartao('Assiduidade', 'ti-calendar-x', ass, {ir:'relat-faltas-prof', l:'Faltas do pessoal'});
+    ass+='<div style="font-size:11px;color:var(--t3);margin-top:8px">Os atrasos vêm do Ponto (cartões QR) e dos registos à mão do RH. Os injustificados contam na avaliação (por defeito, 3 atrasos = 1 falta).</div>';
+    h+=cartao('Assiduidade', 'ti-calendar-x', ass, {ir:'ponto', l:'Ponto e Atrasos'});
     /* avaliação */
     var av;
     if(!AV.length) av='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> A avaliação de '+a+' ainda não foi aberta.</div>';
@@ -49460,5 +49477,629 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
 })();
 </script>
 
+<script>
+/* ═══ v6.261 — PONTO E ATRASOS (cartões QR) ═════════════════════════════════
+   Cada funcionário tem um cartão com um QR secreto (tabela ponto_pessoal).
+   Na portaria, um aparelho em «Modo Ponto» lê o cartão pela câmara ou por um
+   leitor USB (que escreve o código e carrega Enter): a 1.ª leitura do dia é a
+   entrada, a seguinte a saída (função ponto_marcar no servidor). O atraso é
+   calculado no servidor pela hora de entrada geral ou própria e a tolerância.
+   O RH e a direcção têm o ecrã «Ponto e Atrasos»: hoje, atrasos do mês,
+   justificações, registo à mão, cartões e horários, conta da portaria.
+   Em demonstração tudo fica em memória. ══════════════════════════════════ */
+(function(){
+  if(window.__ponto261) return; window.__ponto261=true;
+  var H=function(v){ return window.__escH ? window.__escH(v) : String(v==null?'':v).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+  var TZ='Africa/Maputo', PREFIXO='SCHP';
+  var LIB_QR='/vendor/qrcode-generator-1.4.4.js', LIB_LER='/vendor/jsQR-1.4.0.js';
+  var MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var COR={ok:'#15803d', alerta:'#b45309', mau:'#dc2626', info:'#2563eb'};
+
+  function sb(){ return window._supabase; }
+  function demo(){ return window._escolaId==='escola_demo'; }
+  function papel(){ try{ return curRole; }catch(e){ return ''; } }
+  function gere(){ return ['gestor','director','gestor-rh'].indexOf(papel())>=0; }
+  function podeQuiosque(){ return gere() || papel()==='portaria'; }
+  function t(m){ try{ toast(m); }catch(e){} }
+  function hojeISO(){ return new Date().toLocaleDateString('en-CA',{timeZone:TZ}); }
+  function hora(ts){ return ts ? new Date(ts).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit',timeZone:TZ}) : ''; }
+  function tsDe(dia, hhmm){ return hhmm ? new Date(dia+'T'+hhmm+':00+02:00').toISOString() : null; }   /* Maputo = UTC+2, sem hora de Verão */
+  function dPT(s){ try{ return new Date(String(s).slice(0,10)+'T12:00:00').toLocaleDateString('pt-PT'); }catch(e){ return s||''; } }
+  function hm(s){ return s ? String(s).slice(0,5) : ''; }
+  function mins(n){ n=+n||0; return n<60 ? n+' min' : Math.floor(n/60)+' h '+String(n%60).padStart(2,'0'); }
+  function pessoal(){ return (typeof PROFS!=='undefined'?PROFS:[]).filter(function(p){ return p && p.ativo!==false; }).slice().sort(function(a,b){ return String(a.nome).localeCompare(String(b.nome),'pt'); }); }
+  function chave(p){ return p._dbId || ('demo-'+p.id); }
+  function porChave(){ var m={}; pessoal().forEach(function(p){ m[chave(p)]=p; }); return m; }
+  function escolaNome(){ try{ return (typeof ESCOLA_SETTINGS!=='undefined' && ESCOLA_SETTINGS && ESCOLA_SETTINGS.nome) || (CONFIG && CONFIG.nomeEscola) || 'Escola'; }catch(e){ return 'Escola'; } }
+  function carregarScript(src){
+    return new Promise(function(ok, falha){
+      if(document.querySelector('script[data-lib="'+src+'"]')) return ok();
+      var s=document.createElement('script'); s.src=src; s.dataset.lib=src; s.onload=function(){ ok(); }; s.onerror=function(){ falha(new Error('Não foi possível carregar '+src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  /* ── dados: servidor ou memória (demonstração) ───────────────────────── */
+  var DEF={hora_entrada:'07:30', tolerancia_min:10, atrasos_por_falta:3};
+  var MEM=null;   /* demonstração */
+  function semente(){
+    if(MEM) return MEM;
+    MEM={config:Object.assign({},DEF), pessoal:{}, registos:[], faltas:[], seq:1};
+    var r=20261014; function rnd(){ r=(r*1103515245+12345)&0x7fffffff; return r/0x7fffffff; }
+    var P=pessoal(), hoje=hojeISO(), d=new Date(hoje+'T12:00:00');
+    P.forEach(function(p){ MEM.pessoal[chave(p)]={codigo:codigoNovo(rnd), codigo_emitido_em:new Date().toISOString(), hora_entrada:null, tolerancia_min:null, isento:/direct/i.test(p.cargo||'')}; });
+    for(var k=0;k<24;k++){
+      var dia=new Date(d.getTime()-k*864e5), dw=dia.getDay(); if(dw===0||dw===6) continue;
+      var iso=dia.toLocaleDateString('en-CA');
+      P.forEach(function(p){
+        var c=chave(p); if(MEM.pessoal[c].isento) return;
+        var x=rnd(); if(x<0.04) return;   /* ausente */
+        var minE=7*60+15+Math.floor(rnd()*14); if(x>0.9) minE=7*60+42+Math.floor(rnd()*50);
+        if(k===0 && rnd()<0.3) return;   /* hoje: ainda não chegou */
+        var e=String(Math.floor(minE/60)).padStart(2,'0')+':'+String(minE%60).padStart(2,'0');
+        var s=k===0?null:String(15+Math.floor(rnd()*3)).padStart(2,'0')+':'+String(Math.floor(rnd()*60)).padStart(2,'0');
+        MEM.registos.push(calcular({id:'m'+(MEM.seq++), staff_id:c, data:iso, entrada:tsDe(iso,e), saida:tsDe(iso,s), origem:'qr', justificado:x>0.985, motivo:x>0.985?'Consulta médica':null}));
+      });
+    }
+    return MEM;
+  }
+  function codigoNovo(rnd){ var h=''; for(var i=0;i<32;i++) h+='0123456789ABCDEF'[Math.floor((rnd?rnd():Math.random())*16)]; return h; }
+  function calcular(r){   /* igual ao gatilho ponto_calcular do servidor */
+    var M=semente(), pp=M.pessoal[r.staff_id]||{}, cfg=M.config;
+    r.hora_prevista=(pp.hora_entrada||cfg.hora_entrada)+':00'; r.atraso_min=0;
+    var tol=(pp.tolerancia_min!=null?pp.tolerancia_min:cfg.tolerancia_min);
+    if(r.entrada && !pp.isento){
+      var e=hora(r.entrada).split(':'), p=hm(r.hora_prevista).split(':');
+      var diff=(+e[0]*60+ +e[1])-(+p[0]*60+ +p[1]); if(diff>tol) r.atraso_min=diff;
+    }
+    if(!r.atraso_min) r.justificado=false;
+    return r;
+  }
+  function erro(r){ if(r && r.error) throw new Error(r.error.message||String(r.error)); return r ? r.data : null; }
+
+  var D={
+    config: async function(){
+      if(demo()) return semente().config;
+      var r=erro(await sb().from('ponto_config').select('hora_entrada, tolerancia_min, atrasos_por_falta').eq('escola_id',window._escolaId).maybeSingle());
+      return r ? {hora_entrada:hm(r.hora_entrada), tolerancia_min:r.tolerancia_min, atrasos_por_falta:r.atrasos_por_falta} : Object.assign({},DEF);
+    },
+    gravarConfig: async function(c){
+      if(demo()){ Object.assign(semente().config, c); return; }
+      erro(await sb().from('ponto_config').upsert(Object.assign({escola_id:window._escolaId, updated_at:new Date().toISOString()}, c), {onConflict:'escola_id'}));
+    },
+    pessoal: async function(){
+      if(demo()) return semente().pessoal;
+      var L=erro(await sb().from('ponto_pessoal').select('staff_id, codigo, codigo_emitido_em, hora_entrada, tolerancia_min, isento').eq('escola_id',window._escolaId))||[];
+      var m={}; L.forEach(function(x){ x.hora_entrada=hm(x.hora_entrada)||null; m[x.staff_id]=x; }); return m;
+    },
+    gravarPessoal: async function(id, campos){
+      if(demo()){ var M=semente(); M.pessoal[id]=Object.assign(M.pessoal[id]||{}, campos); return; }
+      erro(await sb().from('ponto_pessoal').upsert(Object.assign({staff_id:id, escola_id:window._escolaId, updated_at:new Date().toISOString()}, campos), {onConflict:'staff_id'}));
+    },
+    garantirCartoes: async function(){
+      if(demo()){ var M=semente(), n=0; pessoal().forEach(function(p){ var c=chave(p); if(!M.pessoal[c]) M.pessoal[c]={isento:false}; if(!M.pessoal[c].codigo){ M.pessoal[c].codigo=codigoNovo(); M.pessoal[c].codigo_emitido_em=new Date().toISOString(); n++; } }); return n; }
+      return erro(await sb().rpc('ponto_garantir_cartoes'));
+    },
+    novoCartao: async function(id){
+      if(demo()){ var M=semente(); M.pessoal[id]=Object.assign(M.pessoal[id]||{}, {codigo:codigoNovo(), codigo_emitido_em:new Date().toISOString()}); return M.pessoal[id].codigo; }
+      return erro(await sb().rpc('ponto_novo_cartao',{p_staff:id}));
+    },
+    registos: async function(de, ate, soAtrasos){
+      if(demo()) return semente().registos.filter(function(r){ return r.data>=de && r.data<=ate && (!soAtrasos || r.atraso_min>0); });
+      var q=sb().from('ponto_registos').select('id, staff_id, data, entrada, saida, hora_prevista, atraso_min, justificado, motivo, origem').eq('escola_id',window._escolaId).gte('data',de).lte('data',ate);
+      if(soAtrasos) q=q.gt('atraso_min',0);
+      return erro(await q.order('data',{ascending:false}))||[];
+    },
+    gravarRegisto: async function(r){
+      var campos={entrada:r.entrada, saida:r.saida, justificado:!!r.justificado, motivo:r.motivo||null};
+      if(demo()){
+        var M=semente(), ex=M.registos.filter(function(x){ return x.staff_id===r.staff_id && x.data===r.data; })[0];
+        if(ex){ var mudouE=ex.entrada!==campos.entrada; Object.assign(ex,campos); if(mudouE) calcular(ex); else if(!ex.atraso_min) ex.justificado=false; }
+        else M.registos.push(calcular(Object.assign({id:'m'+(M.seq++), staff_id:r.staff_id, data:r.data, origem:'manual'}, campos)));
+        return;
+      }
+      if(r.id) erro(await sb().from('ponto_registos').update(campos).eq('id',r.id));
+      else erro(await sb().from('ponto_registos').insert(Object.assign({staff_id:r.staff_id, data:r.data, origem:'manual'}, campos)));
+    },
+    apagarRegisto: async function(id){
+      if(demo()){ var M=semente(); M.registos=M.registos.filter(function(x){ return x.id!==id; }); return; }
+      erro(await sb().from('ponto_registos').delete().eq('id',id));
+    },
+    faltas: async function(dia){
+      if(demo()) return semente().faltas.filter(function(f){ return f.data===dia; });
+      return erro(await sb().from('faltas').select('staff_id, data, justif').eq('escola_id',window._escolaId).not('staff_id','is',null).eq('data',dia))||[];
+    },
+    marcarFalta: async function(id, dia){
+      if(demo()){ semente().faltas.push({staff_id:id, data:dia, justif:false}); return; }
+      erro(await sb().from('faltas').insert({escola_id:window._escolaId, staff_id:id, data:dia, tipo:'F', justif:false, motivo:'Sem registo de entrada (ponto)'}));
+    },
+    marcar: async function(codigo){
+      if(demo()){
+        var M=semente(), cod=String(codigo||'').toUpperCase().replace(/[^0-9A-Z]/g,''); if(cod.indexOf(PREFIXO)===0) cod=cod.slice(4);
+        var id=Object.keys(M.pessoal).filter(function(k){ return M.pessoal[k].codigo===cod; })[0], p=id&&porChave()[id];
+        if(!p) return {resultado:'desconhecido'};
+        var dia=hojeISO(), agora=new Date().toISOString(), r=M.registos.filter(function(x){ return x.staff_id===id && x.data===dia; })[0], res;
+        if(!r){ r=calcular({id:'m'+(M.seq++), staff_id:id, data:dia, entrada:agora, saida:null, origem:'qr', justificado:false}); M.registos.push(r); res='entrada'; }
+        else if(Date.now()-new Date(r.saida||r.entrada).getTime()<600000) res='repetido';
+        else { r.saida=agora; res='saida'; }
+        return {resultado:res, nome:p.nome, cargo:p.cargo, num:p.num, entrada:hora(r.entrada), saida:hora(r.saida), prevista:hm(r.hora_prevista), atraso_min:r.atraso_min};
+      }
+      return erro(await sb().rpc('ponto_marcar',{p_codigo:String(codigo||'')}));
+    },
+    quiosque: async function(){
+      if(demo()){ var dia=hojeISO(); return {escola:escolaNome(), entradas_hoje:semente().registos.filter(function(r){ return r.data===dia && r.entrada; }).length}; }
+      return erro(await sb().rpc('ponto_quiosque'));
+    }
+  };
+  window.__pontoDados=D;
+
+  /* ── pequena janela (modal) ──────────────────────────────────────────── */
+  function janela(titulo, corpo, botoes){
+    fecharJanela();
+    var ov=document.createElement('div'); ov.id='ponto-janela';
+    ov.style.cssText='position:fixed;inset:0;z-index:2147480500;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML='<div role="dialog" aria-modal="true" style="background:var(--card,#fff);color:var(--t,#0f172a);border-radius:14px;max-width:460px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--b,#e2e8f0)"><b>'+H(titulo)+'</b><button type="button" class="btn btn-g btn-sm" data-fechar>✕</button></div>'
+      +'<div style="padding:16px">'+corpo+'</div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--b,#e2e8f0)" data-botoes></div></div>';
+    var zona=ov.querySelector('[data-botoes]');
+    (botoes||[]).forEach(function(b){ var e=document.createElement('button'); e.type='button'; e.className='btn btn-sm '+(b.cls||'btn-g'); e.innerHTML=b.l; e.onclick=function(){ b.fn(ov); }; zona.appendChild(e); });
+    ov.querySelector('[data-fechar]').onclick=fecharJanela;
+    ov.addEventListener('click', function(e){ if(e.target===ov) fecharJanela(); });
+    document.body.appendChild(ov);
+    return ov;
+  }
+  function fecharJanela(){ var o=document.getElementById('ponto-janela'); if(o) o.remove(); }
+  var CAMPO='width:100%;padding:8px 10px;border:1px solid var(--b,#cbd5e1);border-radius:8px;background:var(--bg2,#fff);color:inherit;font:inherit';
+  function rot(l, campo){ return '<label style="display:block;margin-bottom:10px;font-size:12px;color:var(--t2,#475569)">'+l+'<div style="margin-top:4px">'+campo+'</div></label>'; }
+
+  /* ── ecrã do RH ──────────────────────────────────────────────────────── */
+  var EST={tab:'hoje', dia:null, mes:null, filtro:'todos'};
+  try{ EST.tab=localStorage.getItem('ponto-tab')||'hoje'; }catch(e){}
+  var CACHE={};
+
+  window.rPonto=async function(){
+    var el=document.getElementById('ponto-c'); if(!el) return;
+    if(!gere()){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor de RH e à direcção.</div>'; return; }
+    EST.dia=EST.dia||hojeISO(); EST.mes=EST.mes||hojeISO().slice(0,7);
+    var tabs=[['hoje','ti-calendar-time','Hoje'],['atrasos','ti-clock-exclamation','Atrasos'],['cartoes','ti-id-badge-2','Cartões e horários']];
+    el.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+tabs.map(function(x){ return '<button type="button" class="btn btn-sm '+(EST.tab===x[0]?'btn-p':'btn-g')+'" onclick="__pontoTab(\''+x[0]+'\')"><i class="ti '+x[1]+'"></i> '+x[2]+'</button>'; }).join('')+'</div><div id="ponto-corpo"><div style="padding:20px;color:var(--t2)">A carregar…</div></div>';
+    try{
+      CACHE.config=await D.config(); CACHE.pessoal=await D.pessoal();
+      if(EST.tab==='atrasos') await tabAtrasos(); else if(EST.tab==='cartoes') tabCartoes(); else await tabHoje();
+    }catch(e){
+      document.getElementById('ponto-corpo').innerHTML='<div class="ib-box ib-re"><i class="ti ti-alert-triangle"></i> Não foi possível carregar o ponto: '+H(e.message)+'</div>';
+    }
+  };
+  window.__pontoTab=function(tb){ EST.tab=tb; try{ localStorage.setItem('ponto-tab',tb); }catch(e){} window.rPonto(); };
+
+  function chip(l, n, cor, f){ return '<button type="button" onclick="__pontoFiltro(\''+f+'\')" style="border:1px solid '+(EST.filtro===f?(cor||'var(--a)'):'var(--b)')+';background:var(--card);border-radius:12px;padding:8px 12px;cursor:pointer;text-align:left;min-width:110px"><div style="font-size:20px;font-weight:800;color:'+(cor||'var(--t)')+'">'+n+'</div><div style="font-size:11px;color:var(--t2)">'+H(l)+'</div></button>'; }
+  window.__pontoFiltro=function(f){ EST.filtro=(EST.filtro===f?'todos':f); tabHoje(); };
+  window.__pontoDia=function(v){ if(v){ EST.dia=v; EST.filtro='todos'; tabHoje(); } };
+
+  async function tabHoje(){
+    var corpo=document.getElementById('ponto-corpo'); if(!corpo) return;
+    var dia=EST.dia, regs=await D.registos(dia, dia), fal=await D.faltas(dia), PP=CACHE.pessoal||{};
+    var porS={}; regs.forEach(function(r){ porS[r.staff_id]=r; });
+    var comFalta={}; fal.forEach(function(f){ comFalta[f.staff_id]=f; });
+    var futuro=dia>hojeISO();
+    var linhas=pessoal().map(function(p){
+      var c=chave(p), r=porS[c], pp=PP[c]||{}, est;
+      if(pp.isento && !r) est='isento';
+      else if(!r || !r.entrada) est=comFalta[c]?'falta':'sem';
+      else if(r.saida) est='saiu';
+      else est='presente';
+      return {p:p, c:c, r:r, est:est, atraso:r&&r.atraso_min>0};
+    });
+    var n=function(f){ return linhas.filter(f).length; };
+    var nPres=n(function(x){ return x.est==='presente'; }), nSaiu=n(function(x){ return x.est==='saiu'; }), nAtr=n(function(x){ return x.atraso; }),
+        nSem=n(function(x){ return x.est==='sem'; }), nFal=n(function(x){ return x.est==='falta'; });
+    var vis=linhas.filter(function(x){
+      if(EST.filtro==='presentes') return x.est==='presente'||x.est==='saiu';
+      if(EST.filtro==='atrasados') return x.atraso;
+      if(EST.filtro==='sem') return x.est==='sem'||x.est==='falta';
+      return true;
+    });
+    var BADGE={presente:['bok','Presente'], saiu:['bin','Saiu'], sem:['bwn','Sem registo'], falta:['ber','Falta marcada'], isento:['bne','Não marca ponto']};
+    var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'
+      +'<input type="date" value="'+dia+'" max="'+hojeISO()+'" onchange="__pontoDia(this.value)" style="'+CAMPO+';width:auto">'
+      +(dia!==hojeISO()?'<button type="button" class="btn btn-g btn-sm" onclick="__pontoDia(\''+hojeISO()+'\')">Hoje</button>':'')
+      +'<span style="font-size:12px;color:var(--t2)">Hora de entrada: <b>'+H(CACHE.config.hora_entrada)+'</b> · tolerância '+H(CACHE.config.tolerancia_min)+' min</span>'
+      +'<button type="button" class="btn btn-g btn-sm" style="margin-left:auto" onclick="__pontoManual()"><i class="ti ti-pencil-plus"></i> Registo manual</button></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+      +chip('Entraram', nPres+nSaiu, COR.ok, 'presentes')+chip('Atrasados', nAtr, nAtr?COR.alerta:null, 'atrasados')+chip('Sem registo', nSem+nFal, nSem?COR.mau:null, 'sem')
+      +'<div style="align-self:center;font-size:12px;color:var(--t2)">'+nSaiu+' já saíram'+(nFal?' · '+nFal+' com falta marcada':'')+'</div></div>';
+    if(futuro) h+='<div class="ib-box ib-am">Data no futuro.</div>';
+    h+='<div class="tw"><table><thead><tr><th style="text-align:left">Funcionário</th><th>Entrada</th><th>Saída</th><th>Atraso</th><th>Estado</th><th></th></tr></thead><tbody>';
+    vis.forEach(function(x){
+      var r=x.r, b=BADGE[x.est];
+      var acc='<button type="button" class="btn btn-g btn-sm" title="Corrigir / registar" onclick="__pontoManual(\''+x.c+'\',\''+dia+'\')"><i class="ti ti-pencil"></i></button>';
+      if(x.atraso) acc+=' <button type="button" class="btn btn-g btn-sm" onclick="__pontoJustificar(\''+r.id+'\')">'+(r.justificado?'Justificado ✓':'Justificar')+'</button>';
+      if(x.est==='sem' && !futuro) acc+=' <button type="button" class="btn btn-g btn-sm" style="color:'+COR.mau+'" onclick="__pontoFalta(\''+x.c+'\',\''+dia+'\')">Marcar falta</button>';
+      h+='<tr><td><b>'+H(x.p.nome)+'</b><div style="font-size:11px;color:var(--t2)">'+H(x.p.cargo||'')+'</div></td>'
+        +'<td style="text-align:center">'+(r&&r.entrada?hora(r.entrada)+(r.origem==='manual'?' <span title="Registo manual" style="color:var(--t3)">✎</span>':''):'—')+'</td>'
+        +'<td style="text-align:center">'+(r&&r.saida?hora(r.saida):'—')+'</td>'
+        +'<td style="text-align:center">'+(x.atraso?'<b style="color:'+(r.justificado?'var(--t2)':COR.alerta)+'">'+mins(r.atraso_min)+'</b>':'—')+'</td>'
+        +'<td style="text-align:center"><span class="badge '+b[0]+'">'+b[1]+'</span></td><td style="white-space:nowrap;text-align:right">'+acc+'</td></tr>';
+    });
+    if(!vis.length) h+='<tr><td colspan="6" style="text-align:center;color:var(--t2);padding:18px">Ninguém nesta lista.</td></tr>';
+    h+='</tbody></table></div>';
+    CACHE.regsDia=regs;
+    corpo.innerHTML=h;
+  }
+
+  async function tabAtrasos(){
+    var corpo=document.getElementById('ponto-corpo'); if(!corpo) return;
+    var mes=EST.mes, ano=mes.slice(0,4), ultimo=new Date(+ano, +mes.slice(5,7), 0).getDate();
+    var anoRegs=await D.registos(ano+'-01-01', ano+'-12-31', true);
+    var regs=anoRegs.filter(function(r){ return r.data.slice(0,7)===mes; }).sort(function(a,b){ return a.data<b.data?1:a.data>b.data?-1:0; });
+    CACHE.atrasos=regs;
+    var P=porChave(), apf=+CACHE.config.atrasos_por_falta||3;
+    var inj=regs.filter(function(r){ return !r.justificado; });
+    var minT=inj.reduce(function(s,r){ return s+r.atraso_min; },0);
+    var porP={}; regs.forEach(function(r){ var o=porP[r.staff_id]=porP[r.staff_id]||{n:0,inj:0,min:0}; o.n++; if(!r.justificado){ o.inj++; o.min+=r.atraso_min; } });
+    var injAno={}; anoRegs.forEach(function(r){ if(!r.justificado) injAno[r.staff_id]=(injAno[r.staff_id]||0)+1; });
+    var ids=Object.keys(porP).sort(function(a,b){ return porP[b].inj-porP[a].inj || porP[b].min-porP[a].min; });
+    var opMes=''; for(var m=1;m<=12;m++){ var v=ano+'-'+String(m).padStart(2,'0'); opMes+='<option value="'+v+'"'+(v===mes?' selected':'')+'>'+MESES[m]+' '+ano+'</option>'; }
+    var h='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'
+      +'<select onchange="__pontoMes(this.value)" style="'+CAMPO+';width:auto">'+opMes+'</select>'
+      +'<span style="font-size:12px;color:var(--t2)">'+apf+' atrasos injustificados contam como 1 falta na avaliação</span>'
+      +'<span style="margin-left:auto;display:flex;gap:6px"><button type="button" class="btn btn-g btn-sm" onclick="__pontoManual()"><i class="ti ti-pencil-plus"></i> Registar atraso</button>'
+      +'<button type="button" class="btn btn-g btn-sm" onclick="__pontoImprimirAtrasos()"><i class="ti ti-printer"></i> Imprimir</button></span></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px">'
+      +kpi('Atrasos no mês', regs.length, inj.length+' injustificados', inj.length?COR.alerta:COR.ok)
+      +kpi('Tempo perdido', mins(minT), 'só injustificados')
+      +kpi('Pessoas com atrasos', ids.length, 'de '+pessoal().length+' funcionários')
+      +kpi('Contam como faltas', Object.keys(injAno).reduce(function(s,k){ return s+Math.floor(injAno[k]/apf); },0), 'no ano, para a avaliação', COR.info)
+      +'</div>';
+    if(ids.length){
+      h+='<div class="card" style="margin:0 0 12px"><div class="ch"><span class="ct"><i class="ti ti-users"></i> Por funcionário — '+MESES[+mes.slice(5,7)]+'</span></div><div class="cb" style="overflow-x:auto"><table><thead><tr><th style="text-align:left">Funcionário</th><th>Atrasos</th><th>Injustificados</th><th>Tempo</th><th>No ano (injust.)</th><th>Faltas equivalentes</th></tr></thead><tbody>'
+        +ids.map(function(id){ var o=porP[id], p=P[id]||{nome:'—'}; return '<tr><td><b>'+H(p.nome)+'</b></td><td style="text-align:center">'+o.n+'</td><td style="text-align:center;color:'+(o.inj?COR.alerta:'inherit')+'">'+o.inj+'</td><td style="text-align:center">'+mins(o.min)+'</td><td style="text-align:center">'+(injAno[id]||0)+'</td><td style="text-align:center"><b>'+Math.floor((injAno[id]||0)/apf)+'</b></td></tr>'; }).join('')
+        +'</tbody></table></div></div>';
+    }
+    h+='<div class="tw"><table><thead><tr><th>Data</th><th style="text-align:left">Funcionário</th><th>Hora prevista</th><th>Entrada</th><th>Atraso</th><th style="text-align:left">Justificação</th><th></th></tr></thead><tbody>';
+    regs.forEach(function(r){
+      var p=P[r.staff_id]||{nome:'—'};
+      h+='<tr><td style="white-space:nowrap">'+dPT(r.data)+'</td><td><b>'+H(p.nome)+'</b></td><td style="text-align:center">'+hm(r.hora_prevista)+'</td><td style="text-align:center">'+hora(r.entrada)+(r.origem==='manual'?' <span title="Registo manual" style="color:var(--t3)">✎</span>':'')+'</td>'
+        +'<td style="text-align:center"><b style="color:'+(r.justificado?'var(--t2)':COR.alerta)+'">'+mins(r.atraso_min)+'</b></td>'
+        +'<td>'+(r.justificado?'<span class="badge bok">Justificado</span> <span style="font-size:12px;color:var(--t2)">'+H(r.motivo||'')+'</span>':'<span class="badge bwn">Injustificado</span>')+'</td>'
+        +'<td style="white-space:nowrap;text-align:right"><button type="button" class="btn btn-g btn-sm" onclick="__pontoJustificar(\''+r.id+'\')">'+(r.justificado?'Alterar':'Justificar')+'</button> <button type="button" class="btn btn-g btn-sm" title="Corrigir" onclick="__pontoManual(\''+r.staff_id+'\',\''+r.data+'\')"><i class="ti ti-pencil"></i></button></td></tr>';
+    });
+    if(!regs.length) h+='<tr><td colspan="7" style="text-align:center;color:var(--t2);padding:18px">Sem atrasos em '+MESES[+mes.slice(5,7)]+'.</td></tr>';
+    h+='</tbody></table></div>';
+    corpo.innerHTML=h;
+  }
+  function kpi(l, v, sub, cor){ return '<div style="border:1px solid var(--b);border-radius:14px;padding:12px;background:var(--card)"><div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">'+H(l)+'</div><div style="font-size:22px;font-weight:800;color:'+(cor||'var(--t)')+'">'+v+'</div><div style="font-size:12px;color:var(--t2)">'+H(sub)+'</div></div>'; }
+  window.__pontoMes=function(v){ EST.mes=v; tabAtrasos(); };
+
+  window.__pontoImprimirAtrasos=function(){
+    var regs=CACHE.atrasos||[], P=porChave(), mes=EST.mes;
+    var w=window.open(''); if(!w) return;
+    var linhas=regs.slice().reverse().map(function(r){ var p=P[r.staff_id]||{}; return '<tr><td>'+dPT(r.data)+'</td><td>'+H(p.nome||'—')+'</td><td>'+H(p.cargo||'')+'</td><td class="c">'+hm(r.hora_prevista)+'</td><td class="c">'+hora(r.entrada)+'</td><td class="c">'+mins(r.atraso_min)+'</td><td>'+(r.justificado?'Justificado — '+H(r.motivo||''):'Injustificado')+'</td></tr>'; }).join('');
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Atrasos — '+MESES[+mes.slice(5,7)]+' '+mes.slice(0,4)+'</title><style>body{font:12px Arial,sans-serif;margin:24px;color:#0f172a}h1{font-size:18px;margin:0}h2{font-size:12px;color:#475569;font-weight:400;margin:4px 0 14px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:5px 6px;text-align:left}th{background:#f1f5f9}.c{text-align:center}</style></head><body>'
+      +'<h1>'+H(escolaNome())+' — Registo de atrasos</h1><h2>'+MESES[+mes.slice(5,7)]+' de '+mes.slice(0,4)+' · '+regs.length+' atraso(s) · emitido em '+new Date().toLocaleDateString('pt-PT')+'</h2>'
+      +'<table><thead><tr><th>Data</th><th>Funcionário</th><th>Cargo</th><th>Prevista</th><th>Entrada</th><th>Atraso</th><th>Situação</th></tr></thead><tbody>'+(linhas||'<tr><td colspan="7">Sem atrasos.</td></tr>')+'</tbody></table></body></html>');
+    w.document.close();
+  };
+
+  function tabCartoes(){
+    var corpo=document.getElementById('ponto-corpo'); if(!corpo) return;
+    var c=CACHE.config, PP=CACHE.pessoal||{}, P=pessoal();
+    var semCartao=P.filter(function(p){ return !(PP[chave(p)]&&PP[chave(p)].codigo); }).length;
+    var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:14px">'
+      +'<div class="card" style="margin:0"><div class="ch"><span class="ct"><i class="ti ti-clock"></i> Horário geral</span></div><div class="cb" style="padding:14px">'
+      +rot('Hora de entrada', '<input id="pc-hora" type="time" value="'+H(c.hora_entrada)+'" style="'+CAMPO+'">')
+      +rot('Tolerância (minutos sem contar atraso)', '<input id="pc-tol" type="number" min="0" max="120" value="'+H(c.tolerancia_min)+'" style="'+CAMPO+'">')
+      +rot('Atrasos injustificados que contam como 1 falta na avaliação', '<input id="pc-apf" type="number" min="1" max="20" value="'+H(c.atrasos_por_falta)+'" style="'+CAMPO+'">')
+      +'<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Ex.: entrada às 07:30 com 10 min de tolerância — quem entra às 07:38 não tem atraso; às 07:45 tem 15 min de atraso.</div>'
+      +'<button type="button" class="btn btn-p btn-sm" onclick="__pontoGravarConfig()"><i class="ti ti-device-floppy"></i> Gravar</button></div></div>'
+      +'<div class="card" style="margin:0"><div class="ch"><span class="ct"><i class="ti ti-door-enter"></i> Portaria</span></div><div class="cb" style="padding:14px;font-size:13px;line-height:1.55">'
+      +'<p style="margin:0 0 8px">Na entrada fica um tablet ou telemóvel com câmara (ou um computador com leitor USB de QR) em <b>Modo Ponto</b>. A primeira leitura do cartão no dia regista a <b>entrada</b>; a seguinte, a <b>saída</b>.</p>'
+      +'<p style="margin:0 0 12px">Esse aparelho entra com a <b>conta da portaria</b>, que só regista pontos e não vê mais nada da escola.</p>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn btn-p btn-sm" onclick="__pontoContaPortaria()"><i class="ti ti-key"></i> Criar / repor a conta da portaria</button>'
+      +'<button type="button" class="btn btn-g btn-sm" onclick="__pontoQuiosque()"><i class="ti ti-qrcode"></i> Abrir Modo Ponto neste aparelho</button></div></div></div></div>';
+    h+='<div class="card" style="margin:0"><div class="ch" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="ct"><i class="ti ti-id-badge-2"></i> Cartões e horário de cada funcionário</span><span style="display:flex;gap:6px;flex-wrap:wrap">'
+      +(semCartao?'<button type="button" class="btn btn-g btn-sm" onclick="__pontoGarantir()"><i class="ti ti-plus"></i> Emitir cartões em falta ('+semCartao+')</button>':'')
+      +'<button type="button" class="btn btn-p btn-sm" onclick="__pontoImprimirCartoes()"><i class="ti ti-printer"></i> Imprimir cartões</button></span></div>'
+      +'<div class="cb" style="overflow-x:auto"><div style="font-size:12px;color:var(--t2);margin-bottom:8px">Deixe o horário em branco para usar o geral. «Não marca ponto» = não conta atrasos nem aparece como «sem registo» (ex.: direcção). Para imprimir só alguns, marque-os; sem nenhum marcado imprime todos.</div>'
+      +'<table><thead><tr><th><input type="checkbox" aria-label="Seleccionar todos" onclick="document.querySelectorAll(\'.pc-sel\').forEach(function(x){x.checked=this.checked}.bind(this))"></th><th style="text-align:left">Funcionário</th><th>Hora de entrada própria</th><th>Tolerância própria</th><th>Não marca ponto</th><th>Cartão</th><th></th></tr></thead><tbody>';
+    P.forEach(function(p){
+      var k=chave(p), pp=PP[k]||{};
+      h+='<tr><td><input type="checkbox" class="pc-sel" value="'+H(k)+'" aria-label="Seleccionar '+H(p.nome)+'"></td><td><b>'+H(p.nome)+'</b><div style="font-size:11px;color:var(--t2)">'+H(p.cargo||'')+' · '+H(p.num||'')+'</div></td>'
+        +'<td style="text-align:center"><input type="time" value="'+H(pp.hora_entrada||'')+'" onchange="__pontoPessoa(\''+k+'\',\'hora_entrada\',this.value)" style="'+CAMPO+';width:auto"></td>'
+        +'<td style="text-align:center"><input type="number" min="0" max="120" placeholder="geral" value="'+(pp.tolerancia_min!=null?H(pp.tolerancia_min):'')+'" onchange="__pontoPessoa(\''+k+'\',\'tolerancia_min\',this.value)" style="'+CAMPO+';width:80px"></td>'
+        +'<td style="text-align:center"><input type="checkbox"'+(pp.isento?' checked':'')+' onchange="__pontoPessoa(\''+k+'\',\'isento\',this.checked)" aria-label="'+H(p.nome)+' não marca ponto"></td>'
+        +'<td style="text-align:center;font-size:12px">'+(pp.codigo?'<span class="badge bok">Emitido</span><div style="color:var(--t2)">'+(pp.codigo_emitido_em?dPT(pp.codigo_emitido_em):'')+'</div>':'<span class="badge bwn">Sem cartão</span>')+'</td>'
+        +'<td style="text-align:right"><button type="button" class="btn btn-g btn-sm" title="Cartão perdido: o antigo deixa de funcionar" onclick="__pontoNovoCartao(\''+k+'\')">'+(pp.codigo?'Novo cartão':'Emitir')+'</button></td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+    corpo.innerHTML=h;
+  }
+
+  window.__pontoGravarConfig=async function(){
+    var v={hora_entrada:(document.getElementById('pc-hora').value||'07:30'), tolerancia_min:parseInt(document.getElementById('pc-tol').value,10), atrasos_por_falta:parseInt(document.getElementById('pc-apf').value,10)};
+    if(!/^\d{2}:\d{2}$/.test(v.hora_entrada)) return t('Hora de entrada inválida');
+    if(!(v.tolerancia_min>=0 && v.tolerancia_min<=120)) return t('Tolerância: entre 0 e 120 minutos');
+    if(!(v.atrasos_por_falta>=1 && v.atrasos_por_falta<=20)) return t('Atrasos por falta: entre 1 e 20');
+    try{ await D.gravarConfig(v); CACHE.config=v; t('Horário geral gravado — vale para as próximas entradas'); }catch(e){ t('Não foi possível gravar: '+e.message); }
+  };
+  window.__pontoPessoa=async function(k, campo, valor){
+    var v=valor;
+    if(campo==='hora_entrada') v=valor||null;
+    if(campo==='tolerancia_min'){ v=valor===''?null:parseInt(valor,10); if(v!=null && !(v>=0&&v<=120)) return t('Tolerância: entre 0 e 120 minutos'); }
+    var o={}; o[campo]=v;
+    try{ await D.gravarPessoal(k,o); CACHE.pessoal[k]=Object.assign(CACHE.pessoal[k]||{}, o); t('Gravado'); }catch(e){ t('Não foi possível gravar: '+e.message); }
+  };
+  window.__pontoGarantir=async function(){
+    try{ var n=await D.garantirCartoes(); t(n+' cartão(ões) emitido(s)'); window.rPonto(); }catch(e){ t('Erro: '+e.message); }
+  };
+  window.__pontoNovoCartao=async function(k){
+    var p=porChave()[k]||{}, tem=CACHE.pessoal[k]&&CACHE.pessoal[k].codigo;
+    if(tem && !confirm('Emitir um cartão novo para '+(p.nome||'este funcionário')+'?\n\nO cartão antigo deixa de funcionar logo.')) return;
+    try{ await D.novoCartao(k); t('Cartão emitido — imprima-o'); CACHE.pessoal=await D.pessoal(); tabCartoes(); var cb=document.querySelector('.pc-sel[value="'+k+'"]'); if(cb) cb.checked=true; }catch(e){ t('Erro: '+e.message); }
+  };
+
+  /* cartões: A4 com 10 cartões (tamanho de cartão bancário) */
+  window.__pontoImprimirCartoes=async function(){
+    var sel=[].slice.call(document.querySelectorAll('.pc-sel:checked')).map(function(x){ return x.value; });
+    var PP=CACHE.pessoal||{}, P=pessoal().filter(function(p){ var k=chave(p); return (!sel.length || sel.indexOf(k)>=0); });
+    var semC=P.filter(function(p){ return !(PP[chave(p)]&&PP[chave(p)].codigo); });
+    if(semC.length){ if(!confirm(semC.length+' funcionário(s) ainda sem cartão. Emitir agora?')) return; try{ await D.garantirCartoes(); PP=CACHE.pessoal=await D.pessoal(); }catch(e){ return t('Erro: '+e.message); } }
+    try{ await carregarScript(LIB_QR); }catch(e){ return t(e.message); }
+    if(typeof window.qrcode!=='function') return t('Gerador de QR indisponível');
+    var esc=escolaNome();
+    var cartoes=P.filter(function(p){ return PP[chave(p)]&&PP[chave(p)].codigo; }).map(function(p){
+      var q=window.qrcode(0,'M'); q.addData(PREFIXO+PP[chave(p)].codigo); q.make();
+      var svg=q.createSvgTag({cellSize:4, margin:0, scalable:true});
+      return '<div class="cartao"><div class="esq"><div class="esc">'+H(esc)+'</div><div class="tit">CARTÃO DE PONTO</div><div class="nome">'+H(p.nome)+'</div><div class="cargo">'+H(p.cargo||'')+'</div><div class="num">'+H(p.num||'')+'</div><div class="aviso">Pessoal e intransmissível. Se o perder, avise o RH.</div></div><div class="qr">'+svg+'</div></div>';
+    });
+    if(!cartoes.length) return t('Nenhum cartão para imprimir');
+    var w=window.open(''); if(!w) return;
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cartões de ponto — '+H(esc)+'</title><style>'
+      +'@page{size:A4;margin:10mm}body{margin:0;font-family:Arial,sans-serif;color:#0f172a;background:#fff}'
+      +'.folha{display:grid;grid-template-columns:repeat(2,85.6mm);grid-auto-rows:54mm;gap:4mm 6mm;justify-content:center;padding:4mm 0}'
+      +'.cartao{box-sizing:border-box;border:1px dashed #94a3b8;border-radius:3mm;padding:4mm;display:flex;gap:3mm;align-items:center;break-inside:avoid;overflow:hidden}'
+      +'.esq{flex:1;min-width:0;display:flex;flex-direction:column;height:100%}.esc{font-size:7.5pt;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:.03em}'
+      +'.tit{font-size:6.5pt;color:#64748b;letter-spacing:.12em;margin:1mm 0 2.5mm}.nome{font-size:11pt;font-weight:800;line-height:1.15}.cargo{font-size:8pt;color:#334155;margin-top:1mm}'
+      +'.num{font-size:8pt;font-family:monospace;color:#475569;margin-top:1mm}.aviso{margin-top:auto;font-size:5.5pt;color:#94a3b8}.qr{width:34mm;height:34mm;flex:none}.qr svg{width:100%;height:100%}'
+      +'</style></head><body><div class="folha">'+cartoes.join('')+'</div></body></html>');
+    w.document.close();
+  };
+
+  /* registo manual / correcção */
+  window.__pontoManual=function(k, dia){
+    var P=pessoal(), regs=(CACHE.regsDia||[]).concat(CACHE.atrasos||[]);
+    dia=dia||EST.dia||hojeISO();
+    var r=k?regs.filter(function(x){ return x.staff_id===k && x.data===dia; })[0]:null;
+    var corpo=rot('Funcionário', '<select id="pm-pessoa" style="'+CAMPO+'"'+(k?' disabled':'')+'>'+(k?'':'<option value="">— escolha —</option>')+P.map(function(p){ var c=chave(p); return '<option value="'+H(c)+'"'+(c===k?' selected':'')+'>'+H(p.nome)+'</option>'; }).join('')+'</select>')
+      +rot('Dia', '<input id="pm-dia" type="date" max="'+hojeISO()+'" value="'+dia+'" style="'+CAMPO+'"'+(k?' disabled':'')+'>')
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+rot('Entrada', '<input id="pm-ent" type="time" value="'+(r&&r.entrada?hora(r.entrada):'')+'" style="'+CAMPO+'">')+rot('Saída', '<input id="pm-sai" type="time" value="'+(r&&r.saida?hora(r.saida):'')+'" style="'+CAMPO+'">')+'</div>'
+      +'<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:8px"><input id="pm-just" type="checkbox"'+(r&&r.justificado?' checked':'')+'> Atraso justificado</label>'
+      +rot('Motivo / observação', '<input id="pm-mot" type="text" maxlength="500" value="'+H(r&&r.motivo||'')+'" style="'+CAMPO+'">')
+      +'<div style="font-size:11px;color:var(--t2)">O atraso calcula-se sozinho pela hora de entrada e pelo horário da pessoa.</div>';
+    var bot=[{l:'Cancelar', fn:fecharJanela},{l:'<i class="ti ti-device-floppy"></i> Gravar', cls:'btn-p', fn:async function(ov){
+      var s=k||ov.querySelector('#pm-pessoa').value, d=k?dia:ov.querySelector('#pm-dia').value, e=ov.querySelector('#pm-ent').value, sa=ov.querySelector('#pm-sai').value;
+      if(!s) return t('Escolha o funcionário'); if(!d) return t('Escolha o dia'); if(d>hojeISO()) return t('Não se regista ponto no futuro');
+      if(!e && !sa) return t('Indique a entrada ou a saída');
+      if(e && sa && sa<e) return t('A saída não pode ser antes da entrada');
+      var agoraHM=new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit',timeZone:TZ});
+      if(d===hojeISO() && ((e&&e>agoraHM)||(sa&&sa>agoraHM))) return t('Essa hora ainda não chegou');
+      var ex=r||(await D.registos(d,d)).filter(function(x){ return x.staff_id===s; })[0];
+      var ent=(ex&&ex.entrada&&hora(ex.entrada)===e)?ex.entrada:tsDe(d,e), sai=(ex&&ex.saida&&hora(ex.saida)===sa)?ex.saida:tsDe(d,sa);
+      try{
+        await D.gravarRegisto({id:ex&&ex.id, staff_id:s, data:d, entrada:ent, saida:sai, justificado:ov.querySelector('#pm-just').checked, motivo:ov.querySelector('#pm-mot').value.trim()});
+        fecharJanela(); t('Registo gravado'); window.rPonto();
+      }catch(err){ t('Não foi possível gravar: '+err.message); }
+    }}];
+    if(r) bot.unshift({l:'<i class="ti ti-trash"></i> Apagar', fn:async function(){ if(!confirm('Apagar o registo deste dia?')) return; try{ await D.apagarRegisto(r.id); fecharJanela(); t('Registo apagado'); window.rPonto(); }catch(err){ t('Erro: '+err.message); } }});
+    janela(r?'Corrigir registo de ponto':'Registo manual de ponto', corpo, bot);
+  };
+  window.__pontoJustificar=function(id){
+    var r=(CACHE.regsDia||[]).concat(CACHE.atrasos||[]).filter(function(x){ return String(x.id)===String(id); })[0]; if(!r) return;
+    var p=porChave()[r.staff_id]||{};
+    var corpo='<div style="font-size:13px;margin-bottom:10px"><b>'+H(p.nome||'')+'</b> — '+dPT(r.data)+', entrada às '+hora(r.entrada)+' (prevista '+hm(r.hora_prevista)+'): <b>'+mins(r.atraso_min)+'</b> de atraso.</div>'
+      +'<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:8px"><input id="pj-just" type="checkbox"'+(r.justificado?' checked':'')+'> Justificado (não conta para a avaliação)</label>'
+      +rot('Motivo', '<input id="pj-mot" type="text" maxlength="500" value="'+H(r.motivo||'')+'" placeholder="Ex.: consulta médica com declaração" style="'+CAMPO+'">');
+    janela('Justificação do atraso', corpo, [{l:'Cancelar', fn:fecharJanela},{l:'Gravar', cls:'btn-p', fn:async function(ov){
+      var j=ov.querySelector('#pj-just').checked, m=ov.querySelector('#pj-mot').value.trim();
+      if(j && !m) return t('Indique o motivo da justificação');
+      try{ await D.gravarRegisto({id:r.id, staff_id:r.staff_id, data:r.data, entrada:r.entrada, saida:r.saida, justificado:j, motivo:m}); fecharJanela(); t(j?'Atraso justificado':'Justificação retirada'); window.rPonto(); }catch(e){ t('Não foi possível gravar: '+e.message); }
+    }}]);
+  };
+  window.__pontoFalta=async function(k, dia){
+    var p=porChave()[k]||{};
+    if(!confirm('Marcar falta (injustificada) a '+(p.nome||'')+' no dia '+dPT(dia)+'?\n\nPode justificá-la depois em «Faltas do Pessoal».')) return;
+    try{ await D.marcarFalta(k, dia); t('Falta marcada'); tabHoje(); }catch(e){ t('Não foi possível marcar: '+e.message); }
+  };
+  window.__pontoContaPortaria=async function(){
+    if(demo()) return t('Na demonstração não se criam contas');
+    if(!confirm('Criar a conta da portaria?\n\nSe já existir, recebe uma palavra-passe nova e a antiga deixa de funcionar (o aparelho da portaria terá de entrar outra vez).')) return;
+    try{
+      var r=await sb().functions.invoke('gerir-utilizador',{body:{action:'criar-conta-portaria'}});
+      var d=r&&r.data;
+      if(r.error || !d || !d.ok){ var msg=(d&&d.error)||(r.error&&r.error.message)||'erro desconhecido'; try{ if(r.error&&r.error.context&&r.error.context.json){ var j=await r.error.context.json(); msg=j.error||msg; } }catch(e){} return t('Não foi possível: '+msg); }
+      if(typeof window.__mostrarCredenciais==='function') window.__mostrarCredenciais('Portaria (Modo Ponto)', d.email, d.password, true);
+      else alert('Conta da portaria\nLogin: '+d.email+'\nPalavra-passe: '+d.password);
+    }catch(e){ t('Erro: '+e.message); }
+  };
+
+  /* ── MODO PONTO (quiosque) ───────────────────────────────────────────── */
+  var Q={ov:null, stream:null, scan:null, relogio:null, volta:null, ultimo:'', ultimoT:0, ocupado:false, buf:'', bufT:0, lock:null, audio:null, detector:null, canvas:null};
+  function som(tipo){
+    try{
+      Q.audio=Q.audio||new (window.AudioContext||window.webkitAudioContext)();
+      var seq={entrada:[[880,.12],[1320,.14]], saida:[[660,.14],[880,.14]], repetido:[[700,.1]], erro:[[220,.35]]}[tipo]||[[600,.1]], t0=Q.audio.currentTime;
+      seq.forEach(function(n){ var o=Q.audio.createOscillator(), g=Q.audio.createGain(); o.frequency.value=n[0]; o.type='sine'; g.gain.value=.25; o.connect(g); g.connect(Q.audio.destination); o.start(t0); o.stop(t0+n[1]); t0+=n[1]+.04; });
+    }catch(e){}
+  }
+  function mostrar(res){
+    var p=document.getElementById('pq-res'); if(!p) return;
+    clearTimeout(Q.volta);
+    var R=res||{}, cor='#1e293b', icone='ti-qrcode', tit='Passe o cartão', l1='Aponte o QR do cartão à câmara ou passe-o no leitor.', l2='';
+    if(R.resultado==='entrada'){ cor='#15803d'; icone='ti-login'; tit='ENTRADA · '+H(R.entrada); l1=H(R.nome); l2=H(R.cargo||'');
+      if(R.atraso_min>0){ cor='#b45309'; l2='<span style="background:rgba(0,0,0,.25);padding:4px 10px;border-radius:8px">Atraso de '+mins(R.atraso_min)+' (entrada prevista '+H(R.prevista)+')</span>'; } }
+    else if(R.resultado==='saida'){ cor='#1d4ed8'; icone='ti-logout'; tit='SAÍDA · '+H(R.saida); l1=H(R.nome); l2='Entrou às '+H(R.entrada)+'. Até amanhã!'; }
+    else if(R.resultado==='repetido'){ cor='#475569'; icone='ti-check'; tit='Já registado'; l1=H(R.nome); l2=R.saida?'Saída às '+H(R.saida):'Entrada às '+H(R.entrada); }
+    else if(R.resultado==='desconhecido'){ cor='#b91c1c'; icone='ti-alert-octagon'; tit='Cartão não reconhecido'; l1='Fale com o RH.'; }
+    else if(R.resultado==='inactivo'){ cor='#b91c1c'; icone='ti-user-off'; tit='Funcionário inactivo'; l1=H(R.nome||''); l2='Fale com o RH.'; }
+    else if(R.resultado==='erro'){ cor='#b91c1c'; icone='ti-wifi-off'; tit='Não foi registado'; l1=H(R.msg||'Sem ligação. Passe o cartão de novo.'); }
+    p.style.background=cor;
+    p.innerHTML='<i class="ti '+icone+'" style="font-size:64px;opacity:.9"></i><div style="font-size:clamp(26px,5vw,46px);font-weight:900;letter-spacing:.02em;margin-top:6px">'+tit+'</div>'
+      +'<div style="font-size:clamp(20px,3.6vw,32px);font-weight:700;margin-top:10px">'+l1+'</div><div style="font-size:clamp(14px,2.4vw,20px);margin-top:10px;opacity:.95">'+l2+'</div>';
+    if(res) Q.volta=setTimeout(function(){ mostrar(null); }, 5000);
+  }
+  async function processar(texto){
+    var cod=String(texto||'').trim(); if(cod.length<8) return;
+    var agora=Date.now();
+    if(Q.ocupado || (cod===Q.ultimo && agora-Q.ultimoT<15000)) return;
+    Q.ocupado=true; Q.ultimo=cod; Q.ultimoT=agora;
+    try{
+      var r=await D.marcar(cod);
+      mostrar(r); som(r.resultado==='entrada'||r.resultado==='saida'?r.resultado:(r.resultado==='repetido'?'repetido':'erro'));
+      contar();
+    }catch(e){ mostrar({resultado:'erro', msg:/fetch|network|Failed/i.test(e.message)?'Sem ligação à internet. Passe o cartão de novo.':e.message}); som('erro'); Q.ultimo=''; }
+    finally{ Q.ocupado=false; }
+  }
+  async function contar(){ try{ var i=await D.quiosque(); var a=document.getElementById('pq-esc'); if(a&&i) a.textContent=i.escola||escolaNome(); var b=document.getElementById('pq-cont'); if(b&&i) b.textContent=i.entradas_hoje+' entrada(s) hoje'; }catch(e){} }
+  function teclas(e){
+    if(!Q.ov) return;
+    if(document.getElementById('ponto-janela')) return;
+    var agora=Date.now();
+    if(agora-Q.bufT>800) Q.buf='';
+    Q.bufT=agora;
+    if(e.key==='Enter'){ var b=Q.buf; Q.buf=''; if(b.length>=8){ e.preventDefault(); processar(b); } return; }
+    if(e.key==='Escape') return;
+    if(e.key && e.key.length===1){ Q.buf+=e.key; e.preventDefault(); }
+  }
+  async function ligarCamera(){
+    pararCamera();
+    var est=document.getElementById('pq-cam-est'), v=document.getElementById('pq-video');
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ if(est) est.innerHTML='<div>Este aparelho não dá acesso à câmara.<br>Use um leitor USB.</div>'; return; }
+    var lado='environment'; try{ lado=localStorage.getItem('ponto-camera')||'user'; }catch(e){ lado='user'; }
+    try{
+      Q.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:lado, width:{ideal:1280}, height:{ideal:720}}, audio:false});
+      v.style.transform=(lado==='user'?'scaleX(-1)':'none');   /* câmara da frente: imagem em espelho, mais natural */
+      v.srcObject=Q.stream; await v.play();
+      if(est) est.textContent='';
+    }catch(e){
+      if(est) est.innerHTML='<div>Sem acesso à câmara ('+H(e.name||e.message)+').<div style="margin:12px 0"><button type="button" class="pq-b" onclick="__pontoCamara()">Tentar de novo</button></div><span style="font-size:12px;opacity:.7">Permita a câmara nas definições do navegador. O leitor USB continua a funcionar.</span></div>';
+      return;
+    }
+    try{
+      if('BarcodeDetector' in window){ var f=await window.BarcodeDetector.getSupportedFormats(); if(f.indexOf('qr_code')>=0) Q.detector=new window.BarcodeDetector({formats:['qr_code']}); }
+    }catch(e){ Q.detector=null; }
+    if(!Q.detector){ try{ await carregarScript(LIB_LER); }catch(e){ if(est) est.textContent='Leitor de QR indisponível — use o leitor USB.'; return; } }
+    Q.canvas=Q.canvas||document.createElement('canvas');
+    var aLer=false;
+    Q.scan=setInterval(async function(){
+      if(aLer || Q.ocupado || !v.videoWidth || v.readyState<2) return;
+      aLer=true;
+      try{
+        var txt=null;
+        if(Q.detector){ var cs=await Q.detector.detect(v); if(cs&&cs.length) txt=cs[0].rawValue; }
+        else if(typeof window.jsQR==='function'){
+          var w=Math.min(640, v.videoWidth), h=Math.round(v.videoHeight*w/v.videoWidth);
+          Q.canvas.width=w; Q.canvas.height=h; var cx=Q.canvas.getContext('2d',{willReadFrequently:true}); cx.drawImage(v,0,0,w,h);
+          var r=window.jsQR(cx.getImageData(0,0,w,h).data, w, h, {inversionAttempts:'dontInvert'}); if(r) txt=r.data;
+        }
+        if(txt) processar(txt);
+      }catch(e){}
+      aLer=false;
+    }, 250);
+  }
+  function pararCamera(){ clearInterval(Q.scan); Q.scan=null; if(Q.stream){ Q.stream.getTracks().forEach(function(x){ x.stop(); }); Q.stream=null; } }
+  async function manterLigado(){ try{ if(navigator.wakeLock && document.visibilityState==='visible') Q.lock=await navigator.wakeLock.request('screen'); }catch(e){} }
+  function visivel(){ if(Q.ov && document.visibilityState==='visible'){ manterLigado(); } }
+  window.__pontoCamara=function(){ ligarCamera(); };
+  window.__pontoTrocarCamara=function(){ var a='user'; try{ a=localStorage.getItem('ponto-camera')||'user'; localStorage.setItem('ponto-camera', a==='user'?'environment':'user'); }catch(e){} ligarCamera(); };
+  window.__pontoEcraInteiro=function(){ try{ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }catch(e){} };
+
+  window.__pontoQuiosque=function(){
+    if(!podeQuiosque()) return t('Sem permissão para o Modo Ponto');
+    if(Q.ov) return;
+    var ov=document.createElement('div'); ov.id='ponto-quiosque';
+    ov.style.cssText='position:fixed;inset:0;z-index:2147470000;background:#0b1220;color:#fff;display:flex;flex-direction:column;font-family:inherit';
+    ov.innerHTML='<style>#ponto-quiosque .pq-b{background:#1e293b;color:#fff;border:1px solid #334155;border-radius:10px;padding:8px 14px;font:600 13px inherit;cursor:pointer}#ponto-quiosque .pq-b:hover{background:#334155}'
+      +'#pq-grelha{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;padding:0 16px 16px;min-height:0}@media (orientation:portrait),(max-width:760px){#pq-grelha{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(0,1fr)}}</style>'
+      +'<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div id="pq-esc" style="font-weight:800;font-size:18px">'+H(escolaNome())+'</div><div style="font-size:13px;opacity:.7">Modo Ponto · <span id="pq-cont"></span></div></div>'
+      +'<div style="text-align:right"><div id="pq-hora" style="font-size:34px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1"></div><div id="pq-data" style="font-size:12px;opacity:.7"></div></div>'
+      +'<div style="display:flex;gap:6px"><button type="button" class="pq-b" onclick="__pontoTrocarCamara()" title="Câmara da frente / de trás"><i class="ti ti-camera-rotate"></i></button><button type="button" class="pq-b" onclick="__pontoEcraInteiro()" title="Ecrã inteiro"><i class="ti ti-maximize"></i></button><button type="button" class="pq-b" onclick="__pontoSairQuiosque()">Sair</button></div></div>'
+      +'<div id="pq-grelha"><div style="position:relative;background:#000;border-radius:18px;overflow:hidden;min-height:0">'
+      +'<video id="pq-video" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>'
+      +'<div style="position:absolute;inset:18% 22%;border:4px solid rgba(255,255,255,.75);border-radius:18px;box-shadow:0 0 0 2000px rgba(0,0,0,.25);pointer-events:none"></div>'
+      +'<div id="pq-cam-est" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-size:15px;line-height:1.6">A ligar a câmara…</div></div>'
+      +'<div id="pq-res" style="border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;transition:background .25s;min-height:0"></div></div>'
+      +'<div style="padding:0 16px 12px;font-size:12px;opacity:.6;text-align:center">A 1.ª leitura do dia regista a entrada; a seguinte, a saída. Com leitor USB, basta passar o cartão.</div>';
+    document.body.appendChild(ov); Q.ov=ov;
+    var tic=function(){ var d=new Date(); var a=document.getElementById('pq-hora'), b=document.getElementById('pq-data'); if(a) a.textContent=d.toLocaleTimeString('pt-PT',{timeZone:TZ}); if(b) b.textContent=d.toLocaleDateString('pt-PT',{weekday:'long', day:'numeric', month:'long', timeZone:TZ}); };
+    tic(); Q.relogio=setInterval(tic, 1000);
+    mostrar(null); contar(); ligarCamera(); manterLigado();
+    document.addEventListener('keydown', teclas, true);
+    document.addEventListener('visibilitychange', visivel);
+    ov.addEventListener('click', function(){ try{ if(Q.audio && Q.audio.state==='suspended') Q.audio.resume(); }catch(e){} });
+  };
+  window.__pontoSairQuiosque=function(){
+    if(!Q.ov) return;
+    if(!confirm('Fechar o Modo Ponto?')) return;
+    pararCamera(); clearInterval(Q.relogio); clearTimeout(Q.volta);
+    document.removeEventListener('keydown', teclas, true); document.removeEventListener('visibilitychange', visivel);
+    try{ if(Q.lock) Q.lock.release(); }catch(e){} Q.lock=null;
+    try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+    Q.ov.remove(); Q.ov=null;
+  };
+
+  /* ── vistas, menus, papel «portaria» e navegação ─────────────────────── */
+  function garantirVistas(){
+    var main=document.querySelector('.main')||document.querySelector('#main')||document.body;
+    if(!document.getElementById('v-ponto')){
+      var v=document.createElement('div'); v.className='view'; v.id='v-ponto';
+      v.innerHTML='<div class="ph"><div><div class="ph-title">Ponto e Atrasos</div><div class="ph-sub">Entradas e saídas do pessoal (cartões QR) e atrasos</div></div><div class="ph-right"><button type="button" class="btn btn-g btn-sm" onclick="__pontoQuiosque()"><i class="ti ti-qrcode"></i> Modo Ponto</button> <button type="button" class="btn btn-g btn-sm" onclick="window.rPonto()"><i class="ti ti-refresh"></i> Actualizar</button></div></div><div id="ponto-c"></div>';
+      main.appendChild(v);
+    }
+    if(!document.getElementById('v-ponto-q')){
+      var q=document.createElement('div'); q.className='view'; q.id='v-ponto-q';
+      q.innerHTML='<div class="ph"><div><div class="ph-title">Modo Ponto</div><div class="ph-sub">Registo de entradas e saídas do pessoal</div></div></div><div style="padding:30px;text-align:center"><button type="button" class="btn btn-p" style="font-size:16px;padding:14px 24px" onclick="__pontoQuiosque()"><i class="ti ti-qrcode"></i> Abrir Modo Ponto</button></div>';
+      main.appendChild(q);
+    }
+  }
+  garantirVistas();
+  try{ VM['ponto']='v-ponto'; VM['ponto-quiosque']='v-ponto-q'; }catch(e){}
+  try{
+    var ITEM={i:'ti-clock-check',l:'Ponto e Atrasos',id:'ponto'};
+    var rh=ROLES['gestor-rh'];
+    if(rh && rh.sidebar && rh.sidebar[0] && rh.sidebar[0].flat && !rh.sidebar[0].flat.some(function(x){ return x.id==='ponto'; })){
+      var L=rh.sidebar[0].flat, ip=L.findIndex(function(x){ return x.id==='rh-painel'; }); L.splice(ip>=0?ip+1:0, 0, ITEM);
+    }
+    ['gestor','director'].forEach(function(r){
+      (ROLES[r]&&ROLES[r].sidebar||[]).forEach(function(s){
+        var L=s.sub||s.flat; if(L && L.some(function(x){ return x.id==='staff'; }) && !L.some(function(x){ return x.id==='ponto'; })){ var ip=L.findIndex(function(x){ return x.id==='rh-painel'; }); L.splice(ip>=0?ip+1:0, 0, ITEM); }
+      });
+    });
+    ROLES['portaria']={nome:'Portaria',cargo:'Portaria',avt:'PT',color:'#0f766e',badge:'Portaria',
+      sidebar:[{sl:'Portaria',flat:[{i:'ti-qrcode',l:'Modo Ponto',id:'ponto-quiosque'}]}]};
+  }catch(e){ console.warn('[ponto] menus:', e&&e.message); }
+  function embrulharGo(){
+    if(typeof window.go!=='function' || window.go.__ponto) return;
+    var anterior=window.go;
+    var novo=function(id){
+      if(papel()==='portaria' && id!=='ponto-quiosque') id='ponto-quiosque';   /* a portaria só tem o Modo Ponto */
+      var r=(id==='ponto-quiosque' && papel()==='portaria') ? undefined : anterior.apply(this, arguments);
+      if(id==='ponto' || id==='ponto-quiosque'){
+        try{
+          document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+          var v=document.getElementById(id==='ponto'?'v-ponto':'v-ponto-q'); if(v) v.classList.add('on');
+          document.querySelectorAll('.si,.ssi').forEach(function(s){ s.classList.remove('on'); });
+          var si=document.getElementById('si-'+id); if(si) si.classList.add('on');
+          if(id==='ponto') window.rPonto(); else window.__pontoQuiosque();
+        }catch(e){ console.warn('[ponto]', e&&e.message); }
+      }
+      return r;
+    };
+    novo.__ponto=true; Object.keys(anterior).forEach(function(k){ try{ novo[k]=anterior[k]; }catch(e){} });
+    window.go=novo; try{ go=novo; }catch(e){}
+  }
+  embrulharGo(); setInterval(embrulharGo, 2000);
+})();
+</script>
 </body>
 </html>
