@@ -817,7 +817,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.259</span>
+    <span class="logo-ver">v6.260</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -6371,7 +6371,7 @@ function _entrarNaApp(userData) {
   loadDadosEscola().then(() => {
     const startView = {
       aluno:'portal', professor:'portal-prof',
-      encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'staff'   // v6.210: 'portal-enc' não está em VM → ecrã em branco ao entrar
+      encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'rh-painel'   // v6.210: 'portal-enc' não está em VM → ecrã em branco ao entrar
     }[curRole] || 'dash';
     go(startView);
     toast('Bem-vindo, ' + curUser.nome + '!');
@@ -6829,7 +6829,7 @@ function doLoginDemo() {
   curUser._profId = profMatch?.id  || null;
   const startView = {
     aluno:'portal', professor:'portal-prof',
-    encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'staff',   // v6.210
+    encarregado:'dash-enc', 'dir-ciclo':'ciclo-visao', 'gestor-financeiro':'fin-dashboard', 'gestor-rh':'rh-painel',   // v6.210
   }[curRole] || 'dash';
   go(startView);
   toast('Modo demonstração activo — dados não são guardados');
@@ -45987,7 +45987,7 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
      O `ecra=` do URL só conta na primeira entrada (window.__demoEcraUsado). "Reiniciar" continua a recarregar. */
   window.__demoTrocar=function(r){ window.__demoEcraUsado=true; try{ history.replaceState(null,'',location.pathname+'?demo='+encodeURIComponent(r||'gestor')); }catch(e){} window.__demoEntrar(r); };
   /* ecrã inicial de cada perfil (o mesmo que doLoginDemo usa) */
-  var INICIO={aluno:'portal',professor:'portal-prof',encarregado:'dash-enc','gestor-financeiro':'fin-dashboard','gestor-rh':'staff','dir-ciclo':'ciclo-visao'};
+  var INICIO={aluno:'portal',professor:'portal-prof',encarregado:'dash-enc','gestor-financeiro':'fin-dashboard','gestor-rh':'rh-painel','dir-ciclo':'ciclo-visao'};
 
   var construido=false;
   window.__demoEntrar=function(role){
@@ -49260,5 +49260,205 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   };
 })();
 </script>
+<script>
+/* ═══ v6.260 — PAINEL DE RH ════════════════════════════════════════════════
+   Primeiro ecrã do Gestor de RH (e disponível à direcção): pessoal, volume
+   salarial e folha do mês, assiduidade (faltas e multas de serviço da folha,
+   onde ficam os atrasos), avaliação de desempenho, férias e pendências
+   (dados em falta, contratos a terminar, sem chefe directo). Lê o que o RH já
+   pode ler; nada aqui grava. ══════════════════════════════════════════════ */
+(function(){
+  if(window.__rhPainel260) return; window.__rhPainel260=true;
+  var H=function(v){ return window.__escH(v); };
+  function sb(){ return window._supabase; }
+  function ligado(){ return !!(sb() && window._escolaId && window._escolaId!=='escola_demo'); }
+  function papel(){ try{ return curRole; }catch(e){ return ''; } }
+  function pode(){ return ['gestor','director','gestor-rh'].indexOf(papel())>=0; }
+  function ano(){ try{ return parseInt(CONFIG.anoLectivo,10)||new Date().getFullYear(); }catch(e){ return new Date().getFullYear(); } }
+  function fmt(n){ try{ return Math.round(n||0).toLocaleString('pt-PT').replace(/ /g,' '); }catch(e){ return String(n||0); } }
+  function hoje(){ var d=new Date(); return d.toISOString().slice(0,10); }
+  function dPT(s){ try{ return s?new Date(String(s).slice(0,10)+'T12:00:00').toLocaleDateString('pt-PT'):''; }catch(e){ return s||''; } }
+  var MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var CORES={ok:'#15803d', alerta:'#b45309', mau:'#dc2626', info:'#2563eb', neutro:'var(--t2)'};
+
+  function pessoal(){ return (typeof PROFS!=='undefined'?PROFS:[]).filter(function(p){ return p && p.ativo!==false; }); }
+  function kpi(rot, val, sub, cor, ir){
+    return '<div '+(ir?'onclick="go(\''+ir+'\')" style="cursor:pointer;':'style="')+'border:1px solid var(--b);border-radius:14px;padding:14px;background:var(--card)">'
+      +'<div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.05em">'+H(rot)+'</div>'
+      +'<div style="font-size:24px;font-weight:800;color:'+(cor||'var(--t)')+';margin:2px 0">'+val+'</div>'
+      +'<div style="font-size:12px;color:var(--t2)">'+(sub||'')+'</div></div>';
+  }
+  function cartao(titulo, icone, corpo, botao){
+    return '<div class="card" style="margin:0"><div class="ch" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="ct"><i class="ti '+icone+'"></i> '+H(titulo)+'</span>'
+      +(botao?'<button class="btn btn-g btn-sm" onclick="go(\''+botao.ir+'\')">'+H(botao.l)+' <i class="ti ti-arrow-right"></i></button>':'')+'</div>'
+      +'<div class="cb" style="padding:14px">'+corpo+'</div></div>';
+  }
+  function linha(rot, val, cor){ return '<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--b);font-size:13px"><span style="color:var(--t2)">'+rot+'</span><b style="color:'+(cor||'var(--t)')+'">'+val+'</b></div>'; }
+  function barra(rot, n, max, cor){ var pct=max?Math.round(n/max*100):0; return '<div style="display:grid;grid-template-columns:120px 1fr 40px;gap:8px;align-items:center;margin-bottom:5px;font-size:12px"><span>'+H(rot)+'</span><div style="background:var(--bg3);border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(cor||'#2563eb')+'"></div></div><b style="text-align:right">'+n+'</b></div>'; }
+
+  /* folha do mês: bruto, multas (atrasos…), custo para a escola */
+  function folhaMes(a, m){
+    var F=(typeof CONFIG!=='undefined' && CONFIG.folhas && CONFIG.folhas[a] && CONFIG.folhas[a][m])||null;
+    if(!F||!F.linhas) return null;
+    var bruto=0, multas=0, nMultas=0, desc=0, n=0, multasPor={};
+    Object.keys(F.linhas).forEach(function(pid){ var L=F.linhas[pid]||{}; n++;
+      var subs=(L.subsidios||[]).reduce(function(s,x){ return s+(+x.valor||0); },0);
+      var mu=(L.multas||[]).reduce(function(s,x){ return s+(+x.valor||0); },0);
+      (L.multas||[]).forEach(function(x){ nMultas++; var k=String(x.nome||'Multa'); multasPor[k]=(multasPor[k]||0)+1; });
+      desc+=(L.descontos||[]).reduce(function(s,x){ return s+(+x.valor||0); },0);
+      bruto+=(+L.base||0)+subs-mu; multas+=mu; });
+    var parc=0; try{ if(typeof window.__totalParciais==='function') parc=window.__totalParciais(a,m)||0; }catch(e){}
+    return { estado:F.status==='aprovada'?'fechada':'rascunho', por:F.aprovadaPor, n:n, bruto:bruto, parciais:parc, multas:multas, nMultas:nMultas, multasPor:multasPor, descontos:desc, custo:Math.round(bruto*1.04)+parc };
+  }
+
+  async function dados(){
+    var a=ano(), out={faltas:[], ferias:[], aval:[], alertas:null};
+    if(!ligado()) return out;
+    try{ if(typeof window.__carregarFinancas==='function' && !window.__financasCarregadas) await window.__carregarFinancas(); }catch(e){}
+    try{ var r=await sb().from('faltas').select('staff_id, data, justif, tipo').eq('escola_id',window._escolaId).not('staff_id','is',null).gte('data', a+'-01-01').lte('data', a+'-12-31'); out.faltas=r.data||[]; }catch(e){}
+    try{ var f=await sb().from('staff_ferias').select('staff_id, data_inicio, data_fim, dias, estado').eq('escola_id',window._escolaId).gte('data_fim', hoje()); out.ferias=f.data||[]; }catch(e){}
+    try{ var v=await sb().rpc('aval_equipa',{p_ano:a, p_todos:true}); out.aval=v.data||[]; }catch(e){}
+    try{ var al=await sb().rpc('aval_alertas',{p_ano:a}); out.alertas=al.data||null; }catch(e){}
+    return out;
+  }
+
+  window.rRHPainel=async function(){
+    var el=document.getElementById('rh-painel-c'); if(!el) return;
+    if(!pode()){ el.innerHTML='<div class="ib-box ib-re"><i class="ti ti-lock"></i> Acesso restrito ao Gestor de RH e à direcção.</div>'; return; }
+    el.innerHTML='<div style="padding:24px;color:var(--t2)">A preparar o painel…</div>';
+    var D=await dados(), a=ano(), mAct=new Date().getMonth()+1, hj=hoje();
+    var P=pessoal(), porDb={}; P.forEach(function(p){ if(p._dbId) porDb[p._dbId]=p; });
+    var doc=P.filter(function(p){ return p.dep==='academico'; }).length;
+    var salBase=P.reduce(function(s,p){ return s+(+p.salario||0)+(+p.subsidioCargo||0); },0);
+    var parciais=P.filter(function(p){ return p.regime==='parcial'; }).length;
+
+    /* faltas */
+    var fMes=D.faltas.filter(function(f){ return String(f.data).slice(5,7)===String(mAct).padStart(2,'0'); });
+    var injAno=D.faltas.filter(function(f){ return !f.justif; }), injMes=fMes.filter(function(f){ return !f.justif; });
+    var cont={}; injAno.forEach(function(f){ cont[f.staff_id]=(cont[f.staff_id]||0)+1; });
+    var top=Object.keys(cont).sort(function(x,y){ return cont[y]-cont[x]; }).slice(0,5);
+    var FM=folhaMes(a, mAct), FA=folhaMes(a, mAct-1>0?mAct-1:12);
+
+    /* avaliação */
+    var AV=D.aval, conc=AV.filter(function(x){ return x.estado==='validada'||x.estado==='conhecimento'; });
+    var media=conc.length?Math.round(conc.reduce(function(s,x){ return s+(+x.nota_final||0); },0)/conc.length*100)/100:null;
+    var semChefe=AV.filter(function(x){ return !x.chefe_id; }).length, abaixo=conc.filter(function(x){ return +x.nota_final<2.5; }).length;
+    var fases={}; AV.forEach(function(x){ fases[x.estado]=(fases[x.estado]||0)+1; });
+    var al=D.alertas, faseTxt=function(k,l){ var f=al&&al.fases&&al.fases[k]; if(!f||!f.inicio) return '<span style="color:var(--t3)">'+l+': por marcar</span>'; return f.aberta?'<b style="color:'+CORES.ok+'">'+l+': a decorrer até '+dPT(f.fim)+'</b>':(f.inicio>hj?'<span style="color:'+CORES.info+'">'+l+': começa a '+dPT(f.inicio)+'</span>':'<span style="color:var(--t2)">'+l+': terminou</span>'); };
+
+    /* férias */
+    var deFerias=D.ferias.filter(function(f){ return f.data_inicio<=hj && f.data_fim>=hj && f.estado!=='rejeitado' && f.estado!=='cancelado'; });
+    var proximas=D.ferias.filter(function(f){ return f.data_inicio>hj && f.data_inicio<=new Date(Date.now()+30*864e5).toISOString().slice(0,10) && f.estado!=='rejeitado' && f.estado!=='cancelado'; });
+    var pendFer=D.ferias.filter(function(f){ return f.estado==='pendente'; }).length;
+    var nomeDb=function(id){ var p=porDb[id]; return p?p.nome:'—'; };
+
+    /* pendências */
+    var contas=(typeof CONFIG!=='undefined'&&CONFIG.contasBanco)||{};
+    var semNiss=P.filter(function(p){ return !p.niss; }), semNuit=P.filter(function(p){ return !p.nuit; });
+    var semConta=P.filter(function(p){ var c=contas[String(p.id)]; return !(p.iban || (c&&c.conta)); });
+    var semSal=P.filter(function(p){ return !(+p.salario>0) && p.regime!=='parcial'; });
+    var lim=new Date(Date.now()+60*864e5).toISOString().slice(0,10);
+    var aTerminar=P.filter(function(p){ return p.cont_fim && p.cont_fim>=hj && p.cont_fim<=lim; });
+    var nomes=function(L){ return L.slice(0,6).map(function(p){ return H(p.nome); }).join(', ')+(L.length>6?' e mais '+(L.length-6):''); };
+    var pend=function(rot, L, ir, cor){ return L.length?'<div style="padding:6px 0;border-bottom:1px dashed var(--b)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:13px"><b style="color:'+(cor||CORES.alerta)+'">'+L.length+'</b> '+H(rot)+'</span>'+(ir?'<button class="btn btn-g btn-sm" onclick="go(\''+ir+'\')">Ver</button>':'')+'</div><div style="font-size:11px;color:var(--t3)">'+nomes(L)+'</div></div>':''; };
+
+    var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">'
+      +kpi('Funcionários activos', P.length, doc+' docentes · '+(P.length-doc)+' não docentes', null, 'staff')
+      +kpi('Volume salarial mensal', fmt(salBase)+' <span style="font-size:13px">MZM</span>', 'salários base + subsídio de cargo'+(parciais?' · '+parciais+' a tempo parcial (por aula)':''), CORES.info, 'folha-salarios')
+      +kpi('Faltas injustificadas', injMes.length, 'em '+MESES[mAct]+' · '+injAno.length+' no ano', injMes.length?CORES.mau:CORES.ok, 'relat-faltas-prof')
+      +kpi('Avaliações '+a, conc.length+' / '+AV.length, AV.length?('concluídas'+(media!=null?' · média '+String(media).replace('.',','):'')):'ano por abrir', AV.length&&conc.length===AV.length?CORES.ok:CORES.alerta, 'aval-gestao')
+      +'</div>';
+
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">';
+    /* pessoal */
+    var deps={academico:0,gestao:0,financeiro:0}, salDep={academico:0,gestao:0,financeiro:0};
+    P.forEach(function(p){ var d=deps.hasOwnProperty(p.dep)?p.dep:'gestao'; deps[d]++; salDep[d]+=(+p.salario||0); });
+    var maxD=Math.max(deps.academico,deps.gestao,deps.financeiro,1);
+    h+=cartao('Pessoal', 'ti-users', barra('Académico',deps.academico,maxD,'#2563eb')+barra('Gestão',deps.gestao,maxD,'#7c3aed')+barra('Financeiro',deps.financeiro,maxD,'#0d9488')
+      +'<div style="margin-top:8px">'+linha('Tempo inteiro', P.length-parciais)+linha('Tempo parcial (pagos por aula)', parciais)
+      +linha('Salários — Académico', fmt(salDep.academico)+' MZM')+linha('Salários — Gestão', fmt(salDep.gestao)+' MZM')+(salDep.financeiro?linha('Salários — Financeiro', fmt(salDep.financeiro)+' MZM'):'')+'</div>', {ir:'staff', l:'Pessoal'});
+    /* folha */
+    var fol;
+    if(!FM) fol='<div class="ib-box ib-am" style="margin-bottom:8px"><i class="ti ti-alert-triangle"></i> A folha de '+MESES[mAct]+' ainda não foi gerada.</div>';
+    else fol='<div style="margin-bottom:8px">'+(FM.estado==='fechada'?'<span class="badge bok"><i class="ti ti-lock"></i> Fechada</span>'+(FM.por?' <span style="font-size:12px;color:var(--t2)">por '+H(FM.por)+'</span>':''):'<span class="badge bwn">Rascunho — por fechar</span>')+'</div>'
+      +linha('Funcionários na folha', FM.n)+linha('Bruto (inteiros)', fmt(FM.bruto)+' MZM')+(FM.parciais?linha('Tempo parcial', fmt(FM.parciais)+' MZM'):'')
+      +linha('Multas de serviço', FM.nMultas?(FM.nMultas+' · '+fmt(FM.multas)+' MZM'):'0', FM.nMultas?CORES.alerta:null)
+      +linha('Custo para a escola (com INSS 4%)', fmt(FM.custo)+' MZM', CORES.info);
+    if(FA) fol+='<div style="font-size:12px;color:var(--t2);margin-top:8px">Mês anterior ('+MESES[mAct-1>0?mAct-1:12]+'): '+fmt(FA.custo)+' MZM · '+(FA.estado==='fechada'?'fechada':'<b style="color:'+CORES.alerta+'">por fechar</b>')+'</div>';
+    h+=cartao('Folha de salários — '+MESES[mAct], 'ti-cash', fol, {ir:'folha-salarios', l:'Abrir folha'});
+    /* assiduidade */
+    var ass=linha('Faltas este mês', fMes.length+' ('+injMes.length+' injustificadas)', injMes.length?CORES.mau:null)
+      +linha('Faltas no ano', D.faltas.length+' ('+injAno.length+' injustificadas)');
+    if(FM && FM.nMultas){ ass+='<div style="font-size:12px;color:var(--t2);margin:8px 0 4px">Multas de serviço na folha de '+MESES[mAct]+' (atrasos e outras):</div>'+Object.keys(FM.multasPor).map(function(k){ return linha(H(k), FM.multasPor[k]); }).join(''); }
+    ass+= top.length?'<div style="font-size:12px;color:var(--t2);margin:8px 0 4px">Mais faltas injustificadas no ano:</div>'+top.map(function(id){ return linha(H(nomeDb(id)), cont[id], CORES.mau); }).join('')
+                    :'<div style="font-size:12px;color:'+CORES.ok+';margin-top:8px"><i class="ti ti-circle-check"></i> Sem faltas injustificadas este ano.</div>';
+    ass+='<div style="font-size:11px;color:var(--t3);margin-top:8px">Os atrasos registam-se como «multa de serviço» na folha do mês.</div>';
+    h+=cartao('Assiduidade', 'ti-calendar-x', ass, {ir:'relat-faltas-prof', l:'Faltas do pessoal'});
+    /* avaliação */
+    var av;
+    if(!AV.length) av='<div class="ib-box ib-am"><i class="ti ti-info-circle"></i> A avaliação de '+a+' ainda não foi aberta.</div>';
+    else av='<div style="font-size:12px;line-height:1.7;margin-bottom:8px">'+faseTxt('revisao','Revisão de meio do ano')+'<br>'+faseTxt('auto','Auto-avaliação')+'<br>'+faseTxt('chefia','Avaliação pelas chefias')+'</div>'
+      +linha('Por avaliar', fases.aberta||0)+linha('Auto-avaliação feita', fases.auto_feita||0)+linha('Aguardam validação', fases.chefia_feita||0, (fases.chefia_feita?CORES.alerta:null))
+      +linha('Concluídas', conc.length, CORES.ok)+(media!=null?linha('Nota média', String(media).replace('.',',')+' / 5'):'')
+      +(abaixo?linha('Abaixo de «Bom»', abaixo, CORES.mau):'')+(semChefe?linha('Sem chefe directo', semChefe, CORES.alerta):'');
+    h+=cartao('Avaliação de desempenho '+a, 'ti-star', av, {ir:'aval-gestao', l:'Gerir'});
+    /* férias */
+    var fer=linha('De férias hoje', deFerias.length)+(deFerias.length?'<div style="font-size:12px;color:var(--t2);margin:2px 0 6px">'+deFerias.map(function(f){ return H(nomeDb(f.staff_id))+' (até '+dPT(f.data_fim)+')'; }).join(', ')+'</div>':'')
+      +linha('Começam nos próximos 30 dias', proximas.length)+(proximas.length?'<div style="font-size:12px;color:var(--t2);margin:2px 0 6px">'+proximas.map(function(f){ return H(nomeDb(f.staff_id))+' ('+dPT(f.data_inicio)+')'; }).join(', ')+'</div>':'')
+      +(pendFer?linha('Pedidos por aprovar', pendFer, CORES.alerta):'');
+    h+=cartao('Férias', 'ti-beach', fer, {ir:'staff', l:'Pessoal'});
+    /* pendências */
+    var pe=pend('sem nº INSS (NISS)', semNiss, 'staff')+pend('sem NUIT', semNuit, 'staff')+pend('sem conta bancária para o salário', semConta, 'folha-salarios')
+      +pend('sem salário (tempo inteiro)', semSal, 'staff', CORES.mau)+pend('com contrato a terminar em 60 dias', aTerminar, 'staff', CORES.mau);
+    if(semChefe) pe+='<div style="padding:6px 0;border-bottom:1px dashed var(--b);display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px"><b style="color:'+CORES.alerta+'">'+semChefe+'</b> sem chefe directo na avaliação</span><button class="btn btn-g btn-sm" onclick="go(\'aval-gestao\')">Ver</button></div>';
+    if(!pe) pe='<div style="color:'+CORES.ok+';font-size:13px"><i class="ti ti-circle-check"></i> Nada pendente. Fichas completas.</div>';
+    h+=cartao('Pendências', 'ti-alert-triangle', pe);
+    h+='</div><div style="font-size:11px;color:var(--t3);margin-top:10px">Actualizado às '+new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})+'.</div>';
+    el.innerHTML=h;
+  };
+
+  /* vista, menus e navegação */
+  function garantirVista(){
+    if(document.getElementById('v-rh-painel')) return;
+    var main=document.querySelector('.main')||document.querySelector('#main')||document.body;
+    var v=document.createElement('div'); v.className='view'; v.id='v-rh-painel';
+    v.innerHTML='<div class="ph"><div><div class="ph-title">Painel de RH</div><div class="ph-sub">Pessoal, salários, assiduidade, avaliação e pendências</div></div><div class="ph-right"><button class="btn btn-g btn-sm" onclick="window.rRHPainel()"><i class="ti ti-refresh"></i> Actualizar</button></div></div><div id="rh-painel-c"></div>';
+    main.appendChild(v);
+  }
+  garantirVista();
+  try{ VM['rh-painel']='v-rh-painel'; }catch(e){}
+  try{
+    var ITEM={i:'ti-layout-dashboard',l:'Painel de RH',id:'rh-painel'};
+    var rh=ROLES['gestor-rh'];
+    if(rh && rh.sidebar && rh.sidebar[0] && rh.sidebar[0].flat && !rh.sidebar[0].flat.some(function(x){ return x.id==='rh-painel'; })) rh.sidebar[0].flat.unshift(ITEM);
+    ['gestor','director'].forEach(function(r){
+      (ROLES[r]&&ROLES[r].sidebar||[]).forEach(function(s){
+        var L=s.sub||s.flat; if(L && L.some(function(x){ return x.id==='staff'; }) && !L.some(function(x){ return x.id==='rh-painel'; })) L.unshift(ITEM);
+      });
+    });
+  }catch(e){ console.warn('[painel RH] menus:', e&&e.message); }
+  function embrulharGo(){
+    if(typeof window.go!=='function' || window.go.__rhPainel) return;
+    var anterior=window.go;
+    var novo=function(id){
+      var r=anterior.apply(this, arguments);
+      if(id==='rh-painel'){
+        try{
+          document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+          var v=document.getElementById('v-rh-painel'); if(v) v.classList.add('on');
+          document.querySelectorAll('.si,.ssi').forEach(function(s){ s.classList.remove('on'); });
+          var si=document.getElementById('si-rh-painel'); if(si) si.classList.add('on');
+          window.rRHPainel();
+        }catch(e){ console.warn('[painel RH]', e&&e.message); }
+      }
+      return r;
+    };
+    novo.__rhPainel=true; Object.keys(anterior).forEach(function(k){ try{ novo[k]=anterior[k]; }catch(e){} });
+    window.go=novo; try{ go=novo; }catch(e){}
+  }
+  embrulharGo(); setInterval(embrulharGo, 2000);
+})();
+</script>
+
 </body>
 </html>
