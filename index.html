@@ -527,6 +527,66 @@ body[data-theme]{--primary:var(--theme-color,#4f8ef7);--primary2:var(--theme-col
 <!-- Supabase SDK -->
 <script src="/vendor/supabase-js-2.117.3.js"></script><!-- v6.248: versão fixa, servida pelo próprio site (OWASP A03) -->
 <script>
+/* ═══ v6.259 — DOCUMENTOS ABREM DENTRO DA APP ═══════════════════════════════
+   Todos os documentos (declarações, recibos, folhas, relatórios, fichas…) eram
+   escritos numa janela nova em branco (window.open('')). Extensões e programas
+   de publicidade instalados no computador apanham essas janelas e trocam-nas
+   por páginas de burla («This site may be unsafe», carteiras de cripto…).
+   Aqui, uma janela em branco passa a ser um quadro dentro da própria app, com
+   «Imprimir / Guardar PDF» e «Fechar». Instalado no arranque, ANTES das outras
+   camadas que embrulham window.open (marca de água/auditoria, cabeçalhos), que
+   continuam a funcionar sobre o documento do quadro. Abrir endereços reais
+   (ficheiros, WhatsApp…) não muda. ════════════════════════════════════════ */
+(function(){
+  if(window.__docNaApp) return; window.__docNaApp=true;
+  var abrirOriginal=window.open;
+
+  function fecharQuadro(ov){ try{ ov.remove(); }catch(e){} try{ document.body.style.overflow=''; }catch(e){} }
+
+  window.__abrirDocNaApp=function(){
+    var ant=document.getElementById('doc-na-app'); if(ant) fecharQuadro(ant);
+    var ov=document.createElement('div'); ov.id='doc-na-app';
+    ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true');
+    ov.style.cssText='position:fixed;inset:0;z-index:2147480000;background:rgba(15,23,42,.72);display:flex;flex-direction:column;padding:12px';
+    var barra=document.createElement('div');
+    barra.style.cssText='display:flex;align-items:center;gap:8px;background:#0f172a;color:#fff;border-radius:12px 12px 0 0;padding:8px 12px;font:600 13px Arial,sans-serif';
+    barra.innerHTML='<span id="doc-na-app-tit" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Documento</span>';
+    var bImp=document.createElement('button'); bImp.type='button'; bImp.textContent='Imprimir / Guardar PDF';
+    var bFec=document.createElement('button'); bFec.type='button'; bFec.textContent='Fechar ✕';
+    [bImp,bFec].forEach(function(b){ b.style.cssText='background:#1e293b;color:#fff;border:1px solid #334155;border-radius:8px;padding:6px 12px;font:600 12px Arial,sans-serif;cursor:pointer'; barra.appendChild(b); });
+    bImp.style.background='#2563eb'; bImp.style.borderColor='#2563eb';
+    var fr=document.createElement('iframe'); fr.title='Documento';
+    fr.style.cssText='flex:1;width:100%;border:0;background:#f5f5f5;border-radius:0 0 12px 12px';
+    ov.appendChild(barra); ov.appendChild(fr);
+    document.body.appendChild(ov);
+    try{ document.body.style.overflow='hidden'; }catch(e){}
+
+    var w=fr.contentWindow;
+    var fechar=function(){ fecharQuadro(ov); };
+    function prender(){ try{ w.close=fechar; }catch(e){} }   /* «Fechar» do próprio documento */
+    prender();
+    bFec.onclick=fechar;
+    bImp.onclick=function(){ try{ w.focus(); w.print(); }catch(e){} };
+    ov.addEventListener('keydown', function(e){ if(e.key==='Escape') fechar(); });
+    /* título da barra e «Fechar» depois de o documento ser escrito */
+    var t=0, iv=setInterval(function(){
+      t++; prender();
+      try{ var tt=w.document && w.document.title; if(tt) document.getElementById('doc-na-app-tit').textContent=tt; }catch(e){}
+      try{ w.document.addEventListener('keydown', function(e){ if(e.key==='Escape') fechar(); }); }catch(e){}
+      if(t>20 || !document.body.contains(ov)) clearInterval(iv);
+    }, 150);
+    try{ bFec.focus(); }catch(e){}
+    return w;
+  };
+
+  window.open=function(url){
+    var emBranco=(url==null || url==='' || url==='about:blank');
+    if(!emBranco) return abrirOriginal.apply(window, arguments);
+    try{ return window.__abrirDocNaApp(); }catch(e){ return abrirOriginal.apply(window, arguments); }
+  };
+})();
+</script>
+<script>
 // ════════════════════════════════════════════════════════════
 //  SUPABASE CONFIG — substitua pelos valores do seu projecto
 //  Project Settings → API → Project URL + anon public key
@@ -757,7 +817,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.258</span>
+    <span class="logo-ver">v6.259</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -48235,8 +48295,8 @@ body.day-mode .modal-ov{ background:rgba(16,32,64,.36); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function quem(){ try{ return (typeof curUser!=='undefined'&&curUser&&curUser.nome)||'—'; }catch(e){ return '—'; } }
   function papel(){ var r=''; try{ r=(typeof curRole!=='undefined'&&curRole)||''; }catch(e){} return PAPEIS[r]||r; }
-  function escola(){ try{ return (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nome)||'Escola'; }catch(e){ return 'Escola'; } }
-  function logo(){ try{ return (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.logo)||''; }catch(e){ return ''; } }
+  function escola(){ try{ if(window._escolaId==='escola_demo') return 'Escola Modelo'; return (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.nome)||'Escola'; }catch(e){ return 'Escola'; } }
+  function logo(){ try{ if(window._escolaId==='escola_demo') return ''; return (ESCOLA_SETTINGS&&ESCOLA_SETTINGS.logo)||''; }catch(e){ return ''; } }   // v6.259: a demonstração não mostra o logótipo do piloto
   function agora(){ var d=new Date(); return d.toLocaleDateString('pt-PT')+' às '+d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}); }
 
   function marcar(w){
