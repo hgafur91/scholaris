@@ -757,7 +757,7 @@ window.__escA = function (s) {
   <div class="logo" onclick="go('dash')">
     <div class="logo-ico" style="background:transparent;overflow:hidden"><img src="iqra-emblem.png" alt="Colégio iQRA" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="logo-name">Colégio iQRA</span>
-    <span class="logo-ver">v6.257</span>
+    <span class="logo-ver">v6.258</span>
   </div>
   <div class="srch-wrap">
     <i class="ti ti-search srch-ico"></i>
@@ -6016,14 +6016,14 @@ function rStaff(dep){
   const idx={todos:0,academico:1,gestao:2,financeiro:3}[dep]||0;
   if(btns[idx])btns[idx].classList.add('on');
   const list=dep==='todos'?PROFS:PROFS.filter(p=>p.dep===dep);
-  document.getElementById('tb-staff').innerHTML=list.map((p,i)=>`<tr onclick="loadAval(${p.id})">
+  document.getElementById('tb-staff').innerHTML=list.map((p,i)=>`<tr onclick="openProf(${p.id})" style="cursor:pointer" title="Abrir a ficha">   <!-- v6.258: a linha abre a ficha (antes abria a avaliação) -->
     <td>${mkAv(p.nome,28,i,false)}</td><td style="font-family:var(--fm);font-size:11px;color:var(--t2)">${window.__escH(p.num)}</td>
     <td style="font-weight:700">${window.__escH(p.nome)}</td><td style="color:var(--t2);font-size:12px">${window.__escH(p.cargo)}</td>
     <td><span class="badge ${p.dep==='academico'?'bin':p.dep==='gestao'?'bpu':'bwn'}">${p.dep==='academico'?'<i class="ti ti-school"></i> Acad.':p.dep==='gestao'?'<i class="ti ti-building"></i> Gestão':'<i class="ti ti-currency-dollar"></i> Fin.'}</span></td>
     <td><span class="badge ${p.regime==='inteiro'?'bok':'bwn'}" style="font-size:9px">${p.regime==='inteiro'?'Inteiro':'Parcial'}</span></td>
     ${canSeeSalary()?`<td style="font-weight:700;color:var(--am)">${(p.salario||0).toLocaleString()} MZM</td>`:`<td style="color:var(--t3);text-align:right">—</td>`}
     <td><span class="badge ${p.nota>=16?'bok':p.nota>=12?'bwn':'ber'}">${p.nota}/20</span></td>
-    <td><button class="btn btn-g btn-sm" onclick="event.stopPropagation();loadAval(${p.id})">Avaliar</button></td>
+    <td style="white-space:nowrap"><button class="btn btn-g btn-sm" onclick="event.stopPropagation();openProf(${p.id})"><i class="ti ti-id"></i> Ficha</button> <button class="btn btn-g btn-sm" onclick="event.stopPropagation();loadAval(${p.id})">Avaliar</button></td>
   </tr>`).join('');
 }
 function fStaff(dep,btn){rStaff(dep)}
@@ -39229,10 +39229,11 @@ window.trimestreActual = function(d){
 
   window.__guardarPerfilProf = async function(id){
     if(!(typeof curRole!=='undefined' && (curRole==='gestor'||curRole==='director'||curRole==='gestor-rh'))){
-      toast('Apenas Gestor Geral e Director podem editar o perfil.'); return;
+      toast('Só a direcção e o Gestor de RH podem editar o perfil.'); return;
     }
     var p=(typeof PROFS!=='undefined'?PROFS:[]).find(function(x){return x.id==id;});
-    if(!p||!p._dbId){ toast('Professor sem ligação à base de dados'); return; }
+    var _demo=(window._escolaId==='escola_demo');   // v6.258: na demonstração grava só em memória
+    if(!p||(!p._dbId&&!_demo)){ toast('Funcionário sem ligação à base de dados'); return; }
     var _salAntes = (p.salario!=null && p.salario!=='') ? parseFloat(p.salario) : null;
     var podeSal = (typeof canSeeSalary==='function') ? canSeeSalary() : (curRole==='gestor'||curRole==='director');
     function gv(elId){ var el=document.getElementById(elId); return el?el.value:undefined; }
@@ -39266,10 +39267,12 @@ window.trimestreActual = function(d){
     }
     if(!upd.nome || !upd.nome.trim()){ toast('O nome não pode ficar vazio'); return; }
     try{
-      var res=await sb().from('staff').update(upd).eq('id',p._dbId);
-      if(res.error){ toast('Erro ao gravar: '+res.error.message); return; }
-      var rconf=await window.__gravarStaffConf(p._dbId, conf);
-      if(rconf && rconf.erro){ toast('Erro ao gravar salário/documentos: '+rconf.erro); return; }
+      if(!_demo){
+        var res=await sb().from('staff').update(upd).eq('id',p._dbId);
+        if(res.error){ toast('Erro ao gravar: '+res.error.message); return; }
+        var rconf=await window.__gravarStaffConf(p._dbId, conf);
+        if(rconf && rconf.erro){ toast('Erro ao gravar salário/documentos: '+rconf.erro); return; }
+      }
       Object.assign(p,upd); // reflectir em memória
       Object.assign(p,{ bi:conf.bi, nuit:conf.nuit, niss:conf.niss });
       if(conf.salario!==undefined) p.salario=conf.salario; // a Folha de Salários usa p.salario
